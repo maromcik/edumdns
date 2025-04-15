@@ -1,0 +1,9 @@
+[package]
+name = "edumdns"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+edumdns_probe = { path = "edumdns_probe" }
+edumdns_rewriter = { path = "edumdns_rewriter" }
+edumdns_server = { path = "edumdns_server" }

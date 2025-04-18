@@ -1,5 +1,5 @@
-use crate::network::error::{NetworkError, NetworkErrorKind};
-use crate::network::rewrite::{
+use crate::error::{CoreError, CoreErrorKind};
+use crate::rewrite::{
     rewrite_ipv4, rewrite_ipv6, rewrite_mac, rewrite_tcp, rewrite_udp, rewrite_vlan,
     DataLinkRewrite, IpRewrite, PortRewrite,
 };
@@ -171,10 +171,10 @@ impl<'a> DataLinkPacket<'a> {
     pub fn from_buffer(
         value: &'a mut [u8],
         packet: &EthernetPacket,
-    ) -> Result<DataLinkPacket<'a>, NetworkError> {
+    ) -> Result<DataLinkPacket<'a>, CoreError> {
         let mut new_packet =
-            MutableEthernetPacket::new(&mut value[..]).ok_or(NetworkError::new(
-                NetworkErrorKind::PacketConstructionError,
+            MutableEthernetPacket::new(&mut value[..]).ok_or(CoreError::new(
+                CoreErrorKind::PacketConstructionError,
                 "Could not construct an EthernetPacket",
             ))?;
         new_packet.clone_from(packet);

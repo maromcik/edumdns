@@ -1,4 +1,3 @@
-use crate::network::packet::{ApplicationPacket, DataLinkPacket, NetworkPacket};
 use pnet::datalink::MacAddr;
 use pnet::packet::ethernet::MutableEthernetPacket;
 use pnet::packet::ipv4::MutableIpv4Packet;
@@ -7,6 +6,7 @@ use pnet::packet::tcp::MutableTcpPacket;
 use pnet::packet::udp::MutableUdpPacket;
 use pnet::packet::vlan::MutableVlanPacket;
 use std::net::{Ipv4Addr, Ipv6Addr};
+use crate::packet::{ApplicationPacket, DataLinkPacket, NetworkPacket};
 
 #[derive(Default)]
 pub struct Rewrite {

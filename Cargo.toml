@@ -4,6 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+edumdns_core = { path = "edumdns_core" }
 edumdns_probe = { path = "edumdns_probe" }
-edumdns_rewriter = { path = "edumdns_rewriter" }
 edumdns_server = { path = "edumdns_server" }
+thiserror = "2.0.12"
+tokio = {version =  "1.44.2", features = ["full"] }
+
+[workspace]
+members = [
+    "edumdns_core",
+    "edumdns_probe",
+    "edumdns_server"
+]

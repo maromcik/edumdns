@@ -1,12 +1,14 @@
+use crate::error::CoreError;
+use crate::packet::{ApplicationPacket, DataLinkPacket, NetworkPacket};
 use pnet::datalink::MacAddr;
+use pnet::datalink::ParseMacAddrErr;
 use pnet::packet::ethernet::MutableEthernetPacket;
 use pnet::packet::ipv4::MutableIpv4Packet;
 use pnet::packet::ipv6::MutableIpv6Packet;
 use pnet::packet::tcp::MutableTcpPacket;
 use pnet::packet::udp::MutableUdpPacket;
 use pnet::packet::vlan::MutableVlanPacket;
-use std::net::{Ipv4Addr, Ipv6Addr};
-use crate::packet::{ApplicationPacket, DataLinkPacket, NetworkPacket};
+use std::net::{AddrParseError, Ipv4Addr, Ipv6Addr};
 
 #[derive(Default)]
 pub struct Rewrite {
@@ -15,19 +17,80 @@ pub struct Rewrite {
     pub transport_rewrite: Option<PortRewrite>,
 }
 
+impl Rewrite {
+    pub fn new(
+        datalink_rewrite: Option<DataLinkRewrite>,
+        ip_rewrite: Option<IpRewrite>,
+        transport_rewrite: Option<PortRewrite>,
+    ) -> Self {
+        Self {
+            datalink_rewrite,
+            ip_rewrite,
+            transport_rewrite,
+        }
+    }
+}
+
 pub struct IpRewrite {
     pub ipv4_rewrite: Option<Ipv4Rewrite>,
     pub ipv6_rewrite: Option<Ipv6Rewrite>,
+}
+
+impl IpRewrite {
+    pub fn parse_ipv4_rewrite(
+        src_ipv4: Option<&str>,
+        dst_ipv4: Option<&str>,
+    ) -> Result<IpRewrite, CoreError> {
+        Ok(Self {
+            ipv4_rewrite: Some(Ipv4Rewrite::parse(src_ipv4, dst_ipv4)?),
+            ipv6_rewrite: None,
+        })
+    }
+
+    pub fn parse_ipv6_rewrite(
+        src_ipv6: Option<&str>,
+        dst_ipv6: Option<&str>,
+    ) -> Result<IpRewrite, CoreError> {
+        Ok(Self {
+            ipv4_rewrite: None,
+            ipv6_rewrite: Some(Ipv6Rewrite::parse(src_ipv6, dst_ipv6)?),
+        })
+    }
 }
 
 pub struct DataLinkRewrite {
     pub mac_rewrite: Option<MacRewrite>,
     pub vlan_rewrite: Option<VlanRewrite>,
 }
+
+impl DataLinkRewrite {
+    pub fn new(mac_rewrite: Option<MacRewrite>, vlan_rewrite: Option<VlanRewrite>) -> Self {
+        Self {
+            mac_rewrite,
+            vlan_rewrite,
+        }
+    }
+    pub fn parse_mac_rewrite(
+        src_mac: Option<&str>,
+        dst_mac: Option<&str>,
+    ) -> Result<Self, CoreError> {
+        Ok(Self::new(Some(MacRewrite::parse(src_mac, dst_mac)?), None))
+    }
+    pub fn new_vlan_rewrite(vlan: u16) -> Self {
+        Self::new(None, Some(VlanRewrite::new(vlan)))
+    }
+}
+
 #[derive(Default)]
 pub struct PortRewrite {
     pub src_port: Option<u16>,
     pub dst_port: Option<u16>,
+}
+
+impl PortRewrite {
+    pub fn new(src_port: Option<u16>, dst_port: Option<u16>) -> Self {
+        Self { src_port, dst_port }
+    }
 }
 
 #[derive(Default)]
@@ -36,10 +99,35 @@ pub struct Ipv4Rewrite {
     pub dst_ip: Option<Ipv4Addr>,
 }
 
+impl Ipv4Rewrite {
+    pub fn parse(src_ipv4: Option<&str>, dst_ipv4: Option<&str>) -> Result<Self, CoreError> {
+        Ok(Self {
+            src_ip: Self::parse_ipv4(src_ipv4.as_ref())?,
+            dst_ip: Self::parse_ipv4(dst_ipv4.as_ref())?,
+        })
+    }
+    fn parse_ipv4(ipv4: Option<&&str>) -> Result<Option<Ipv4Addr>, AddrParseError> {
+        ipv4.map(|ip| ip.parse::<Ipv4Addr>()).transpose()
+    }
+}
+
 #[derive(Default)]
 pub struct Ipv6Rewrite {
     pub src_ip: Option<Ipv6Addr>,
     pub dst_ip: Option<Ipv6Addr>,
+}
+
+impl Ipv6Rewrite {
+    pub fn parse(src_ipv6: Option<&str>, dst_ipv6: Option<&str>) -> Result<Self, CoreError> {
+        Ok(Self {
+            src_ip: Self::parse_ipv6(src_ipv6.as_ref())?,
+            dst_ip: Self::parse_ipv6(dst_ipv6.as_ref())?,
+        })
+    }
+
+    fn parse_ipv6(ipv6: Option<&&str>) -> Result<Option<Ipv6Addr>, AddrParseError> {
+        ipv6.map(|ip| ip.parse::<Ipv6Addr>()).transpose()
+    }
 }
 
 #[derive(Default)]
@@ -48,9 +136,27 @@ pub struct MacRewrite {
     pub dst_mac: Option<MacAddr>,
 }
 
+impl MacRewrite {
+    pub fn parse(src_mac: Option<&str>, dst_mac: Option<&str>) -> Result<Self, CoreError> {
+        Ok(Self {
+            src_mac: Self::parse_mac(src_mac.as_ref())?,
+            dst_mac: Self::parse_mac(dst_mac.as_ref())?,
+        })
+    }
+    fn parse_mac(mac: Option<&&str>) -> Result<Option<MacAddr>, ParseMacAddrErr> {
+        mac.map(|mac| mac.parse::<MacAddr>()).transpose()
+    }
+}
+
 #[derive(Default)]
 pub struct VlanRewrite {
     pub vlan_id: u16,
+}
+
+impl VlanRewrite {
+    pub fn new(vlan_id: u16) -> Self {
+        Self { vlan_id }
+    }
 }
 
 pub fn rewrite_packet<'a>(packet: DataLinkPacket<'a>, rewrite: &'a Rewrite) -> Option<()> {

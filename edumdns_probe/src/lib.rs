@@ -7,7 +7,7 @@ use pcap::Active;
 pub mod listen;
 pub mod error;
 
-pub async fn run_core() -> Result<(), ProbeError> {
+pub async fn capture_and_send() -> Result<(), ProbeError> {
     let capture = PacketCaptureGeneric::<Active>::open_file_capture("/home/roman/UNI/DP/pcap/streamer2.pcap", None)?;
     listen_and_send(capture).await?;
     Ok(())

@@ -14,6 +14,7 @@ pub enum CoreErrorKind {
     ParseAddrError,
     PacketConstructionError,
     PacketRewriteError,
+    CodeError,
 }
 
 impl Display for CoreErrorKind {
@@ -26,6 +27,8 @@ impl Display for CoreErrorKind {
             CoreErrorKind::ParseAddrError => f.write_str("Address parse error"),
             CoreErrorKind::PacketConstructionError => f.write_str("Packet could not be constructed"),
             CoreErrorKind::PacketRewriteError=> f.write_str("Packet could not be rewritten"),
+            CoreErrorKind::CodeError => write!(f, "Encode/Decode error"),
+
         }
     }
 }
@@ -86,5 +89,11 @@ impl From<AddrParseError> for CoreError {
 impl From<ParseIntError> for CoreError {
     fn from(value: ParseIntError) -> Self {
         CoreError::new(CoreErrorKind::ParseAddrError, &value.to_string())
+    }
+}
+
+impl From<bincode::error::DecodeError> for CoreError {
+    fn from(value: bincode::error::DecodeError) -> Self {
+        CoreError::new(CoreErrorKind::CodeError, &value.to_string())
     }
 }

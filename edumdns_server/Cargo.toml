@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+edumdns_core = { path = "../edumdns_core" }
 pcap = {  version = "2.2.0", features = ["tokio", "lending-iter", "futures"]}
 pnet = "0.35.0"
 clap = { version = "4.5.36", features = ["derive"] }
@@ -13,7 +14,8 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde_bytes = "0.11.17"
 tokio = { version = "1.44.2", features = ["full"] }
 bincode = "2.0.1"
-edumdns_core = { path = "../edumdns_core" }
 bytes = "1.10.1"
 tokio-util = { version = "0.7.14", features = ["codec"] }
 futures = "0.3.31"
+log = "0.4.27"
+

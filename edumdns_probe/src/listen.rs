@@ -9,6 +9,8 @@ use pcap::{Activated, Error, State};
 use pnet::packet::ethernet::EthernetPacket;
 use pnet::packet::Packet;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
+use log::{info, warn};
+
 
 pub async fn listen_and_send<T>(
     mut capture: impl PacketCapture<T>,
@@ -18,7 +20,7 @@ where
 {
     capture.apply_filter()?;
     let mut cap = capture.get_capture();
-    println!("Capture ready");
+    info!("Capture ready!");
     let mut i = 0;
     loop {
         let cap_packet = match cap.next_packet() {
@@ -44,7 +46,7 @@ where
         let app_packet = AppPacket {
             id: i,
             payload: packet.packet().to_vec(),
-            metadata: "Kokot".to_string(),
+            metadata: "pes".to_string(),
         };
         i+=1;
 

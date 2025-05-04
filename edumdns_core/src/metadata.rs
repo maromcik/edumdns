@@ -11,22 +11,6 @@ pub struct PacketMetadata {
     pub transport_metadata: PortMetadata,
 }
 
-impl PacketMetadata {
-    pub fn from_datalink_packet(mut packet: DataLinkPacket<'_>) -> Option<Self> {
-        let mac_metadata = packet.get_mac_metadata()?;
-        let mut vlan_packet = packet.unpack_vlan()?;
-        let vlan_metadata = vlan_packet.get_vlan_metadata();
-        let mut ip_packet = vlan_packet.get_next_layer()?;
-        let ip_metadata = ip_packet.get_ip_metadata();
-        let transport_packet = ip_packet.get_next_layer()?;
-        let transport_metadata = transport_packet.get_transport_metadata()?;
-        Some(PacketMetadata::new(
-            DataLinkMetadata::new(mac_metadata, vlan_metadata),
-            ip_metadata,
-            transport_metadata,
-        ))
-    }
-}
 
 impl PacketMetadata {
     pub fn new(

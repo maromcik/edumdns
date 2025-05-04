@@ -1,3 +1,4 @@
+use log::info;
 use pcap::{Activated, Active, Capture, Device, Offline, State};
 use crate::error::{CoreError, CoreErrorKind};
 
@@ -34,7 +35,7 @@ where
                     CoreErrorKind::CaptureError,
                     &format!("Capture device {} not found", device_name),
                 ))?;
-        println!("Listening on: {:?}", target.name);
+        info!("Listening on: {:?}", target.name);
 
         let capture = Capture::from_device(target)?
             .promisc(true)
@@ -66,8 +67,8 @@ where
     }
     fn apply_filter(&mut self) -> Result<(), CoreError> {
         if let Some(filter) = &self.filter {
-            println!("Filter applied: {}", filter);
-            self.capture.filter(&filter, true)?;
+            info!("Filter applied: {}", filter);
+            self.capture.filter(filter, true)?;
         }
         Ok(())
     }

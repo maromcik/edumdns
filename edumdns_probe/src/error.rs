@@ -8,6 +8,7 @@ pub enum ProbeErrorKind {
     ArgumentError,
     IoError,
     CodeError,
+    ConnectionError,
 }
 
 impl Display for ProbeErrorKind {
@@ -17,6 +18,7 @@ impl Display for ProbeErrorKind {
             ProbeErrorKind::ArgumentError => write!(f, "Invalid arguments"),
             ProbeErrorKind::IoError => write!(f, "I/O error from Tokio"),
             ProbeErrorKind::CodeError => write!(f, "Encode/Decode error"),
+            ProbeErrorKind::ConnectionError => write!(f, "Tokio connection error"),
         }
     }
 }

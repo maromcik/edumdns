@@ -22,6 +22,7 @@ use pnet::packet::udp::{ipv4_checksum as ipv4_checksum_udp, ipv6_checksum as ipv
 use pnet::packet::vlan::MutableVlanPacket;
 use pnet::packet::{MutablePacket, Packet};
 use std::net::{Ipv4Addr, Ipv6Addr};
+use log::info;
 
 pub trait FixablePacket {
     fn fix(&mut self, payload_len: Option<usize>);
@@ -52,6 +53,27 @@ pub struct ProbePacket {
     pub id: i32,
     pub payload: Vec<u8>,
     pub metadata: PacketMetadata,
+}
+
+impl ProbePacket {
+    pub fn from_datalink_packet(id: i32, mut packet: DataLinkPacket<'_>) -> Option<Self> {
+        let mac_metadata = packet.get_mac_metadata()?;
+        let mut vlan_packet = packet.unpack_vlan()?;
+        let vlan_metadata = vlan_packet.get_vlan_metadata();
+        let mut ip_packet = vlan_packet.get_next_layer()?;
+        let ip_metadata = ip_packet.get_ip_metadata();
+        let transport_packet = ip_packet.get_next_layer()?;
+        let transport_metadata = transport_packet.get_transport_metadata()?;
+        Some(Self {
+            id,
+            payload: transport_packet.get_payload().to_vec(),
+            metadata: PacketMetadata::new(
+                DataLinkMetadata::new(mac_metadata, vlan_metadata),
+                ip_metadata,
+                transport_metadata,
+            ),
+        })
+    }
 }
 
 pub enum DataLinkPacket<'a> {
@@ -517,12 +539,16 @@ impl<'a> TransportPacket<'a> {
         self.fix(None);
         self
     }
-    
+
     pub fn get_transport_metadata(&self) -> Option<PortMetadata> {
         match self {
-            TransportPacket::Udp(p, _) => Some(PortMetadata::new(p.get_source(), p.get_destination())), 
-            TransportPacket::Tcp(p, _) => Some(PortMetadata::new(p.get_source(), p.get_destination())),
-            TransportPacket::Icmp(_) => None
+            TransportPacket::Udp(p, _) => {
+                Some(PortMetadata::new(p.get_source(), p.get_destination()))
+            }
+            TransportPacket::Tcp(p, _) => {
+                Some(PortMetadata::new(p.get_source(), p.get_destination()))
+            }
+            TransportPacket::Icmp(_) => None,
         }
     }
 }
@@ -595,34 +621,34 @@ impl ApplicationPacketType<'_> {
         match self {
             ApplicationPacketType::DnsPacket(dns_packet) => {
                 for q in &dns_packet.questions {
-                    println!("Q: {}", q.qname);
+                    info!("Q: {}", q.qname);
                 }
 
                 for r in &mut dns_packet.answers {
-                    println!("R: {}", r.name);
+                    info!("R: {}", r.name);
                     match &mut r.data {
                         RData::A(a) => {
-                            println!("BEFORE: {}", a.0);
+                            info!("BEFORE: {}", a.0);
 
                             a.0 = Ipv4Addr::from([192, 168, 1, 1]);
-                            println!("AFTER: {}", a.0)
+                            info!("AFTER: {}", a.0)
                         }
                         RData::AAAA(aaaa) => {
-                            println!("AAAA: {}", aaaa.0)
+                            info!("AAAA: {}", aaaa.0)
                         }
                         RData::CNAME(cname) => {
-                            println!("CNAME: {}", cname.0)
+                            info!("CNAME: {}", cname.0)
                         }
                         RData::MX(_) => {}
                         RData::NS(_) => {}
                         RData::PTR(ptr) => {
-                            println!("PTR: {}", ptr.0)
+                            info!("PTR: {}", ptr.0)
                         }
                         RData::SOA(_) => {}
                         RData::SRV(_) => {}
                         RData::TXT(txt) => {
                             for record in txt.iter() {
-                                println!(
+                                info!(
                                     "TXT: {:?}",
                                     String::from_utf8(Vec::from(record))
                                         .expect("Cannot parse TXT records")

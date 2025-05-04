@@ -7,6 +7,7 @@ pub enum ProbeErrorKind {
     CoreError(CoreError),
     ArgumentError,
     IoError,
+    CodeError,
 }
 
 impl Display for ProbeErrorKind {
@@ -15,6 +16,7 @@ impl Display for ProbeErrorKind {
             ProbeErrorKind::CoreError(err) => std::fmt::Display::fmt(&err, f),
             ProbeErrorKind::ArgumentError => write!(f, "Invalid arguments"),
             ProbeErrorKind::IoError => write!(f, "I/O error from Tokio"),
+            ProbeErrorKind::CodeError => write!(f, "Encode/Decode error"),
         }
     }
 }
@@ -53,6 +55,15 @@ impl From<std::io::Error> for ProbeError {
     fn from(value: std::io::Error) -> Self {
         Self::new(
             ProbeErrorKind::IoError,
+            value.to_string().as_str(),
+        )
+    }
+}
+
+impl From<bincode::error::EncodeError> for ProbeError {
+    fn from(value: bincode::error::EncodeError) -> Self {
+        Self::new(
+            ProbeErrorKind::CodeError,
             value.to_string().as_str(),
         )
     }

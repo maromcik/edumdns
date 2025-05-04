@@ -1,8 +1,6 @@
 use crate::error::{CoreError, CoreErrorKind};
-use crate::rewrite::{
-    DataLinkRewrite, IpRewrite, PortRewrite, rewrite_ipv4, rewrite_ipv6, rewrite_mac, rewrite_tcp,
-    rewrite_udp, rewrite_vlan,
-};
+use crate::rewrite::{rewrite_ipv4, rewrite_ipv6, rewrite_mac, rewrite_tcp, rewrite_udp, rewrite_vlan};
+use crate::metadata::{DataLinkMetadata, IpMetadata, PortMetadata, PacketMetadata};
 use bincode::{Decode, Encode};
 use dns_parser::Packet as DnsPacket;
 use dns_parser::RData;
@@ -44,11 +42,11 @@ pub trait NetworkApplicationPacket {
     type Type<'a>;
 }
 
-#[derive(Encode, Decode, Debug)]
-pub struct AppPacket {
+#[derive(Encode, Decode, Debug, Default)]
+pub struct ProbePacket {
     pub id: i32,
     pub payload: Vec<u8>,
-    pub metadata: String
+    pub metadata: PacketMetadata
 }
 
 pub enum DataLinkPacket<'a> {
@@ -211,7 +209,7 @@ impl<'a> DataLinkPacket<'a> {
         }
     }
 
-    pub fn rewrite(mut self, rewrite: &Option<DataLinkRewrite>) -> DataLinkPacket<'a> {
+    pub fn rewrite(mut self, rewrite: &Option<DataLinkMetadata>) -> DataLinkPacket<'a> {
         let Some(rewrite) = &rewrite else { return self };
         match self {
             DataLinkPacket::EthPacket(ref mut packet) => rewrite_mac(packet, rewrite),
@@ -352,7 +350,7 @@ impl<'a> IpPacket<'a> {
         }
     }
 
-    pub fn rewrite(mut self, rewrite: &Option<IpRewrite>) -> IpPacket<'a> {
+    pub fn rewrite(mut self, rewrite: &Option<IpMetadata>) -> IpPacket<'a> {
         let Some(rewrite) = &rewrite else { return self };
         match self {
             IpPacket::Ipv4Packet(ref mut packet) => {
@@ -469,7 +467,7 @@ impl NetworkPacket for TransportPacket<'_> {
 }
 
 impl<'a> TransportPacket<'a> {
-    pub fn rewrite(mut self, rewrite: &Option<PortRewrite>) -> TransportPacket<'a> {
+    pub fn rewrite(mut self, rewrite: &Option<PortMetadata>) -> TransportPacket<'a> {
         match self {
             TransportPacket::Udp(ref mut packet, _) => {
                 rewrite_udp(packet, rewrite);

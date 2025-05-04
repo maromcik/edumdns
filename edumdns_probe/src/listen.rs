@@ -3,14 +3,14 @@ use bincode;
 use bytes::Bytes;
 use edumdns_core::capture::PacketCapture;
 use edumdns_core::error::{CoreError, CoreErrorKind};
-use edumdns_core::packet::AppPacket;
+use edumdns_core::packet::ProbePacket;
 use futures::SinkExt;
 use pcap::{Activated, Error, State};
 use pnet::packet::ethernet::EthernetPacket;
 use pnet::packet::Packet;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 use log::{info, warn};
-
+use edumdns_core::metadata::PacketMetadata;
 
 pub async fn listen_and_send<T>(
     mut capture: impl PacketCapture<T>,
@@ -43,16 +43,15 @@ where
         ))?;
 
 
-        let app_packet = AppPacket {
+        let app_packet = ProbePacket {
             id: i,
             payload: packet.packet().to_vec(),
-            metadata: "pes".to_string(),
+            metadata: PacketMetadata::default(),
         };
+
         i+=1;
 
-        let encoded = bincode::encode_to_vec(&app_packet, bincode::config::standard()).unwrap();
-        // println!("Encoded AppPacket {:?}", &encoded);
-
+        let encoded = bincode::encode_to_vec(&app_packet, bincode::config::standard())?;
         let stream = tokio::net::TcpStream::connect("127.0.0.1:8080").await?;
 
         let mut framed = Framed::new(stream, LengthDelimitedCodec::new());

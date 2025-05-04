@@ -17,7 +17,7 @@ pub async fn run_server() -> Result<(), AppError> {
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
-    env_logger::init_from_env(Env::default().default_filter_or("info"));
+    env_logger::init_from_env(Env::default().default_filter_or("debug"));
     let (x, y) = tokio::join!(run_server(), run_probe());
     x?;
     y?;

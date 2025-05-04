@@ -1,6 +1,6 @@
+use edumdns_core::error::CoreError;
 use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
-use edumdns_core::error::{CoreError, CoreErrorKind};
 
 #[derive(Error, Debug, Clone)]
 pub enum ProbeErrorKind {

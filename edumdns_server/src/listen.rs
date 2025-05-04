@@ -5,8 +5,9 @@ use edumdns_core::packet::{DataLinkPacket, NetworkPacket, ProbePacket};
 use futures::StreamExt;
 use tokio::net::{TcpListener, TcpStream, UdpSocket};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
+use edumdns_core::rewrite::{DataLinkRewrite, IpRewrite, PacketRewrite, PortRewrite};
 
-pub fn unwrap_packet<'a>(packet: DataLinkPacket<'a>, rewrite: &'a PacketMetadata) -> Option<(Vec<u8>)> {
+pub fn unwrap_packet<'a>(packet: DataLinkPacket<'a>, rewrite: &PacketRewrite) -> Option<(Vec<u8>)> {
     let mut data_link_packet = packet.rewrite(&rewrite.datalink_rewrite);
     let mut vlan_packet = data_link_packet
         .unpack_vlan()?
@@ -35,13 +36,13 @@ async fn handle_connection(socket: TcpStream) -> Result<(), ServerError> {
             .map_err(CoreError::from)?;
     println!("ID: {}, Data: {:?}", packet.id, packet.metadata);
     let packet = DataLinkPacket::from_slice(packet.payload.as_mut())?;
-    let datalink_rewrite = Some(DataLinkMetadata::parse_mac_rewrite(
+    let datalink_rewrite = Some(DataLinkRewrite::parse_mac_rewrite(
         Some("86:b3:6e:1b:5b:54"),
         None,
     )?);
-    let ip_rewrite = Some(IpMetadata::parse_ipv4_rewrite(Some("192.168.4.65"), None)?);
-    let port_rewrite = Some(PortMetadata::new(Some(3456), None));
-    let rewrite = PacketMetadata::new(datalink_rewrite, ip_rewrite, port_rewrite);
+    let ip_rewrite = Some(IpRewrite::parse_ipv4_rewrite(Some("192.168.4.65"), None)?);
+    let port_rewrite = Some(PortRewrite::new(Some(3456), None));
+    let rewrite = PacketRewrite::new(datalink_rewrite, ip_rewrite, port_rewrite);
     if let Some(p) = unwrap_packet(packet, &rewrite) {
         transmit_packet("192.168.4.80:5353", p.as_slice()).await?;
     }

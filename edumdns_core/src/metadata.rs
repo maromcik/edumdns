@@ -1,136 +1,96 @@
-use std::net::{AddrParseError, Ipv4Addr, Ipv6Addr};
-use bincode::{Decode, Encode};
+use crate::packet::{DataLinkPacket, NetworkPacket};
 use bincode::enc::Encoder;
 use bincode::error::EncodeError;
-use pnet::datalink::ParseMacAddrErr;
-use crate::error::CoreError;
+use bincode::{Decode, Encode};
+use std::net::{Ipv4Addr, Ipv6Addr};
 
-#[derive(Default, Encode, Decode, Debug)]
+#[derive(Encode, Decode, Debug)]
 pub struct PacketMetadata {
-    pub datalink_rewrite: Option<DataLinkMetadata>,
-    pub ip_rewrite: Option<IpMetadata>,
-    pub transport_rewrite: Option<PortMetadata>,
+    pub datalink_metadata: DataLinkMetadata,
+    pub ip_metadata: IpMetadata,
+    pub transport_metadata: PortMetadata,
+}
+
+impl PacketMetadata {
+    pub fn from_datalink_packet(mut packet: DataLinkPacket<'_>) -> Option<Self> {
+        let mac_metadata = packet.get_mac_metadata()?;
+        let mut vlan_packet = packet.unpack_vlan()?;
+        let vlan_metadata = vlan_packet.get_vlan_metadata();
+        let mut ip_packet = vlan_packet.get_next_layer()?;
+        let ip_metadata = ip_packet.get_ip_metadata();
+        let transport_packet = ip_packet.get_next_layer()?;
+        let transport_metadata = transport_packet.get_transport_metadata()?;
+        Some(PacketMetadata::new(
+            DataLinkMetadata::new(mac_metadata, vlan_metadata),
+            ip_metadata,
+            transport_metadata,
+        ))
+    }
 }
 
 impl PacketMetadata {
     pub fn new(
-        datalink_rewrite: Option<DataLinkMetadata>,
-        ip_rewrite: Option<IpMetadata>,
-        transport_rewrite: Option<PortMetadata>,
+        datalink_metadata: DataLinkMetadata,
+        ip_metadata: IpMetadata,
+        transport_metadata: PortMetadata,
     ) -> Self {
         Self {
-            datalink_rewrite,
-            ip_rewrite,
-            transport_rewrite,
+            datalink_metadata,
+            ip_metadata,
+            transport_metadata,
         }
     }
 }
 
-#[derive(Default, Encode, Decode, Debug)]
-pub struct IpMetadata {
-    pub ipv4_rewrite: Option<Ipv4Metadata>,
-    pub ipv6_rewrite: Option<Ipv6Metadata>,
-}
-
-impl IpMetadata {
-    pub fn parse_ipv4_rewrite(
-        src_ipv4: Option<&str>,
-        dst_ipv4: Option<&str>,
-    ) -> Result<IpMetadata, CoreError> {
-        Ok(Self {
-            ipv4_rewrite: Some(Ipv4Metadata::parse(src_ipv4, dst_ipv4)?),
-            ipv6_rewrite: None,
-        })
-    }
-
-    pub fn parse_ipv6_rewrite(
-        src_ipv6: Option<&str>,
-        dst_ipv6: Option<&str>,
-    ) -> Result<IpMetadata, CoreError> {
-        Ok(Self {
-            ipv4_rewrite: None,
-            ipv6_rewrite: Some(Ipv6Metadata::parse(src_ipv6, dst_ipv6)?),
-        })
-    }
+#[derive(Encode, Decode, Debug)]
+pub enum IpMetadata {
+    Ipv4(Ipv4Metadata),
+    Ipv6(Ipv6Metadata),
 }
 
 #[derive(Default, Encode, Decode, Debug)]
 pub struct DataLinkMetadata {
-    pub mac_rewrite: Option<MacMetadata>,
-    pub vlan_rewrite: Option<VlanMetadata>,
+    pub mac_metadata: MacMetadata,
+    pub vlan_metadata: Option<VlanMetadata>,
 }
 
 impl DataLinkMetadata {
-    pub fn new(mac_rewrite: Option<MacMetadata>, vlan_rewrite: Option<VlanMetadata>) -> Self {
+    pub fn new(mac_metadata: MacMetadata, vlan_metadata: Option<VlanMetadata>) -> Self {
         Self {
-            mac_rewrite,
-            vlan_rewrite,
+            mac_metadata,
+            vlan_metadata,
         }
-    }
-    pub fn parse_mac_rewrite(
-        src_mac: Option<&str>,
-        dst_mac: Option<&str>,
-    ) -> Result<Self, CoreError> {
-        Ok(Self::new(Some(MacMetadata::parse(src_mac, dst_mac)?), None))
-    }
-    pub fn new_vlan_rewrite(vlan: u16) -> Self {
-        Self::new(None, Some(VlanMetadata::new(vlan)))
     }
 }
 
 #[derive(Default, Encode, Decode, Debug)]
 pub struct PortMetadata {
-    pub src_port: Option<u16>,
-    pub dst_port: Option<u16>,
+    pub src_port: u16,
+    pub dst_port: u16,
 }
 
 impl PortMetadata {
-    pub fn new(src_port: Option<u16>, dst_port: Option<u16>) -> Self {
+    pub fn new(src_port: u16, dst_port: u16) -> Self {
         Self { src_port, dst_port }
     }
 }
 
-#[derive(Default, Encode, Decode, Debug)]
+#[derive(Encode, Decode, Debug)]
 pub struct Ipv4Metadata {
-    pub src_ip: Option<Ipv4Addr>,
-    pub dst_ip: Option<Ipv4Addr>,
+    pub src_ip: Ipv4Addr,
+    pub dst_ip: Ipv4Addr,
 }
 
-impl Ipv4Metadata {
-    pub fn parse(src_ipv4: Option<&str>, dst_ipv4: Option<&str>) -> Result<Self, CoreError> {
-        Ok(Self {
-            src_ip: Self::parse_ipv4(src_ipv4.as_ref())?,
-            dst_ip: Self::parse_ipv4(dst_ipv4.as_ref())?,
-        })
-    }
-    fn parse_ipv4(ipv4: Option<&&str>) -> Result<Option<Ipv4Addr>, AddrParseError> {
-        ipv4.map(|ip| ip.parse::<Ipv4Addr>()).transpose()
-    }
-}
-
-#[derive(Default, Encode, Decode, Debug)]
+#[derive(Encode, Decode, Debug)]
 pub struct Ipv6Metadata {
-    pub src_ip: Option<Ipv6Addr>,
-    pub dst_ip: Option<Ipv6Addr>,
-}
-
-impl Ipv6Metadata {
-    pub fn parse(src_ipv6: Option<&str>, dst_ipv6: Option<&str>) -> Result<Self, CoreError> {
-        Ok(Self {
-            src_ip: Self::parse_ipv6(src_ipv6.as_ref())?,
-            dst_ip: Self::parse_ipv6(dst_ipv6.as_ref())?,
-        })
-    }
-
-    fn parse_ipv6(ipv6: Option<&&str>) -> Result<Option<Ipv6Addr>, AddrParseError> {
-        ipv6.map(|ip| ip.parse::<Ipv6Addr>()).transpose()
-    }
+    pub src_ip: Ipv6Addr,
+    pub dst_ip: Ipv6Addr,
 }
 
 #[derive(Default, Encode, Decode, Debug)]
 pub struct MacMetadata {
-    pub src_mac: Option<MacAddr>,
-    pub dst_mac: Option<MacAddr>,
+    pub src_mac: MacAddr,
+    pub dst_mac: MacAddr,
 }
 
 #[derive(Default, Debug)]
@@ -177,20 +137,6 @@ impl<'__de, __Context> ::bincode::BorrowDecode<'__de, __Context> for MacAddr {
             bincode::BorrowDecode::<'_, __Context>::borrow_decode(decoder)?,
         );
         Ok(Self(mac_addr))
-    }
-}
-
-impl MacMetadata {
-    pub fn parse(src_mac: Option<&str>, dst_mac: Option<&str>) -> Result<Self, CoreError> {
-        Ok(Self {
-            src_mac: Self::parse_mac(src_mac.as_ref())?,
-            dst_mac: Self::parse_mac(dst_mac.as_ref())?,
-        })
-    }
-    fn parse_mac(mac: Option<&&str>) -> Result<Option<MacAddr>, ParseMacAddrErr> {
-        mac.map(|mac| mac.parse::<pnet::datalink::MacAddr>())
-            .map(|parsed_mac| parsed_mac.map(MacAddr))
-            .transpose()
     }
 }
 

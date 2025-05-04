@@ -1,6 +1,12 @@
 use crate::error::{CoreError, CoreErrorKind};
-use crate::rewrite::{rewrite_ipv4, rewrite_ipv6, rewrite_mac, rewrite_tcp, rewrite_udp, rewrite_vlan};
-use crate::metadata::{DataLinkMetadata, IpMetadata, PortMetadata, PacketMetadata};
+use crate::metadata::{
+    DataLinkMetadata, IpMetadata, Ipv4Metadata, Ipv6Metadata, MacAddr, MacMetadata, PacketMetadata,
+    PortMetadata, VlanMetadata,
+};
+use crate::rewrite::{
+    DataLinkRewrite, IpRewrite, PortRewrite, rewrite_ipv4, rewrite_ipv6, rewrite_mac, rewrite_tcp,
+    rewrite_udp, rewrite_vlan,
+};
 use bincode::{Decode, Encode};
 use dns_parser::Packet as DnsPacket;
 use dns_parser::RData;
@@ -16,7 +22,6 @@ use pnet::packet::udp::{ipv4_checksum as ipv4_checksum_udp, ipv6_checksum as ipv
 use pnet::packet::vlan::MutableVlanPacket;
 use pnet::packet::{MutablePacket, Packet};
 use std::net::{Ipv4Addr, Ipv6Addr};
-use std::sync::Arc;
 
 pub trait FixablePacket {
     fn fix(&mut self, payload_len: Option<usize>);
@@ -42,11 +47,11 @@ pub trait NetworkApplicationPacket {
     type Type<'a>;
 }
 
-#[derive(Encode, Decode, Debug, Default)]
+#[derive(Encode, Decode, Debug)]
 pub struct ProbePacket {
     pub id: i32,
     pub payload: Vec<u8>,
-    pub metadata: PacketMetadata
+    pub metadata: PacketMetadata,
 }
 
 pub enum DataLinkPacket<'a> {
@@ -209,7 +214,7 @@ impl<'a> DataLinkPacket<'a> {
         }
     }
 
-    pub fn rewrite(mut self, rewrite: &Option<DataLinkMetadata>) -> DataLinkPacket<'a> {
+    pub fn rewrite(mut self, rewrite: &Option<DataLinkRewrite>) -> DataLinkPacket<'a> {
         let Some(rewrite) = &rewrite else { return self };
         match self {
             DataLinkPacket::EthPacket(ref mut packet) => rewrite_mac(packet, rewrite),
@@ -240,6 +245,25 @@ impl<'a> DataLinkPacket<'a> {
         match self {
             DataLinkPacket::EthPacket(packet) => packet.packet().len(),
             DataLinkPacket::VlanPacket(packet) => packet.packet().len(),
+        }
+    }
+
+    pub fn get_mac_metadata(&self) -> Option<MacMetadata> {
+        match self {
+            Self::EthPacket(packet) => Some(MacMetadata {
+                src_mac: MacAddr(packet.get_source()),
+                dst_mac: MacAddr(packet.get_destination()),
+            }),
+            _ => None,
+        }
+    }
+
+    pub fn get_vlan_metadata(&self) -> Option<VlanMetadata> {
+        match self {
+            DataLinkPacket::VlanPacket(packet) => Some(VlanMetadata {
+                vlan_id: packet.get_vlan_identifier(),
+            }),
+            _ => None,
         }
     }
 }
@@ -350,7 +374,7 @@ impl<'a> IpPacket<'a> {
         }
     }
 
-    pub fn rewrite(mut self, rewrite: &Option<IpMetadata>) -> IpPacket<'a> {
+    pub fn rewrite(mut self, rewrite: &Option<IpRewrite>) -> IpPacket<'a> {
         let Some(rewrite) = &rewrite else { return self };
         match self {
             IpPacket::Ipv4Packet(ref mut packet) => {
@@ -375,6 +399,19 @@ impl<'a> IpPacket<'a> {
             packet.get_source(),
             packet.get_destination(),
         ))
+    }
+
+    pub fn get_ip_metadata(&self) -> IpMetadata {
+        match self {
+            IpPacket::Ipv4Packet(p) => IpMetadata::Ipv4(Ipv4Metadata {
+                src_ip: p.get_source(),
+                dst_ip: p.get_destination(),
+            }),
+            IpPacket::Ipv6Packet(p) => IpMetadata::Ipv6(Ipv6Metadata {
+                src_ip: p.get_source(),
+                dst_ip: p.get_destination(),
+            }),
+        }
     }
 }
 
@@ -467,7 +504,7 @@ impl NetworkPacket for TransportPacket<'_> {
 }
 
 impl<'a> TransportPacket<'a> {
-    pub fn rewrite(mut self, rewrite: &Option<PortMetadata>) -> TransportPacket<'a> {
+    pub fn rewrite(mut self, rewrite: &Option<PortRewrite>) -> TransportPacket<'a> {
         match self {
             TransportPacket::Udp(ref mut packet, _) => {
                 rewrite_udp(packet, rewrite);
@@ -479,6 +516,14 @@ impl<'a> TransportPacket<'a> {
         }
         self.fix(None);
         self
+    }
+    
+    pub fn get_transport_metadata(&self) -> Option<PortMetadata> {
+        match self {
+            TransportPacket::Udp(p, _) => Some(PortMetadata::new(p.get_source(), p.get_destination())), 
+            TransportPacket::Tcp(p, _) => Some(PortMetadata::new(p.get_source(), p.get_destination())),
+            TransportPacket::Icmp(_) => None
+        }
     }
 }
 

@@ -19,7 +19,7 @@ async fn handle_connection(socket: TcpStream, packet_sender: Sender<ProbePacket>
         
         // debug!("ID: {}, Data: {:?}", packet.id, packet.metadata);
         packet_sender.send(packet).await.expect("Poisoned");
-        // udp_connection.send_packet("192.168.4.80:5353", packet.payload.as_slice()).await?;
+        
     }
     debug!("Client disconnected");
     Ok(())

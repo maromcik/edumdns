@@ -1,15 +1,11 @@
 use std::time::Duration;
 use crate::error::ProbeError;
-use bincode;
-use bytes::Bytes;
 use edumdns_core::capture::PacketCapture;
 use edumdns_core::error::{CoreError};
 use edumdns_core::packet::{DataLinkPacket, ProbePacket};
-use futures::SinkExt;
 use log::{error, info};
 use pcap::{Activated, Error, State};
 use tokio::time::sleep;
-use tokio_util::codec::{Framed, LengthDelimitedCodec};
 use crate::connection::Connection;
 
 pub async fn listen_and_send<T>(mut capture: impl PacketCapture<T>) -> Result<(), ProbeError>

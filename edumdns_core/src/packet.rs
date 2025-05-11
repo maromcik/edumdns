@@ -1,6 +1,7 @@
+use std::hash::{Hash, Hasher};
 use crate::error::{CoreError, CoreErrorKind};
 use crate::metadata::{
-    DataLinkMetadata, IpMetadata, Ipv4Metadata, Ipv6Metadata, MacAddr, MacMetadata, PacketMetadata,
+    DataLinkMetadata, IpMetadata, Ipv4Metadata, Ipv6Metadata, MacMetadata, PacketMetadata,
     PortMetadata, VlanMetadata,
 };
 use crate::rewrite::{
@@ -23,6 +24,7 @@ use pnet::packet::vlan::MutableVlanPacket;
 use pnet::packet::{MutablePacket, Packet};
 use std::net::{Ipv4Addr, Ipv6Addr};
 use log::info;
+use crate::addr_types::MacAddr;
 
 pub trait FixablePacket {
     fn fix(&mut self, payload_len: Option<usize>);
@@ -75,6 +77,22 @@ impl ProbePacket {
         })
     }
 }
+
+impl Hash for ProbePacket {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+        self.payload.hash(state);
+    }
+}
+
+impl PartialEq for ProbePacket {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.payload == other.payload
+    }
+}
+
+impl Eq for ProbePacket {}
+
 
 pub enum DataLinkPacket<'a> {
     EthPacket(MutableEthernetPacket<'a>),

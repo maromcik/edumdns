@@ -8,9 +8,8 @@ use log::debug;
 
 use std::net::{AddrParseError, Ipv4Addr, Ipv6Addr};
 use bincode::{Decode, Encode};
-use bincode::enc::Encoder;
-use bincode::error::EncodeError;
 use pnet::datalink::ParseMacAddrErr;
+use crate::addr_types::MacAddr;
 use crate::error::CoreError;
 use crate::packet::{ApplicationPacket, DataLinkPacket, NetworkPacket};
 
@@ -140,53 +139,6 @@ impl Ipv6Rewrite {
 pub struct MacRewrite {
     pub src_mac: Option<MacAddr>,
     pub dst_mac: Option<MacAddr>,
-}
-
-#[derive(Default, Debug)]
-pub struct MacAddr(pub pnet::datalink::MacAddr);
-
-impl Encode for MacAddr {
-    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), EncodeError> {
-        bincode::Encode::encode(&self.0.0, encoder)?;
-        bincode::Encode::encode(&self.0.1, encoder)?;
-        bincode::Encode::encode(&self.0.2, encoder)?;
-        bincode::Encode::encode(&self.0.3, encoder)?;
-        bincode::Encode::encode(&self.0.4, encoder)?;
-        bincode::Encode::encode(&self.0.5, encoder)?;
-        Ok(())
-    }
-}
-
-impl<__Context> bincode::Decode<__Context> for MacAddr {
-    fn decode<__D: bincode::de::Decoder<Context = __Context>>(
-        decoder: &mut __D,
-    ) -> Result<Self, bincode::error::DecodeError> {
-        let mac_addr = pnet::datalink::MacAddr::new(
-            bincode::Decode::decode(decoder)?,
-            bincode::Decode::decode(decoder)?,
-            bincode::Decode::decode(decoder)?,
-            bincode::Decode::decode(decoder)?,
-            bincode::Decode::decode(decoder)?,
-            bincode::Decode::decode(decoder)?,
-        );
-        Ok(Self(mac_addr))
-    }
-}
-
-impl<'__de, __Context> ::bincode::BorrowDecode<'__de, __Context> for MacAddr {
-    fn borrow_decode<__D: ::bincode::de::BorrowDecoder<'__de, Context = __Context>>(
-        decoder: &mut __D,
-    ) -> Result<Self, ::bincode::error::DecodeError> {
-        let mac_addr = pnet::datalink::MacAddr::new(
-            bincode::BorrowDecode::<'_, __Context>::borrow_decode(decoder)?,
-            bincode::BorrowDecode::<'_, __Context>::borrow_decode(decoder)?,
-            bincode::BorrowDecode::<'_, __Context>::borrow_decode(decoder)?,
-            bincode::BorrowDecode::<'_, __Context>::borrow_decode(decoder)?,
-            bincode::BorrowDecode::<'_, __Context>::borrow_decode(decoder)?,
-            bincode::BorrowDecode::<'_, __Context>::borrow_decode(decoder)?,
-        );
-        Ok(Self(mac_addr))
-    }
 }
 
 impl MacRewrite {

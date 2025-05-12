@@ -4,7 +4,7 @@ use edumdns_core::capture::PacketCapture;
 use edumdns_core::error::{CoreError};
 use edumdns_core::network_packet::{DataLinkPacket};
 use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbePacket};
-use log::{error, info};
+use log::{debug, error, info};
 use pcap::{Activated, Error, State};
 use tokio::time::sleep;
 use crate::connection::Connection;
@@ -32,12 +32,14 @@ where
                 }
             },
         };
-
         let mut packet_data = cap_packet.data.to_vec();
         let datalink_packet = DataLinkPacket::from_slice(&mut packet_data)?;
-        let probe_packet = ProbePacket::from_datalink_packet(i, datalink_packet).unwrap();
+        let Some(probe_packet) = ProbePacket::from_datalink_packet(i, datalink_packet) else {
+            debug!("Not a TCP/IP packet, skipping");
+            continue;
+        };
         let app_packet = AppPacket::Data(probe_packet);
-
+        
         match connection.send_packet(&app_packet).await {
             Ok(_) => i += 1,
             Err(e) => {

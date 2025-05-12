@@ -3,7 +3,7 @@ use tokio::net::UdpSocket;
 use crate::error::ServerError;
 
 pub struct UdpConnection {
-    socket: UdpSocket
+    pub socket: UdpSocket
 }
 
 impl UdpConnection {

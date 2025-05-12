@@ -1,5 +1,6 @@
 use bincode::enc::Encoder;
 use bincode::error::EncodeError;
+use std::fmt::Display;
 use std::hash::Hash;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -46,5 +47,11 @@ impl<'__de, __Context> ::bincode::BorrowDecode<'__de, __Context> for MacAddr {
             bincode::BorrowDecode::<'_, __Context>::borrow_decode(decoder)?,
         );
         Ok(Self(mac_addr))
+    }
+}
+
+impl Display for MacAddr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

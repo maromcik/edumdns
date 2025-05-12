@@ -1,19 +1,19 @@
-use std::hash::{Hash, Hasher};
-use bincode::{Decode, Encode};
+use std::fmt::Display;
 use crate::addr_types::MacAddr;
 use crate::metadata::{DataLinkMetadata, PacketMetadata};
 use crate::network_packet::{DataLinkPacket, NetworkPacket};
+use bincode::{Decode, Encode};
+use std::hash::{Hash, Hasher};
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum AppPacket {
     Command(CommandPacket),
-    Data(ProbePacket)
+    Data(ProbePacket),
 }
-
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum CommandPacket {
-    TransmitDevicePackets(MacAddr),
+    TransmitDevicePackets(PacketTransmitTarget),
     PingRequest(),
     PingResponse(),
 }
@@ -60,3 +60,22 @@ impl PartialEq for ProbePacket {
 }
 
 impl Eq for ProbePacket {}
+
+#[derive(Encode, Decode, Debug, Clone)]
+pub struct PacketTransmitTarget {
+    pub mac: MacAddr,
+    pub ip: String,
+    pub port: u16,
+}
+
+impl PacketTransmitTarget {
+    pub fn new(mac: MacAddr, ip: String, port: u16) -> Self {
+        Self { mac, ip, port }
+    }
+}
+
+impl Display for PacketTransmitTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Device MAC: {}; Target: {}:{}", self.mac, self.ip, self.port)
+    }
+}

@@ -1,7 +1,10 @@
 use std::collections::HashSet;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::Duration;
-use edumdns_core::packet::ProbePacket;
+use log::debug;
+use tokio::sync::RwLock;
+use tokio::time::Instant;
+use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbePacket};
 use crate::connection::UdpConnection;
 use crate::error::ServerError;
 
@@ -22,11 +25,21 @@ impl PacketTransmitter {
         }) 
     }
     
-    pub async fn transmit(&self) {
+    pub async fn transmit(&self) -> Result<(), ServerError> {
+        let mut current_time = Duration::default();
         loop {
-            for packet in self.packets.read().expect("Poisoned rwlock").iter() {
-
+            let start_time = Instant::now();
+            for packet in self.packets.read().await.iter() {
+                self.udp_connection.send_packet("192.168.4.80:5353", packet.payload.as_ref()).await?;
+                tokio::time::sleep(self.interval).await;
+                debug!("Packet sent: {:?}", packet.id);
+            }
+            let total = start_time.elapsed();
+            current_time += total;
+            if current_time >= self.duration {
+                break;
             }
         }
+        Ok(())
     }
 }

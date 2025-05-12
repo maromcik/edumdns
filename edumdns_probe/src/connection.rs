@@ -1,7 +1,7 @@
 use std::time::Duration;
 use crate::error::{ProbeError, ProbeErrorKind};
 use bytes::Bytes;
-use edumdns_core::packet::ProbePacket;
+use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbePacket};
 use futures::SinkExt;
 use tokio::net::TcpStream;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
@@ -23,7 +23,7 @@ impl Connection {
     }
 
 
-    pub async fn send_packet(&mut self, packet: &ProbePacket) -> Result<(), ProbeError> {
+    pub async fn send_packet(&mut self, packet: &AppPacket) -> Result<(), ProbeError> {
         let encoded = bincode::encode_to_vec(packet, bincode::config::standard())?;
         self.framed.send(Bytes::from(encoded)).await?;
         Ok(())

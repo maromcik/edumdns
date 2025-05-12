@@ -2,7 +2,8 @@ use std::time::Duration;
 use crate::error::ProbeError;
 use edumdns_core::capture::PacketCapture;
 use edumdns_core::error::{CoreError};
-use edumdns_core::packet::{DataLinkPacket, ProbePacket};
+use edumdns_core::network_packet::{DataLinkPacket};
+use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbePacket};
 use log::{error, info};
 use pcap::{Activated, Error, State};
 use tokio::time::sleep;
@@ -35,9 +36,9 @@ where
         let mut packet_data = cap_packet.data.to_vec();
         let datalink_packet = DataLinkPacket::from_slice(&mut packet_data)?;
         let probe_packet = ProbePacket::from_datalink_packet(i, datalink_packet).unwrap();
+        let app_packet = AppPacket::Data(probe_packet);
 
-
-        match connection.send_packet(&probe_packet).await {
+        match connection.send_packet(&app_packet).await {
             Ok(_) => i += 1,
             Err(e) => {
                 error!("Failed to send packet: {}", e);
@@ -47,7 +48,7 @@ where
                     continue;
                 }
                 // Retry sending the packet
-                if let Err(e) = connection.send_packet(&probe_packet).await {
+                if let Err(e) = connection.send_packet(&app_packet).await {
                     error!("Failed to send packet after reconnection: {}", e);
                 }
             }

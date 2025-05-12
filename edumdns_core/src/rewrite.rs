@@ -11,7 +11,7 @@ use bincode::{Decode, Encode};
 use pnet::datalink::ParseMacAddrErr;
 use crate::addr_types::MacAddr;
 use crate::error::CoreError;
-use crate::packet::{ApplicationPacket, DataLinkPacket, NetworkPacket};
+use crate::network_packet::{ApplicationPacket, DataLinkPacket, NetworkPacket};
 
 #[derive(Default, Encode, Decode, Debug)]
 pub struct PacketRewrite {

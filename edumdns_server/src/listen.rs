@@ -1,26 +1,29 @@
+use std::time::Duration;
+use crate::connection::UdpConnection;
 use crate::error::ServerError;
+use crate::storage::PacketStorage;
+use edumdns_core::addr_types::MacAddr as MyMacAddr;
 use edumdns_core::error::CoreError;
-use edumdns_core::packet::{ProbePacket};
+use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbePacket};
 use futures::StreamExt;
 use log::{debug, error, info};
+use pnet::datalink::{MacAddr, ParseMacAddrErr};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc::Sender;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
-use crate::connection::UdpConnection;
-use crate::storage::PacketStorage;
 
-async fn handle_connection(socket: TcpStream, packet_sender: Sender<ProbePacket>) -> Result<(), ServerError> {
+async fn handle_connection(
+    socket: TcpStream,
+    packet_sender: Sender<AppPacket>,
+) -> Result<(), ServerError> {
     let mut framed = Framed::new(socket, LengthDelimitedCodec::new());
-    let udp_connection = UdpConnection::new().await?;
     while let Some(Ok(frame)) = framed.next().await {
-        let (packet, size): (ProbePacket, usize) =
+        let (packet, size): (AppPacket, usize) =
             bincode::decode_from_slice(frame.as_ref(), bincode::config::standard())
                 .map_err(CoreError::from)?;
-        
-        // debug!("ID: {}, Data: {:?}", packet.id, packet.metadata);
         packet_sender.send(packet).await.expect("Poisoned");
-        
     }
+
     debug!("Client disconnected");
     Ok(())
 }
@@ -29,20 +32,26 @@ pub async fn listen() -> Result<(), ServerError> {
     let listener = TcpListener::bind("127.0.0.1:5000").await?;
     info!("Listening on {}", listener.local_addr()?);
     let (tx, rx) = tokio::sync::mpsc::channel(1000);
-    let mut packet_storage = PacketStorage::new(rx);
-    let packet_storage = tokio::task::spawn(
-        async move { packet_storage.fill_packet_storage().await },
-    );
-    
+
+    let packet_storage_task = tokio::task::spawn(async move {
+        let mut packet_storage = PacketStorage::new(rx);
+        packet_storage.handle_packets().await
+    });
+
+    // packet_storage.transmit_device_packets(MyMacAddr("b8:7b:d4:98:29:64".parse::<MacAddr>().unwrap())).await?;
     info!("Packet storage initialized");
     loop {
         let (socket, addr) = listener.accept().await?;
         debug!("Connection from {}", addr);
         let tx_local = tx.clone();
+        let tx_local2 = tx.clone();
+        tx_local.send(AppPacket::Command(CommandPacket::TransmitDevicePackets(MyMacAddr("b8:7b:d4:98:29:64".parse::<MacAddr>().unwrap())))).await.unwrap();
         tokio::spawn(async move {
             if let Err(e) = handle_connection(socket, tx_local).await {
                 error!("E: {}", e);
             }
         });
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        tx_local2.send(AppPacket::Command(CommandPacket::TransmitDevicePackets(MyMacAddr("b8:7b:d4:98:29:64".parse::<MacAddr>().unwrap())))).await.unwrap();
     }
 }

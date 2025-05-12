@@ -2,7 +2,7 @@ use crate::addr_types::MacAddr;
 use bincode::{Decode, Encode};
 use std::net::{Ipv4Addr, Ipv6Addr};
 
-#[derive(Encode, Decode, Debug)]
+#[derive(Encode, Decode, Debug, Clone)]
 pub struct PacketMetadata {
     pub datalink_metadata: DataLinkMetadata,
     pub ip_metadata: IpMetadata,
@@ -24,13 +24,13 @@ impl PacketMetadata {
     }
 }
 
-#[derive(Encode, Decode, Debug)]
+#[derive(Encode, Decode, Debug, Clone)]
 pub enum IpMetadata {
     Ipv4(Ipv4Metadata),
     Ipv6(Ipv6Metadata),
 }
 
-#[derive(Default, Encode, Decode, Debug)]
+#[derive(Encode, Decode, Debug, Clone)]
 pub struct DataLinkMetadata {
     pub mac_metadata: MacMetadata,
     pub vlan_metadata: Option<VlanMetadata>,
@@ -45,7 +45,7 @@ impl DataLinkMetadata {
     }
 }
 
-#[derive(Default, Encode, Decode, Debug)]
+#[derive(Encode, Decode, Debug, Clone, Default)]
 pub struct PortMetadata {
     pub src_port: u16,
     pub dst_port: u16,
@@ -57,25 +57,25 @@ impl PortMetadata {
     }
 }
 
-#[derive(Encode, Decode, Debug)]
+#[derive(Encode, Decode, Debug, Clone)]
 pub struct Ipv4Metadata {
     pub src_ip: Ipv4Addr,
     pub dst_ip: Ipv4Addr,
 }
 
-#[derive(Encode, Decode, Debug)]
+#[derive(Encode, Decode, Debug, Clone)]
 pub struct Ipv6Metadata {
     pub src_ip: Ipv6Addr,
     pub dst_ip: Ipv6Addr,
 }
 
-#[derive(Default, Encode, Decode, Debug)]
+#[derive(Encode, Decode, Debug, Clone)]
 pub struct MacMetadata {
     pub src_mac: MacAddr,
     pub dst_mac: MacAddr,
 }
 
-#[derive(Default, Encode, Decode, Debug)]
+#[derive(Encode, Decode, Debug, Clone)]
 pub struct VlanMetadata {
     pub vlan_id: u16,
 }

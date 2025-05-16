@@ -19,8 +19,14 @@ pub async fn run_server() -> Result<(), AppError> {
 async fn main() -> Result<(), AppError> {
     dotenvy::dotenv().ok();
     env_logger::init_from_env(Env::default().default_filter_or("info"));
-    tokio::select! {
-        server = run_server() => server,
-        probe = run_probe() => probe
-    }
+    // tokio::select! {
+    //     server = run_server() => server,
+    //     probe = run_probe() => probe
+    // }?;
+    // run_probe().await?;
+    // run_server().await?;
+    let (x, y) = tokio::join!(run_server(), run_probe());
+    x?;
+    y?;
+    Ok(())
 }

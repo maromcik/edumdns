@@ -16,7 +16,7 @@ dotenvy = "0.15.7"
 
 [workspace]
 members = [
-    "edumdns_core",
+    "edumdns_core", "edumdns_db",
     "edumdns_probe",
     "edumdns_server"
 , "edumdns_web"]

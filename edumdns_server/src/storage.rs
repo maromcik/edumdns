@@ -28,15 +28,15 @@ impl PacketStorage {
 
     pub async fn handle_packets(&mut self) {
         while let Some(packet) = self.packet_receiver.recv().await {
-            println!("Channel: {}", self.packet_receiver.len());
-            if let Some(hash) = self.packets.get(&MacAddr(
-                "00:00:00:00:00:00"
-                    .parse::<pnet::datalink::MacAddr>()
-                    .unwrap(),
-            )) {
-                let x = hash.read().await.len();
-                println!("Hash: {}", x);
-            }
+            // println!("Channel: {}", self.packet_receiver.len());
+            // if let Some(hash) = self.packets.get(&MacAddr(
+            //     "00:00:00:00:00:00"
+            //         .parse::<pnet::datalink::MacAddr>()
+            //         .unwrap(),
+            // )) {
+            //     let x = hash.read().await.len();
+            //     println!("Hash: {}", x);
+            // }
             match packet {
                 AppPacket::Command(command) => match command {
                     CommandPacket::TransmitDevicePackets(target) => {
@@ -49,7 +49,7 @@ impl PacketStorage {
                 },
                 AppPacket::Data(probe_packet) => {
                     let src_mac = probe_packet.metadata.datalink_metadata.mac_metadata.src_mac;
-                    debug!("Packet stored: {:?}", probe_packet.id);
+                    debug!("Packet stored: {:?}", src_mac);
                     self.packets
                         .entry(src_mac)
                         .or_default()

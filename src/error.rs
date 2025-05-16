@@ -5,19 +5,12 @@ use thiserror::Error;
 
 #[derive(Error, Debug, Clone)]
 pub enum AppErrorKind {
-    ProbeError(ProbeError),
-    ServerError(ServerError),
+    #[error("{0}")]
+    ProbeError(#[from] ProbeError),
+    #[error("{0}")]
+    ServerError(#[from] ServerError),
+    #[error("Tokio error")]
     TokioError,
-}
-
-impl Display for AppErrorKind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AppErrorKind::ProbeError(err) => std::fmt::Display::fmt(&err, f),
-            AppErrorKind::ServerError(err) => std::fmt::Display::fmt(&err, f),
-            AppErrorKind::TokioError => write!(f, "Tokio error"),
-        }
-    }
 }
 
 #[derive(Error, Debug, Clone)]

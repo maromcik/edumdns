@@ -4,19 +4,12 @@ use thiserror::Error;
 
 #[derive(Error, Debug, Clone)]
 pub enum ServerErrorKind {
+    #[error("{0}")]
     CoreError(CoreError),
+    #[error("Invalid arguments")]
     ArgumentError,
+    #[error("I/O error from Tokio")]
     IoError,
-}
-
-impl Display for ServerErrorKind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ServerErrorKind::CoreError(err) => std::fmt::Display::fmt(&err, f),
-            ServerErrorKind::ArgumentError => write!(f, "Invalid arguments"),
-            ServerErrorKind::IoError => write!(f, "I/O error from Tokio"),
-        }
-    }
 }
 
 #[derive(Error, Debug, Clone)]

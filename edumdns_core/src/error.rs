@@ -4,33 +4,26 @@ use std::fmt::{Display, Formatter};
 use std::net::AddrParseError;
 use std::num::ParseIntError;
 use std::sync::mpsc;
+use thiserror::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Error)]
 pub enum CoreErrorKind {
+    #[error("Capture error")]
     CaptureError,
+    #[error("Network interface error")]
     NetworkInterfaceError,
+    #[error("Network channel error")]
     NetworkChannelError,
+    #[error("Rust channel error")]
     RustChannelError,
+    #[error("Address parse error")]
     ParseAddrError,
+    #[error("Packet could not be constructed")]
     PacketConstructionError,
+    #[error("Packet could not be rewritten")]
     PacketRewriteError,
-    CodeError,
-}
-
-impl Display for CoreErrorKind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CoreErrorKind::CaptureError => f.write_str("Capture error"),
-            CoreErrorKind::NetworkInterfaceError => f.write_str("Network interface error"),
-            CoreErrorKind::NetworkChannelError => f.write_str("Network channel error"),
-            CoreErrorKind::RustChannelError => f.write_str("Rust channel error"),
-            CoreErrorKind::ParseAddrError => f.write_str("Address parse error"),
-            CoreErrorKind::PacketConstructionError => f.write_str("Packet could not be constructed"),
-            CoreErrorKind::PacketRewriteError=> f.write_str("Packet could not be rewritten"),
-            CoreErrorKind::CodeError => write!(f, "Encode/Decode error"),
-
-        }
-    }
+    #[error("Encode/Decode error")]
+    EncodeDecodeError,
 }
 
 #[derive(Debug, Clone)]
@@ -94,6 +87,6 @@ impl From<ParseIntError> for CoreError {
 
 impl From<bincode::error::DecodeError> for CoreError {
     fn from(value: bincode::error::DecodeError) -> Self {
-        CoreError::new(CoreErrorKind::CodeError, &value.to_string())
+        CoreError::new(CoreErrorKind::EncodeDecodeError, &value.to_string())
     }
 }

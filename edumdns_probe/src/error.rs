@@ -4,23 +4,16 @@ use thiserror::Error;
 
 #[derive(Error, Debug, Clone)]
 pub enum ProbeErrorKind {
-    CoreError(CoreError),
+    #[error("{0}")]
+    CoreError(#[from] CoreError),
+    #[error("Invalid arguments")]
     ArgumentError,
+    #[error("I/O error from Tokio")]
     IoError,
-    CodeError,
+    #[error("Encode/Decode error")]
+    EncodeDecodeError,
+    #[error("Tokio connection error")]
     ConnectionError,
-}
-
-impl Display for ProbeErrorKind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ProbeErrorKind::CoreError(err) => std::fmt::Display::fmt(&err, f),
-            ProbeErrorKind::ArgumentError => write!(f, "Invalid arguments"),
-            ProbeErrorKind::IoError => write!(f, "I/O error from Tokio"),
-            ProbeErrorKind::CodeError => write!(f, "Encode/Decode error"),
-            ProbeErrorKind::ConnectionError => write!(f, "Tokio connection error"),
-        }
-    }
 }
 
 #[derive(Error, Debug, Clone)]
@@ -65,7 +58,7 @@ impl From<std::io::Error> for ProbeError {
 impl From<bincode::error::EncodeError> for ProbeError {
     fn from(value: bincode::error::EncodeError) -> Self {
         Self::new(
-            ProbeErrorKind::CodeError,
+            ProbeErrorKind::EncodeDecodeError,
             value.to_string().as_str(),
         )
     }

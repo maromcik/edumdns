@@ -8,7 +8,7 @@ pub mod error;
 pub mod packet;
 pub mod connection;
 
-pub async fn capture_and_send() -> Result<(), ProbeError> {
+pub async fn probe_init() -> Result<(), ProbeError> {
     let capture = PacketCaptureGeneric::<Active>::open_file_capture("/home/roman/UNI/DP/pcap/streamer2.pcap", None)?;
     // let capture = PacketCaptureGeneric::<Active>::open_device_capture("lo", Some("port 5201".to_string()))?;
     listen_and_send(capture).await?;

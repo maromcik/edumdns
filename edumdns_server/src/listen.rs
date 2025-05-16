@@ -1,4 +1,6 @@
 use std::time::Duration;
+use diesel_async::AsyncPgConnection;
+use diesel_async::pooled_connection::deadpool::Pool;
 use crate::error::ServerError;
 use crate::storage::PacketStorage;
 use edumdns_core::addr_types::MacAddr as MyMacAddr;
@@ -27,7 +29,7 @@ async fn handle_connection(
     Ok(())
 }
 
-pub async fn listen() -> Result<(), ServerError> {
+pub async fn listen(pool: Pool<AsyncPgConnection>) -> Result<(), ServerError> {
     let listener = TcpListener::bind("127.0.0.1:5000").await?;
     info!("Listening on {}", listener.local_addr()?);
     let (tx, rx) = tokio::sync::mpsc::channel(1000);
@@ -39,7 +41,6 @@ pub async fn listen() -> Result<(), ServerError> {
     info!("Packet storage initialized");
 
     let packet_target = PacketTransmitTarget::new(MyMacAddr("b8:7b:d4:98:29:64".parse::<MacAddr>().unwrap()), "127.0.0.1".to_string(), 7654);
-
     loop {
         let (socket, addr) = listener.accept().await?;
         debug!("Connection from {}", addr);

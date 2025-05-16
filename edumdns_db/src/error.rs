@@ -1,4 +1,5 @@
 use std::fmt::{Debug, Display, Formatter};
+use diesel::result::DatabaseErrorKind;
 use thiserror::Error;
 
 
@@ -16,8 +17,10 @@ pub enum DbErrorKind {
     NotNullError,
     #[error("Foreign key error")]
     ForeignKeyError,
-    #[error("DB pool error")]
-    DatabasePoolConnectionError,
+    #[error("Database connection error")]
+    ConnectionError,
+    #[error("Database pool (build) error")]
+    DbPoolError,
 }
 
 #[derive(Error, Debug, Clone)]
@@ -45,10 +48,41 @@ impl DbError {
 impl From<diesel::result::Error> for DbError {
     fn from(error: diesel::result::Error) -> Self {
         match error {
-            diesel::result::Error::NotFound => DbError::new(DbErrorKind::DatabaseError, error.to_string().as_str()),
-
+            diesel::result::Error::NotFound => DbError::new(DbErrorKind::BackendError(BackendError::new(BackendErrorKind::DoesNotExist, "".to_string())), error.to_string().as_str()),
+            diesel::result::Error::DatabaseError(err, err_info) => {
+                match err {
+                    DatabaseErrorKind::UniqueViolation => DbError::new(DbErrorKind::UniqueConstraintError, err_info.message()),
+                    DatabaseErrorKind::ForeignKeyViolation => DbError::new(DbErrorKind::ForeignKeyError, err_info.message()),
+                    DatabaseErrorKind::NotNullViolation => DbError::new(DbErrorKind::NotNullError, err_info.message()),
+                    _ => DbError::new(DbErrorKind::DatabaseError, err_info.message()),
+                }
+            }
             err => DbError::new(DbErrorKind::DatabaseError, err.to_string().as_str()),
         }
+    }
+}
+
+impl From<diesel::ConnectionError> for DbError {
+    fn from(value: diesel::ConnectionError) -> Self {
+        Self::new(DbErrorKind::ConnectionError, value.to_string().as_str())
+    }
+}
+
+impl From<diesel_async::pooled_connection::deadpool::BuildError> for DbError {
+    fn from(value: diesel_async::pooled_connection::deadpool::BuildError) -> Self {
+        Self::new(DbErrorKind::DbPoolError, value.to_string().as_str())
+    }
+}
+
+impl From<diesel_async::pooled_connection::PoolError> for DbError {
+    fn from(value: diesel_async::pooled_connection::PoolError) -> Self {
+        Self::new(DbErrorKind::DbPoolError, value.to_string().as_str())
+    }
+}
+
+impl From<diesel_async::pooled_connection::deadpool::PoolError> for DbError {
+    fn from(value: diesel_async::pooled_connection::deadpool::PoolError) -> Self {
+        Self::new(DbErrorKind::DbPoolError, value.to_string().as_str())
     }
 }
 

@@ -2,9 +2,12 @@ use edumdns_probe::error::ProbeError;
 use edumdns_server::error::ServerError;
 use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
+use edumdns_db::error::DbError;
 
 #[derive(Error, Debug, Clone)]
 pub enum AppErrorKind {
+    #[error("{0}")]
+    DbError(#[from] DbError),
     #[error("{0}")]
     ProbeError(#[from] ProbeError),
     #[error("{0}")]
@@ -22,6 +25,7 @@ pub struct AppError {
 impl Debug for AppError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.error_kind {
+            AppErrorKind::DbError(e) => write!(f, "AppError -> {}", e),
             AppErrorKind::ProbeError(e) => write!(f, "AppError -> {}", e),
             AppErrorKind::ServerError(e) => write!(f, "AppError -> {}", e),
             _ => write!(f, "AppError: {}: {}", self.error_kind, self.message),
@@ -45,6 +49,12 @@ impl AppError {
             error_kind,
             message: message.to_owned(),
         }
+    }
+}
+
+impl From<DbError> for AppError {
+    fn from(value: DbError) -> Self {
+        Self::new(AppErrorKind::DbError(value), "")
     }
 }
 

@@ -1,9 +1,11 @@
-use diesel::deserialize::FromSql;
-use diesel::internal::derives::multiconnection::time;
-use diesel::pg::{Pg, PgValue};
+use crate::repositories::common::Id;
 use diesel::prelude::*;
-use diesel::serialize::{IsNull, Output, ToSql};
-use diesel::{AsExpression, FromSqlRow};
 use serde::{Deserialize, Serialize};
-use std::io::Write;
-use uuid::Uuid;
+
+#[derive(Serialize, Deserialize, Queryable, Selectable)]
+#[diesel(table_name = crate::schema::group)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Group {
+    pub id: Id,
+    pub name: String,
+}

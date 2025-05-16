@@ -1253,8 +1253,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "diesel-async",
  "dotenvy",
  "edumdns_core",
+ "edumdns_db",
  "edumdns_probe",
  "edumdns_server",
  "env_logger",
@@ -1325,6 +1327,7 @@ dependencies = [
  "bincode",
  "bytes",
  "clap",
+ "diesel-async",
  "dns-parser",
  "edumdns_core",
  "edumdns_db",

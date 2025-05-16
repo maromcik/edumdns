@@ -1,11 +1,14 @@
 use edumdns_core::error::CoreError;
 use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
+use edumdns_db::error::DbError;
 
 #[derive(Error, Debug, Clone)]
 pub enum ServerErrorKind {
     #[error("{0}")]
     CoreError(CoreError),
+    #[error("{0}")]
+    DbError(DbError),
     #[error("Invalid arguments")]
     ArgumentError,
     #[error("I/O error from Tokio")]
@@ -54,3 +57,8 @@ impl From<std::io::Error> for ServerError {
     }
 }
 
+impl From<DbError> for ServerError {
+    fn from(value: DbError) -> Self {
+        Self::new(ServerErrorKind::DbError(value), "")
+    }
+}

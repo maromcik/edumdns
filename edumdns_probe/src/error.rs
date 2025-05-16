@@ -24,7 +24,10 @@ pub struct ProbeError {
 
 impl Display for ProbeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ProbeError: {}: {}", self.error_kind, self.message)
+        match &self.error_kind {
+            ProbeErrorKind::CoreError(e) => write!(f, "ProbeError -> {}", e),
+            _ => write!(f, "ProbeError: {}: {}", self.error_kind, self.message),
+        }
     }
 }
 

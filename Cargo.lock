@@ -1251,6 +1251,7 @@ dependencies = [
 name = "edumdns"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bytes",
  "dotenvy",
  "edumdns_core",

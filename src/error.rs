@@ -13,15 +13,29 @@ pub enum AppErrorKind {
     TokioError,
 }
 
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Clone)]
 pub struct AppError {
     pub error_kind: AppErrorKind,
     pub message: String,
 }
 
+impl Debug for AppError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.error_kind {
+            AppErrorKind::ProbeError(e) => write!(f, "AppError -> {}", e),
+            AppErrorKind::ServerError(e) => write!(f, "AppError -> {}", e),
+            _ => write!(f, "AppError: {}: {}", self.error_kind, self.message),
+        }
+    }
+}
+
 impl Display for AppError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "AppError: {}: {}", self.error_kind, self.message)
+        match &self.error_kind {
+            AppErrorKind::ProbeError(e) => write!(f, "AppError -> {}", e),
+            AppErrorKind::ServerError(e) => write!(f, "AppError -> {}", e),
+            _ => write!(f, "AppError: {}: {}", self.error_kind, self.message),
+        }
     }
 }
 

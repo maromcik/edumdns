@@ -20,7 +20,10 @@ pub struct ServerError {
 
 impl Display for ServerError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ServerError: {}: {}", self.error_kind, self.message)
+        match &self.error_kind {
+            ServerErrorKind::CoreError(e) => write!(f, "ServerError -> {}", e),
+            _ => write!(f, "ServerError: {}: {}", self.error_kind, self.message),
+        }
     }
 }
 

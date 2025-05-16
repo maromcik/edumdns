@@ -1,15 +1,14 @@
 use std::time::Duration;
-use crate::connection::UdpConnection;
 use crate::error::ServerError;
 use crate::storage::PacketStorage;
 use edumdns_core::addr_types::MacAddr as MyMacAddr;
 use edumdns_core::error::CoreError;
-use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitTarget, ProbePacket};
+use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitTarget};
 use futures::StreamExt;
 use log::{debug, error, info};
-use pnet::datalink::{MacAddr, ParseMacAddrErr};
+use pnet::datalink::{MacAddr};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::mpsc::{Sender};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 async fn handle_connection(

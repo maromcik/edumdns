@@ -35,15 +35,16 @@ where
                     CoreErrorKind::CaptureError,
                     &format!("Capture device {} not found", device_name),
                 ))?;
-        info!("Listening on: {:?}", target.name);
-
+        let target_name = target.name.clone();
         let capture = Capture::from_device(target)?
             .promisc(true)
             .timeout(10000)
             .immediate_mode(true)
             .open()
             .map_err(CoreError::from)?;
-
+        
+        info!("Listening on: {:?}", target_name);
+        
         Ok(PacketCaptureGeneric { capture, filter })
     }
 

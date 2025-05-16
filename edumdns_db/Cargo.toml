@@ -1,0 +1,18 @@
+[package]
+name = "edumdns_db"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+edumdns_core = { path = "../edumdns_core" }
+tokio = "1.45.0"
+thiserror = "2.0.12"
+log = "0.4.27"
+env_logger = "0.11.8"
+dotenvy = "0.15.7"
+diesel = { version = "2.2.0", features = ["postgres", "time", "r2d2", "uuid", "network-address", "ipnet-address"] }
+diesel-async = { version = "0.5.2" , features = ["tokio-postgres", "postgres", "deadpool"]}
+diesel_migrations = { version = "2.2.0", features = ["postgres"] }
+serde = { version = "1.0.219", features = ["derive"] }
+time = "0.3.41"
+uuid = { version = "1.16.0", features = ["v4"] }

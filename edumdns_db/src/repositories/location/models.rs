@@ -1,27 +1,27 @@
-// use crate::models::{ContentCategory, ContentType};
-// use crate::repositories::common::Pagination;
-// use chrono::NaiveDate;
-// use diesel::{AsChangeset, Insertable};
-// use serde::{Deserialize, Serialize};
-// use uuid::Uuid;
-// 
-// #[derive(Serialize, Deserialize)]
-// pub struct SelectManyFilter {
-//     pub content_type: Option<ContentType>,
-//     pub content_category: Option<ContentCategory>,
-//     pub length_from: Option<i32>,
-//     pub length_to: Option<i32>,
-//     pub pagination: Option<Pagination>,
-// }
-// 
-// #[derive(Serialize, Deserialize, AsChangeset, Insertable)]
-// #[diesel(table_name = crate::schema::content)]
-// pub struct NewContent {
-//     pub parent_content_id: Option<Uuid>,
-//     pub title: String,
-//     pub description: String,
-//     pub content_type: ContentType,
-//     pub content_category: ContentCategory,
-//     pub length: i32,
-//     pub released_at: NaiveDate,
-// }
+use crate::repositories::common::{Id, Pagination};
+use diesel::{AsChangeset, Insertable};
+use serde::{Deserialize, Serialize};
+ 
+#[derive(Serialize, Deserialize)]
+pub struct SelectManyFilter {
+    pub name: Option<String>,
+    pub pagination: Option<Pagination>,
+}
+
+impl SelectManyFilter {
+    pub fn new(name: Option<String>, pagination: Option<Pagination>) -> Self {
+        Self { name, pagination }
+    }
+}
+ 
+#[derive(Serialize, Deserialize, AsChangeset, Insertable)]
+#[diesel(table_name = crate::schema::location)]
+pub struct CreateLocation {
+    pub name: String,
+}
+
+impl CreateLocation {
+    pub fn new(name: &str) -> Self {
+        Self { name: name.to_string() }
+    }
+}

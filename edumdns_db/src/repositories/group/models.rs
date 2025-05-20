@@ -19,9 +19,3 @@ impl SelectManyFilter {
 pub struct CreateGroup {
     pub name: String,
 }
-
-impl CreateGroup {
-    pub fn new(name: &str) -> Self {
-        Self { name: name.to_string() }
-    }
-}

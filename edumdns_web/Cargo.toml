@@ -12,10 +12,10 @@ anyhow = { version = "1.0.97", features = [] }
 chrono = { version = "0.4.40", features = ["serde"] }
 dotenv = "0.15.0"
 dotenvy = "0.15.7"
-env_logger = "0.11.5"
+env_logger = "0.11.8"
 futures = "0.3.31"
 hmac = "0.13.0-pre.4"
-log = "0.4.22"
+log = "0.4.27"
 serde = { version = "1.0.219", features = ["derive"] }
 sqlx = { version = "0.8.3", features = ["chrono", "runtime-tokio-native-tls", "postgres", "bigdecimal"] }
 thiserror = "2.0.7"

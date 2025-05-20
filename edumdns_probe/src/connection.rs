@@ -1,8 +1,8 @@
-use std::time::Duration;
 use crate::error::{ProbeError, ProbeErrorKind};
 use bytes::Bytes;
-use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbePacket};
+use edumdns_core::app_packet::AppPacket;
 use futures::SinkExt;
+use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 

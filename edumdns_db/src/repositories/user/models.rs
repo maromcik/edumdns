@@ -1,25 +1,27 @@
-// use diesel::{AsChangeset, Insertable};
-// use serde::Deserialize;
-// 
-// #[derive(AsChangeset, Insertable, Deserialize)]
-// #[diesel(table_name = crate::schema::user)]
-// pub struct NewUser {
-//     pub username: String,
-//     pub email: String,
-// }
-// 
-// #[derive(AsChangeset, Insertable, Deserialize)]
-// #[diesel(table_name = crate::schema::user)]
-// pub struct PartialUser {
-//     pub username: Option<String>,
-//     pub email: Option<String>,
-// }
-// 
-// impl From<NewUser> for PartialUser {
-//     fn from(value: NewUser) -> Self {
-//         Self {
-//             username: Some(value.username),
-//             email: Some(value.email),
-//         }
-//     }
-// }
+use crate::repositories::common::{Id, Pagination};
+use diesel::{AsChangeset, Insertable};
+use serde::{Deserialize, Serialize};
+ 
+#[derive(Serialize, Deserialize)]
+pub struct SelectManyFilter {
+    pub name: Option<String>,
+    pub pagination: Option<Pagination>,
+}
+
+impl SelectManyFilter {
+    pub fn new(name: Option<String>, pagination: Option<Pagination>) -> Self {
+        Self { name, pagination }
+    }
+}
+ 
+#[derive(Serialize, Deserialize, AsChangeset, Insertable)]
+#[diesel(table_name = crate::schema::location)]
+pub struct CreateLocation {
+    pub name: String,
+}
+
+impl CreateLocation {
+    pub fn new(name: &str) -> Self {
+        Self { name: name.to_string() }
+    }
+}

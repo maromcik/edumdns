@@ -11,8 +11,9 @@ log = "0.4.27"
 env_logger = "0.11.8"
 dotenvy = "0.15.7"
 diesel = { version = "2.2.0", features = ["postgres", "time", "r2d2", "uuid", "network-address", "ipnet-address"] }
-diesel-async = { version = "0.5.2" , features = ["tokio-postgres", "postgres", "deadpool"]}
+diesel-async = { version = "0.5.2", features = ["tokio-postgres", "postgres", "deadpool"] }
 diesel_migrations = { version = "2.2.0", features = ["postgres"] }
-serde = { version = "1.0.219", features = ["derive"] }
-time = "0.3.41"
-uuid = { version = "1.16.0", features = ["v4"] }
+serde = { version = "1.0.219", features = ["derive", "std"] }
+time = { version = "0.3.41", features = ["serde"] }
+uuid = { version = "1.16.0", features = ["v7", "serde"] }
+ipnetwork = { version = "0.21.1", features = ["serde"] }

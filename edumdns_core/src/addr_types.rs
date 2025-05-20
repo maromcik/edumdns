@@ -55,3 +55,13 @@ impl Display for MacAddr {
         write!(f, "{}", self.0)
     }
 }
+
+impl MacAddr {
+    pub fn to_octets(&self) -> [u8; 6] {
+        self.0.octets()
+    }
+    
+    pub fn from_octets(octets: [u8; 6]) -> Self {
+        Self(pnet::datalink::MacAddr::new(octets[0], octets[1], octets[2], octets[3], octets[4], octets[5]))   
+    }
+}

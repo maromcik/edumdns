@@ -73,7 +73,7 @@ diesel::table! {
         mac -> Macaddr,
         ip -> Cidr,
         port -> Int4,
-        vlan -> Int4,
+        vlan -> Nullable<Int4>,
     }
 }
 

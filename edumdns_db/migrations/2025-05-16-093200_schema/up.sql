@@ -33,14 +33,14 @@ CREATE TABLE IF NOT EXISTS "user"
 CREATE TABLE IF NOT EXISTS "probe"
 (
     id             uuid         PRIMARY KEY,
-    ---------------------------------------------
+    ------------------------------  ---------------
     owner_id       bigint,
     location_id    bigint,
     adopted        bool         NOT NULL,
     mac            macaddr      NOT NULL,
     ip             cidr         NOT NULL,
     port           int          NOT NULL,
-    vlan           int          NOT NULL,
+    vlan           int,
 
     FOREIGN KEY (owner_id) REFERENCES "user" (id) ON DELETE SET NULL,
     FOREIGN KEY (location_id) REFERENCES "location" (id) ON DELETE SET NULL

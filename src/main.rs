@@ -6,7 +6,7 @@ use edumdns_server::listen::listen;
 use env_logger::Env;
 use edumdns_db::db_init;
 use edumdns_db::repositories::group::models::CreateGroup;
-use edumdns_db::repositories::group::repository::{GroupRepository, PgGroupRepository};
+use edumdns_db::repositories::group::repository::{ PgGroupRepository};
 use edumdns_server::server_init;
 
 mod error;

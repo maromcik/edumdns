@@ -1,23 +1,18 @@
-use std::ops::DerefMut;
 use crate::error::DbError;
 use crate::models::Group;
-use crate::repositories::common::Id;
+use crate::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, Id};
 use crate::repositories::group::models::{CreateGroup, SelectManyFilter};
+use std::ops::DerefMut;
 
-use diesel_async::{RunQueryDsl, AsyncConnection};
+use crate::schema;
+use crate::schema::group::name;
+use diesel::result::Error;
+use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
-use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
-use diesel::result::Error;
-use crate::schema;
-use crate::schema::group::name;
-
-pub trait GroupRepository {
-    async fn get_group(&self, group_id: Id) -> Result<Group, DbError>;
-    async fn get_groups(&self, filters: SelectManyFilter) -> Result<Vec<Group>, DbError>;
-    async fn create_group(&self, group_create: CreateGroup) -> Result<Group, DbError>;
-}
+use diesel_async::{AsyncConnection, RunQueryDsl};
+use schema::group::dsl::*;
 
 #[derive(Clone)]
 pub struct PgGroupRepository {
@@ -30,50 +25,61 @@ impl PgGroupRepository {
     }
 }
 
-impl GroupRepository for PgGroupRepository {
-    async fn get_group(&self, group_id: Id) -> Result<Group, DbError> {
+impl DbReadOne<Id, Group> for PgGroupRepository {
+    async fn read_one(&self, params: &Id) -> DbResultSingle<Group> {
         let mut conn = self.pg_pool.get().await?;
-        let group = schema::group::dsl::group
-            .find(group_id)
+        group
+            .find(params)
             .select(Group::as_select())
             .first(&mut conn)
-            .await?;
-
-        Ok(group)
+            .await
+            .map_err(DbError::from)
     }
-    
-    async fn get_groups(&self, filters: SelectManyFilter) -> Result<Vec<Group>, DbError> {
-        let mut query = schema::group::dsl::group.into_boxed();
-        
-        if let Some(n) = filters.name {
+}
+
+impl DbReadMany<SelectManyFilter, Group> for PgGroupRepository {
+    async fn read_many(&self, params: &SelectManyFilter) -> DbResultMultiple<Group> {
+        let mut query = group.into_boxed();
+
+        if let Some(n) = &params.name {
             query = query.filter(name.eq(n));
         }
-    
-        if let Some(pagination) = filters.pagination {
+
+        if let Some(pagination) = params.pagination {
             query = query.limit(pagination.limit.unwrap_or(i64::MAX));
             query = query.offset(pagination.offset.unwrap_or(0));
         }
 
         let mut conn = self.pg_pool.get().await?;
-        let users = query
-            .load::<Group>(&mut conn)
-            .await?;
-    
-        Ok(users)
+        let groups = query.load::<Group>(&mut conn).await?;
+
+        Ok(groups)
     }
-    
-    async fn create_group(&self, group_create: CreateGroup) -> Result<Group, DbError> {
+}
+
+impl DbCreate<CreateGroup, Group> for PgGroupRepository {
+    async fn create(&self, data: &CreateGroup) -> DbResultSingle<Group> {
         let mut conn = self.pg_pool.get().await?;
-        let group = conn.deref_mut().transaction::<_, Error, _>(|c| async move {
-            diesel::insert_into(schema::group::table)
-                .values(&group_create)
-                .returning(Group::as_returning())
-                .get_result(c)
-                .await
-            
-        }.scope_boxed())
+        let g = conn
+            .deref_mut()
+            .transaction::<_, Error, _>(|c| {
+                async move {
+                    diesel::insert_into(schema::group::table)
+                        .values(data)
+                        .returning(Group::as_returning())
+                        .get_result(c)
+                        .await
+                }
+                    .scope_boxed()
+            })
             .await?;
-        
-        Ok(group)
+        Ok(g)
+    }
+}
+
+impl DbDelete<Id, Group> for PgGroupRepository {
+    async fn delete(&self, params: &Id) -> DbResultMultiple<Group> {
+        let mut conn = self.pg_pool.get().await?;
+        diesel::delete(group.find(params)).get_results(&mut conn).await.map_err(DbError::from)
     }
 }

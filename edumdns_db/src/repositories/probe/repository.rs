@@ -1,16 +1,16 @@
 use crate::error::DbError;
 use crate::models::{Location, Probe, User};
-use crate::repositories::common::{DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle};
-use crate::repositories::probe::models::SelectManyFilter;
+use crate::repositories::common::{DbCreate, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultSingle};
+use crate::repositories::probe::models::{CreateProbe, SelectManyFilter};
 use crate::schema;
-use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
-use diesel_async::pooled_connection::deadpool::Pool;
-use diesel_async::AsyncPgConnection;
-use diesel_async::RunQueryDsl;
-use schema::probe::dsl::*;
-use uuid::Uuid;
 use crate::schema::location::dsl::location;
 use crate::schema::user::dsl::user;
+use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
+use diesel_async::pooled_connection::deadpool::Pool;
+use diesel_async::RunQueryDsl;
+use diesel_async::AsyncPgConnection;
+use schema::probe::dsl::*;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct PgProbeRepository {
@@ -83,30 +83,23 @@ impl DbReadMany<SelectManyFilter, (Location, User, Probe)> for PgProbeRepository
         Ok(probes)
     }
 }
-//
-// impl DbCreate<CreateProbe, Probe> for PgProbeRepository {
-//     async fn create(&self, data: &CreateProbe) -> DbResultSingle<Probe> {
-//         let mut conn = self.pg_pool.get().await?;
-//         let g = conn
-//             .deref_mut()
-//             .transaction::<_, Error, _>(|c| {
-//                 async move {
-//                     diesel::insert_into(schema::probe::table)
-//                         .values(data)
-//                         .returning(Probe::as_returning())
-//                         .get_result(c)
-//                         .await
-//                 }
-//                     .scope_boxed()
-//             })
-//             .await?;
-//         Ok(g)
-//     }
-// }
-//
-// impl DbDelete<Id, Probe> for PgProbeRepository {
-//     async fn delete(&self, params: &Id) -> DbResultMultiple<Probe> {
-//         let mut conn = self.pg_pool.get().await?;
-//         diesel::delete(probe.find(params)).get_results(&mut conn).await.map_err(DbError::from)
-//     }
-// }
+
+impl DbCreate<CreateProbe, Probe> for PgProbeRepository {
+    async fn create(&self, data: &CreateProbe) -> DbResultSingle<Probe> {
+        let mut conn = self.pg_pool.get().await?;
+        diesel::insert_into(schema::probe::table)
+            .values(data)
+            .returning(Probe::as_returning())
+            .get_result(&mut conn)
+            .await
+            .map_err(DbError::from)
+    }
+}
+
+impl PgProbeRepository {
+    async fn forget(&self, params: &Uuid) -> DbResult<()> {
+        let mut conn = self.pg_pool.get().await?;
+        diesel::update(probe.find(params)).set(adopted.eq(false)).execute(&mut conn).await?;
+        Ok(())
+    }
+}

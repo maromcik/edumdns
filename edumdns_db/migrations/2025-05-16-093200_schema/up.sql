@@ -84,15 +84,15 @@ CREATE TABLE IF NOT EXISTS "group_probe_permission"
 CREATE TABLE IF NOT EXISTS "device"
 (
     id             bigserial    PRIMARY KEY,
-    probe_id       bigint       NOT NULL,
+    probe_id       uuid       NOT NULL,
     mac            macaddr      NOT NULL,
     ip             cidr         NOT NULL,
     port           int          NOT NULL,
     duration       float8,
     interval       float8,
 
-    UNIQUE (probe_id, mac)
-
+    UNIQUE (probe_id, mac),
+    FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS "packet"

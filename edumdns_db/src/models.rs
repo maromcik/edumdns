@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use crate::repositories::common::Id;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -33,6 +32,19 @@ pub struct Probe {
     pub ip: ipnetwork::IpNetwork,
     pub port: i32,
     pub vlan: Option<i32>,
+}
+
+#[derive(Serialize, Deserialize, Queryable, Selectable)]
+#[diesel(table_name = crate::schema::device)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Device {
+    pub id: Id,
+    pub probe_id: Uuid,
+    pub mac: [u8; 6],
+    pub ip: ipnetwork::IpNetwork,
+    pub port: i32,
+    pub duration: Option<f64>,
+    pub interval: Option<f64>,
 }
 
 #[derive(Serialize, Deserialize, Queryable, Selectable)]

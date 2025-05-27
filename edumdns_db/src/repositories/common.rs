@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::error::DbError;
+use serde::{Deserialize, Serialize};
 
 pub type DbResult<T> = Result<T, DbError>;
 
@@ -22,7 +22,7 @@ pub trait DbCreate<Create, Data> {
     /// - `Ok(Data)` on success (the provided structure which represents
     ///                          data coming from the database)
     /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
-    async fn create(&self, data: &Create) -> DbResultSingle<Data>;
+    fn create(&self, data: &Create) -> impl Future<Output = DbResultSingle<Data>> + Send;
 }
 
 pub trait DbReadOne<ReadOne, Data> {
@@ -38,7 +38,7 @@ pub trait DbReadOne<ReadOne, Data> {
     /// - `Ok(Data)` on success (the provided structure which represents read data coming
     ///                          from the database)
     /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
-    async fn read_one(&self, params: &ReadOne) -> DbResultSingle<Data>;
+    fn read_one(&self, params: &ReadOne) -> impl Future<Output = DbResultSingle<Data>> + Send;
 }
 
 pub trait DbReadMany<ReadMany, Data> {
@@ -54,7 +54,7 @@ pub trait DbReadMany<ReadMany, Data> {
     /// - `Ok(Vec<Data>)` on success (a vector of structures which represent read data from the
     ///                               database)
     /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
-    async fn read_many(&self, params: &ReadMany) -> DbResultMultiple<Data>;
+    fn read_many(&self, params: &ReadMany) -> impl Future<Output = DbResultMultiple<Data>> + Send;
 }
 
 pub trait DbUpdate<Update, Data> {
@@ -70,7 +70,7 @@ pub trait DbUpdate<Update, Data> {
     /// - `Ok(Vec<Data>)` on success (a vector of structures which represent updated data from the
     ///                               database)
     /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
-    async fn update(&self, params: &Update) -> DbResultMultiple<Data>;
+    fn update(&self, params: &Update) -> impl Future<Output = DbResultMultiple<Data>> + Send;
 }
 
 pub trait DbDelete<Delete, Data> {
@@ -86,7 +86,7 @@ pub trait DbDelete<Delete, Data> {
     /// - `Ok(Vec<Data>)` on success (a vector of structures which represent deleted data from the
     ///                               database)
     /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
-    async fn delete(&self, params: &Delete) -> DbResultMultiple<Data>;
+    fn delete(&self, params: &Delete) -> impl Future<Output = DbResultMultiple<Data>> + Send;
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
@@ -103,7 +103,7 @@ impl Pagination {
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct GetById {
-    pub id: Id
+    pub id: Id,
 }
 
 impl GetById {
@@ -111,6 +111,5 @@ impl GetById {
         Self { id }
     }
 }
-
 
 pub type Id = i64;

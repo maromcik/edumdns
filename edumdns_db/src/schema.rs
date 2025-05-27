@@ -9,7 +9,7 @@ pub mod sql_types {
 diesel::table! {
     device (id) {
         id -> Int8,
-        probe_id -> Int8,
+        probe_id -> Uuid,
         mac -> Macaddr,
         ip -> Cidr,
         port -> Int4,
@@ -103,6 +103,7 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(device -> probe (probe_id));
 diesel::joinable!(group_probe_permission -> group (group_id));
 diesel::joinable!(group_probe_permission -> probe (probe_id));
 diesel::joinable!(group_user -> group (group_id));

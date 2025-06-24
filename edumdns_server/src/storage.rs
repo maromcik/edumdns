@@ -11,12 +11,16 @@ use std::time::Duration;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::{AsyncDieselConnectionManager, PoolError};
-use pnet::ipnetwork::{IpNetwork, Ipv4Network};
+use ipnetwork::{IpNetwork, Ipv4Network};
 use tokio::sync::RwLock;
 use tokio::sync::mpsc::{Receiver, Sender};
+use uuid::uuid;
 use edumdns_db::error::DbError;
 use edumdns_db::repositories::common::DbCreate;
+use edumdns_db::repositories::device::models::CreateDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
+use edumdns_db::repositories::packet::models::CreatePacket;
+use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 
@@ -26,8 +30,9 @@ pub struct PacketStorage {
     pub transmitter_tasks: Vec<PacketTransmitterTask>,
     pub error_sender: Sender<ServerError>,
     pub db_pool: Pool<AsyncPgConnection>,
-    pub pg_device_repository: PgDeviceRepository,
     pub pg_probe_repository: PgProbeRepository,
+    pub pg_device_repository: PgDeviceRepository,
+    pub pg_packet_repository: PgPacketRepository,
 }
 
 impl PacketStorage {
@@ -37,8 +42,9 @@ impl PacketStorage {
             packet_receiver: receiver,
             transmitter_tasks: Vec::new(),
             error_sender,
-            pg_device_repository: PgDeviceRepository::new(db_pool.clone()),
             pg_probe_repository: PgProbeRepository::new(db_pool.clone()),
+            pg_device_repository: PgDeviceRepository::new(db_pool.clone()),
+            pg_packet_repository: PgPacketRepository::new(db_pool.clone()),
             db_pool,
         }
     }
@@ -74,7 +80,7 @@ impl PacketStorage {
                     //     .await
                     //     .insert(probe_packet);
 
-                    let probe_repo = self.pg_probe_repository.clone();
+                    let packet_repo = self.pg_packet_repository.clone();
                     let device_repo = self.pg_device_repository.clone();
                     
                     match self.packets.entry(src_mac) {
@@ -87,7 +93,9 @@ impl PacketStorage {
                             let e = e.insert(Default::default());
                             e.write().await.insert(probe_packet);
                             tokio::task::spawn(async move {
-                                // probe_repo.create(&CreateProbe::new(src_mac.0.octets(), IpNetwork::V4(Ipv4Network::new(Ipv4Addr::new(0,0,0,0),0).unwrap()), 0))
+                                let uuid = uuid!("5eec1f02-90f6-4212-97ed-012168bf124f");
+                                let device = device_repo.create(&CreateDevice::new(uuid, src_mac.0.octets(), IpNetwork::V4(Ipv4Network::new(Ipv4Addr::new(0,0,0,0),0).unwrap()), 0)).await.unwrap();
+                                
                             });
                         }
                     }

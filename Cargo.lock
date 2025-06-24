@@ -1113,9 +1113,9 @@ dependencies = [
 
 [[package]]
 name = "diesel"
-version = "2.2.10"
+version = "2.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff3e1edb1f37b4953dd5176916347289ed43d7119cc2e6c7c3f7849ff44ea506"
+checksum = "a917a9209950404d5be011c81d081a2692a822f73c3d6af586f0cab5ff50f614"
 dependencies = [
  "bitflags 2.9.1",
  "byteorder",
@@ -1334,6 +1334,7 @@ dependencies = [
  "edumdns_core",
  "edumdns_db",
  "futures",
+ "ipnetwork 0.21.1",
  "log",
  "pcap",
  "pnet",
@@ -1342,6 +1343,7 @@ dependencies = [
  "thiserror 2.0.12",
  "tokio",
  "tokio-util",
+ "uuid",
 ]
 
 [[package]]

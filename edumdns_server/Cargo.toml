@@ -20,4 +20,6 @@ tokio-util = { version = "0.7.14", features = ["codec"] }
 futures = "0.3.31"
 log = "0.4.27"
 diesel-async = { version = "0.5.2" , features = ["tokio-postgres", "postgres", "deadpool"]}
+ipnetwork = "0.21.1"
+uuid = "1.16.0"
 

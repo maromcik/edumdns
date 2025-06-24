@@ -43,6 +43,7 @@ impl SelectManyFilter {
 #[derive(Serialize, Deserialize, AsChangeset, Insertable)]
 #[diesel(table_name = crate::schema::probe)]
 pub struct CreateProbe {
+    pub id: Uuid,
     pub mac: [u8; 6],
     pub ip: IpNetwork,
     pub port: i32,
@@ -51,6 +52,7 @@ pub struct CreateProbe {
 impl CreateProbe {
     pub fn new(mac: [u8; 6], ip: IpNetwork, port: i32) -> Self {
         Self {
+            id: Uuid::now_v7(),
             mac,
             ip,
             port,

@@ -83,3 +83,18 @@ impl DbDelete<Id, Group> for PgGroupRepository {
         diesel::delete(group.find(params)).get_results(&mut conn).await.map_err(DbError::from)
     }
 }
+
+impl PgGroupRepository { 
+    async fn add_user(&self, user_id: &Id, group_id: &Id) -> Result<(), DbError> {
+        let mut conn = self.pg_pool.get().await?;
+        diesel::insert_into(schema::group_user::table)
+            .values((
+                schema::group_user::user_id.eq(user_id),
+                schema::group_user::group_id.eq(group_id),
+            ))
+            .execute(&mut conn)
+            .await
+            .map_err(DbError::from)?;
+        Ok(())
+    }
+}

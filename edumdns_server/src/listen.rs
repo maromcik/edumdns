@@ -35,11 +35,11 @@ pub async fn listen(pool: Pool<AsyncPgConnection>) -> Result<(), ServerError> {
     let (tx, rx) = tokio::sync::mpsc::channel(1000);
     let (tx_err, rx_err) = tokio::sync::mpsc::channel(100);
     let packet_storage_task = tokio::task::spawn(async move {
-        let mut packet_storage = PacketStorage::new(rx, tx_err);
+        let mut packet_storage = PacketStorage::new(rx, tx_err, pool.clone());
         packet_storage.handle_packets().await
     });
     info!("Packet storage initialized");
-
+    
     let packet_target = PacketTransmitTarget::new(MyMacAddr("b8:7b:d4:98:29:64".parse::<MacAddr>().unwrap()), "127.0.0.1".to_string(), 7654);
     loop {
         let (socket, addr) = listener.accept().await?;

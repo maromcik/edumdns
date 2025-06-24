@@ -83,3 +83,4 @@ impl DbCreate<CreateDevice, Device> for PgDeviceRepository {
             .map_err(DbError::from)
     }
 }
+

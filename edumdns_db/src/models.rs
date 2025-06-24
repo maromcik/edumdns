@@ -48,6 +48,21 @@ pub struct Device {
 }
 
 #[derive(Serialize, Deserialize, Queryable, Selectable)]
+#[diesel(table_name = crate::schema::packet)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Packet {
+    pub id: Id,
+    pub device_id: Id,
+    pub src_mac: [u8; 6],
+    pub dst_mac: [u8; 6],
+    pub src_addr: ipnetwork::IpNetwork,
+    pub dst_addr: ipnetwork::IpNetwork,
+    pub src_port: i32,
+    pub dst_port: i32,
+    pub payload: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Queryable, Selectable)]
 #[diesel(table_name = crate::schema::user)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct User {

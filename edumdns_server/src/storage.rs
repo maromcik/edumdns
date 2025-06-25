@@ -86,16 +86,34 @@ impl PacketStorage {
                     match self.packets.entry(src_mac) {
                         Entry::Occupied(mut e) => {
                             let e = e.get_mut();
-                            e.write().await.insert(probe_packet);
-
+                            e.write().await.insert(probe_packet.clone());
+                            let packet = packet_repo.create(&CreatePacket::new(
+                                &5,
+                                &src_mac.to_octets(),
+                                &probe_packet.metadata.datalink_metadata.mac_metadata.dst_mac.to_octets(),
+                                &probe_packet.metadata.ip_metadata.src_ip.0,
+                                &probe_packet.metadata.ip_metadata.dst_ip.0,
+                                &probe_packet.metadata.transport_metadata.src_port,
+                                &probe_packet.metadata.transport_metadata.dst_port,
+                                probe_packet.payload
+                            )).await.unwrap();
                         }
                         Entry::Vacant(e) => {
                             let e = e.insert(Default::default());
-                            e.write().await.insert(probe_packet);
+                            e.write().await.insert(probe_packet.clone());
                             tokio::task::spawn(async move {
                                 let uuid = uuid!("5eec1f02-90f6-4212-97ed-012168bf124f");
-                                let device = device_repo.create(&CreateDevice::new(uuid, src_mac.0.octets(), IpNetwork::V4(Ipv4Network::new(Ipv4Addr::new(0,0,0,0),0).unwrap()), 0)).await.unwrap();
-                                
+                                // let device = device_repo.create(&CreateDevice::new(uuid, src_mac.0.octets(), IpNetwork::V4(Ipv4Network::new(Ipv4Addr::new(0,0,0,0),0).unwrap()), 0)).await.unwrap();
+                                let packet = packet_repo.create(&CreatePacket::new(
+                                                                                    &5, 
+                                                                                   &src_mac.to_octets(), 
+                                                                                   &probe_packet.metadata.datalink_metadata.mac_metadata.dst_mac.to_octets(),
+                                                                                    &probe_packet.metadata.ip_metadata.src_ip.0,
+                                                                                    &probe_packet.metadata.ip_metadata.dst_ip.0,
+                                                                                    &probe_packet.metadata.transport_metadata.src_port,
+                                                                                    &probe_packet.metadata.transport_metadata.dst_port,
+                                                                                    probe_packet.payload
+                                )).await.unwrap();                                                  
                             });
                         }
                     }

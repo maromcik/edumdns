@@ -55,23 +55,23 @@ pub struct CreatePacket {
 
 impl CreatePacket {
     pub fn new(
-        device_id: Id,
-        src_mac: [u8; 6],
-        dst_mac: [u8; 6],
-        src_addr: IpNetwork,
-        dst_addr: IpNetwork,
-        src_port: i32,
-        dst_port: i32,
+        device_id: &Id,
+        src_mac: &[u8; 6],
+        dst_mac: &[u8; 6],
+        src_addr: &IpNetwork,
+        dst_addr: &IpNetwork,
+        src_port: &u16,
+        dst_port: &u16,
         payload: Vec<u8>,
     ) -> Self {
         Self {
-            device_id,
-            src_mac,
-            dst_mac,
-            src_addr,
-            dst_addr,
-            src_port,
-            dst_port,
+            device_id: device_id.to_owned(),
+            src_mac: src_mac.to_owned(),
+            dst_mac: dst_mac.to_owned(),
+            src_addr: src_addr.to_owned(),
+            dst_addr: dst_addr.to_owned(),
+            src_port: src_port.to_owned() as i32,
+            dst_port: dst_port.to_owned() as i32,
             payload,
         }
     }

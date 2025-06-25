@@ -24,7 +24,7 @@ use pnet::packet::vlan::MutableVlanPacket;
 use pnet::packet::{MutablePacket, Packet};
 use std::net::{Ipv4Addr, Ipv6Addr};
 use log::info;
-use crate::addr_types::MacAddr;
+use crate::addr_types::{IpNetwork, MacAddr};
 
 pub trait FixablePacket {
     fn fix(&mut self, payload_len: Option<usize>);
@@ -401,14 +401,14 @@ impl<'a> IpPacket<'a> {
 
     pub fn get_ip_metadata(&self) -> IpMetadata {
         match self {
-            IpPacket::Ipv4Packet(p) => IpMetadata::Ipv4(Ipv4Metadata {
-                src_ip: p.get_source(),
-                dst_ip: p.get_destination(),
-            }),
-            IpPacket::Ipv6Packet(p) => IpMetadata::Ipv6(Ipv6Metadata {
-                src_ip: p.get_source(),
-                dst_ip: p.get_destination(),
-            }),
+            IpPacket::Ipv4Packet(p) => IpMetadata {
+                src_ip: IpNetwork(ipnetwork::IpNetwork::V4(ipnetwork::Ipv4Network::new(p.get_source(), 32).unwrap())),
+                dst_ip: IpNetwork(ipnetwork::IpNetwork::V4(ipnetwork::Ipv4Network::new(p.get_destination(), 32).unwrap())),   
+            },
+            IpPacket::Ipv6Packet(p) => IpMetadata  {
+                src_ip: IpNetwork(ipnetwork::IpNetwork::V6(ipnetwork::Ipv6Network::new(p.get_source(), 128).unwrap())),
+                dst_ip: IpNetwork(ipnetwork::IpNetwork::V6(ipnetwork::Ipv6Network::new(p.get_destination(), 128).unwrap())),
+            },
         }
     }
 }

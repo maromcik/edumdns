@@ -72,7 +72,7 @@ impl PacketStorage {
                 },
                 AppPacket::Data(probe_packet) => {
                     let src_mac = probe_packet.metadata.datalink_metadata.mac_metadata.src_mac;
-                    
+
                     // self.packets
                     //     .entry(src_mac)
                     //     .or_default()
@@ -82,12 +82,12 @@ impl PacketStorage {
 
                     let packet_repo = self.pg_packet_repository.clone();
                     let device_repo = self.pg_device_repository.clone();
-                    
+
                     match self.packets.entry(src_mac) {
                         Entry::Occupied(mut e) => {
                             let e = e.get_mut();
                             e.write().await.insert(probe_packet);
-                            
+
                         }
                         Entry::Vacant(e) => {
                             let e = e.insert(Default::default());
@@ -101,8 +101,8 @@ impl PacketStorage {
                     }
 
                     debug!("Packet stored in memory: {:?}", src_mac);
-                    
-                    
+
+
                 }
             }
         }

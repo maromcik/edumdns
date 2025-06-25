@@ -1,4 +1,4 @@
-use crate::addr_types::MacAddr;
+use crate::addr_types::{IpNetwork, MacAddr};
 use bincode::{Decode, Encode};
 use std::net::{Ipv4Addr, Ipv6Addr};
 
@@ -25,9 +25,9 @@ impl PacketMetadata {
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
-pub enum IpMetadata {
-    Ipv4(Ipv4Metadata),
-    Ipv6(Ipv6Metadata),
+pub struct IpMetadata {
+    pub src_ip: IpNetwork,
+    pub dst_ip: IpNetwork,
 }
 
 #[derive(Encode, Decode, Debug, Clone)]

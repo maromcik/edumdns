@@ -1275,6 +1275,7 @@ dependencies = [
  "clap",
  "dns-parser",
  "futures",
+ "ipnetwork 0.21.1",
  "log",
  "pcap",
  "pnet",

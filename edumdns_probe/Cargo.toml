@@ -18,3 +18,4 @@ bytes = "1.10.1"
 tokio-util = { version = "0.7.14", features = ["codec"] }
 futures = "0.3.31"
 log = "0.4.27"
+uuid = "1.17.0"

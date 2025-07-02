@@ -50,9 +50,9 @@ pub struct CreateProbe {
 }
 
 impl CreateProbe {
-    pub fn new(mac: [u8; 6], ip: IpNetwork, port: i32) -> Self {
+    pub fn new(id: Uuid, mac: [u8; 6], ip: IpNetwork, port: i32) -> Self {
         Self {
-            id: Uuid::now_v7(),
+            id,
             mac,
             ip,
             port,

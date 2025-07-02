@@ -1,6 +1,6 @@
-use crate::addr_types::{IpNetwork, MacAddr};
+use crate::bincode_types::{IpNetwork, MacAddr, Uuid};
 use bincode::{Decode, Encode};
-use std::net::{Ipv4Addr, Ipv6Addr};
+use std::net::IpAddr;
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub struct PacketMetadata {
@@ -23,6 +23,14 @@ impl PacketMetadata {
         }
     }
 }
+
+#[derive(Encode, Decode, Debug, Clone)]
+pub struct ProbeMetadata {
+    pub id: Uuid,
+    pub ip: IpAddr,
+    pub port: u16,
+}
+
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub struct IpMetadata {
@@ -57,17 +65,6 @@ impl PortMetadata {
     }
 }
 
-#[derive(Encode, Decode, Debug, Clone)]
-pub struct Ipv4Metadata {
-    pub src_ip: Ipv4Addr,
-    pub dst_ip: Ipv4Addr,
-}
-
-#[derive(Encode, Decode, Debug, Clone)]
-pub struct Ipv6Metadata {
-    pub src_ip: Ipv6Addr,
-    pub dst_ip: Ipv6Addr,
-}
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub struct MacMetadata {

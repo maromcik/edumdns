@@ -1,9 +1,10 @@
 use std::fmt::Display;
-use crate::addr_types::MacAddr;
-use crate::metadata::{DataLinkMetadata, PacketMetadata};
+use crate::bincode_types::MacAddr;
+use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};
 use crate::network_packet::{DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};
 use std::hash::{Hash, Hasher};
+use uuid::Uuid;
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum AppPacket {
@@ -20,13 +21,13 @@ pub enum CommandPacket {
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub struct ProbePacket {
-    pub id: i32,
+    pub probe_metadata: ProbeMetadata,
+    pub packet_metadata: PacketMetadata,
     pub payload: Vec<u8>,
-    pub metadata: PacketMetadata,
 }
 
 impl ProbePacket {
-    pub fn from_datalink_packet(id: i32, mut packet: DataLinkPacket<'_>) -> Option<Self> {
+    pub fn from_datalink_packet(probe_metadata: &ProbeMetadata, mut packet: DataLinkPacket<'_>) -> Option<Self> {
         let mac_metadata = packet.get_mac_metadata()?;
         let mut vlan_packet = packet.unpack_vlan()?;
         let vlan_metadata = vlan_packet.get_vlan_metadata();
@@ -35,27 +36,27 @@ impl ProbePacket {
         let transport_packet = ip_packet.get_next_layer()?;
         let transport_metadata = transport_packet.get_transport_metadata()?;
         Some(Self {
-            id,
-            payload: transport_packet.get_payload().to_vec(),
-            metadata: PacketMetadata::new(
+            probe_metadata: probe_metadata.clone(),
+            packet_metadata: PacketMetadata::new(
                 DataLinkMetadata::new(mac_metadata, vlan_metadata),
                 ip_metadata,
                 transport_metadata,
             ),
+            payload: transport_packet.get_payload().to_vec(),
         })
     }
 }
 
 impl Hash for ProbePacket {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
+        self.probe_metadata.id.hash(state);
         self.payload.hash(state);
     }
 }
 
 impl PartialEq for ProbePacket {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.payload == other.payload
+        self.probe_metadata.id == other.probe_metadata.id && self.payload == other.payload
     }
 }
 

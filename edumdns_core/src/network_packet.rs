@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 use crate::error::{CoreError, CoreErrorKind};
 use crate::metadata::{
-    DataLinkMetadata, IpMetadata, Ipv4Metadata, Ipv6Metadata, MacMetadata, PacketMetadata,
+    DataLinkMetadata, IpMetadata, MacMetadata, PacketMetadata,
     PortMetadata, VlanMetadata,
 };
 use crate::rewrite::{
@@ -24,7 +24,7 @@ use pnet::packet::vlan::MutableVlanPacket;
 use pnet::packet::{MutablePacket, Packet};
 use std::net::{Ipv4Addr, Ipv6Addr};
 use log::info;
-use crate::addr_types::{IpNetwork, MacAddr};
+use crate::bincode_types::{IpNetwork, MacAddr};
 
 pub trait FixablePacket {
     fn fix(&mut self, payload_len: Option<usize>);

@@ -3,7 +3,7 @@ use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use crate::error::ServerError;
 use crate::storage::PacketStorage;
-use edumdns_core::addr_types::MacAddr as MyMacAddr;
+use edumdns_core::bincode_types::MacAddr as MyMacAddr;
 use edumdns_core::error::CoreError;
 use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitTarget};
 use futures::StreamExt;

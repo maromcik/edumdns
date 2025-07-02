@@ -1,3 +1,4 @@
+use std::net::{IpAddr, Ipv4Addr};
 use std::time::Duration;
 use crate::error::ProbeError;
 use edumdns_core::capture::PacketCapture;
@@ -7,6 +8,8 @@ use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbePacket};
 use log::{debug, error, info};
 use pcap::{Activated, Error, State};
 use tokio::time::sleep;
+use edumdns_core::bincode_types::Uuid;
+use edumdns_core::metadata::ProbeMetadata;
 use crate::connection::Connection;
 
 pub async fn listen_and_send<T>(mut capture: impl PacketCapture<T>) -> Result<(), ProbeError>
@@ -14,9 +17,13 @@ where
     T: State + Activated,
 {
     capture.apply_filter()?;
+    let probe_metadata = ProbeMetadata {
+        id: Uuid(uuid::Uuid::from_u128(32)),
+        ip: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+        port: 32,
+    };
     let mut cap = capture.get_capture();
     info!("Capture ready!");
-    let mut i = 0;
     let server_addr = "127.0.0.1:5000";
     let mut connection = Connection::new(server_addr).await?;
     loop {
@@ -34,14 +41,15 @@ where
         };
         let mut packet_data = cap_packet.data.to_vec();
         let datalink_packet = DataLinkPacket::from_slice(&mut packet_data)?;
-        let Some(probe_packet) = ProbePacket::from_datalink_packet(i, datalink_packet) else {
+
+        let Some(probe_packet) = ProbePacket::from_datalink_packet(&probe_metadata, datalink_packet) else {
             debug!("Not a TCP/IP packet, skipping");
             continue;
         };
         let app_packet = AppPacket::Data(probe_packet);
         
         match connection.send_packet(&app_packet).await {
-            Ok(_) => i += 1,
+            Ok(_) => {}
             Err(e) => {
                 error!("Failed to send packet: {}", e);
                 sleep(Duration::from_secs(1)).await;

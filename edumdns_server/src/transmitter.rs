@@ -61,7 +61,7 @@ impl PacketTransmitter {
             for packet in packets.iter() {
                 self.udp_connection.send_packet(host.as_str(), packet.payload.as_ref()).await?;
                 tokio::time::sleep(self.interval).await;
-                debug!("Packet sent: {:?}", packet.id);
+                debug!("Packet sent: {:?}", packet.probe_metadata.id);
             }
             let total = start_time.elapsed();
             current_time += total;

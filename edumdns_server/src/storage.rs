@@ -1,6 +1,6 @@
 use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
-use edumdns_core::addr_types::MacAddr;
+use edumdns_core::bincode_types::MacAddr;
 use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitTarget, ProbePacket};
 use log::{debug, error, info, warn};
 use std::collections::{HashMap, HashSet};
@@ -71,7 +71,7 @@ impl PacketStorage {
                     CommandPacket::PingResponse() => {}
                 },
                 AppPacket::Data(probe_packet) => {
-                    let src_mac = probe_packet.metadata.datalink_metadata.mac_metadata.src_mac;
+                    let src_mac = probe_packet.packet_metadata.datalink_metadata.mac_metadata.src_mac;
 
                     // self.packets
                     //     .entry(src_mac)
@@ -90,11 +90,11 @@ impl PacketStorage {
                             let packet = packet_repo.create(&CreatePacket::new(
                                 &5,
                                 &src_mac.to_octets(),
-                                &probe_packet.metadata.datalink_metadata.mac_metadata.dst_mac.to_octets(),
-                                &probe_packet.metadata.ip_metadata.src_ip.0,
-                                &probe_packet.metadata.ip_metadata.dst_ip.0,
-                                &probe_packet.metadata.transport_metadata.src_port,
-                                &probe_packet.metadata.transport_metadata.dst_port,
+                                &probe_packet.packet_metadata.datalink_metadata.mac_metadata.dst_mac.to_octets(),
+                                &probe_packet.packet_metadata.ip_metadata.src_ip.0,
+                                &probe_packet.packet_metadata.ip_metadata.dst_ip.0,
+                                &probe_packet.packet_metadata.transport_metadata.src_port,
+                                &probe_packet.packet_metadata.transport_metadata.dst_port,
                                 probe_packet.payload
                             )).await.unwrap();
                         }
@@ -105,14 +105,14 @@ impl PacketStorage {
                                 let uuid = uuid!("5eec1f02-90f6-4212-97ed-012168bf124f");
                                 // let device = device_repo.create(&CreateDevice::new(uuid, src_mac.0.octets(), IpNetwork::V4(Ipv4Network::new(Ipv4Addr::new(0,0,0,0),0).unwrap()), 0)).await.unwrap();
                                 let packet = packet_repo.create(&CreatePacket::new(
-                                                                                    &5, 
-                                                                                   &src_mac.to_octets(), 
-                                                                                   &probe_packet.metadata.datalink_metadata.mac_metadata.dst_mac.to_octets(),
-                                                                                    &probe_packet.metadata.ip_metadata.src_ip.0,
-                                                                                    &probe_packet.metadata.ip_metadata.dst_ip.0,
-                                                                                    &probe_packet.metadata.transport_metadata.src_port,
-                                                                                    &probe_packet.metadata.transport_metadata.dst_port,
-                                                                                    probe_packet.payload
+                                    &5,
+                                    &src_mac.to_octets(),
+                                    &probe_packet.packet_metadata.datalink_metadata.mac_metadata.dst_mac.to_octets(),
+                                    &probe_packet.packet_metadata.ip_metadata.src_ip.0,
+                                    &probe_packet.packet_metadata.ip_metadata.dst_ip.0,
+                                    &probe_packet.packet_metadata.transport_metadata.src_port,
+                                    &probe_packet.packet_metadata.transport_metadata.dst_port,
+                                    probe_packet.payload
                                 )).await.unwrap();                                                  
                             });
                         }

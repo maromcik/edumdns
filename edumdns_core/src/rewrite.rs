@@ -9,7 +9,7 @@ use log::debug;
 use std::net::{AddrParseError, Ipv4Addr, Ipv6Addr};
 use bincode::{Decode, Encode};
 use pnet::datalink::ParseMacAddrErr;
-use crate::addr_types::MacAddr;
+use crate::bincode_types::MacAddr;
 use crate::error::CoreError;
 use crate::network_packet::{ApplicationPacket, DataLinkPacket, NetworkPacket};
 

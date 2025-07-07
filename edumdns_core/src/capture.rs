@@ -1,6 +1,6 @@
+use crate::error::{CoreError, CoreErrorKind};
 use log::info;
 use pcap::{Activated, Active, Capture, Device, Offline, State};
-use crate::error::{CoreError, CoreErrorKind};
 
 pub trait PacketCapture<T>
 where
@@ -27,14 +27,13 @@ where
         filter: Option<String>,
     ) -> Result<PacketCaptureGeneric<Active>, CoreError> {
         let devices = Device::list()?;
-        let target =
-            devices
-                .into_iter()
-                .find(|d| d.name == device_name)
-                .ok_or(CoreError::new(
-                    CoreErrorKind::CaptureError,
-                    &format!("Capture device {} not found", device_name),
-                ))?;
+        let target = devices
+            .into_iter()
+            .find(|d| d.name == device_name)
+            .ok_or(CoreError::new(
+                CoreErrorKind::CaptureError,
+                &format!("Capture device {} not found", device_name),
+            ))?;
         let target_name = target.name.clone();
         let capture = Capture::from_device(target)?
             .promisc(true)
@@ -42,9 +41,9 @@ where
             .immediate_mode(true)
             .open()
             .map_err(CoreError::from)?;
-        
+
         info!("Listening on: {:?}", target_name);
-        
+
         Ok(PacketCaptureGeneric { capture, filter })
     }
 

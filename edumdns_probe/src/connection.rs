@@ -3,7 +3,8 @@ use bytes::Bytes;
 use edumdns_core::app_packet::AppPacket;
 use futures::SinkExt;
 use std::time::Duration;
-use tokio::net::TcpStream;
+use tokio::net::{TcpSocket, TcpStream};
+use tokio::net::unix::SocketAddr;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 pub struct Connection {
@@ -11,9 +12,11 @@ pub struct Connection {
 }
 
 impl Connection {
-    pub async fn new(addr: &str) -> Result<Self, ProbeError> {
+    pub async fn new(addr: &str, device: &str) -> Result<Self, ProbeError> {
         // Use timeout instead of select
-        match tokio::time::timeout(Duration::from_secs(1), TcpStream::connect(addr)).await {
+        let socket = TcpSocket::new_v4()?;
+        socket.bind_device(Some(device.as_bytes()))?;
+        match tokio::time::timeout(Duration::from_secs(1), socket.connect(addr.parse::<core::net::SocketAddr>()?)).await {
             Ok(Ok(stream)) => Ok(Self {
                 framed: Framed::new(stream, LengthDelimitedCodec::new()),
             }),

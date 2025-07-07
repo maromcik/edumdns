@@ -14,7 +14,11 @@ pub struct NetworkConfig {
     pub straight: bool,
 }
 
-pub struct NetworkChannel<R, T> where T: ?Sized, R: ?Sized {
+pub struct NetworkChannel<R, T>
+where
+    T: ?Sized,
+    R: ?Sized,
+{
     pub rx: Box<R>,
     pub tx: Box<T>,
 }

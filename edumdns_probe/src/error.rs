@@ -14,6 +14,10 @@ pub enum ProbeErrorKind {
     EncodeDecodeError,
     #[error("Tokio connection error")]
     ConnectionError,
+    #[error("interface error")]
+    InterfaceError,
+    #[error("tokio task error")]
+    TaskError,
 }
 
 #[derive(Error, Debug, Clone)]
@@ -64,5 +68,23 @@ impl From<bincode::error::EncodeError> for ProbeError {
             ProbeErrorKind::EncodeDecodeError,
             value.to_string().as_str(),
         )
+    }
+}
+
+impl From<tokio::task::JoinError> for ProbeError {
+    fn from(value: tokio::task::JoinError) -> Self {
+        Self::new(
+            ProbeErrorKind::TaskError,
+            value.to_string().as_str(),
+        )   
+    }
+}
+
+impl From<std::net::AddrParseError> for ProbeError {
+    fn from(value: std::net::AddrParseError) -> Self {
+        Self::new(
+            ProbeErrorKind::ArgumentError,
+            value.to_string().as_str(),
+        )   
     }
 }

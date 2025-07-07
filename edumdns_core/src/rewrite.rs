@@ -1,17 +1,17 @@
+use log::debug;
 use pnet::packet::ethernet::MutableEthernetPacket;
 use pnet::packet::ipv4::MutableIpv4Packet;
 use pnet::packet::ipv6::MutableIpv6Packet;
 use pnet::packet::tcp::MutableTcpPacket;
 use pnet::packet::udp::MutableUdpPacket;
 use pnet::packet::vlan::MutableVlanPacket;
-use log::debug;
 
-use std::net::{AddrParseError, Ipv4Addr, Ipv6Addr};
-use bincode::{Decode, Encode};
-use pnet::datalink::ParseMacAddrErr;
 use crate::bincode_types::MacAddr;
 use crate::error::CoreError;
 use crate::network_packet::{ApplicationPacket, DataLinkPacket, NetworkPacket};
+use bincode::{Decode, Encode};
+use pnet::datalink::ParseMacAddrErr;
+use std::net::{AddrParseError, Ipv4Addr, Ipv6Addr};
 
 #[derive(Default, Encode, Decode, Debug)]
 pub struct PacketRewrite {
@@ -165,7 +165,6 @@ impl VlanRewrite {
         Self { vlan_id }
     }
 }
-
 
 pub fn rewrite_packet<'a>(packet: DataLinkPacket<'a>, rewrite: &'a PacketRewrite) -> Option<()> {
     let mut data_link_packet = packet.rewrite(&rewrite.datalink_rewrite);

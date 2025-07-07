@@ -1,8 +1,8 @@
-use std::fmt::Display;
 use crate::bincode_types::MacAddr;
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};
 use crate::network_packet::{DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};
+use std::fmt::Display;
 use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 
@@ -27,7 +27,10 @@ pub struct ProbePacket {
 }
 
 impl ProbePacket {
-    pub fn from_datalink_packet(probe_metadata: &ProbeMetadata, mut packet: DataLinkPacket<'_>) -> Option<Self> {
+    pub fn from_datalink_packet(
+        probe_metadata: &ProbeMetadata,
+        mut packet: DataLinkPacket<'_>,
+    ) -> Option<Self> {
         let mac_metadata = packet.get_mac_metadata()?;
         let mut vlan_packet = packet.unpack_vlan()?;
         let vlan_metadata = vlan_packet.get_vlan_metadata();
@@ -77,6 +80,10 @@ impl PacketTransmitTarget {
 
 impl Display for PacketTransmitTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Device MAC: {}; Target: {}:{}", self.mac, self.ip, self.port)
+        write!(
+            f,
+            "Device MAC: {}; Target: {}:{}",
+            self.mac, self.ip, self.port
+        )
     }
 }

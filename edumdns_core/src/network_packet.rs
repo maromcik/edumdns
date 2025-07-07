@@ -1,8 +1,7 @@
-use std::hash::{Hash, Hasher};
+use crate::bincode_types::{IpNetwork, MacAddr};
 use crate::error::{CoreError, CoreErrorKind};
 use crate::metadata::{
-    DataLinkMetadata, IpMetadata, MacMetadata, PacketMetadata,
-    PortMetadata, VlanMetadata,
+    DataLinkMetadata, IpMetadata, MacMetadata, PacketMetadata, PortMetadata, VlanMetadata,
 };
 use crate::rewrite::{
     DataLinkRewrite, IpRewrite, PortRewrite, rewrite_ipv4, rewrite_ipv6, rewrite_mac, rewrite_tcp,
@@ -11,6 +10,7 @@ use crate::rewrite::{
 use bincode::{Decode, Encode};
 use dns_parser::Packet as DnsPacket;
 use dns_parser::RData;
+use log::info;
 use pnet::packet::ethernet::{EtherType, EtherTypes, EthernetPacket, MutableEthernetPacket};
 use pnet::packet::icmp::MutableIcmpPacket;
 use pnet::packet::ip::{IpNextHeaderProtocol, IpNextHeaderProtocols};
@@ -22,9 +22,8 @@ use pnet::packet::udp::MutableUdpPacket;
 use pnet::packet::udp::{ipv4_checksum as ipv4_checksum_udp, ipv6_checksum as ipv6_checksum_udp};
 use pnet::packet::vlan::MutableVlanPacket;
 use pnet::packet::{MutablePacket, Packet};
+use std::hash::{Hash, Hasher};
 use std::net::{Ipv4Addr, Ipv6Addr};
-use log::info;
-use crate::bincode_types::{IpNetwork, MacAddr};
 
 pub trait FixablePacket {
     fn fix(&mut self, payload_len: Option<usize>);
@@ -49,8 +48,6 @@ pub trait NetworkApplicationPacket {
     type TransportLayer<'a>;
     type Type<'a>;
 }
-
-
 
 pub enum DataLinkPacket<'a> {
     EthPacket(MutableEthernetPacket<'a>),
@@ -402,12 +399,20 @@ impl<'a> IpPacket<'a> {
     pub fn get_ip_metadata(&self) -> IpMetadata {
         match self {
             IpPacket::Ipv4Packet(p) => IpMetadata {
-                src_ip: IpNetwork(ipnetwork::IpNetwork::V4(ipnetwork::Ipv4Network::new(p.get_source(), 32).unwrap())),
-                dst_ip: IpNetwork(ipnetwork::IpNetwork::V4(ipnetwork::Ipv4Network::new(p.get_destination(), 32).unwrap())),   
+                src_ip: IpNetwork(ipnetwork::IpNetwork::V4(
+                    ipnetwork::Ipv4Network::new(p.get_source(), 32).unwrap(),
+                )),
+                dst_ip: IpNetwork(ipnetwork::IpNetwork::V4(
+                    ipnetwork::Ipv4Network::new(p.get_destination(), 32).unwrap(),
+                )),
             },
-            IpPacket::Ipv6Packet(p) => IpMetadata  {
-                src_ip: IpNetwork(ipnetwork::IpNetwork::V6(ipnetwork::Ipv6Network::new(p.get_source(), 128).unwrap())),
-                dst_ip: IpNetwork(ipnetwork::IpNetwork::V6(ipnetwork::Ipv6Network::new(p.get_destination(), 128).unwrap())),
+            IpPacket::Ipv6Packet(p) => IpMetadata {
+                src_ip: IpNetwork(ipnetwork::IpNetwork::V6(
+                    ipnetwork::Ipv6Network::new(p.get_source(), 128).unwrap(),
+                )),
+                dst_ip: IpNetwork(ipnetwork::IpNetwork::V6(
+                    ipnetwork::Ipv6Network::new(p.get_destination(), 128).unwrap(),
+                )),
             },
         }
     }

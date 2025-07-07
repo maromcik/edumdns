@@ -9,7 +9,6 @@ pub struct PacketMetadata {
     pub transport_metadata: PortMetadata,
 }
 
-
 impl PacketMetadata {
     pub fn new(
         datalink_metadata: DataLinkMetadata,
@@ -30,7 +29,6 @@ pub struct ProbeMetadata {
     pub ip: IpAddr,
     pub port: u16,
 }
-
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub struct IpMetadata {
@@ -64,7 +62,6 @@ impl PortMetadata {
         Self { src_port, dst_port }
     }
 }
-
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub struct MacMetadata {

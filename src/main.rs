@@ -21,7 +21,7 @@ pub async fn run_server(pool: Pool<AsyncPgConnection>) -> Result<(), AppError> {
     Ok(())
 }
 
-#[tokio::main]
+#[actix_web::main]
 async fn main() -> Result<(), AppError> {
     dotenvy::dotenv().ok();
     env_logger::init_from_env(Env::default().default_filter_or("info"));

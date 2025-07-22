@@ -24,7 +24,7 @@ where
 {
     pub fn open_device_capture(
         device_name: &str,
-        filter: Option<String>,
+        filter: Option<&str>,
     ) -> Result<PacketCaptureGeneric<Active>, CoreError> {
         let devices = Device::list()?;
         let target = devices
@@ -44,7 +44,7 @@ where
 
         info!("Listening on: {:?}", target_name);
 
-        Ok(PacketCaptureGeneric { capture, filter })
+        Ok(PacketCaptureGeneric { capture, filter: filter.map(|s| s.to_string()) })
     }
 
     pub fn open_file_capture(

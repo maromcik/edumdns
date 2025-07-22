@@ -4,38 +4,51 @@ use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbeConfigPacket};
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::TcpConnection;
 use edumdns_core::retry;
-use log::{debug, error, warn};
+use log::{debug, error, info, warn};
+use std::time::Duration;
 use tokio::sync::mpsc::Receiver;
+use tokio::time::sleep;
 
 pub struct ConnectionManager {
+    uuid: Uuid,
     server_connection_string: String,
-    data_interface_name: String,
+    bind_ip: String,
     pub connection: TcpConnection,
     rx: Receiver<AppPacket>,
     max_retries: usize,
+    retry_interval: u64,
 }
 
 impl ConnectionManager {
-    pub async fn new(server_connection_string: &str, data_interface_name: &str, rx: Receiver<AppPacket>, max_retries: usize,
+    pub async fn new(
+        uuid: Uuid,
+        server_connection_string: &str,
+        bind_ip: &str,
+        rx: Receiver<AppPacket>,
+        max_retries: usize,
     ) -> Result<Self, ProbeError> {
+        let retry_interval = 1000;
         Ok(Self {
+            uuid,
             server_connection_string: server_connection_string.to_owned(),
-            data_interface_name: data_interface_name.to_owned(),
-            connection: retry!(TcpConnection::new(server_connection_string, data_interface_name).await, max_retries, 1000)?,
+            bind_ip: bind_ip.to_owned(),
+            connection: retry!(
+                TcpConnection::connect(server_connection_string, bind_ip).await,
+                max_retries,
+                retry_interval
+            )?,
             rx,
             max_retries,
+            retry_interval,
         })
     }
-    pub async fn connection_init_probe(
-        &mut self,
-        uuid: Uuid,
-    ) -> Result<ProbeConfigPacket, ProbeError> {
+    pub async fn connection_init_probe(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
         let error = Err(ProbeError::new(
             ProbeErrorKind::InvalidConnectionInitiation,
             "invalid connection initiation",
         ));
 
-        let hello_packet = AppPacket::Command(ProbeHello(uuid));
+        let hello_packet = AppPacket::Command(ProbeHello(self.uuid));
         self.connection.send_packet(&hello_packet).await?;
 
         let packet = self.receive_init_packet().await?;
@@ -48,7 +61,9 @@ impl ConnectionManager {
         };
 
         self.connection
-            .send_packet(&AppPacket::Command(CommandPacket::ProbeRequestConfig(uuid)))
+            .send_packet(&AppPacket::Command(CommandPacket::ProbeRequestConfig(
+                self.uuid,
+            )))
             .await?;
 
         let packet = self.receive_init_packet().await?;
@@ -73,7 +88,50 @@ impl ConnectionManager {
 
     pub async fn transmit_packets(&mut self) -> Result<(), ProbeError> {
         while let Some(packet) = self.rx.recv().await {
-            self.connection.send_with_reconnect(&self.server_connection_string, &packet, self.max_retries).await?;
+            self.send_packet_with_reconnect(packet).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn send_packet_with_reconnect(
+        &mut self,
+        packet: AppPacket,
+    ) -> Result<(), ProbeError> {
+        let mut counter = 0;
+        match self.connection.send_packet(&packet).await {
+            Ok(_) => {}
+            Err(e) => loop {
+                error!("Failed to send packet: {e}");
+                if counter >= self.max_retries {
+                    return Err(ProbeError::from(e));
+                }
+                counter += 1;
+                warn!(
+                    "Retrying to send the packet; attempt: {counter} of {}",
+                    self.max_retries
+                );
+                sleep(Duration::from_millis(self.retry_interval)).await;
+
+                match retry!(
+                    TcpConnection::connect(&self.server_connection_string, &self.bind_ip)
+                        .await,
+                    self.max_retries,
+                    self.retry_interval
+                ) {
+                    Ok(connection) => {
+                        self.connection = connection;
+                        self.connection_init_probe().await?;
+                        info!(
+                            "Reconnected to the server {}",
+                            self.server_connection_string
+                        );
+                        break;
+                    }
+                    Err(e) => {
+                        error!("Failed to reconnect: {e}");
+                    }
+                }
+            },
         }
         Ok(())
     }

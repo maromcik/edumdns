@@ -8,7 +8,7 @@ use pcap::{Activated, Error, State};
 use tokio::sync::mpsc::Sender;
 use edumdns_core::metadata::ProbeMetadata;
 
-pub async fn listen_and_send<T>(mut capture: impl PacketCapture<T>, probe_metadata: &ProbeMetadata, tx: Sender<AppPacket>) -> Result<(), ProbeError>
+pub async fn listen_and_send<T>(mut capture: impl PacketCapture<T>, probe_metadata: ProbeMetadata, tx: Sender<AppPacket>) -> Result<(), ProbeError>
 where
     T: State + Activated,
 {
@@ -32,7 +32,7 @@ where
         let mut packet_data = cap_packet.data.to_vec();
         let datalink_packet = DataLinkPacket::from_slice(&mut packet_data)?;
 
-        let Some(probe_packet) = ProbePacket::from_datalink_packet(probe_metadata, datalink_packet) else {
+        let Some(probe_packet) = ProbePacket::from_datalink_packet(&probe_metadata, datalink_packet) else {
             debug!("Not a TCP/IP packet, skipping");
             continue;
         };

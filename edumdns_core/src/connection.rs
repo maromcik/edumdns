@@ -5,9 +5,9 @@ use futures::{SinkExt, StreamExt};
 use log::{debug, error, warn};
 use std::fmt::Debug;
 use std::io::Error;
+use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::net::UdpSocket;
-use tokio::net::unix::SocketAddr;
 use tokio::net::{TcpSocket, TcpStream};
 use tokio::time::sleep;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
@@ -17,14 +17,21 @@ pub struct TcpConnection {
 }
 
 impl TcpConnection {
-    pub async fn new(addr: &str, device: &str) -> Result<Self, CoreError> {
+    pub async fn stream_to_framed(stream: TcpStream) -> Result<Self, CoreError> {
+        Ok(Self {
+            framed: Framed::new(stream, LengthDelimitedCodec::new()),
+        })
+    }
+
+    pub async fn connect(addr: &str, bind_ip: &str) -> Result<Self, CoreError> {
         // Use timeout instead of select
         let socket = TcpSocket::new_v4()?;
-        // TODO change binding to addr
-        socket.bind_device(Some(device.as_bytes()))?;
+
+        let bind_ip = bind_ip.parse()?;
+        socket.bind(bind_ip)?;
         match tokio::time::timeout(
             Duration::from_secs(1),
-            socket.connect(addr.parse::<core::net::SocketAddr>()?),
+            socket.connect(addr.parse()?),
         )
         .await
         {

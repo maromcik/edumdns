@@ -5,17 +5,20 @@ use edumdns_core::capture::PacketCaptureGeneric;
 use edumdns_core::metadata::ProbeMetadata;
 use pcap::Active;
 use pnet::datalink::interfaces;
+use edumdns_core::connection::TcpConnection;
+use edumdns_core::retry;
+use log::{debug, error, warn};
+use crate::connection::ConnectionManager;
 
 pub mod error;
 pub mod capture;
-pub mod transmit;
+pub mod connection;
 
-use crate::transmit::Transmitter;
 
 pub async fn probe_init() -> Result<(), ProbeError> {
     let listen_interfaces_names = vec![("wlp2s0", Some("port 5201".to_string()))];
     let data_interface_name = "lo";
-
+    let server_addr_port = "127.0.0.1:5000";
     let _ = interfaces()
         .iter()
         .find(|i| i.name == data_interface_name)
@@ -26,7 +29,11 @@ pub async fn probe_init() -> Result<(), ProbeError> {
 
     let mut interface_tasks = Vec::default();
     let (tx, rx) = tokio::sync::mpsc::channel(1000);
-    let mut transmitter = Transmitter::new("127.0.0.1:5000".to_string(), data_interface_name.to_string(), rx, 5);
+
+    let mut connection_manager = ConnectionManager::new(server_addr_port, data_interface_name, rx, 5).await?;
+    
+    let config = connection_manager.connection_init_probe(Uuid(uuid::Uuid::from_u128(32))).await?;
+    
 
 
     for (if_name, filter) in listen_interfaces_names {
@@ -74,7 +81,7 @@ pub async fn probe_init() -> Result<(), ProbeError> {
 
     drop(tx);
     let transmit_task = tokio::spawn(async move {
-        transmitter.transmit_packets().await
+        connection_manager.transmit_packets().await
     });
     transmit_task.await??;
     for task in interface_tasks {

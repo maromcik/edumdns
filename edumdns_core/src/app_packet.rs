@@ -4,7 +4,7 @@ use crate::network_packet::{DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};
 use std::fmt::Display;
 use std::hash::{Hash, Hasher};
-use uuid::Uuid;
+use crate::bincode_types::Uuid;
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum AppPacket {
@@ -15,8 +15,25 @@ pub enum AppPacket {
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum CommandPacket {
     TransmitDevicePackets(PacketTransmitTarget),
-    PingRequest(),
-    PingResponse(),
+    PingRequest,
+    PingResponse,
+    ProbeHello(Uuid),
+    ProbeAdopted,
+    ProbeUnknown,
+    ProbeRequestConfig(Uuid),
+    ProbeResponseConfig(ProbeConfigPacket),
+
+}
+
+#[derive(Encode, Decode, Debug, Clone)]
+pub struct ProbeConfigElement {
+    pub interface_name: String,
+    pub bpf_filter: Option<String>,
+}
+
+#[derive(Encode, Decode, Debug, Clone)]
+pub struct ProbeConfigPacket {
+    pub interface_filter_map: Vec<ProbeConfigElement>,
 }
 
 #[derive(Encode, Decode, Debug, Clone)]

@@ -67,8 +67,9 @@ impl PacketStorage {
                             error!("Error while transmitting packets to target {}: {}", &target, e);
                         };
                     }
-                    CommandPacket::PingRequest() => {}
-                    CommandPacket::PingResponse() => {}
+                    CommandPacket::PingRequest => {}
+                    CommandPacket::PingResponse => {}
+                    _ => {}
                 },
                 AppPacket::Data(probe_packet) => {
                     let src_mac = probe_packet.packet_metadata.datalink_metadata.mac_metadata.src_mac;

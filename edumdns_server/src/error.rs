@@ -13,6 +13,8 @@ pub enum ServerErrorKind {
     ArgumentError,
     #[error("I/O error from Tokio")]
     IoError,
+    #[error("Invalid connection initiation")]
+    InvalidConnectionInitiation,
 }
 
 #[derive(Error, Debug, Clone)]

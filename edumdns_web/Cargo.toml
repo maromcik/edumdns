@@ -8,7 +8,6 @@ edumdns_core = { path = "../edumdns_core" }
 edumdns_db = { path = "../edumdns_db" }
 actix-files = { version = "0.6.6" }
 actix-web = "4.11.0"
-anyhow = { version = "1.0.97", features = [] }
 chrono = { version = "0.4.40", features = ["serde"] }
 dotenv = "0.15.0"
 dotenvy = "0.15.7"
@@ -18,7 +17,7 @@ hmac = "0.13.0-pre.4"
 log = "0.4.27"
 serde = { version = "1.0.219", features = ["derive"] }
 diesel-async = { version = "0.5.2" , features = ["tokio-postgres", "postgres", "deadpool"]}
-thiserror = "2.0.7"
+thiserror = "2.0.12"
 uuid = { version = "1.11.0", features = ["v4"] }
 pbkdf2 = { version = "0.12.2", features = ["simple"] }
 rand_core = { version = "0.6.4", features = ["std"] }

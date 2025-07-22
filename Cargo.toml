@@ -9,6 +9,7 @@ edumdns_core = { path = "edumdns_core" }
 edumdns_probe = { path = "edumdns_probe" }
 edumdns_server = { path = "edumdns_server" }
 edumdns_db = { path = "edumdns_db" }
+edumdns_web = { path = "edumdns_web" }
 thiserror = "2.0.12"
 tokio = {version =  "1.44.2", features = ["full"] }
 log = "0.4.27"

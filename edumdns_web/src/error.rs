@@ -48,7 +48,7 @@ pub enum WebErrorKind {
 //     }
 // }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Error, Debug, Clone, Serialize)]
 pub struct WebError {
     pub app_error_kind: WebErrorKind,
     pub message: String,

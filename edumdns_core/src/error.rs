@@ -24,6 +24,14 @@ pub enum CoreErrorKind {
     PacketRewriteError,
     #[error("Encode/Decode error")]
     EncodeDecodeError,
+    #[error("Tokio connection error")]
+    ConnectionError,
+    #[error("I/O error from Tokio")]
+    IoError,
+    #[error("interface error")]
+    InterfaceError,
+    #[error("tokio task error")]
+    TaskError,
 }
 
 #[derive(Debug, Clone)]
@@ -88,5 +96,23 @@ impl From<ParseIntError> for CoreError {
 impl From<bincode::error::DecodeError> for CoreError {
     fn from(value: bincode::error::DecodeError) -> Self {
         CoreError::new(CoreErrorKind::EncodeDecodeError, &value.to_string())
+    }
+}
+
+impl From<std::io::Error> for CoreError {
+    fn from(value: std::io::Error) -> Self {
+        Self::new(CoreErrorKind::IoError, value.to_string().as_str())
+    }
+}
+
+impl From<bincode::error::EncodeError> for CoreError {
+    fn from(value: bincode::error::EncodeError) -> Self {
+        Self::new(CoreErrorKind::EncodeDecodeError, value.to_string().as_str())
+    }
+}
+
+impl From<tokio::task::JoinError> for CoreError {
+    fn from(value: tokio::task::JoinError) -> Self {
+        Self::new(CoreErrorKind::TaskError, value.to_string().as_str())
     }
 }

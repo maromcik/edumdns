@@ -1,7 +1,8 @@
+use std::process::exit;
 use std::time::Duration;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use crate::error::ServerError;
+use crate::error::{ServerError, ServerErrorKind};
 use crate::storage::PacketStorage;
 use edumdns_core::bincode_types::MacAddr as MyMacAddr;
 use edumdns_core::error::CoreError;

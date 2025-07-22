@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitTarget, ProbePacket};
-use crate::connection::UdpConnection;
+use edumdns_core::connection::UdpConnection;
 use crate::error::ServerError;
 
 pub struct PacketTransmitterTask {

@@ -3,6 +3,7 @@ use edumdns_server::error::ServerError;
 use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
 use edumdns_db::error::DbError;
+use edumdns_web::error::WebError;
 
 #[derive(Error, Debug, Clone)]
 pub enum AppErrorKind {
@@ -12,6 +13,8 @@ pub enum AppErrorKind {
     ProbeError(#[from] ProbeError),
     #[error("{0}")]
     ServerError(#[from] ServerError),
+    #[error("{0}")]
+    WebError(#[from] WebError),
     #[error("Tokio error")]
     TokioError,
 }
@@ -67,6 +70,12 @@ impl From<ProbeError> for AppError {
 impl From<ServerError> for AppError {
     fn from(value: ServerError) -> Self {
         Self::new(AppErrorKind::ServerError(value), "")
+    }
+}
+
+impl From<WebError> for AppError {
+    fn from(value: WebError) -> Self {
+        Self::new(AppErrorKind::WebError(value), "")
     }
 }
 

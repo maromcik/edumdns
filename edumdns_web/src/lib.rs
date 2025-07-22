@@ -17,7 +17,7 @@ use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use crate::error::WebError;
 
-mod error;
+pub mod error;
 
 mod init;
 mod templates;
@@ -32,12 +32,7 @@ const PAYLOAD_LIMIT: usize = 16 * 1024 * 1024 * 1024; // 16GiB
 const FORM_LIMIT: usize = 16 * 1024 * 1024; // 16MiB
 const MIN_PASS_LEN: usize = 6;
 
-const THUMBNAIL_SIZE: u32 = 600;
-const IMAGE_SIZE: u32 = 2000;
-const LOW_IMAGE_SIZE: u32 = 300;
-
-
-async fn run_web(pool: Pool<AsyncPgConnection>) -> Result<(), WebError> {
+pub async fn web_init(pool: Pool<AsyncPgConnection>) -> Result<(), WebError> {
     let _dir = env::temp_dir();
 
     let host = parse_host();
@@ -55,7 +50,6 @@ async fn run_web(pool: Pool<AsyncPgConnection>) -> Result<(), WebError> {
             .bytes()
             .collect::<Vec<u8>>(),
     );
-    env_logger::init_from_env(Env::default().default_filter_or("info"));
 
     // TODO remove unwrap
     let use_secure_cookie = env::var("USE_SECURE_COOKIE")

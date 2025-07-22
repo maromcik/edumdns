@@ -1185,6 +1185,7 @@ dependencies = [
  "edumdns_db",
  "edumdns_probe",
  "edumdns_server",
+ "edumdns_web",
  "env_logger",
  "log",
  "thiserror 2.0.12",
@@ -1207,6 +1208,8 @@ dependencies = [
  "serde",
  "serde_bytes",
  "thiserror 2.0.12",
+ "tokio",
+ "tokio-util",
  "uuid",
 ]
 
@@ -1284,7 +1287,6 @@ dependencies = [
  "actix-multipart",
  "actix-session",
  "actix-web",
- "anyhow",
  "chrono",
  "diesel-async",
  "dotenv",

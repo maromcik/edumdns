@@ -7,7 +7,7 @@ use edumdns_core::bincode_types::MacAddr as MyMacAddr;
 use edumdns_core::connection::TcpConnection;
 use edumdns_core::error::CoreError;
 use futures::StreamExt;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use pnet::datalink::MacAddr;
 use std::process::exit;
 use std::time::Duration;
@@ -45,13 +45,18 @@ pub async fn listen(pool: Pool<AsyncPgConnection>) -> Result<(), ServerError> {
     );
     loop {
         let (socket, addr) = listener.accept().await?;
-        debug!("Connection from {}", addr);
+        info!("Connection from {addr}");
         let tx_local = tx.clone();
         let tx_local2 = tx.clone();
 
         tokio::spawn(async move {
             if let Err(e) = handle_connection(socket, tx_local).await {
-                error!("E: {}", e);
+                if let ServerErrorKind::ProbeNotAdopted = e.error_kind {
+                    warn!("Client {addr} tried to connect, but probe is not adopted");
+                }
+                else {
+                    error!("{e}");   
+                }
             }
         });
         tokio::time::sleep(Duration::from_secs(2)).await;

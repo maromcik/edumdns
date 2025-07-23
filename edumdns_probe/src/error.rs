@@ -18,8 +18,6 @@ pub enum ProbeErrorKind {
     InterfaceError,
     #[error("tokio task error")]
     TaskError,
-    #[error("probe not adopted error")]
-    ProbeNotAdopted,
     #[error("probe connection initiation error")]
     InvalidConnectionInitiation,
 }

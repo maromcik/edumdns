@@ -15,6 +15,8 @@ pub enum ServerErrorKind {
     IoError,
     #[error("Invalid connection initiation")]
     InvalidConnectionInitiation,
+    #[error("probe not adopted error")]
+    ProbeNotAdopted,
 }
 
 #[derive(Error, Debug, Clone)]

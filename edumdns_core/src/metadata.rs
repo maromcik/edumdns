@@ -23,7 +23,7 @@ impl PacketMetadata {
     }
 }
 
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct ProbeMetadata {
     pub id: Uuid,
     pub ip: IpAddr,

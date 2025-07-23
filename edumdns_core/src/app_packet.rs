@@ -17,10 +17,10 @@ pub enum CommandPacket {
     TransmitDevicePackets(PacketTransmitTarget),
     PingRequest,
     PingResponse,
-    ProbeHello(Uuid),
+    ProbeHello(ProbeMetadata),
     ProbeAdopted,
     ProbeUnknown,
-    ProbeRequestConfig(Uuid),
+    ProbeRequestConfig(ProbeMetadata),
     ProbeResponseConfig(ProbeConfigPacket),
 
 }

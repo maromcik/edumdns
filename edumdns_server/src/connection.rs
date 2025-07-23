@@ -1,8 +1,10 @@
+use std::time::Duration;
 use crate::error::{ServerError, ServerErrorKind};
 use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbeConfigElement, ProbeConfigPacket};
 use edumdns_core::connection::TcpConnection;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
+use tokio::time::sleep;
 
 pub struct ConnectionManager {
     connection: TcpConnection,
@@ -22,12 +24,12 @@ impl ConnectionManager {
         ));
         let packet = self.receive_init_packet().await?;
 
-        let AppPacket::Command(CommandPacket::ProbeHello(hello_uuid)) = packet else {
+        let AppPacket::Command(CommandPacket::ProbeHello(hello_metadata)) = packet else {
             return error;
         };
 
         // TODO check uuid in DB
-
+        // TODO create it in the db
         let adopted = true;
         if adopted {
             self.connection
@@ -37,15 +39,16 @@ impl ConnectionManager {
             self.connection
                 .send_packet(&AppPacket::Command(CommandPacket::ProbeUnknown))
                 .await?;
+            return Err(ServerError::new(ServerErrorKind::ProbeNotAdopted, "adopt it in the web interface first"))
         }
 
         let packet = self.receive_init_packet().await?;
 
-        let AppPacket::Command(CommandPacket::ProbeRequestConfig(config_uuid)) = packet else {
+        let AppPacket::Command(CommandPacket::ProbeRequestConfig(config_metadata)) = packet else {
             return error;
         };
 
-        if config_uuid != hello_uuid {
+        if config_metadata != hello_metadata {
             return error;
         }
 

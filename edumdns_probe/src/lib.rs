@@ -25,15 +25,15 @@ pub async fn probe_init() -> Result<(), ProbeError> {
 
     let (tx, rx) = tokio::sync::mpsc::channel(1000);
 
-    let mut connection_manager = ConnectionManager::new(uuid, server_addr_port, bind_ip, rx, 5).await?;
-
-    let config = connection_manager.connection_init_probe().await?;
-
     let probe_metadata = ProbeMetadata {
         id: uuid,
         ip: "127.0.0.1".parse::<IpAddr>()?,
         port: 0,
     };
+
+    let mut connection_manager = ConnectionManager::new(probe_metadata.clone(), server_addr_port, bind_ip, rx, 5).await?;
+
+    let config = connection_manager.connection_init_probe().await?;
 
 
     let probe_capture = ProbeCapture::new(tx, probe_metadata, config);

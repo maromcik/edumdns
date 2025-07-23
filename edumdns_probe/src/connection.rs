@@ -1,3 +1,4 @@
+use std::pin::Pin;
 use crate::error::{ProbeError, ProbeErrorKind};
 use edumdns_core::app_packet::CommandPacket::ProbeHello;
 use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbeConfigPacket};
@@ -6,11 +7,13 @@ use edumdns_core::connection::TcpConnection;
 use edumdns_core::retry;
 use log::{debug, error, info, warn};
 use std::time::Duration;
+use pnet::packet;
 use tokio::sync::mpsc::Receiver;
 use tokio::time::sleep;
+use edumdns_core::metadata::ProbeMetadata;
 
 pub struct ConnectionManager {
-    uuid: Uuid,
+    probe_metadata: ProbeMetadata,
     server_connection_string: String,
     bind_ip: String,
     pub connection: TcpConnection,
@@ -21,7 +24,7 @@ pub struct ConnectionManager {
 
 impl ConnectionManager {
     pub async fn new(
-        uuid: Uuid,
+        probe_metadata: ProbeMetadata,
         server_connection_string: &str,
         bind_ip: &str,
         rx: Receiver<AppPacket>,
@@ -29,7 +32,7 @@ impl ConnectionManager {
     ) -> Result<Self, ProbeError> {
         let retry_interval = 1000;
         Ok(Self {
-            uuid,
+            probe_metadata,
             server_connection_string: server_connection_string.to_owned(),
             bind_ip: bind_ip.to_owned(),
             connection: retry!(
@@ -42,27 +45,32 @@ impl ConnectionManager {
             retry_interval,
         })
     }
+
+
     pub async fn connection_init_probe(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
         let error = Err(ProbeError::new(
             ProbeErrorKind::InvalidConnectionInitiation,
-            "invalid connection initiation",
+            "Invalid connection initiation",
         ));
-
-        let hello_packet = AppPacket::Command(ProbeHello(self.uuid));
+        let hello_packet = AppPacket::Command(ProbeHello(self.probe_metadata.clone()));
         self.connection.send_packet(&hello_packet).await?;
+
 
         let packet = self.receive_init_packet().await?;
 
+        while let AppPacket::Command(CommandPacket::ProbeUnknown) = packet {
+            warn!("Probe is not adopted, make sure to adopt it in the web interface first");
+            sleep(Duration::from_millis(self.retry_interval)).await;
+            Box::pin(self.reconnect()).await?
+        }
+
         let AppPacket::Command(CommandPacket::ProbeAdopted) = packet else {
-            return Err(ProbeError::new(
-                ProbeErrorKind::ProbeNotAdopted,
-                "probe is not adopted by the server",
-            ));
+            return error
         };
 
         self.connection
             .send_packet(&AppPacket::Command(CommandPacket::ProbeRequestConfig(
-                self.uuid,
+                self.probe_metadata.clone(),
             )))
             .await?;
 
@@ -80,7 +88,7 @@ impl ConnectionManager {
         let Some((app_packet, _)) = packet else {
             return Err(ProbeError::new(
                 ProbeErrorKind::InvalidConnectionInitiation,
-                "invalid connection initiation",
+                "Invalid connection initiation",
             ));
         };
         Ok(app_packet)
@@ -111,28 +119,32 @@ impl ConnectionManager {
                     self.max_retries
                 );
                 sleep(Duration::from_millis(self.retry_interval)).await;
+                self.reconnect().await?;
+            },
+        }
+        Ok(())
+    }
 
-                match retry!(
+    pub async fn reconnect(&mut self) -> Result<(), ProbeError> {
+        match retry!(
                     TcpConnection::connect(&self.server_connection_string, &self.bind_ip)
                         .await,
                     self.max_retries,
                     self.retry_interval
                 ) {
-                    Ok(connection) => {
-                        self.connection = connection;
-                        self.connection_init_probe().await?;
-                        info!(
+            Ok(connection) => {
+                self.connection = connection;
+                self.connection_init_probe().await?;
+                info!(
                             "Reconnected to the server {}",
                             self.server_connection_string
                         );
-                        break;
-                    }
-                    Err(e) => {
-                        error!("Failed to reconnect: {e}");
-                    }
-                }
-            },
+            }
+            Err(e) => {
+                error!("Failed to reconnect: {e}");
+            }
         }
         Ok(())
     }
+
 }

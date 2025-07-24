@@ -5,13 +5,13 @@ use crate::repositories::common::{
 };
 use crate::repositories::packet::models::{CreatePacket, SelectManyFilter};
 use crate::schema;
+use crate::schema::device::dsl::device;
 use crate::schema::probe::dsl::probe;
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
-use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use diesel_async::pooled_connection::deadpool::Pool;
 use schema::packet::dsl::*;
-use crate::schema::device::dsl::device;
 
 #[derive(Clone)]
 pub struct PgPacketRepository {

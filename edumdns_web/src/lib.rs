@@ -1,28 +1,27 @@
+use crate::error::WebError;
 use crate::init::configure_webapp;
-use crate::utils::{create_reloader, AppState};
+use crate::utils::{AppState, create_reloader};
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_multipart::form::MultipartFormConfig;
 use actix_session::config::PersistentSession;
-use actix_session::{storage::CookieSessionStore, SessionMiddleware};
+use actix_session::{SessionMiddleware, storage::CookieSessionStore};
 use actix_web::http::header;
 use actix_web::middleware::Logger;
 use actix_web::web::{FormConfig, PayloadConfig};
-use actix_web::{cookie::Key, App, HttpServer};
+use actix_web::{App, HttpServer, cookie::Key};
+use diesel_async::AsyncPgConnection;
+use diesel_async::pooled_connection::deadpool::Pool;
 use env_logger::Env;
 use log::{info, warn};
 use std::env;
 use std::sync::Arc;
-use diesel_async::AsyncPgConnection;
-use diesel_async::pooled_connection::deadpool::Pool;
-use crate::error::WebError;
 
 pub mod error;
 
 mod init;
 mod templates;
 mod utils;
-
 
 const DEFAULT_HOSTNAME: &str = "localhost";
 const DEFAULT_PORT: &str = "8000";
@@ -37,12 +36,10 @@ pub async fn web_init(pool: Pool<AsyncPgConnection>) -> Result<(), WebError> {
 
     let host = parse_host();
     let host2 = host.clone();
-    
-    let jinja = Arc::new(create_reloader("templates".to_owned()));
-    
-    let app_state = AppState::new(jinja.clone());
 
-    
+    let jinja = Arc::new(create_reloader("templates".to_owned()));
+
+    let app_state = AppState::new(jinja.clone());
 
     let key = Key::from(
         &env::var("COOKIE_SESSION_KEY")
@@ -54,7 +51,8 @@ pub async fn web_init(pool: Pool<AsyncPgConnection>) -> Result<(), WebError> {
     // TODO remove unwrap
     let use_secure_cookie = env::var("USE_SECURE_COOKIE")
         .unwrap_or("false".to_string())
-        .parse::<bool>().unwrap();
+        .parse::<bool>()
+        .unwrap();
     info!("USE_SECURE_COOKIE: {}", use_secure_cookie);
 
     if let Err(e) = dotenvy::dotenv() {

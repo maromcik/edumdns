@@ -48,19 +48,13 @@ impl ProbeError {
 
 impl From<CoreError> for ProbeError {
     fn from(value: CoreError) -> Self {
-        Self::new(
-            ProbeErrorKind::CoreError(value),
-            ""
-        )
+        Self::new(ProbeErrorKind::CoreError(value), "")
     }
 }
 
 impl From<std::io::Error> for ProbeError {
     fn from(value: std::io::Error) -> Self {
-        Self::new(
-            ProbeErrorKind::IoError,
-            value.to_string().as_str(),
-        )
+        Self::new(ProbeErrorKind::IoError, value.to_string().as_str())
     }
 }
 
@@ -75,18 +69,12 @@ impl From<bincode::error::EncodeError> for ProbeError {
 
 impl From<tokio::task::JoinError> for ProbeError {
     fn from(value: tokio::task::JoinError) -> Self {
-        Self::new(
-            ProbeErrorKind::TaskError,
-            value.to_string().as_str(),
-        )   
+        Self::new(ProbeErrorKind::TaskError, value.to_string().as_str())
     }
 }
 
 impl From<std::net::AddrParseError> for ProbeError {
     fn from(value: std::net::AddrParseError) -> Self {
-        Self::new(
-            ProbeErrorKind::ArgumentError,
-            value.to_string().as_str(),
-        )   
+        Self::new(ProbeErrorKind::ArgumentError, value.to_string().as_str())
     }
 }

@@ -1,7 +1,7 @@
 use edumdns_core::error::CoreError;
+use edumdns_db::error::DbError;
 use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
-use edumdns_db::error::DbError;
 
 #[derive(Error, Debug, Clone)]
 pub enum ServerErrorKind {
@@ -45,19 +45,13 @@ impl ServerError {
 
 impl From<CoreError> for ServerError {
     fn from(value: CoreError) -> Self {
-        Self::new(
-            ServerErrorKind::CoreError(value),
-            ""
-        )
+        Self::new(ServerErrorKind::CoreError(value), "")
     }
 }
 
 impl From<std::io::Error> for ServerError {
     fn from(value: std::io::Error) -> Self {
-        Self::new(
-            ServerErrorKind::IoError,
-            value.to_string().as_str(),
-        )
+        Self::new(ServerErrorKind::IoError, value.to_string().as_str())
     }
 }
 

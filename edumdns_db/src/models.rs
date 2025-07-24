@@ -30,8 +30,6 @@ pub struct Probe {
     pub adopted: bool,
     pub mac: [u8; 6],
     pub ip: ipnetwork::IpNetwork,
-    pub port: i32,
-    pub vlan: Option<i32>,
 }
 
 #[derive(Serialize, Deserialize, Queryable, Selectable)]
@@ -77,4 +75,3 @@ pub struct User {
     pub edited_at: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
 }
-

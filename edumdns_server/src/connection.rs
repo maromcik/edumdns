@@ -1,19 +1,33 @@
-use std::time::Duration;
 use crate::error::{ServerError, ServerErrorKind};
-use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbeConfigElement, ProbeConfigPacket};
+use diesel_async::AsyncPgConnection;
+use diesel_async::pooled_connection::deadpool::Pool;
+use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbeConfigElement, ProbeConfigPacket, StatusPacket};
+use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::TcpConnection;
+use edumdns_db::repositories::common::{DbCreate, DbReadOne};
+use edumdns_db::repositories::probe::repository::PgProbeRepository;
+use std::time::Duration;
+use ipnetwork::IpNetwork;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
 use tokio::time::sleep;
+use edumdns_core::metadata::ProbeMetadata;
+use edumdns_db::models::Probe;
+use edumdns_db::repositories::probe::models::CreateProbe;
 
 pub struct ConnectionManager {
     connection: TcpConnection,
+    pg_probe_repository: PgProbeRepository,
 }
 
 impl ConnectionManager {
-    pub async fn new(stream: TcpStream) -> Result<Self, ServerError> {
+    pub async fn new(
+        stream: TcpStream,
+        pool: Pool<AsyncPgConnection>,
+    ) -> Result<Self, ServerError> {
         Ok(Self {
             connection: TcpConnection::stream_to_framed(stream).await?,
+            pg_probe_repository: PgProbeRepository::new(pool.clone()),
         })
     }
 
@@ -24,27 +38,31 @@ impl ConnectionManager {
         ));
         let packet = self.receive_init_packet().await?;
 
-        let AppPacket::Command(CommandPacket::ProbeHello(hello_metadata)) = packet else {
+        let AppPacket::Status(StatusPacket::ProbeHello(hello_metadata)) = packet else {
             return error;
         };
 
         // TODO check uuid in DB
         // TODO create it in the db
-        let adopted = false;
-        if adopted {
+        
+        let probe = self.upsert_probe(&hello_metadata).await?;
+        if probe.adopted {
             self.connection
-                .send_packet(&AppPacket::Command(CommandPacket::ProbeAdopted))
+                .send_packet(&AppPacket::Status(StatusPacket::ProbeAdopted))
                 .await?;
         } else {
             self.connection
-                .send_packet(&AppPacket::Command(CommandPacket::ProbeUnknown))
+                .send_packet(&AppPacket::Status(StatusPacket::ProbeUnknown))
                 .await?;
-            return Err(ServerError::new(ServerErrorKind::ProbeNotAdopted, "adopt it in the web interface first"))
+            return Err(ServerError::new(
+                ServerErrorKind::ProbeNotAdopted,
+                "adopt it in the web interface first",
+            ));
         }
 
         let packet = self.receive_init_packet().await?;
 
-        let AppPacket::Command(CommandPacket::ProbeRequestConfig(config_metadata)) = packet else {
+        let AppPacket::Status(StatusPacket::ProbeRequestConfig(config_metadata)) = packet else {
             return error;
         };
 
@@ -63,7 +81,7 @@ impl ConnectionManager {
             interface_filter_map: vec![probe_config],
         };
         self.connection
-            .send_packet(&AppPacket::Command(CommandPacket::ProbeResponseConfig(
+            .send_packet(&AppPacket::Status(StatusPacket::ProbeResponseConfig(
                 probe_config_packet,
             )))
             .await?;
@@ -87,5 +105,10 @@ impl ConnectionManager {
             tx.send(packet).await.expect("Poisoned");
         }
         Ok(())
+    }
+
+    pub async fn upsert_probe(&self, probe_metadata: &ProbeMetadata) -> Result<Probe, ServerError> {
+        Ok(self.pg_probe_repository.create(&CreateProbe::new(probe_metadata.id, probe_metadata.mac, IpNetwork::from(probe_metadata.ip))).await?)
+        
     }
 }

@@ -1,10 +1,10 @@
 use crate::templates::error::GenericError;
 
-use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
+use actix_web::http::header::ContentType;
 use actix_web::{HttpResponse, ResponseError};
 use image::ImageError;
-use minijinja::{path_loader, Environment};
+use minijinja::{Environment, path_loader};
 use rexiv2::Rexiv2Error;
 use serde::Serialize;
 use std::fmt::{Debug, Display, Formatter};
@@ -67,7 +67,10 @@ impl WebError {
 
 impl From<JoinError> for WebError {
     fn from(value: JoinError) -> Self {
-        Self::new(WebErrorKind::InternalServerError, value.to_string().as_str())
+        Self::new(
+            WebErrorKind::InternalServerError,
+            value.to_string().as_str(),
+        )
     }
 }
 
@@ -142,7 +145,6 @@ impl From<ParseIntError> for WebError {
         Self::new(WebErrorKind::IdentityError, "Invalid User ID")
     }
 }
-
 
 impl Display for WebError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

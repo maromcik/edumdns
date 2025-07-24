@@ -1,8 +1,8 @@
+use crate::repositories::common::Pagination;
 use diesel::{AsChangeset, Insertable};
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::repositories::common::Pagination;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyFilter {

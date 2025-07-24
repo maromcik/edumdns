@@ -29,12 +29,7 @@ impl TcpConnection {
 
         let bind_ip = bind_ip.parse()?;
         socket.bind(bind_ip)?;
-        match tokio::time::timeout(
-            Duration::from_secs(1),
-            socket.connect(addr.parse()?),
-        )
-        .await
-        {
+        match tokio::time::timeout(Duration::from_secs(1), socket.connect(addr.parse()?)).await {
             Ok(Ok(stream)) => Ok(Self {
                 framed: Framed::new(stream, LengthDelimitedCodec::new()),
             }),

@@ -1,6 +1,8 @@
 use crate::error::DbError;
 use crate::models::Group;
-use crate::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, Id};
+use crate::repositories::common::{
+    DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, Id,
+};
 use crate::repositories::group::models::{CreateGroup, SelectManyFilter};
 use std::ops::DerefMut;
 
@@ -70,7 +72,7 @@ impl DbCreate<CreateGroup, Group> for PgGroupRepository {
                         .get_result(c)
                         .await
                 }
-                    .scope_boxed()
+                .scope_boxed()
             })
             .await?;
         Ok(g)
@@ -80,11 +82,14 @@ impl DbCreate<CreateGroup, Group> for PgGroupRepository {
 impl DbDelete<Id, Group> for PgGroupRepository {
     async fn delete(&self, params: &Id) -> DbResultMultiple<Group> {
         let mut conn = self.pg_pool.get().await?;
-        diesel::delete(group.find(params)).get_results(&mut conn).await.map_err(DbError::from)
+        diesel::delete(group.find(params))
+            .get_results(&mut conn)
+            .await
+            .map_err(DbError::from)
     }
 }
 
-impl PgGroupRepository { 
+impl PgGroupRepository {
     async fn add_user(&self, user_id: &Id, group_id: &Id) -> Result<(), DbError> {
         let mut conn = self.pg_pool.get().await?;
         diesel::insert_into(schema::group_user::table)

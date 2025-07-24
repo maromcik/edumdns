@@ -10,7 +10,10 @@ macro_rules! retry {
                 error!("Failed; giving up after {} attempts", $count);
                 break result;
             } else {
-                error!("Failed: {}", result.err().expect("Should always be an error"));
+                error!(
+                    "Failed: {}",
+                    result.err().expect("Should always be an error")
+                );
                 warn!("Attempt {} out of {}", retries, $count);
                 retries += 1;
                 tokio::time::sleep(std::time::Duration::from_millis($interval)).await;

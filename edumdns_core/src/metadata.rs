@@ -26,8 +26,8 @@ impl PacketMetadata {
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct ProbeMetadata {
     pub id: Uuid,
+    pub mac: MacAddr,
     pub ip: IpAddr,
-    pub port: u16,
 }
 
 #[derive(Encode, Decode, Debug, Clone)]

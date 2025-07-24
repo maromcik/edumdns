@@ -1,20 +1,10 @@
 use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
-use edumdns_core::bincode_types::MacAddr;
-use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitTarget, ProbePacket};
-use log::{debug, error, info, warn};
-use std::collections::{HashMap, HashSet};
-use std::collections::hash_map::Entry;
-use std::net::{IpAddr, Ipv4Addr};
-use std::sync::Arc;
-use std::time::Duration;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::{AsyncDieselConnectionManager, PoolError};
-use ipnetwork::{IpNetwork, Ipv4Network};
-use tokio::sync::RwLock;
-use tokio::sync::mpsc::{Receiver, Sender};
-use uuid::uuid;
+use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitTarget, ProbePacket};
+use edumdns_core::bincode_types::MacAddr;
 use edumdns_db::error::DbError;
 use edumdns_db::repositories::common::DbCreate;
 use edumdns_db::repositories::device::models::CreateDevice;
@@ -23,6 +13,16 @@ use edumdns_db::repositories::packet::models::CreatePacket;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
+use ipnetwork::{IpNetwork, Ipv4Network};
+use log::{debug, error, info, warn};
+use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
+use std::net::{IpAddr, Ipv4Addr};
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::RwLock;
+use tokio::sync::mpsc::{Receiver, Sender};
+use uuid::uuid;
 
 pub struct PacketStorage {
     pub packets: HashMap<MacAddr, Arc<RwLock<HashSet<ProbePacket>>>>,
@@ -36,7 +36,11 @@ pub struct PacketStorage {
 }
 
 impl PacketStorage {
-    pub fn new(receiver: Receiver<AppPacket>, error_sender: Sender<ServerError>, db_pool: Pool<AsyncPgConnection>) -> Self {
+    pub fn new(
+        receiver: Receiver<AppPacket>,
+        error_sender: Sender<ServerError>,
+        db_pool: Pool<AsyncPgConnection>,
+    ) -> Self {
         Self {
             packets: HashMap::new(),
             packet_receiver: receiver,
@@ -64,15 +68,21 @@ impl PacketStorage {
                 AppPacket::Command(command) => match command {
                     CommandPacket::TransmitDevicePackets(target) => {
                         if let Err(e) = self.transmit_device_packets(&target).await {
-                            error!("Error while transmitting packets to target {}: {}", &target, e);
+                            error!(
+                                "Error while transmitting packets to target {}: {}",
+                                &target, e
+                            );
                         };
                     }
-                    CommandPacket::PingRequest => {}
-                    CommandPacket::PingResponse => {}
                     _ => {}
                 },
+                AppPacket::Status(status) => {},
                 AppPacket::Data(probe_packet) => {
-                    let src_mac = probe_packet.packet_metadata.datalink_metadata.mac_metadata.src_mac;
+                    let src_mac = probe_packet
+                        .packet_metadata
+                        .datalink_metadata
+                        .mac_metadata
+                        .src_mac;
 
                     // self.packets
                     //     .entry(src_mac)
@@ -88,40 +98,54 @@ impl PacketStorage {
                         Entry::Occupied(mut e) => {
                             let e = e.get_mut();
                             e.write().await.insert(probe_packet.clone());
-                            let packet = packet_repo.create(&CreatePacket::new(
-                                &5,
-                                &src_mac.to_octets(),
-                                &probe_packet.packet_metadata.datalink_metadata.mac_metadata.dst_mac.to_octets(),
-                                &probe_packet.packet_metadata.ip_metadata.src_ip.0,
-                                &probe_packet.packet_metadata.ip_metadata.dst_ip.0,
-                                &probe_packet.packet_metadata.transport_metadata.src_port,
-                                &probe_packet.packet_metadata.transport_metadata.dst_port,
-                                probe_packet.payload
-                            )).await.unwrap();
+                            // let packet = packet_repo
+                            //     .create(&CreatePacket::new(
+                            //         &5,
+                            //         &src_mac.to_octets(),
+                            //         &probe_packet
+                            //             .packet_metadata
+                            //             .datalink_metadata
+                            //             .mac_metadata
+                            //             .dst_mac
+                            //             .to_octets(),
+                            //         &probe_packet.packet_metadata.ip_metadata.src_ip.0,
+                            //         &probe_packet.packet_metadata.ip_metadata.dst_ip.0,
+                            //         &probe_packet.packet_metadata.transport_metadata.src_port,
+                            //         &probe_packet.packet_metadata.transport_metadata.dst_port,
+                            //         probe_packet.payload,
+                            //     ))
+                            //     .await
+                            //     .unwrap();
                         }
                         Entry::Vacant(e) => {
                             let e = e.insert(Default::default());
                             e.write().await.insert(probe_packet.clone());
                             tokio::task::spawn(async move {
-                                let uuid = uuid!("5eec1f02-90f6-4212-97ed-012168bf124f");
+                                let uuid = uuid!("00000000-0000-0000-0000-000000000020");
                                 // let device = device_repo.create(&CreateDevice::new(uuid, src_mac.0.octets(), IpNetwork::V4(Ipv4Network::new(Ipv4Addr::new(0,0,0,0),0).unwrap()), 0)).await.unwrap();
-                                let packet = packet_repo.create(&CreatePacket::new(
-                                    &5,
-                                    &src_mac.to_octets(),
-                                    &probe_packet.packet_metadata.datalink_metadata.mac_metadata.dst_mac.to_octets(),
-                                    &probe_packet.packet_metadata.ip_metadata.src_ip.0,
-                                    &probe_packet.packet_metadata.ip_metadata.dst_ip.0,
-                                    &probe_packet.packet_metadata.transport_metadata.src_port,
-                                    &probe_packet.packet_metadata.transport_metadata.dst_port,
-                                    probe_packet.payload
-                                )).await.unwrap();                                                  
+                                // let packet = packet_repo
+                                //     .create(&CreatePacket::new(
+                                //         &5,
+                                //         &src_mac.to_octets(),
+                                //         &probe_packet
+                                //             .packet_metadata
+                                //             .datalink_metadata
+                                //             .mac_metadata
+                                //             .dst_mac
+                                //             .to_octets(),
+                                //         &probe_packet.packet_metadata.ip_metadata.src_ip.0,
+                                //         &probe_packet.packet_metadata.ip_metadata.dst_ip.0,
+                                //         &probe_packet.packet_metadata.transport_metadata.src_port,
+                                //         &probe_packet.packet_metadata.transport_metadata.dst_port,
+                                //         probe_packet.payload,
+                                //     ))
+                                //     .await
+                                //     .unwrap();
                             });
                         }
                     }
 
                     debug!("Packet stored in memory: {:?}", src_mac);
-
-
                 }
             }
         }

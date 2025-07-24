@@ -1,4 +1,4 @@
-use minijinja::{path_loader, Environment};
+use minijinja::{Environment, path_loader};
 use minijinja_autoreload::AutoReloader;
 use std::sync::Arc;
 
@@ -9,7 +9,7 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(jinja: Arc<AutoReloader>) -> Self {
-        AppState { jinja, }
+        AppState { jinja }
     }
 }
 
@@ -22,4 +22,3 @@ pub fn create_reloader(template_path: String) -> AutoReloader {
         Ok(env)
     })
 }
-

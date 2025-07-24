@@ -1,7 +1,6 @@
-use std::fmt::{Debug, Display, Formatter};
 use diesel::result::DatabaseErrorKind;
+use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
-
 
 #[derive(Error, Debug, Clone)]
 pub enum DbErrorKind {
@@ -44,19 +43,28 @@ impl DbError {
     }
 }
 
-
 impl From<diesel::result::Error> for DbError {
     fn from(error: diesel::result::Error) -> Self {
         match error {
-            diesel::result::Error::NotFound => DbError::new(DbErrorKind::BackendError(BackendError::new(BackendErrorKind::DoesNotExist, "".to_string())), error.to_string().as_str()),
-            diesel::result::Error::DatabaseError(err, err_info) => {
-                match err {
-                    DatabaseErrorKind::UniqueViolation => DbError::new(DbErrorKind::UniqueConstraintError, err_info.message()),
-                    DatabaseErrorKind::ForeignKeyViolation => DbError::new(DbErrorKind::ForeignKeyError, err_info.message()),
-                    DatabaseErrorKind::NotNullViolation => DbError::new(DbErrorKind::NotNullError, err_info.message()),
-                    _ => DbError::new(DbErrorKind::DatabaseError, err_info.message()),
+            diesel::result::Error::NotFound => DbError::new(
+                DbErrorKind::BackendError(BackendError::new(
+                    BackendErrorKind::DoesNotExist,
+                    "".to_string(),
+                )),
+                error.to_string().as_str(),
+            ),
+            diesel::result::Error::DatabaseError(err, err_info) => match err {
+                DatabaseErrorKind::UniqueViolation => {
+                    DbError::new(DbErrorKind::UniqueConstraintError, err_info.message())
                 }
-            }
+                DatabaseErrorKind::ForeignKeyViolation => {
+                    DbError::new(DbErrorKind::ForeignKeyError, err_info.message())
+                }
+                DatabaseErrorKind::NotNullViolation => {
+                    DbError::new(DbErrorKind::NotNullError, err_info.message())
+                }
+                _ => DbError::new(DbErrorKind::DatabaseError, err_info.message()),
+            },
             err => DbError::new(DbErrorKind::DatabaseError, err.to_string().as_str()),
         }
     }
@@ -88,10 +96,7 @@ impl From<diesel_async::pooled_connection::deadpool::PoolError> for DbError {
 
 impl From<BackendError> for DbError {
     fn from(value: BackendError) -> Self {
-        Self::new(
-            DbErrorKind::BackendError(value),
-            "",
-        )
+        Self::new(DbErrorKind::BackendError(value), "")
     }
 }
 
@@ -106,7 +111,6 @@ pub enum BackendErrorKind {
     UpdateParametersEmpty,
     #[error("The provided email and password combination is incorrect.")]
     UserPasswordDoesNotMatch,
-
 }
 
 #[derive(Clone, Debug, Error)]
@@ -119,7 +123,10 @@ impl BackendError {
     #[must_use]
     #[inline]
     pub const fn new(error: BackendErrorKind, message: String) -> Self {
-        Self { error_kind: error, message }
+        Self {
+            error_kind: error,
+            message,
+        }
     }
 
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

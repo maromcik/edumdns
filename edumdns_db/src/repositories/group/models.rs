@@ -1,7 +1,7 @@
 use crate::repositories::common::{Id, Pagination};
 use diesel::{AsChangeset, Insertable};
 use serde::{Deserialize, Serialize};
- 
+
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyFilter {
     pub name: Option<String>,
@@ -13,7 +13,7 @@ impl SelectManyFilter {
         Self { name, pagination }
     }
 }
- 
+
 #[derive(Serialize, Deserialize, AsChangeset, Insertable)]
 #[diesel(table_name = crate::schema::group)]
 pub struct CreateGroup {

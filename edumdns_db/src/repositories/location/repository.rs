@@ -7,9 +7,9 @@ use crate::repositories::location::models::{CreateLocation, SelectManyFilter};
 use crate::schema;
 use crate::schema::location::name;
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
-use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use diesel_async::pooled_connection::deadpool::Pool;
 use schema::location::dsl::*;
 
 #[derive(Clone)]

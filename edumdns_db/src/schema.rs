@@ -72,8 +72,6 @@ diesel::table! {
         adopted -> Bool,
         mac -> Macaddr,
         ip -> Cidr,
-        port -> Int4,
-        vlan -> Nullable<Int4>,
     }
 }
 

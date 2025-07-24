@@ -1,9 +1,9 @@
+use edumdns_db::error::DbError;
 use edumdns_probe::error::ProbeError;
 use edumdns_server::error::ServerError;
+use edumdns_web::error::WebError;
 use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
-use edumdns_db::error::DbError;
-use edumdns_web::error::WebError;
 
 #[derive(Error, Debug, Clone)]
 pub enum AppErrorKind {

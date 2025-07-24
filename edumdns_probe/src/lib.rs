@@ -1,22 +1,21 @@
-use std::net::IpAddr;
 use crate::capture::listen_and_send;
+use crate::connection::ConnectionManager;
 use crate::error::{ProbeError, ProbeErrorKind};
-use edumdns_core::bincode_types::Uuid;
+use crate::probe::ProbeCapture;
+use edumdns_core::bincode_types::{MacAddr, Uuid};
 use edumdns_core::capture::PacketCaptureGeneric;
-use edumdns_core::metadata::ProbeMetadata;
-use pcap::Active;
-use pnet::datalink::interfaces;
 use edumdns_core::connection::TcpConnection;
+use edumdns_core::metadata::ProbeMetadata;
 use edumdns_core::retry;
 use log::{debug, error, warn};
-use crate::connection::ConnectionManager;
-use crate::probe::ProbeCapture;
+use pcap::Active;
+use pnet::datalink::interfaces;
+use std::net::IpAddr;
 
-pub mod error;
 pub mod capture;
 pub mod connection;
+pub mod error;
 pub mod probe;
-
 
 pub async fn probe_init() -> Result<(), ProbeError> {
     let uuid = Uuid(uuid::Uuid::from_u128(32));
@@ -28,22 +27,20 @@ pub async fn probe_init() -> Result<(), ProbeError> {
     let probe_metadata = ProbeMetadata {
         id: uuid,
         ip: "127.0.0.1".parse::<IpAddr>()?,
-        port: 0,
+        mac: MacAddr::from_octets([0, 0, 0, 0, 0, 0]),
     };
 
-    let mut connection_manager = ConnectionManager::new(probe_metadata.clone(), server_addr_port, bind_ip, rx, 5).await?;
+    let mut connection_manager =
+        ConnectionManager::new(probe_metadata.clone(), server_addr_port, bind_ip, rx, 5).await?;
 
     let config = connection_manager.connection_init_probe().await?;
-
 
     let probe_capture = ProbeCapture::new(tx, probe_metadata, config);
     probe_capture.start_captures().await?;
 
-
     let transmit_task = tokio::spawn(async move {
         if let Err(e) = connection_manager.transmit_packets().await {
             error!("Transmit error: {e}, retrying...");
-
         }
 
         Ok::<(), ProbeError>(())

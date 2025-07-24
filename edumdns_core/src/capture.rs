@@ -44,7 +44,10 @@ where
 
         info!("Listening on: {:?}", target_name);
 
-        Ok(PacketCaptureGeneric { capture, filter: filter.map(|s| s.to_string()) })
+        Ok(PacketCaptureGeneric {
+            capture,
+            filter: filter.map(|s| s.to_string()),
+        })
     }
 
     pub fn open_file_capture(

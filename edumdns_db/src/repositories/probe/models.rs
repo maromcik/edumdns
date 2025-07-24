@@ -11,8 +11,6 @@ pub struct SelectManyFilter {
     pub adopted: Option<bool>,
     pub mac: Option<[u8; 6]>,
     pub ip: Option<IpNetwork>,
-    pub port: Option<i32>,
-    pub vlan: Option<i32>,
     pub pagination: Option<Pagination>,
 }
 
@@ -23,8 +21,6 @@ impl SelectManyFilter {
         adopted: Option<bool>,
         mac: Option<[u8; 6]>,
         ip: Option<IpNetwork>,
-        port: Option<i32>,
-        vlan: Option<i32>,
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
@@ -33,8 +29,6 @@ impl SelectManyFilter {
             adopted,
             mac,
             ip,
-            port,
-            vlan,
             pagination,
         }
     }
@@ -46,16 +40,13 @@ pub struct CreateProbe {
     pub id: Uuid,
     pub mac: [u8; 6],
     pub ip: IpNetwork,
-    pub port: i32,
 }
 
 impl CreateProbe {
-    pub fn new(id: Uuid, mac: [u8; 6], ip: IpNetwork, port: i32) -> Self {
+    pub fn new(id: edumdns_core::bincode_types::Uuid, mac: edumdns_core::bincode_types::MacAddr, ip: IpNetwork) -> Self {
         Self {
-            id,
-            mac,
-            ip,
-            port,
-        }
+            id: id.0,
+            mac: mac.0.octets(),
+            ip }
     }
 }

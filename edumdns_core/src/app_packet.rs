@@ -1,20 +1,25 @@
 use crate::bincode_types::MacAddr;
+use crate::bincode_types::Uuid;
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};
 use crate::network_packet::{DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};
 use std::fmt::Display;
 use std::hash::{Hash, Hasher};
-use crate::bincode_types::Uuid;
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum AppPacket {
     Command(CommandPacket),
     Data(ProbePacket),
+    Status(StatusPacket)
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum CommandPacket {
     TransmitDevicePackets(PacketTransmitTarget),
+}
+
+#[derive(Encode, Decode, Debug, Clone)]
+pub enum StatusPacket {
     PingRequest,
     PingResponse,
     ProbeHello(ProbeMetadata),
@@ -22,7 +27,6 @@ pub enum CommandPacket {
     ProbeUnknown,
     ProbeRequestConfig(ProbeMetadata),
     ProbeResponseConfig(ProbeConfigPacket),
-
 }
 
 #[derive(Encode, Decode, Debug, Clone)]

@@ -1,4 +1,5 @@
 ## Backend
+- probe config - just a file with uuid?
 - config probe - server
   - say hello
   - check if adopted

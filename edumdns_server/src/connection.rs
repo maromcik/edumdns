@@ -30,7 +30,7 @@ impl ConnectionManager {
 
         // TODO check uuid in DB
         // TODO create it in the db
-        let adopted = true;
+        let adopted = false;
         if adopted {
             self.connection
                 .send_packet(&AppPacket::Command(CommandPacket::ProbeAdopted))

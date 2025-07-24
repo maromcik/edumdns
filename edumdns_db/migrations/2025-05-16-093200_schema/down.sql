@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS "Bike", "User", "Brand", "Model", "BikeImage", "BikeTag", "Tag" CASCADE;
+DROP TABLE IF EXISTS "location", "user", "group", "probe", "probe_config", "group_user", "group_probe_permission", "device", "packet" CASCADE;

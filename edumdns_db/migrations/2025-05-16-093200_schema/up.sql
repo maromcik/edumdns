@@ -46,6 +46,17 @@ CREATE TABLE IF NOT EXISTS "probe"
     FOREIGN KEY (location_id) REFERENCES "location" (id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS "probe_config"
+(
+    probe_id       uuid         PRIMARY KEY,
+    interface      text         NOT NULL,
+    filter         text         NOT NULL,
+
+    UNIQUE (probe_id, interface, filter),
+    FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE
+);
+
+
 CREATE TABLE IF NOT EXISTS "group_user"
 (
     group_id        bigint      NOT NULL,
@@ -56,17 +67,6 @@ CREATE TABLE IF NOT EXISTS "group_user"
     FOREIGN KEY (user_id) REFERENCES "user" (id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS "user_probe_permission"
-(
-    user_id         bigint      NOT NULL,
-    probe_id        uuid        NOT NULL,
-    permission      permission  NOT NULL,
-
-    PRIMARY KEY (user_id, probe_id),
-    FOREIGN KEY (user_id) REFERENCES "user" (id) ON DELETE CASCADE,
-    FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE
-
-);
 
 CREATE TABLE IF NOT EXISTS "group_probe_permission"
 (
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS "group_probe_permission"
 CREATE TABLE IF NOT EXISTS "device"
 (
     id             bigserial    PRIMARY KEY,
-    probe_id       uuid       NOT NULL,
+    probe_id       uuid         NOT NULL,
     mac            macaddr      NOT NULL,
     ip             cidr         NOT NULL,
     port           int          NOT NULL,
@@ -108,14 +108,16 @@ CREATE TABLE IF NOT EXISTS "packet"
     dst_port       int          NOT NULL,
     payload        bytea        NOT NULL,
 
+    UNIQUE (device_id, src_mac, src_addr, payload),
     FOREIGN KEY (device_id) REFERENCES "device" (id) ON DELETE CASCADE
 );
 
 
 
+
 CREATE INDEX IF NOT EXISTS "Probe_owner_id" ON "probe" (owner_id);
 CREATE INDEX IF NOT EXISTS "Probe_location_id" ON "probe" (location_id);
-CREATE INDEX IF NOT EXISTS "UserProbePermission_group_id_probe_id" ON "user_probe_permission" (user_id, probe_id);
+CREATE INDEX IF NOT EXISTS "ProbeConfig_probe_id" ON "probe_config" (probe_id);
 CREATE INDEX IF NOT EXISTS "GroupProbePermission_group_id_probe_id" ON "group_probe_permission" (group_id, probe_id);
 CREATE INDEX IF NOT EXISTS "Device_probe_id_mac" ON "device" (probe_id, mac);
 CREATE INDEX IF NOT EXISTS "Packet_device_id" ON "packet" (device_id);

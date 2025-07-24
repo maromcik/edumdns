@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS "probe_config"
 (
     probe_id       uuid         PRIMARY KEY,
     interface      text         NOT NULL,
-    filter         text         NOT NULL,
+    filter         text,
 
     UNIQUE (probe_id, interface, filter),
     FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE

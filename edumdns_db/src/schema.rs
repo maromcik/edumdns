@@ -79,7 +79,7 @@ diesel::table! {
     probe_config (probe_id) {
         probe_id -> Uuid,
         interface -> Text,
-        filter -> Text,
+        filter -> Nullable<Text>,
     }
 }
 

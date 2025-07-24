@@ -1,5 +1,5 @@
 use crate::error::DbError;
-use crate::models::{Location, Probe, User};
+use crate::models::{Location, Probe, ProbeConfig, User};
 use crate::repositories::common::{
     DbCreate, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultSingle,
 };
@@ -13,6 +13,8 @@ use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use schema::probe::dsl::*;
 use uuid::Uuid;
+use crate::schema::probe_config::dsl::probe_config;
+use crate::schema::probe_config::probe_id;
 
 #[derive(Clone)]
 pub struct PgProbeRepository {
@@ -97,7 +99,7 @@ impl DbCreate<CreateProbe, Probe> for PgProbeRepository {
 }
 
 impl PgProbeRepository {
-    async fn forget(&self, params: &Uuid) -> DbResult<()> {
+    pub async fn forget(&self, params: &Uuid) -> DbResult<()> {
         let mut conn = self.pg_pool.get().await?;
         diesel::update(probe.find(params))
             .set(adopted.eq(false))
@@ -106,12 +108,23 @@ impl PgProbeRepository {
         Ok(())
     }
 
-    async fn adopt(&self, params: &Uuid) -> DbResult<()> {
+    pub async fn adopt(&self, params: &Uuid) -> DbResult<()> {
         let mut conn = self.pg_pool.get().await?;
         diesel::update(probe.find(params))
             .set(adopted.eq(true))
             .execute(&mut conn)
             .await?;
         Ok(())
+    }
+
+    pub async fn get_probe_config(&self, params: &Uuid) -> DbResultMultiple<ProbeConfig> {
+        let mut conn = self.pg_pool.get().await?;
+
+        probe_config
+            .filter(probe_id.eq(params))
+            .select(ProbeConfig::as_select())
+            .load(&mut conn)
+            .await
+            .map_err(DbError::from)
     }
 }

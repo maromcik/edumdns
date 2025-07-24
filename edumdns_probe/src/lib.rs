@@ -27,7 +27,7 @@ pub async fn probe_init() -> Result<(), ProbeError> {
     let probe_metadata = ProbeMetadata {
         id: uuid,
         ip: "127.0.0.1".parse::<IpAddr>()?,
-        mac: MacAddr::from_octets([0, 0, 0, 0, 0, 0]),
+        mac: MacAddr::from_octets([1, 0, 0, 0, 0, 0]),
     };
 
     let mut connection_manager =

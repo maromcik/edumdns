@@ -1,19 +1,21 @@
 use crate::error::{ServerError, ServerErrorKind};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbeConfigElement, ProbeConfigPacket, StatusPacket};
+use edumdns_core::app_packet::{
+    AppPacket, CommandPacket, ProbeConfigElement, ProbeConfigPacket, StatusPacket,
+};
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::TcpConnection;
+use edumdns_core::metadata::ProbeMetadata;
+use edumdns_db::models::Probe;
 use edumdns_db::repositories::common::{DbCreate, DbReadOne};
+use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
-use std::time::Duration;
 use ipnetwork::IpNetwork;
+use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
 use tokio::time::sleep;
-use edumdns_core::metadata::ProbeMetadata;
-use edumdns_db::models::Probe;
-use edumdns_db::repositories::probe::models::CreateProbe;
 
 pub struct ConnectionManager {
     connection: TcpConnection,
@@ -42,9 +44,6 @@ impl ConnectionManager {
             return error;
         };
 
-        // TODO check uuid in DB
-        // TODO create it in the db
-        
         let probe = self.upsert_probe(&hello_metadata).await?;
         if probe.adopted {
             self.connection
@@ -70,19 +69,9 @@ impl ConnectionManager {
             return error;
         }
 
-        // TODO pull config from DB
-
-        let probe_config = ProbeConfigElement {
-            interface_name: "wlp2s0".to_string(),
-            bpf_filter: None,
-        };
-
-        let probe_config_packet = ProbeConfigPacket {
-            interface_filter_map: vec![probe_config],
-        };
         self.connection
             .send_packet(&AppPacket::Status(StatusPacket::ProbeResponseConfig(
-                probe_config_packet,
+                self.get_probe_config(&config_metadata).await?,
             )))
             .await?;
 
@@ -108,7 +97,29 @@ impl ConnectionManager {
     }
 
     pub async fn upsert_probe(&self, probe_metadata: &ProbeMetadata) -> Result<Probe, ServerError> {
-        Ok(self.pg_probe_repository.create(&CreateProbe::new(probe_metadata.id, probe_metadata.mac, IpNetwork::from(probe_metadata.ip))).await?)
-        
+        Ok(self
+            .pg_probe_repository
+            .create(&CreateProbe::new(
+                probe_metadata.id,
+                probe_metadata.mac,
+                IpNetwork::from(probe_metadata.ip),
+            ))
+            .await?)
+    }
+
+    pub async fn get_probe_config(
+        &self,
+        probe_metadata: &ProbeMetadata,
+    ) -> Result<ProbeConfigPacket, ServerError> {
+        let config: Vec<ProbeConfigElement> = self
+            .pg_probe_repository
+            .get_probe_config(&probe_metadata.id.0)
+            .await?
+            .into_iter()
+            .map(|c| ProbeConfigElement::new(c.interface, c.filter))
+            .collect();
+        Ok(ProbeConfigPacket {
+            interface_filter_map: config,
+        })
     }
 }

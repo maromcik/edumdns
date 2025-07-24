@@ -33,6 +33,15 @@ pub struct Probe {
 }
 
 #[derive(Serialize, Deserialize, Queryable, Selectable)]
+#[diesel(table_name = crate::schema::probe_config)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct ProbeConfig {
+    pub probe_id: Uuid,
+    pub interface: String,
+    pub filter: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Queryable, Selectable)]
 #[diesel(table_name = crate::schema::device)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Device {

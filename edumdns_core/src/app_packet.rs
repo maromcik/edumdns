@@ -35,6 +35,15 @@ pub struct ProbeConfigElement {
     pub bpf_filter: Option<String>,
 }
 
+impl ProbeConfigElement {
+    pub fn new(interface_name: String, bpf_filter: Option<String>) -> Self {
+        Self {
+            interface_name,
+            bpf_filter,
+        }
+    }
+}
+
 #[derive(Encode, Decode, Debug, Clone)]
 pub struct ProbeConfigPacket {
     pub interface_filter_map: Vec<ProbeConfigElement>,

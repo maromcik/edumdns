@@ -14,6 +14,7 @@ use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
+use edumdns_core::app_packet::{AppPacket, CommandPacket};
 
 pub mod capture;
 pub mod connection;
@@ -25,7 +26,9 @@ pub async fn probe_init() -> Result<(), ProbeError> {
     let bind_ip = "192.168.4.65:0";
     let server_addr_port = "127.0.0.1:5000";
 
-    let (tx, rx) = tokio::sync::mpsc::channel(1000);
+    let (send_transmitter, send_receiver) = tokio::sync::mpsc::channel(1000);
+    let (receive_transmitter, receive_receiver) = tokio::sync::mpsc::channel(1000);
+    let (command_transmitter, mut command_receiver) = tokio::sync::mpsc::channel(1000);
 
     let probe_metadata = ProbeMetadata {
         id: uuid,
@@ -33,40 +36,54 @@ pub async fn probe_init() -> Result<(), ProbeError> {
         mac: MacAddr::from_octets([1, 0, 0, 0, 0, 0]),
     };
 
-    let connection_manager = Arc::new(Mutex::new(
-        ConnectionManager::new(
-            probe_metadata.clone(),
-            server_addr_port,
-            bind_ip,
-            rx,
-            5,
-            Duration::from_secs(1),
-            Duration::from_secs(1),
-        )
-        .await?,
-    ));
+    let mut connection_manager = ConnectionManager::new(
+        probe_metadata.clone(),
+        server_addr_port,
+        bind_ip,
+        send_receiver, 
+        receive_transmitter,
+        5,
+        Duration::from_secs(1),
+        Duration::from_secs(1))
+        .await?;
 
     let config = connection_manager
-        .lock()
-        .await
         .connection_init_probe()
         .await?;
 
-    tokio::spawn(async move {
-        // connection_manager.lock().await.reconnect().await;
-    });
-
-    let probe_capture = ProbeCapture::new(tx, probe_metadata, config);
+    let probe_capture = ProbeCapture::new(send_transmitter.clone(), probe_metadata, config);
     probe_capture.start_captures().await?;
 
-    let transmit_task = tokio::spawn(async move {
-        if let Err(e) = connection_manager.lock().await.transmit_packets().await {
-            error!("Transmit error: {e}, retrying...");
-        }
+    // let pinger_task = tokio::spawn(async move {
+    //     connection_manager_local.lock().await.pinger().await?;
+    //     Ok::<(), ProbeError>(())
+    // });
+    //
+    // let watcher_task = tokio::spawn(async move {
+    //     connection_manager_local.lock().await.watcher().await?;
+    //     Ok::<(), ProbeError>(())
+    // });
 
+    let transmit_task = tokio::spawn(async move {
+        connection_manager.transmit_packets().await?;
         Ok::<(), ProbeError>(())
     });
+    
+    tokio::spawn(async move {
+        ConnectionManager::pinger(send_transmitter, receive_receiver, command_transmitter, Duration::from_secs(1)).await?;
+        Ok::<(), ProbeError>(())
+    });
+    
+    
+    while let Some(packet) = command_receiver.recv().await {
+        if let AppPacket::Command(CommandPacket::ReconnectProbe) = packet {
+            // connection_manager.reconnect().await?;
+        }
+    }
+
     transmit_task.await??;
+    // pinger_task.await??;
+    // watcher_task.await??;
 
     Ok(())
 }

@@ -16,6 +16,7 @@ pub enum AppPacket {
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum CommandPacket {
     TransmitDevicePackets(PacketTransmitRequest),
+    ReconnectProbe,
 }
 
 #[derive(Encode, Decode, Debug, Clone)]

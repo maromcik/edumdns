@@ -82,7 +82,7 @@ impl ConnectionManager {
     }
 
     pub async fn receive_init_packet(&mut self) -> Result<AppPacket, ServerError> {
-        let packet: Option<(AppPacket, usize)> = self.connection.receive_next().await?;
+        let packet: Option<(AppPacket, usize)> = self.connection.receive_next(Some(self.global_timeout)).await?;
         let Some((app_packet, _)) = packet else {
             return Err(ServerError::new(
                 ServerErrorKind::InvalidConnectionInitiation,
@@ -93,7 +93,28 @@ impl ConnectionManager {
     }
 
     pub async fn transfer_packets(&mut self, tx: Sender<AppPacket>) -> Result<(), ServerError> {
-        while let Some((packet, length)) = self.connection.receive_next::<AppPacket>().await? {
+        while let Some((packet, length)) = self.connection.receive_next::<AppPacket>(None).await? {
+            match &packet {
+                AppPacket::Command(_) => {}
+                AppPacket::Data(_) => {}
+                AppPacket::Status(status) => {
+                    match status {
+                        StatusPacket::PingRequest => {
+                            // TODO log time since last ping, threshold for considering a probe dead.
+
+                            self.connection
+                                .send_packet(&AppPacket::Status(StatusPacket::PingResponse))
+                                .await?;
+                        }
+                        StatusPacket::PingResponse => {}
+                        StatusPacket::ProbeHello(_) => {}
+                        StatusPacket::ProbeAdopted => {}
+                        StatusPacket::ProbeUnknown => {}
+                        StatusPacket::ProbeRequestConfig(_) => {}
+                        StatusPacket::ProbeResponseConfig(_) => {}
+                    }
+                }
+            }
             tx.send(packet).await.expect("Poisoned");
         }
         Ok(())

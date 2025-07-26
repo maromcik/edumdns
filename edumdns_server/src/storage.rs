@@ -3,7 +3,7 @@ use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::{AsyncDieselConnectionManager, PoolError};
-use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequest, ProbePacket};
+use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequest, ProbePacket, StatusPacket};
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_db::error::DbError;
 use edumdns_db::repositories::common::DbCreate;
@@ -76,7 +76,19 @@ impl PacketStorage {
                     }
                     _ => {}
                 },
-                AppPacket::Status(status) => {}
+                AppPacket::Status(status) => {
+                    match status {
+                        StatusPacket::PingRequest => {
+
+                        }
+                        StatusPacket::PingResponse => {}
+                        StatusPacket::ProbeHello(_) => {}
+                        StatusPacket::ProbeAdopted => {}
+                        StatusPacket::ProbeUnknown => {}
+                        StatusPacket::ProbeRequestConfig(_) => {}
+                        StatusPacket::ProbeResponseConfig(_) => {}
+                    }
+                }
                 AppPacket::Data(probe_packet) => {
                     let src_mac = probe_packet
                         .packet_metadata

@@ -8,6 +8,7 @@ use std::fmt::Debug;
 use std::io::Error;
 use std::net::SocketAddr;
 use std::time::Duration;
+use futures::stream::{SplitSink, SplitStream};
 use tokio::net::UdpSocket;
 use tokio::net::{TcpSocket, TcpStream};
 use tokio::time::error::Elapsed;
@@ -15,7 +16,8 @@ use tokio::time::{sleep, timeout};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 pub struct TcpConnection {
-    pub framed: Framed<TcpStream, LengthDelimitedCodec>,
+    pub framed_sink: SplitSink<Framed<TcpStream, LengthDelimitedCodec>, Bytes>,
+    pub framed_stream: SplitStream<Framed<TcpStream, LengthDelimitedCodec>>,
     pub global_timeout: Duration,
 }
 
@@ -24,8 +26,10 @@ impl TcpConnection {
         stream: TcpStream,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
+        let framed = Framed::new(stream, LengthDelimitedCodec::new()).split();
         Ok(Self {
-            framed: Framed::new(stream, LengthDelimitedCodec::new()),
+            framed_sink: framed.0,
+            framed_stream: framed.1,
             global_timeout,
         })
     }
@@ -36,7 +40,6 @@ impl TcpConnection {
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
         let socket = TcpSocket::new_v4()?;
-
         let bind_ip = bind_ip.parse()?;
         socket.bind(bind_ip)?;
         let stream = tokio::time::timeout(global_timeout, socket.connect(addr.parse()?))
@@ -47,36 +50,21 @@ impl TcpConnection {
                     format!("Connection to {bind_ip} timed out").as_str(),
                 )
             })??;
-
+        let framed = Framed::new(stream, LengthDelimitedCodec::new()).split();
         Ok(Self {
-            framed: Framed::new(stream, LengthDelimitedCodec::new()),
+            framed_sink: framed.0,
+            framed_stream: framed.1,
             global_timeout,
         })
     }
 
-    pub async fn pinger(&mut self) -> Result<(), CoreError> {
-        let ping = AppPacket::Status(StatusPacket::PingRequest);
-
-        self.send_packet(&ping).await?;
-
-        let response: Option<(AppPacket, usize)> = self.receive_next().await?;
-
-        let Some((AppPacket::Status(StatusPacket::PingResponse), _)) = response else {
-            return Err(CoreError::new(
-                CoreErrorKind::PingError,
-                "Ping response has not been received",
-            ));
-        };
-
-        Ok(())
-    }
 
     pub async fn send_packet<T>(&mut self, packet: &T) -> Result<(), CoreError>
     where
         T: Encode,
     {
         let encoded = TcpConnection::encode_frame(packet)?;
-        timeout(self.global_timeout, self.framed.send(Bytes::from(encoded)))
+        timeout(self.global_timeout, self.framed_sink.send(Bytes::from(encoded)))
             .await
             .map_err(|_| {
                 CoreError::new(CoreErrorKind::TimeoutError, "Sending a packet timed out")
@@ -84,51 +72,59 @@ impl TcpConnection {
         Ok(())
     }
 
-    pub async fn reconnect(&mut self, addr: &str) -> Result<(), CoreError> {
-        let stream = TcpStream::connect(addr).await?;
-        self.framed = Framed::new(stream, LengthDelimitedCodec::new());
-        Ok(())
-    }
+    // pub async fn reconnect(&mut self, addr: &str) -> Result<(), CoreError> {
+    //     let stream = TcpStream::connect(addr).await?;
+    //     self.framed = Framed::new(stream, LengthDelimitedCodec::new());
+    //     Ok(())
+    // }
+    //
+    // pub async fn send_with_reconnect<T>(
+    //     &mut self,
+    //     addr: &str,
+    //     packet: &T,
+    //     max_retries: usize,
+    // ) -> Result<(), CoreError>
+    // where
+    //     T: Encode,
+    // {
+    //     let mut counter = 0;
+    //
+    //     loop {
+    //         match self.send_packet(&packet).await {
+    //             Ok(_) => return Ok(()),
+    //             Err(e) => {
+    //                 error!("Failed to send packet: {e}");
+    //                 if counter >= max_retries {
+    //                     return Err(e);
+    //                 }
+    //                 counter += 1;
+    //                 warn!("Retrying to send the packet; attempt: {counter} of {max_retries}");
+    //                 sleep(Duration::from_secs(1)).await;
+    //                 if let Err(reconnect_error) = self.reconnect(addr).await {
+    //                     error!("Failed to reconnect: {reconnect_error}");
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
-    pub async fn send_with_reconnect<T>(
-        &mut self,
-        addr: &str,
-        packet: &T,
-        max_retries: usize,
-    ) -> Result<(), CoreError>
-    where
-        T: Encode,
-    {
-        let mut counter = 0;
-
-        loop {
-            match self.send_packet(&packet).await {
-                Ok(_) => return Ok(()),
-                Err(e) => {
-                    error!("Failed to send packet: {e}");
-                    if counter >= max_retries {
-                        return Err(e);
-                    }
-                    counter += 1;
-                    warn!("Retrying to send the packet; attempt: {counter} of {max_retries}");
-                    sleep(Duration::from_secs(1)).await;
-                    if let Err(reconnect_error) = self.reconnect(addr).await {
-                        error!("Failed to reconnect: {reconnect_error}");
-                    }
-                }
-            }
-        }
-    }
-
-    pub async fn receive_next<T>(&mut self) -> Result<Option<(T, usize)>, CoreError>
+    pub async fn receive_next<T>(&mut self, timeout: Option<Duration>) -> Result<Option<(T, usize)>, CoreError>
     where
         T: Decode<()>,
     {
-        match timeout(self.global_timeout, self.framed.next())
-            .await
-            .map_err(|_| {
-                CoreError::new(CoreErrorKind::TimeoutError, "Receiving a packet timed out")
-            })? {
+        let packet = match timeout {
+            None => self.framed_stream.next().await,
+            Some(t) => {
+                tokio::time::timeout(t, self.framed_stream.next())
+                    .await
+                    .map_err(|_| {
+                        CoreError::new(CoreErrorKind::TimeoutError, "Receiving a packet timed out")
+                    })?
+            }
+        };
+
+
+        match packet {
             None => Ok(None),
             Some(frame) => {
                 let decoded = Self::decode_frame(frame?)?;

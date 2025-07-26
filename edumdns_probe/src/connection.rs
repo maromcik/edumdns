@@ -8,15 +8,18 @@ use log::{debug, error, info, warn};
 use pnet::packet;
 use std::pin::Pin;
 use std::time::Duration;
-use tokio::sync::mpsc::Receiver;
+use futures::SinkExt;
+use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::sleep;
+use edumdns_core::error::{CoreError, CoreErrorKind};
 
 pub struct ConnectionManager {
     probe_metadata: ProbeMetadata,
     server_connection_string: String,
     bind_ip: String,
     pub connection: TcpConnection,
-    rx: Receiver<AppPacket>,
+    pub send_receiver: Receiver<AppPacket>,
+    pub receive_transmitter: Sender<AppPacket>,
     max_retries: usize,
     retry_interval: Duration,
     global_timeout: Duration,
@@ -27,7 +30,8 @@ impl ConnectionManager {
         probe_metadata: ProbeMetadata,
         server_connection_string: &str,
         bind_ip: &str,
-        rx: Receiver<AppPacket>,
+        send_receiver: Receiver<AppPacket>,
+        receive_transmitter: Sender<AppPacket>,
         max_retries: usize,
         retry_interval: Duration,
         global_timeout: Duration,
@@ -41,7 +45,8 @@ impl ConnectionManager {
                 max_retries,
                 retry_interval
             )?,
-            rx,
+            send_receiver,
+            receive_transmitter,
             max_retries,
             retry_interval,
             global_timeout,
@@ -83,7 +88,7 @@ impl ConnectionManager {
     }
 
     pub async fn receive_init_packet(&mut self) -> Result<AppPacket, ProbeError> {
-        let packet: Option<(AppPacket, usize)> = self.connection.receive_next().await?;
+        let packet: Option<(AppPacket, usize)> = self.connection.receive_next(Some(self.global_timeout)).await?;
         let Some((app_packet, _)) = packet else {
             return Err(ProbeError::new(
                 ProbeErrorKind::InvalidConnectionInitiation,
@@ -94,8 +99,15 @@ impl ConnectionManager {
     }
 
     pub async fn transmit_packets(&mut self) -> Result<(), ProbeError> {
-        while let Some(packet) = self.rx.recv().await {
+        while let Some(packet) = self.send_receiver.recv().await {
             self.send_packet_with_reconnect(&packet).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn receive_packets(&mut self) -> Result<(), ProbeError> {
+        while let Some((packet, _)) = self.connection.receive_next::<AppPacket>(Some(self.global_timeout)).await? {
+            self.receive_transmitter.send(packet).await.expect("Poisoned");
         }
         Ok(())
     }
@@ -150,6 +162,24 @@ impl ConnectionManager {
                 error!("Failed to reconnect: {e}");
                 Err(ProbeError::from(e))
             }
+        }
+    }
+
+    pub async fn pinger(send_transmitter: Sender<AppPacket>, mut receive_receiver: Receiver<AppPacket>, command_transmitter: Sender<AppPacket>, interval: Duration) -> Result<(), CoreError> {
+        debug!("Starting pinger");
+        loop {
+            send_transmitter.send(AppPacket::Status(StatusPacket::PingRequest)).await.expect("Poisoned");
+            debug!("Ping sent");
+            let response = receive_receiver.recv().await.expect("Poisoned");
+            debug!("Ping response received");
+            let AppPacket::Status(StatusPacket::PingResponse) = response else {
+                command_transmitter.send(AppPacket::Command(CommandPacket::ReconnectProbe)).await.expect("Poisoned");
+                return Err(CoreError::new(
+                    CoreErrorKind::PingError,
+                    "Ping response has not been received, restarting probe",
+                ));
+            };
+            sleep(interval).await;
         }
     }
 }

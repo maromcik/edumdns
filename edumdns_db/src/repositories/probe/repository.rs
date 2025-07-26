@@ -6,6 +6,8 @@ use crate::repositories::common::{
 use crate::repositories::probe::models::{CreateProbe, SelectManyFilter};
 use crate::schema;
 use crate::schema::location::dsl::location;
+use crate::schema::probe_config::dsl::probe_config;
+use crate::schema::probe_config::probe_id;
 use crate::schema::user::dsl::user;
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::AsyncPgConnection;
@@ -13,8 +15,6 @@ use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use schema::probe::dsl::*;
 use uuid::Uuid;
-use crate::schema::probe_config::dsl::probe_config;
-use crate::schema::probe_config::probe_id;
 
 #[derive(Clone)]
 pub struct PgProbeRepository {

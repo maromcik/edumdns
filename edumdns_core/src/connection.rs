@@ -1,3 +1,4 @@
+use crate::app_packet::{AppPacket, StatusPacket};
 use crate::error::{CoreError, CoreErrorKind};
 use bincode::{Decode, Encode};
 use bytes::{Bytes, BytesMut};
@@ -9,39 +10,65 @@ use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::net::UdpSocket;
 use tokio::net::{TcpSocket, TcpStream};
-use tokio::time::sleep;
+use tokio::time::error::Elapsed;
+use tokio::time::{sleep, timeout};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 pub struct TcpConnection {
     pub framed: Framed<TcpStream, LengthDelimitedCodec>,
+    pub global_timeout: Duration,
 }
 
 impl TcpConnection {
-    pub async fn stream_to_framed(stream: TcpStream) -> Result<Self, CoreError> {
+    pub async fn stream_to_framed(
+        stream: TcpStream,
+        global_timeout: Duration,
+    ) -> Result<Self, CoreError> {
         Ok(Self {
             framed: Framed::new(stream, LengthDelimitedCodec::new()),
+            global_timeout,
         })
     }
 
-    pub async fn connect(addr: &str, bind_ip: &str) -> Result<Self, CoreError> {
-        // Use timeout instead of select
+    pub async fn connect(
+        addr: &str,
+        bind_ip: &str,
+        global_timeout: Duration,
+    ) -> Result<Self, CoreError> {
         let socket = TcpSocket::new_v4()?;
 
         let bind_ip = bind_ip.parse()?;
         socket.bind(bind_ip)?;
-        match tokio::time::timeout(Duration::from_secs(1), socket.connect(addr.parse()?)).await {
-            Ok(Ok(stream)) => Ok(Self {
-                framed: Framed::new(stream, LengthDelimitedCodec::new()),
-            }),
-            Ok(Err(e)) => Err(CoreError::new(
-                CoreErrorKind::ConnectionError,
-                &e.to_string(),
-            )),
-            Err(_) => Err(CoreError::new(
-                CoreErrorKind::ConnectionError,
-                "Connection timed out",
-            )),
-        }
+        let stream = tokio::time::timeout(global_timeout, socket.connect(addr.parse()?))
+            .await
+            .map_err(|_| {
+                CoreError::new(
+                    CoreErrorKind::TimeoutError,
+                    format!("Connection to {bind_ip} timed out").as_str(),
+                )
+            })??;
+
+        Ok(Self {
+            framed: Framed::new(stream, LengthDelimitedCodec::new()),
+            global_timeout,
+        })
+    }
+
+    pub async fn pinger(&mut self) -> Result<(), CoreError> {
+        let ping = AppPacket::Status(StatusPacket::PingRequest);
+
+        self.send_packet(&ping).await?;
+
+        let response: Option<(AppPacket, usize)> = self.receive_next().await?;
+
+        let Some((AppPacket::Status(StatusPacket::PingResponse), _)) = response else {
+            return Err(CoreError::new(
+                CoreErrorKind::PingError,
+                "Ping response has not been received",
+            ));
+        };
+
+        Ok(())
     }
 
     pub async fn send_packet<T>(&mut self, packet: &T) -> Result<(), CoreError>
@@ -49,7 +76,11 @@ impl TcpConnection {
         T: Encode,
     {
         let encoded = TcpConnection::encode_frame(packet)?;
-        self.framed.send(Bytes::from(encoded)).await?;
+        timeout(self.global_timeout, self.framed.send(Bytes::from(encoded)))
+            .await
+            .map_err(|_| {
+                CoreError::new(CoreErrorKind::TimeoutError, "Sending a packet timed out")
+            })??;
         Ok(())
     }
 
@@ -93,7 +124,11 @@ impl TcpConnection {
     where
         T: Decode<()>,
     {
-        match self.framed.next().await {
+        match timeout(self.global_timeout, self.framed.next())
+            .await
+            .map_err(|_| {
+                CoreError::new(CoreErrorKind::TimeoutError, "Receiving a packet timed out")
+            })? {
             None => Ok(None),
             Some(frame) => {
                 let decoded = Self::decode_frame(frame?)?;
@@ -120,17 +155,28 @@ impl TcpConnection {
 
 pub struct UdpConnection {
     pub socket: UdpSocket,
+    pub global_timeout: Duration,
 }
 
 impl UdpConnection {
-    pub async fn new() -> Result<Self, CoreError> {
+    pub async fn new(global_timeout: Duration) -> Result<Self, CoreError> {
         let socket = UdpSocket::bind("0.0.0.0:0").await?;
-        Ok(Self { socket })
+        Ok(Self {
+            socket,
+            global_timeout,
+        })
     }
 
     pub async fn send_packet(&self, target: &str, buf: &[u8]) -> Result<(), CoreError> {
-        self.socket.send_to(buf, target).await?;
-        debug!("Packet to {} successfully sent", target);
+        timeout(self.global_timeout, self.socket.send_to(buf, target))
+            .await
+            .map_err(|_| {
+                CoreError::new(
+                    CoreErrorKind::TimeoutError,
+                    format!("Sending UDP packets to {target} timed out").as_str(),
+                )
+            })??;
+        debug!("Packet to {target} successfully sent");
         Ok(())
     }
 }

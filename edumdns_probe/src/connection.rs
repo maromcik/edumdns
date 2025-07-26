@@ -18,7 +18,8 @@ pub struct ConnectionManager {
     pub connection: TcpConnection,
     rx: Receiver<AppPacket>,
     max_retries: usize,
-    retry_interval: u64,
+    retry_interval: Duration,
+    global_timeout: Duration,
 }
 
 impl ConnectionManager {
@@ -28,20 +29,22 @@ impl ConnectionManager {
         bind_ip: &str,
         rx: Receiver<AppPacket>,
         max_retries: usize,
+        retry_interval: Duration,
+        global_timeout: Duration,
     ) -> Result<Self, ProbeError> {
-        let retry_interval = 1000;
         Ok(Self {
             probe_metadata,
             server_connection_string: server_connection_string.to_owned(),
             bind_ip: bind_ip.to_owned(),
             connection: retry!(
-                TcpConnection::connect(server_connection_string, bind_ip).await,
+                TcpConnection::connect(server_connection_string, bind_ip, global_timeout).await,
                 max_retries,
                 retry_interval
             )?,
             rx,
             max_retries,
             retry_interval,
+            global_timeout,
         })
     }
 
@@ -57,7 +60,7 @@ impl ConnectionManager {
 
         if let AppPacket::Status(StatusPacket::ProbeUnknown) = packet {
             warn!("Probe is not adopted, make sure to adopt it in the web interface first");
-            sleep(Duration::from_millis(self.retry_interval)).await;
+            sleep(self.retry_interval).await;
             return Box::pin(self.reconnect()).await;
         }
         let AppPacket::Status(StatusPacket::ProbeAdopted) = packet else {
@@ -92,38 +95,50 @@ impl ConnectionManager {
 
     pub async fn transmit_packets(&mut self) -> Result<(), ProbeError> {
         while let Some(packet) = self.rx.recv().await {
-            self.send_packet_with_reconnect(packet).await?;
+            self.send_packet_with_reconnect(&packet).await?;
         }
         Ok(())
     }
 
     pub async fn send_packet_with_reconnect(
         &mut self,
-        packet: AppPacket,
+        packet: &AppPacket,
     ) -> Result<(), ProbeError> {
         let mut counter = 0;
-        match self.connection.send_packet(&packet).await {
-            Ok(_) => {}
-            Err(e) => loop {
-                error!("Failed to send packet: {e}");
-                if counter >= self.max_retries {
-                    return Err(ProbeError::from(e));
+        loop {
+            match self.connection.send_packet(packet).await {
+                Ok(_) => return Ok(()),
+                Err(e) => {
+                    error!("Failed to send packet: {e}");
+                    self.reconnect().await?;
+                    info!(
+                        "Reconnected to the server {}",
+                        self.server_connection_string
+                    );
+
+                    if counter >= self.max_retries {
+                        return Err(ProbeError::from(e));
+                    }
+                    counter += 1;
+                    warn!(
+                        "Retrying to send the packet; attempt: {counter} of {}",
+                        self.max_retries
+                    );
+                    sleep(self.retry_interval).await;
+                    self.connection.send_packet(packet).await?;
                 }
-                counter += 1;
-                warn!(
-                    "Retrying to send the packet; attempt: {counter} of {}",
-                    self.max_retries
-                );
-                sleep(Duration::from_millis(self.retry_interval)).await;
-                self.reconnect().await?;
-            },
+            }
         }
-        Ok(())
     }
 
     pub async fn reconnect(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
         match retry!(
-            TcpConnection::connect(&self.server_connection_string, &self.bind_ip).await,
+            TcpConnection::connect(
+                &self.server_connection_string,
+                &self.bind_ip,
+                self.global_timeout
+            )
+            .await,
             self.max_retries,
             self.retry_interval
         ) {

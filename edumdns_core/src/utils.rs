@@ -16,7 +16,7 @@ macro_rules! retry {
                 );
                 warn!("Attempt {} out of {}", retries, $count);
                 retries += 1;
-                tokio::time::sleep(std::time::Duration::from_millis($interval)).await;
+                tokio::time::sleep($interval).await;
             }
         };
         result

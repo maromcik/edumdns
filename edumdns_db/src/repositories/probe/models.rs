@@ -43,10 +43,15 @@ pub struct CreateProbe {
 }
 
 impl CreateProbe {
-    pub fn new(id: edumdns_core::bincode_types::Uuid, mac: edumdns_core::bincode_types::MacAddr, ip: IpNetwork) -> Self {
+    pub fn new(
+        id: edumdns_core::bincode_types::Uuid,
+        mac: edumdns_core::bincode_types::MacAddr,
+        ip: IpNetwork,
+    ) -> Self {
         Self {
             id: id.0,
             mac: mac.0.octets(),
-            ip }
+            ip,
+        }
     }
 }

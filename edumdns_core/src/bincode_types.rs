@@ -75,6 +75,12 @@ impl MacAddr {
     }
 }
 
+impl Display for IpNetwork {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 impl bincode::Encode for IpNetwork {
     fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), EncodeError> {
         self.0.ip().encode(encoder)?;
@@ -106,6 +112,12 @@ impl<'__de, __Context> ::bincode::BorrowDecode<'__de, __Context> for IpNetwork {
         )
         .map_err(|_| bincode::error::DecodeError::Other("Invalid IPNetwork"))?;
         Ok(Self(ip))
+    }
+}
+
+impl Display for Uuid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

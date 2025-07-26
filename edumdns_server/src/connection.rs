@@ -20,16 +20,19 @@ use tokio::time::sleep;
 pub struct ConnectionManager {
     connection: TcpConnection,
     pg_probe_repository: PgProbeRepository,
+    global_timeout: Duration,
 }
 
 impl ConnectionManager {
     pub async fn new(
         stream: TcpStream,
         pool: Pool<AsyncPgConnection>,
+        global_timeout: Duration,
     ) -> Result<Self, ServerError> {
         Ok(Self {
-            connection: TcpConnection::stream_to_framed(stream).await?,
+            connection: TcpConnection::stream_to_framed(stream, global_timeout).await?,
             pg_probe_repository: PgProbeRepository::new(pool.clone()),
+            global_timeout,
         })
     }
 

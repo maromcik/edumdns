@@ -8,14 +8,16 @@
   - store configuration on server
   - pull configuration
   - allow stopping the probe and pulling config again
-  
+- pinger on both sides
 - encryption - rustls https://www.slingacademy.com/article/implementing-tls-ssl-in-rust-with-native-tls-or-rustls/, https://github.com/rustls/tokio-rustls
   - config
   - data
 - transmit cancellation
 - packet storage
-  - how to avoid hashmap and hashset
-  - should it be in the db?
+  - use `HashMap<probe_uuid, HashMap<(device_mac, device_ip), HashSet<Packet>>>`
+  - when a new packet comes in, pass it to a bounded channel
+  - the receiving function will be storing packets in the db.
+  - during lookup bring probes and devices to the hashmap, query db for packets if missing
 ## Web
 - access control
 - web UI

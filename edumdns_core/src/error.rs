@@ -32,6 +32,10 @@ pub enum CoreErrorKind {
     InterfaceError,
     #[error("tokio task error")]
     TaskError,
+    #[error("Ping Error")]
+    PingError,
+    #[error("Timeout Error")]
+    TimeoutError,
 }
 
 #[derive(Debug, Clone)]
@@ -114,5 +118,11 @@ impl From<bincode::error::EncodeError> for CoreError {
 impl From<tokio::task::JoinError> for CoreError {
     fn from(value: tokio::task::JoinError) -> Self {
         Self::new(CoreErrorKind::TaskError, value.to_string().as_str())
+    }
+}
+
+impl From<tokio::time::error::Elapsed> for CoreError {
+    fn from(value: tokio::time::error::Elapsed) -> Self {
+        Self::new(CoreErrorKind::TimeoutError, value.to_string().as_str())
     }
 }

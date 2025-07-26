@@ -3,8 +3,8 @@ use crate::error::{ServerError, ServerErrorKind};
 use crate::storage::PacketStorage;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitTarget};
-use edumdns_core::bincode_types::MacAddr as MyMacAddr;
+use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequest};
+use edumdns_core::bincode_types::{IpNetwork, MacAddr as MyMacAddr, Uuid};
 use edumdns_core::connection::TcpConnection;
 use edumdns_core::error::CoreError;
 use futures::StreamExt;
@@ -21,7 +21,8 @@ async fn handle_connection(
     packet_sender: Sender<AppPacket>,
     pool: Pool<AsyncPgConnection>,
 ) -> Result<(), ServerError> {
-    let mut connection_manager = ConnectionManager::new(stream, pool).await?;
+    let mut connection_manager =
+        ConnectionManager::new(stream, pool, Duration::from_secs(1)).await?;
     connection_manager.connection_init_server().await?;
     connection_manager.transfer_packets(packet_sender).await?;
     debug!("Client disconnected");
@@ -40,8 +41,10 @@ pub async fn listen(pool: Pool<AsyncPgConnection>) -> Result<(), ServerError> {
     });
     info!("Packet storage initialized");
 
-    let packet_target = PacketTransmitTarget::new(
+    let packet_target = PacketTransmitRequest::new(
+        Uuid(uuid::Uuid::from_u128(32)),
         MyMacAddr("b8:7b:d4:98:29:64".parse::<MacAddr>().unwrap()),
+        IpNetwork("192.168.8.97".parse::<ipnetwork::IpNetwork>().unwrap()),
         "127.0.0.1".to_string(),
         7654,
     );
@@ -61,12 +64,12 @@ pub async fn listen(pool: Pool<AsyncPgConnection>) -> Result<(), ServerError> {
             }
         });
         tokio::time::sleep(Duration::from_secs(2)).await;
-        // tx_local2
-        //     .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
-        //         packet_target.clone(),
-        //     )))
-        //     .await
-        //     .unwrap();
+        tx_local2
+            .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
+                packet_target.clone(),
+            )))
+            .await
+            .unwrap();
         // tx_local2
         //     .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
         //         packet_target.clone(),

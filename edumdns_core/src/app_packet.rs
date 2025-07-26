@@ -1,5 +1,5 @@
-use crate::bincode_types::MacAddr;
 use crate::bincode_types::Uuid;
+use crate::bincode_types::{IpNetwork, MacAddr};
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};
 use crate::network_packet::{DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};
@@ -10,12 +10,12 @@ use std::hash::{Hash, Hasher};
 pub enum AppPacket {
     Command(CommandPacket),
     Data(ProbePacket),
-    Status(StatusPacket)
+    Status(StatusPacket),
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum CommandPacket {
-    TransmitDevicePackets(PacketTransmitTarget),
+    TransmitDevicePackets(PacketTransmitRequest),
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
@@ -96,24 +96,56 @@ impl PartialEq for ProbePacket {
 impl Eq for ProbePacket {}
 
 #[derive(Encode, Decode, Debug, Clone)]
+pub struct PacketTransmitRequest {
+    pub device: PacketTransmitDevice,
+    pub target: PacketTransmitTarget,
+}
+
+#[derive(Encode, Decode, Debug, Clone)]
 pub struct PacketTransmitTarget {
-    pub mac: MacAddr,
     pub ip: String,
     pub port: u16,
 }
 
-impl PacketTransmitTarget {
-    pub fn new(mac: MacAddr, ip: String, port: u16) -> Self {
-        Self { mac, ip, port }
+#[derive(Encode, Decode, Debug, Clone)]
+pub struct PacketTransmitDevice {
+    pub probe_uuid: Uuid,
+    pub mac: MacAddr,
+    pub ip: IpNetwork,
+}
+
+impl PacketTransmitRequest {
+    pub fn new(
+        probe_uuid: Uuid,
+        device_mac: MacAddr,
+        device_ip: IpNetwork,
+        target_ip: String,
+        target_port: u16,
+    ) -> Self {
+        Self {
+            device: PacketTransmitDevice {
+                probe_uuid,
+                mac: device_mac,
+                ip: device_ip,
+            },
+            target: PacketTransmitTarget {
+                ip: target_ip,
+                port: target_port,
+            },
+        }
     }
 }
 
-impl Display for PacketTransmitTarget {
+impl Display for PacketTransmitRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Device MAC: {}; Target: {}:{}",
-            self.mac, self.ip, self.port
+            "Device Probe_ID: {}, MAC: {}, IP: {}; Target: {}:{}",
+            self.device.probe_uuid,
+            self.device.mac,
+            self.device.ip,
+            self.target.ip,
+            self.target.port
         )
     }
 }

@@ -52,8 +52,8 @@ async fn main() -> Result<(), AppError> {
     // x?;
     // y?;
 
-    let probe = tokio::spawn(async move { run_server(pool.clone()).await });
-    let server = tokio::spawn(async move { run_probe().await });
+    let server = tokio::spawn(async move { run_server(pool.clone()).await });
+    let probe = tokio::spawn(async move { run_probe().await });
 
     server.await??;
     probe.await??;

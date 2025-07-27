@@ -66,7 +66,7 @@ impl ConnectionManager {
 
         let packet = self.receive_init_packet().await?;
 
-        let AppPacket::Status(StatusPacket::ProbeHello(config_metadata)) = packet else {
+        let AppPacket::Status(StatusPacket::ProbeRequestConfig(config_metadata)) = packet else {
             return error;
         };
 

@@ -16,20 +16,19 @@ use tokio::time::error::Elapsed;
 use tokio::time::{sleep, timeout};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
-async fn run_tcp_connection_receive_loop(mut actor: TcpConnectionReceiver) {
+async fn run_tcp_connection_receive_loop(mut actor: TcpConnectionReceiver) -> Result<(), CoreError> {
     while let Some(msg) = actor.receiver.recv().await {
         if let TcpConnectionMessage::ReceivePacket {
                 respond_to,
                 timeout,
             } = msg {
-            let packet = actor.receive_next(timeout).await;
-            println!("{:?}", packet);
-            respond_to.send(packet).unwrap();
+            respond_to.send(actor.receive_next(timeout).await).unwrap();
         }
     }
+    Ok(())
 }
 
-async fn run_tcp_connection_send_loop(mut actor: TcpConnectionSender) {
+async fn run_tcp_connection_send_loop(mut actor: TcpConnectionSender) -> Result<(), CoreError> {
     while let Some(msg) = actor.receiver.recv().await {
         if let TcpConnectionMessage::SendPacket {
             respond_to, packet
@@ -37,19 +36,21 @@ async fn run_tcp_connection_send_loop(mut actor: TcpConnectionSender) {
             respond_to.send(actor.send_packet(&packet).await).unwrap();
         }
     }
+    Ok(())
 }
 
 async fn run_message_multiplexer(
     mut receiver: mpsc::Receiver<TcpConnectionMessage>,
     send_channel: mpsc::Sender<TcpConnectionMessage>,
     recv_channel: mpsc::Sender<TcpConnectionMessage>,
-) {
+) -> Result<(), CoreError> {
     while let Some(msg) = receiver.recv().await {
         match msg {
-            TcpConnectionMessage::SendPacket { .. } => send_channel.send(msg).await.unwrap(),
-            TcpConnectionMessage::ReceivePacket { .. } => recv_channel.send(msg).await.unwrap(),
+            TcpConnectionMessage::SendPacket { .. } => send_channel.send(msg).await?,
+            TcpConnectionMessage::ReceivePacket { .. } => recv_channel.send(msg).await?,
         }
     }
+    Ok(())
 }
 
 pub enum TcpConnectionMessage {
@@ -104,10 +105,20 @@ impl TcpConnectionHandle {
         )?;
 
         tokio::spawn(async move {
-            run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
+            if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await{
+                error!("I/O message multiplexer failed: {e}");
+            }
         });
-        tokio::spawn(run_tcp_connection_send_loop(actors.0));
-        tokio::spawn(run_tcp_connection_receive_loop(actors.1));
+        tokio::spawn(async move {
+            if let Err(e) = run_tcp_connection_send_loop(actors.0).await {
+                error!("I/O send loop failed: {e}");
+            }
+        });
+        tokio::spawn(async move {
+            if let Err(e) = run_tcp_connection_receive_loop(actors.1).await {
+                error!("I/O receive loop failed: {e}");
+            }
+        });
 
         Ok(Self { sender })
     }

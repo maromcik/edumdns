@@ -5,7 +5,7 @@ use edumdns_core::app_packet::{
     AppPacket, CommandPacket, ProbeConfigElement, ProbeConfigPacket, StatusPacket,
 };
 use edumdns_core::bincode_types::Uuid;
-use edumdns_core::connection::TcpConnection;
+use edumdns_core::connection::{TcpConnection, TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_db::models::Probe;
 use edumdns_db::repositories::common::{DbCreate, DbReadOne};
@@ -15,22 +15,24 @@ use ipnetwork::IpNetwork;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
+use tokio::sync::oneshot;
 use tokio::time::sleep;
+use edumdns_core::error::CoreError;
 
 pub struct ConnectionManager {
-    connection: TcpConnection,
+    handle: TcpConnectionHandle,
     pg_probe_repository: PgProbeRepository,
     global_timeout: Duration,
 }
 
 impl ConnectionManager {
-    pub async fn new(
+    pub fn new(
         stream: TcpStream,
         pool: Pool<AsyncPgConnection>,
         global_timeout: Duration,
     ) -> Result<Self, ServerError> {
         Ok(Self {
-            connection: TcpConnection::stream_to_framed(stream, global_timeout).await?,
+            handle: TcpConnectionHandle::stream_to_framed(stream, global_timeout)?,
             pg_probe_repository: PgProbeRepository::new(pool.clone()),
             global_timeout,
         })
@@ -49,13 +51,13 @@ impl ConnectionManager {
 
         let probe = self.upsert_probe(&hello_metadata).await?;
         if probe.adopted {
-            self.connection
-                .send_packet(&AppPacket::Status(StatusPacket::ProbeAdopted))
-                .await?;
+            self.handle
+                .send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, AppPacket::Status(StatusPacket::ProbeAdopted)))
+                .await??;
         } else {
-            self.connection
-                .send_packet(&AppPacket::Status(StatusPacket::ProbeUnknown))
-                .await?;
+            self.handle
+                .send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, AppPacket::Status(StatusPacket::ProbeUnknown)))
+                .await??;
             return Err(ServerError::new(
                 ServerErrorKind::ProbeNotAdopted,
                 "adopt it in the web interface first",
@@ -64,7 +66,7 @@ impl ConnectionManager {
 
         let packet = self.receive_init_packet().await?;
 
-        let AppPacket::Status(StatusPacket::ProbeRequestConfig(config_metadata)) = packet else {
+        let AppPacket::Status(StatusPacket::ProbeHello(config_metadata)) = packet else {
             return error;
         };
 
@@ -72,18 +74,18 @@ impl ConnectionManager {
             return error;
         }
 
-        self.connection
-            .send_packet(&AppPacket::Status(StatusPacket::ProbeResponseConfig(
-                self.get_probe_config(&config_metadata).await?,
-            )))
-            .await?;
+        let config = self.get_probe_config(&config_metadata).await?;
+        self.handle
+            .send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, AppPacket::Status(StatusPacket::ProbeResponseConfig(config)))).await??;
 
         Ok(())
     }
 
     pub async fn receive_init_packet(&mut self) -> Result<AppPacket, ServerError> {
-        let packet: Option<(AppPacket, usize)> = self.connection.receive_next(Some(self.global_timeout)).await?;
-        let Some((app_packet, _)) = packet else {
+        let channel = oneshot::channel();
+        self.handle.sender.send(TcpConnectionMessage::receive_packet(channel.0, Some(self.global_timeout))).await?;
+        let packet: Option<AppPacket> = channel.1.await??;
+        let Some(app_packet) = packet else {
             return Err(ServerError::new(
                 ServerErrorKind::InvalidConnectionInitiation,
                 "invalid connection initiation",
@@ -93,31 +95,40 @@ impl ConnectionManager {
     }
 
     pub async fn transfer_packets(&mut self, tx: Sender<AppPacket>) -> Result<(), ServerError> {
-        while let Some((packet, length)) = self.connection.receive_next::<AppPacket>(None).await? {
-            match &packet {
-                AppPacket::Command(_) => {}
-                AppPacket::Data(_) => {}
-                AppPacket::Status(status) => {
-                    match status {
-                        StatusPacket::PingRequest => {
-                            // TODO log time since last ping, threshold for considering a probe dead.
+        loop {
+            let channel = oneshot::channel();
+            self.handle.sender.send(TcpConnectionMessage::receive_packet(channel.0, None)).await?;
+            let packet: Option<AppPacket> = channel.1.await??;
+            match packet {
+                None => return Ok(()),
+                Some(app_packet) => {
+                    match &app_packet {
+                        AppPacket::Command(_) => {}
+                        AppPacket::Data(_) => {}
+                        AppPacket::Status(status) => {
+                            match status {
+                                StatusPacket::PingRequest => {
+                                    // TODO log time since last ping, threshold for considering a probe dead.
 
-                            self.connection
-                                .send_packet(&AppPacket::Status(StatusPacket::PingResponse))
-                                .await?;
+                                    self
+                                        .handle
+                                        .send_message_with_response(|tx|
+                                            TcpConnectionMessage::send_packet(tx, AppPacket::Status(StatusPacket::PingResponse)))
+                                        .await??;
+                                }
+                                StatusPacket::PingResponse => {}
+                                StatusPacket::ProbeHello(_) => {}
+                                StatusPacket::ProbeAdopted => {}
+                                StatusPacket::ProbeUnknown => {}
+                                StatusPacket::ProbeRequestConfig(_) => {}
+                                StatusPacket::ProbeResponseConfig(_) => {}
+                            }
                         }
-                        StatusPacket::PingResponse => {}
-                        StatusPacket::ProbeHello(_) => {}
-                        StatusPacket::ProbeAdopted => {}
-                        StatusPacket::ProbeUnknown => {}
-                        StatusPacket::ProbeRequestConfig(_) => {}
-                        StatusPacket::ProbeResponseConfig(_) => {}
                     }
+                    tx.send(app_packet).await.expect("Poisoned");
                 }
             }
-            tx.send(packet).await.expect("Poisoned");
         }
-        Ok(())
     }
 
     pub async fn upsert_probe(&self, probe_metadata: &ProbeMetadata) -> Result<Probe, ServerError> {

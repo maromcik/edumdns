@@ -23,12 +23,10 @@ pub mod probe;
 
 pub async fn probe_init() -> Result<(), ProbeError> {
     let uuid = Uuid(uuid::Uuid::from_u128(32));
-    let bind_ip = "192.168.4.65:0";
+    let bind_ip = "192.168.6.254:0";
     let server_addr_port = "127.0.0.1:5000";
 
     let (send_transmitter, send_receiver) = tokio::sync::mpsc::channel(1000);
-    let (receive_transmitter, receive_receiver) = tokio::sync::mpsc::channel(1000);
-    let (command_transmitter, mut command_receiver) = tokio::sync::mpsc::channel(1000);
 
     let probe_metadata = ProbeMetadata {
         id: uuid,
@@ -40,11 +38,10 @@ pub async fn probe_init() -> Result<(), ProbeError> {
         probe_metadata.clone(),
         server_addr_port,
         bind_ip,
-        send_receiver, 
-        receive_transmitter,
+        send_receiver,
         5,
         Duration::from_secs(1),
-        Duration::from_secs(1))
+        Duration::from_secs(10))
         .await?;
 
     let config = connection_manager
@@ -69,17 +66,12 @@ pub async fn probe_init() -> Result<(), ProbeError> {
         Ok::<(), ProbeError>(())
     });
     
-    tokio::spawn(async move {
-        ConnectionManager::pinger(send_transmitter, receive_receiver, command_transmitter, Duration::from_secs(1)).await?;
-        Ok::<(), ProbeError>(())
-    });
-    
-    
-    while let Some(packet) = command_receiver.recv().await {
-        if let AppPacket::Command(CommandPacket::ReconnectProbe) = packet {
-            // connection_manager.reconnect().await?;
-        }
-    }
+    // tokio::spawn(async move {
+    //     ConnectionManager::pinger(send_transmitter, receive_receiver, command_transmitter, Duration::from_secs(1)).await?;
+    //     Ok::<(), ProbeError>(())
+    // });
+    //
+    //
 
     transmit_task.await??;
     // pinger_task.await??;

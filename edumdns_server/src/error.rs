@@ -17,6 +17,10 @@ pub enum ServerErrorKind {
     InvalidConnectionInitiation,
     #[error("probe not adopted error")]
     ProbeNotAdopted,
+    #[error("Tokio oneshot channel error")]
+    TokioOneshotChannelError,
+    #[error("Tokio mpsc channel error")]
+    TokioMpscChannelError,
 }
 
 #[derive(Error, Debug, Clone)]
@@ -58,5 +62,17 @@ impl From<std::io::Error> for ServerError {
 impl From<DbError> for ServerError {
     fn from(value: DbError) -> Self {
         Self::new(ServerErrorKind::DbError(value), "")
+    }
+}
+
+impl From<tokio::sync::oneshot::error::RecvError> for ServerError {
+    fn from(value: tokio::sync::oneshot::error::RecvError) -> Self {
+        Self::new(ServerErrorKind::TokioOneshotChannelError, value.to_string().as_str())
+    }
+}
+
+impl<T> From<tokio::sync::mpsc::error::SendError<T>> for ServerError {
+    fn from(value: tokio::sync::mpsc::error::SendError<T>) -> Self {
+        Self::new(ServerErrorKind::TokioMpscChannelError, value.to_string().as_str())
     }
 }

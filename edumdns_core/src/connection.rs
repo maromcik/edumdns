@@ -2,36 +2,114 @@ use crate::app_packet::{AppPacket, StatusPacket};
 use crate::error::{CoreError, CoreErrorKind};
 use bincode::{Decode, Encode};
 use bytes::{Bytes, BytesMut};
+use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
 use log::{debug, error, warn};
 use std::fmt::Debug;
 use std::io::Error;
 use std::net::SocketAddr;
 use std::time::Duration;
-use futures::stream::{SplitSink, SplitStream};
 use tokio::net::UdpSocket;
 use tokio::net::{TcpSocket, TcpStream};
+use tokio::sync::{mpsc, oneshot};
 use tokio::time::error::Elapsed;
 use tokio::time::{sleep, timeout};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
-pub struct TcpConnection {
-    pub framed_sink: SplitSink<Framed<TcpStream, LengthDelimitedCodec>, Bytes>,
-    pub framed_stream: SplitStream<Framed<TcpStream, LengthDelimitedCodec>>,
-    pub global_timeout: Duration,
+async fn run_tcp_connection_receive_loop(mut actor: TcpConnectionReceiver) {
+    while let Some(msg) = actor.receiver.recv().await {
+        if let TcpConnectionMessage::ReceivePacket {
+                respond_to,
+                timeout,
+            } = msg {
+            let packet = actor.receive_next(timeout).await;
+            println!("{:?}", packet);
+            respond_to.send(packet).unwrap();
+        }
+    }
 }
 
-impl TcpConnection {
-    pub async fn stream_to_framed(
+async fn run_tcp_connection_send_loop(mut actor: TcpConnectionSender) {
+    while let Some(msg) = actor.receiver.recv().await {
+        if let TcpConnectionMessage::SendPacket {
+            respond_to, packet
+            } = msg {
+            respond_to.send(actor.send_packet(&packet).await).unwrap();
+        }
+    }
+}
+
+async fn run_message_multiplexer(
+    mut receiver: mpsc::Receiver<TcpConnectionMessage>,
+    send_channel: mpsc::Sender<TcpConnectionMessage>,
+    recv_channel: mpsc::Sender<TcpConnectionMessage>,
+) {
+    while let Some(msg) = receiver.recv().await {
+        match msg {
+            TcpConnectionMessage::SendPacket { .. } => send_channel.send(msg).await.unwrap(),
+            TcpConnectionMessage::ReceivePacket { .. } => recv_channel.send(msg).await.unwrap(),
+        }
+    }
+}
+
+pub enum TcpConnectionMessage {
+    ReceivePacket {
+        respond_to: oneshot::Sender<Result<Option<AppPacket>, CoreError>>,
+        timeout: Option<Duration>,
+    },
+    SendPacket {
+        respond_to: oneshot::Sender<Result<(), CoreError>>,
+        packet: AppPacket,
+    },
+}
+
+impl TcpConnectionMessage {
+    pub fn send_packet(
+        respond_to: oneshot::Sender<Result<(), CoreError>>,
+        packet: AppPacket,
+    ) -> Self {
+        Self::SendPacket {
+            respond_to,
+            packet,
+        }
+    }
+
+    pub fn receive_packet(respond_to: oneshot::Sender<Result<Option<AppPacket>, CoreError>>, timeout: Option<Duration>) -> Self {
+        Self::ReceivePacket {
+            respond_to,
+            timeout,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct TcpConnectionHandle {
+    pub sender: mpsc::Sender<TcpConnectionMessage>,
+}
+
+impl TcpConnectionHandle {
+    pub fn stream_to_framed(
         stream: TcpStream,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
-        let framed = Framed::new(stream, LengthDelimitedCodec::new()).split();
-        Ok(Self {
-            framed_sink: framed.0,
-            framed_stream: framed.1,
+        let (sender, receiver) = mpsc::channel(1000);
+        let send_channel = mpsc::channel(1000);
+        let recv_channel = mpsc::channel(1000);
+
+        let actors = TcpConnection::stream_to_framed(
+            send_channel.1,
+            recv_channel.1,
+            stream,
             global_timeout,
-        })
+        )?;
+
+        tokio::spawn(async move {
+            run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
+        });
+        tokio::spawn(run_tcp_connection_send_loop(actors.0));
+        tokio::spawn(run_tcp_connection_receive_loop(actors.1));
+
+        Ok(Self { sender })
     }
 
     pub async fn connect(
@@ -39,6 +117,143 @@ impl TcpConnection {
         bind_ip: &str,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
+        let (sender, receiver) = mpsc::channel(1000);
+        let send_channel = mpsc::channel(1000);
+        let recv_channel = mpsc::channel(1000);
+
+        let actors = TcpConnection::connect(
+            addr,
+            bind_ip,
+            send_channel.1,
+            recv_channel.1,
+            global_timeout,
+        ).await?;
+
+        tokio::spawn(async move {
+            run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
+        });
+        tokio::spawn(run_tcp_connection_send_loop(actors.0));
+        tokio::spawn(run_tcp_connection_receive_loop(actors.1));
+
+        Ok(Self { sender })
+    }
+
+    pub async fn send_message_with_response<T>(
+        &self,
+        message_creator: impl FnOnce(oneshot::Sender<T>) -> TcpConnectionMessage,
+    ) -> Result<T, CoreError>
+    {
+        let (tx, rx) = oneshot::channel();
+        self.sender
+            .send(message_creator(tx))
+            .await?;
+        rx.await.map_err(Into::into)
+    }
+
+}
+
+pub struct TcpConnectionSender {
+    pub receiver: mpsc::Receiver<TcpConnectionMessage>,
+    pub framed_sink: SplitSink<Framed<TcpStream, LengthDelimitedCodec>, Bytes>,
+    pub global_timeout: Duration,
+}
+
+impl TcpConnectionSender {
+    pub async fn send_packet<T>(&mut self, packet: T) -> Result<(), CoreError>
+    where
+        T: Encode,
+    {
+        let encoded = Self::encode_frame(packet)?;
+        timeout(
+            self.global_timeout,
+            self.framed_sink.send(Bytes::from(encoded)),
+        )
+        .await
+        .map_err(|_| CoreError::new(CoreErrorKind::TimeoutError, "Sending a packet timed out"))??;
+        Ok(())
+    }
+
+    pub fn encode_frame<T>(packet: T) -> Result<Vec<u8>, CoreError>
+    where
+        T: Encode,
+    {
+        bincode::encode_to_vec(packet, bincode::config::standard()).map_err(CoreError::from)
+    }
+}
+
+pub struct TcpConnectionReceiver {
+    pub receiver: mpsc::Receiver<TcpConnectionMessage>,
+    pub framed_stream: SplitStream<Framed<TcpStream, LengthDelimitedCodec>>,
+    pub global_timeout: Duration,
+}
+
+impl TcpConnectionReceiver {
+    pub async fn receive_next<T>(
+        &mut self,
+        timeout: Option<Duration>,
+    ) -> Result<Option<T>, CoreError>
+    where
+        T: Decode<()>,
+    {
+        let packet = match timeout {
+            None => self.framed_stream.next().await,
+            Some(t) => tokio::time::timeout(t, self.framed_stream.next())
+                .await
+                .map_err(|_| {
+                    CoreError::new(CoreErrorKind::TimeoutError, "Receiving a packet timed out")
+                })?,
+        };
+
+        match packet {
+            None => Ok(None),
+            Some(frame) => {
+                let decoded = Self::decode_frame(frame?)?;
+                Ok(Some(decoded))
+            }
+        }
+    }
+
+    pub fn decode_frame<T>(frame: BytesMut) -> Result<T, CoreError>
+    where
+        T: Decode<()>,
+    {
+        let (packet, _) = bincode::decode_from_slice(frame.as_ref(), bincode::config::standard())
+            .map_err(CoreError::from)?;
+        Ok(packet)
+    }
+}
+
+pub struct TcpConnection {}
+
+impl TcpConnection {
+    pub fn stream_to_framed(
+        message_channel_sender: mpsc::Receiver<TcpConnectionMessage>,
+        message_channel_receiver: mpsc::Receiver<TcpConnectionMessage>,
+        stream: TcpStream,
+        global_timeout: Duration,
+    ) -> Result<(TcpConnectionSender, TcpConnectionReceiver), CoreError> {
+        let framed = Framed::new(stream, LengthDelimitedCodec::new()).split();
+        Ok((
+            TcpConnectionSender {
+                receiver: message_channel_sender,
+                framed_sink: framed.0,
+                global_timeout,
+            },
+            TcpConnectionReceiver {
+                receiver: message_channel_receiver,
+                framed_stream: framed.1,
+                global_timeout,
+            },
+        ))
+    }
+
+    pub async fn connect(
+        addr: &str,
+        bind_ip: &str,
+        message_channel_sender: mpsc::Receiver<TcpConnectionMessage>,
+        message_channel_receiver: mpsc::Receiver<TcpConnectionMessage>,
+        global_timeout: Duration,
+    ) -> Result<(TcpConnectionSender, TcpConnectionReceiver), CoreError> {
         let socket = TcpSocket::new_v4()?;
         let bind_ip = bind_ip.parse()?;
         socket.bind(bind_ip)?;
@@ -51,101 +266,18 @@ impl TcpConnection {
                 )
             })??;
         let framed = Framed::new(stream, LengthDelimitedCodec::new()).split();
-        Ok(Self {
-            framed_sink: framed.0,
-            framed_stream: framed.1,
-            global_timeout,
-        })
-    }
-
-
-    pub async fn send_packet<T>(&mut self, packet: &T) -> Result<(), CoreError>
-    where
-        T: Encode,
-    {
-        let encoded = TcpConnection::encode_frame(packet)?;
-        timeout(self.global_timeout, self.framed_sink.send(Bytes::from(encoded)))
-            .await
-            .map_err(|_| {
-                CoreError::new(CoreErrorKind::TimeoutError, "Sending a packet timed out")
-            })??;
-        Ok(())
-    }
-
-    // pub async fn reconnect(&mut self, addr: &str) -> Result<(), CoreError> {
-    //     let stream = TcpStream::connect(addr).await?;
-    //     self.framed = Framed::new(stream, LengthDelimitedCodec::new());
-    //     Ok(())
-    // }
-    //
-    // pub async fn send_with_reconnect<T>(
-    //     &mut self,
-    //     addr: &str,
-    //     packet: &T,
-    //     max_retries: usize,
-    // ) -> Result<(), CoreError>
-    // where
-    //     T: Encode,
-    // {
-    //     let mut counter = 0;
-    //
-    //     loop {
-    //         match self.send_packet(&packet).await {
-    //             Ok(_) => return Ok(()),
-    //             Err(e) => {
-    //                 error!("Failed to send packet: {e}");
-    //                 if counter >= max_retries {
-    //                     return Err(e);
-    //                 }
-    //                 counter += 1;
-    //                 warn!("Retrying to send the packet; attempt: {counter} of {max_retries}");
-    //                 sleep(Duration::from_secs(1)).await;
-    //                 if let Err(reconnect_error) = self.reconnect(addr).await {
-    //                     error!("Failed to reconnect: {reconnect_error}");
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
-    pub async fn receive_next<T>(&mut self, timeout: Option<Duration>) -> Result<Option<(T, usize)>, CoreError>
-    where
-        T: Decode<()>,
-    {
-        let packet = match timeout {
-            None => self.framed_stream.next().await,
-            Some(t) => {
-                tokio::time::timeout(t, self.framed_stream.next())
-                    .await
-                    .map_err(|_| {
-                        CoreError::new(CoreErrorKind::TimeoutError, "Receiving a packet timed out")
-                    })?
-            }
-        };
-
-
-        match packet {
-            None => Ok(None),
-            Some(frame) => {
-                let decoded = Self::decode_frame(frame?)?;
-                Ok(Some(decoded))
-            }
-        }
-    }
-
-    pub fn decode_frame<T>(frame: BytesMut) -> Result<(T, usize), CoreError>
-    where
-        T: Decode<()>,
-    {
-        bincode::decode_from_slice(frame.as_ref(), bincode::config::standard())
-            .map_err(CoreError::from)
-    }
-
-    pub fn encode_frame<T>(packet: &T) -> Result<Vec<u8>, CoreError>
-    where
-        T: Encode,
-    {
-        bincode::encode_to_vec(packet, bincode::config::standard()).map_err(CoreError::from)
+        Ok((
+            TcpConnectionSender {
+                receiver: message_channel_sender,
+                framed_sink: framed.0,
+                global_timeout,
+            },
+            TcpConnectionReceiver {
+                receiver: message_channel_receiver,
+                framed_stream: framed.1,
+                global_timeout,
+            },
+        ))
     }
 }
 

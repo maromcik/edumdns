@@ -36,6 +36,10 @@ pub enum CoreErrorKind {
     PingError,
     #[error("Timeout Error")]
     TimeoutError,
+    #[error("Tokio oneshot channel error")]
+    TokioOneshotChannelError,
+    #[error("Tokio mpsc channel error")]
+    TokioMpscChannelError,
 }
 
 #[derive(Debug, Clone)]
@@ -124,5 +128,17 @@ impl From<tokio::task::JoinError> for CoreError {
 impl From<tokio::time::error::Elapsed> for CoreError {
     fn from(value: tokio::time::error::Elapsed) -> Self {
         Self::new(CoreErrorKind::TimeoutError, value.to_string().as_str())
+    }
+}
+
+impl From<tokio::sync::oneshot::error::RecvError> for CoreError {
+    fn from(value: tokio::sync::oneshot::error::RecvError) -> Self {
+        Self::new(CoreErrorKind::TokioOneshotChannelError, value.to_string().as_str())
+    }
+}
+
+impl<T> From<tokio::sync::mpsc::error::SendError<T>> for CoreError {
+    fn from(value: tokio::sync::mpsc::error::SendError<T>) -> Self {
+        Self::new(CoreErrorKind::TokioMpscChannelError, value.to_string().as_str())
     }
 }

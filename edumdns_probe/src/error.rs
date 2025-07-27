@@ -20,6 +20,10 @@ pub enum ProbeErrorKind {
     TaskError,
     #[error("probe connection initiation error")]
     InvalidConnectionInitiation,
+    #[error("Tokio oneshot channel error")]
+    TokioOneshotChannelError,
+    #[error("Tokio mpsc channel error")]
+    TokioMpscChannelError,
 }
 
 #[derive(Error, Debug, Clone)]
@@ -76,5 +80,17 @@ impl From<tokio::task::JoinError> for ProbeError {
 impl From<std::net::AddrParseError> for ProbeError {
     fn from(value: std::net::AddrParseError) -> Self {
         Self::new(ProbeErrorKind::ArgumentError, value.to_string().as_str())
+    }
+}
+
+impl From<tokio::sync::oneshot::error::RecvError> for ProbeError {
+    fn from(value: tokio::sync::oneshot::error::RecvError) -> Self {
+        Self::new(ProbeErrorKind::TokioOneshotChannelError, value.to_string().as_str())   
+    }
+}
+
+impl<T> From<tokio::sync::mpsc::error::SendError<T>> for ProbeError {
+    fn from(value: tokio::sync::mpsc::error::SendError<T>) -> Self {
+        Self::new(ProbeErrorKind::TokioMpscChannelError, value.to_string().as_str())
     }
 }

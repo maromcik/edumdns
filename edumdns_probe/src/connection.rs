@@ -1,7 +1,7 @@
 use crate::error::{ProbeError, ProbeErrorKind};
 use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbeConfigPacket, StatusPacket};
 use edumdns_core::bincode_types::Uuid;
-use edumdns_core::connection::TcpConnection;
+use edumdns_core::connection::{TcpConnection, TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_core::retry;
 use log::{debug, error, info, warn};
@@ -10,6 +10,7 @@ use std::pin::Pin;
 use std::time::Duration;
 use futures::SinkExt;
 use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::oneshot;
 use tokio::time::sleep;
 use edumdns_core::error::{CoreError, CoreErrorKind};
 
@@ -17,9 +18,8 @@ pub struct ConnectionManager {
     probe_metadata: ProbeMetadata,
     server_connection_string: String,
     bind_ip: String,
-    pub connection: TcpConnection,
+    pub handle: TcpConnectionHandle,
     pub send_receiver: Receiver<AppPacket>,
-    pub receive_transmitter: Sender<AppPacket>,
     max_retries: usize,
     retry_interval: Duration,
     global_timeout: Duration,
@@ -31,7 +31,6 @@ impl ConnectionManager {
         server_connection_string: &str,
         bind_ip: &str,
         send_receiver: Receiver<AppPacket>,
-        receive_transmitter: Sender<AppPacket>,
         max_retries: usize,
         retry_interval: Duration,
         global_timeout: Duration,
@@ -40,13 +39,12 @@ impl ConnectionManager {
             probe_metadata,
             server_connection_string: server_connection_string.to_owned(),
             bind_ip: bind_ip.to_owned(),
-            connection: retry!(
-                TcpConnection::connect(server_connection_string, bind_ip, global_timeout).await,
+            handle: retry!(
+                TcpConnectionHandle::connect(server_connection_string, bind_ip, global_timeout).await,
                 max_retries,
                 retry_interval
             )?,
             send_receiver,
-            receive_transmitter,
             max_retries,
             retry_interval,
             global_timeout,
@@ -59,7 +57,9 @@ impl ConnectionManager {
             "Invalid connection initiation",
         ));
         let hello_packet = AppPacket::Status(StatusPacket::ProbeHello(self.probe_metadata.clone()));
-        self.connection.send_packet(&hello_packet).await?;
+        let channel = oneshot::channel();
+        self.handle.sender.send( TcpConnectionMessage::send_packet(channel.0, hello_packet) ).await?;
+        channel.1.await??;
 
         let packet = self.receive_init_packet().await?;
 
@@ -71,12 +71,12 @@ impl ConnectionManager {
         let AppPacket::Status(StatusPacket::ProbeAdopted) = packet else {
             return error;
         };
-
-        self.connection
-            .send_packet(&AppPacket::Status(StatusPacket::ProbeRequestConfig(
-                self.probe_metadata.clone(),
-            )))
+        let probe_packet = AppPacket::Status(StatusPacket::ProbeRequestConfig(self.probe_metadata.clone()));
+        let channel = oneshot::channel();
+        self.handle
+            .sender.send( TcpConnectionMessage::send_packet(channel.0, probe_packet))
             .await?;
+        channel.1.await??;
 
         let packet = self.receive_init_packet().await?;
 
@@ -88,8 +88,10 @@ impl ConnectionManager {
     }
 
     pub async fn receive_init_packet(&mut self) -> Result<AppPacket, ProbeError> {
-        let packet: Option<(AppPacket, usize)> = self.connection.receive_next(Some(self.global_timeout)).await?;
-        let Some((app_packet, _)) = packet else {
+        let channel = oneshot::channel();
+        self.handle.sender.send(TcpConnectionMessage::receive_packet(channel.0, Some(self.global_timeout))).await?;
+        let packet: Option<AppPacket> = channel.1.await??;
+        let Some(app_packet) = packet else {
             return Err(ProbeError::new(
                 ProbeErrorKind::InvalidConnectionInitiation,
                 "Invalid connection initiation",
@@ -100,25 +102,23 @@ impl ConnectionManager {
 
     pub async fn transmit_packets(&mut self) -> Result<(), ProbeError> {
         while let Some(packet) = self.send_receiver.recv().await {
-            self.send_packet_with_reconnect(&packet).await?;
-        }
-        Ok(())
-    }
-
-    pub async fn receive_packets(&mut self) -> Result<(), ProbeError> {
-        while let Some((packet, _)) = self.connection.receive_next::<AppPacket>(Some(self.global_timeout)).await? {
-            self.receive_transmitter.send(packet).await.expect("Poisoned");
+            self.send_packet_with_reconnect(packet).await?;
         }
         Ok(())
     }
 
     pub async fn send_packet_with_reconnect(
         &mut self,
-        packet: &AppPacket,
+        packet: AppPacket,
     ) -> Result<(), ProbeError> {
         let mut counter = 0;
         loop {
-            match self.connection.send_packet(packet).await {
+            let channel = oneshot::channel();
+            self.handle
+                .sender.send( TcpConnectionMessage::send_packet(channel.0, packet.clone()))
+                .await?;
+
+            match channel.1.await? {
                 Ok(_) => return Ok(()),
                 Err(e) => {
                     error!("Failed to send packet: {e}");
@@ -137,7 +137,6 @@ impl ConnectionManager {
                         self.max_retries
                     );
                     sleep(self.retry_interval).await;
-                    self.connection.send_packet(packet).await?;
                 }
             }
         }
@@ -145,7 +144,7 @@ impl ConnectionManager {
 
     pub async fn reconnect(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
         match retry!(
-            TcpConnection::connect(
+            TcpConnectionHandle::connect(
                 &self.server_connection_string,
                 &self.bind_ip,
                 self.global_timeout
@@ -155,7 +154,7 @@ impl ConnectionManager {
             self.retry_interval
         ) {
             Ok(connection) => {
-                self.connection = connection;
+                self.handle = connection;
                 self.connection_init_probe().await
             }
             Err(e) => {

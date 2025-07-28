@@ -396,25 +396,26 @@ impl<'a> IpPacket<'a> {
         ))
     }
 
-    pub fn get_ip_metadata(&self) -> IpMetadata {
-        match self {
+    pub fn get_ip_metadata(&self) -> Result<IpMetadata, CoreError> {
+        let metadata = match self {
             IpPacket::Ipv4Packet(p) => IpMetadata {
                 src_ip: IpNetwork(ipnetwork::IpNetwork::V4(
-                    ipnetwork::Ipv4Network::new(p.get_source(), 32).unwrap(),
+                    ipnetwork::Ipv4Network::new(p.get_source(), 32)?,
                 )),
                 dst_ip: IpNetwork(ipnetwork::IpNetwork::V4(
-                    ipnetwork::Ipv4Network::new(p.get_destination(), 32).unwrap(),
+                    ipnetwork::Ipv4Network::new(p.get_destination(), 32)?,
                 )),
             },
             IpPacket::Ipv6Packet(p) => IpMetadata {
                 src_ip: IpNetwork(ipnetwork::IpNetwork::V6(
-                    ipnetwork::Ipv6Network::new(p.get_source(), 128).unwrap(),
+                    ipnetwork::Ipv6Network::new(p.get_source(), 128)?,
                 )),
                 dst_ip: IpNetwork(ipnetwork::IpNetwork::V6(
-                    ipnetwork::Ipv6Network::new(p.get_destination(), 128).unwrap(),
+                    ipnetwork::Ipv6Network::new(p.get_destination(), 128)?,
                 )),
             },
-        }
+        };
+        Ok(metadata)
     }
 }
 

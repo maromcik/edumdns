@@ -142,3 +142,9 @@ impl<T> From<tokio::sync::mpsc::error::SendError<T>> for CoreError {
         Self::new(CoreErrorKind::TokioMpscChannelError, value.to_string().as_str())
     }
 }
+
+impl From<ipnetwork::IpNetworkError> for CoreError {
+    fn from(value: ipnetwork::IpNetworkError) -> Self {
+        Self::new(CoreErrorKind::ParseAddrError, value.to_string().as_str())
+    }
+}

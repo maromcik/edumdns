@@ -102,7 +102,6 @@ pub async fn probe_init() -> Result<(), ProbeError> {
                 warn!("Reconnect signal received. Canceling tasks and reconnecting...");
                 cancellation_token.cancel();
                 connection_manager.reconnect().await?;
-                continue;
             },
         }
     }

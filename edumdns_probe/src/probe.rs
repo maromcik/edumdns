@@ -1,12 +1,17 @@
+use std::time::Duration;
+use log::{info, warn};
 use crate::capture::listen_and_send;
 use crate::error::{ProbeError, ProbeErrorKind};
 use edumdns_core::app_packet::{AppPacket, ProbeConfigElement, ProbeConfigPacket};
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::capture::PacketCaptureGeneric;
 use edumdns_core::metadata::ProbeMetadata;
-use pcap::Active;
+use pcap::{Active, Direction};
 use pnet::datalink::interfaces;
 use tokio::sync::mpsc::Sender;
+use tokio::task::{JoinHandle, JoinSet};
+use tokio::time::sleep;
+use tokio_util::sync::CancellationToken;
 
 pub struct ProbeCapture {
     tx: Sender<AppPacket>,
@@ -26,9 +31,8 @@ impl ProbeCapture {
             probe_config,
         }
     }
-    pub async fn start_captures(&self) -> Result<(), ProbeError> {
+    pub async fn start_captures(&self, join_set: &mut JoinSet<Result<(), ProbeError>>, cancellation_token: CancellationToken) -> Result<(), ProbeError> {
         let listen_interfaces_names = vec![("wlp2s0", Some("port 5201".to_string()))];
-        let mut interface_tasks = Vec::default();
 
         for config_element in &self.probe_config.interface_filter_map {
             let interface = interfaces()
@@ -57,14 +61,19 @@ impl ProbeCapture {
             )?;
             let tx_local = self.tx.clone();
             let probe_metadata_local = self.probe_metadata.clone();
-            let task = tokio::spawn(async move {
-                listen_and_send(capture, probe_metadata_local, tx_local).await
+            let cancellation_token_local = cancellation_token.clone();
+            let config_element_local = config_element.clone();
+            join_set.spawn(async move {
+                tokio::select! {
+                    _ = cancellation_token_local.cancelled() => {
+                        warn!("Probe capture for {config_element_local} cancelled");
+                    }
+                    _ = listen_and_send(capture, probe_metadata_local, tx_local) => {
+                        info!("Probe capture for {config_element_local} finished");
+                    }
+                }
+                Ok::<(), ProbeError>(())
             });
-
-            interface_tasks.push(task);
-        }
-        for task in interface_tasks {
-            task.await??;
         }
         Ok(())
     }

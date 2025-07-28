@@ -13,17 +13,17 @@ use std::pin::Pin;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
+use tokio::task::{JoinHandle, JoinSet};
 use tokio::time::sleep;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::ReceiverStream;
-
+use tokio_util::sync::CancellationToken;
 
 // TODO switch to probe manager
 // TODO spawn all tasks as tokio selects, when reconnect comes in, select dies and forces reconnect in probe manager's thread
 pub struct ReceivePacketTargets {
     pub pinger: mpsc::Sender<AppPacket>,
 }
-
 
 pub struct ConnectionManager {
     probe_metadata: ProbeMetadata,
@@ -116,24 +116,71 @@ impl ConnectionManager {
     }
 
     pub async fn transmit_packets(
-        &mut self,
+        join_set: &mut JoinSet<Result<(), ProbeError>>,
+        handle: TcpConnectionHandle,
         data_receiver: mpsc::Receiver<AppPacket>,
-        command_receiver: mpsc::Receiver<AppPacket>,
+        command_transmitter: mpsc::Sender<AppPacket>,
+        cancellation_token: CancellationToken,
+        max_retries: usize,
+        retry_interval: Duration,
     ) -> Result<(), ProbeError> {
-        let receivers = vec![command_receiver, data_receiver];
-        let mut fused_streams = select_all(receivers.into_iter().map(ReceiverStream::new));
-        while let Some(packet) = fused_streams.next().await {
-            match packet {
-                AppPacket::Command(CommandPacket::ReconnectProbe) => {
-                    self.reconnect().await?;
+        join_set.spawn(async move {
+            println!("Transmit packets started");
+            tokio::select! {
+                _ = cancellation_token.cancelled() => {
+                    warn!("Transmit packets task cancelled");
                 }
-                _ => self.send_packet_with_reconnect(packet).await?,
+                _ = ConnectionManager::transmit_packets_worker(handle, data_receiver, command_transmitter, max_retries, retry_interval) => {
+                    info!("Transmit packets task finished");
+                }
             }
+            Ok::<(), ProbeError>(())
+        });
+        Ok(())
+    }
+
+    async fn transmit_packets_worker(
+        handle: TcpConnectionHandle,
+        mut data_receiver: mpsc::Receiver<AppPacket>,
+        command_transmitter: mpsc::Sender<AppPacket>,
+        max_retries: usize,
+        retry_interval: Duration,
+    ) -> Result<(), ProbeError> {
+        while let Some(packet) = data_receiver.recv().await {
+            ConnectionManager::send_packet_with_reconnect(&handle, &command_transmitter, max_retries, retry_interval, packet)
+                .await?;
         }
         Ok(())
     }
 
-    pub async fn receive_packets(handle: TcpConnectionHandle, target: ReceivePacketTargets) -> Result<(), ProbeError> {
+    pub async fn receive_packets(
+        join_set: &mut JoinSet<Result<(), ProbeError>>,
+        handle: TcpConnectionHandle,
+        target: ReceivePacketTargets,
+        command_transmitter: mpsc::Sender<AppPacket>,
+        cancellation_token: CancellationToken,
+    ) -> Result<(), ProbeError> {
+        join_set.spawn(async move {
+            println!("Receive packets started");
+            tokio::select! {
+                _ = cancellation_token.cancelled() => {
+                    warn!("Receive packets task cancelled");
+                }
+                _ = ConnectionManager::receive_packets_worker(handle, target, command_transmitter) => {
+                    info!("Receive packets task finished");
+
+                }
+            }
+            Ok::<(), ProbeError>(())
+        });
+        Ok(())
+    }
+
+    async fn receive_packets_worker(
+        handle: TcpConnectionHandle,
+        target: ReceivePacketTargets,
+        command_transmitter: mpsc::Sender<AppPacket>,
+    ) -> Result<(), ProbeError> {
         loop {
             let packet = handle
                 .send_message_with_response(|tx| TcpConnectionMessage::receive_packet(tx, None))
@@ -141,12 +188,12 @@ impl ConnectionManager {
             match packet {
                 None => return Ok(()),
                 Some(app_packet) => match &app_packet {
-                    AppPacket::Command(command_packet) => {
-                        match command_packet {
-                            CommandPacket::ReconnectProbe => target.pinger.send(app_packet).await?,
-                            _ => {}
+                    AppPacket::Command(command_packet) => match command_packet {
+                        CommandPacket::ReconnectProbe => {
+                            command_transmitter.send(app_packet).await?
                         }
-                    }
+                        _ => {}
+                    },
                     AppPacket::Data(_) => {}
                     AppPacket::Status(status) => match status {
                         StatusPacket::PingResponse => target.pinger.send(app_packet).await?,
@@ -165,13 +212,15 @@ impl ConnectionManager {
     // TODO receive and sort packets, use a channel for anyone requesting packets, aka demultiplex them.
 
     pub async fn send_packet_with_reconnect(
-        &mut self,
+        handle: &TcpConnectionHandle,
+        command_transmitter: &mpsc::Sender<AppPacket>,
+        max_retries: usize,
+        retry_interval: Duration,
         packet: AppPacket,
     ) -> Result<(), ProbeError> {
         let mut counter = 0;
         loop {
-            match self
-                .handle
+            match handle
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(tx, packet.clone())
                 })
@@ -180,21 +229,16 @@ impl ConnectionManager {
                 Ok(_) => return Ok(()),
                 Err(e) => {
                     error!("Failed to send packet: {e}");
-                    self.reconnect().await?;
-                    info!(
-                        "Reconnected to the server {}",
-                        self.server_connection_string
-                    );
-
-                    if counter >= self.max_retries {
+                    command_transmitter.send(AppPacket::Command(CommandPacket::ReconnectProbe)).await?;
+                    if counter >= max_retries {
                         return Err(ProbeError::from(e));
                     }
                     counter += 1;
                     warn!(
                         "Retrying to send the packet; attempt: {counter} of {}",
-                        self.max_retries
+                        max_retries
                     );
-                    sleep(self.retry_interval).await;
+                    sleep(retry_interval).await;
                 }
             }
         }
@@ -223,11 +267,33 @@ impl ConnectionManager {
     }
 
     pub async fn pinger(
+        join_set: &mut JoinSet<Result<(), ProbeError>>,
+        handle: TcpConnectionHandle,
+        packet_receiver: mpsc::Receiver<AppPacket>,
+        command_sender: mpsc::Sender<AppPacket>,
+        interval: Duration,
+        cancellation_token: CancellationToken,
+    ) -> Result<(), ProbeError> {
+        join_set.spawn(async move {
+            tokio::select! {
+                _ = cancellation_token.cancelled() => {
+                    warn!("Pinger task cancelled");
+                }
+                _ = ConnectionManager::pinger_worker(handle, packet_receiver, command_sender, interval) => {
+                    info!("Pinger task finished");
+                }
+            }
+            Ok::<(), ProbeError>(())
+        });
+        Ok(())
+    }
+
+    async fn pinger_worker(
         handle: TcpConnectionHandle,
         mut packet_receiver: mpsc::Receiver<AppPacket>,
         command_sender: mpsc::Sender<AppPacket>,
         interval: Duration,
-    ) -> Result<(), CoreError> {
+    ) -> Result<(), ProbeError> {
         debug!("Starting pinger");
         loop {
             handle
@@ -238,10 +304,11 @@ impl ConnectionManager {
                     )
                 })
                 .await??;
-            debug!("Ping sent");
+            debug!("Ping request sent");
             let packet = packet_receiver.recv().await;
             debug!("Ping response received");
             if Some(AppPacket::Status(StatusPacket::PingResponse)) != packet {
+                warn!("Not a ping response");
                 command_sender
                     .send(AppPacket::Command(CommandPacket::ReconnectProbe))
                     .await?

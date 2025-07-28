@@ -22,7 +22,9 @@ async fn run_tcp_connection_receive_loop(mut actor: TcpConnectionReceiver) -> Re
                 respond_to,
                 timeout,
             } = msg {
-            respond_to.send(actor.receive_next(timeout).await).unwrap();
+            respond_to.send(actor.receive_next(timeout).await)
+                .map_err(|e| CoreError::new(CoreErrorKind::TokioOneshotChannelError, format!("Could not send value {e:?}")
+                    .as_str()))?;
         }
     }
     Ok(())
@@ -33,7 +35,8 @@ async fn run_tcp_connection_send_loop(mut actor: TcpConnectionSender) -> Result<
         if let TcpConnectionMessage::SendPacket {
             respond_to, packet
             } = msg {
-            respond_to.send(actor.send_packet(&packet).await).unwrap();
+            respond_to.send(actor.send_packet(&packet).await).map_err(|e| CoreError::new(CoreErrorKind::TokioOneshotChannelError, format!("Could not send value {e:?}")
+                .as_str()))?;
         }
     }
     Ok(())
@@ -141,10 +144,20 @@ impl TcpConnectionHandle {
         ).await?;
 
         tokio::spawn(async move {
-            run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
+            if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await{
+                error!("I/O message multiplexer failed: {e}");
+            }
         });
-        tokio::spawn(run_tcp_connection_send_loop(actors.0));
-        tokio::spawn(run_tcp_connection_receive_loop(actors.1));
+        tokio::spawn(async move {
+            if let Err(e) = run_tcp_connection_send_loop(actors.0).await {
+                error!("I/O send loop failed: {e}");
+            }
+        });
+        tokio::spawn(async move {
+            if let Err(e) = run_tcp_connection_receive_loop(actors.1).await {
+                error!("I/O receive loop failed: {e}");
+            }
+        });
 
         Ok(Self { sender })
     }

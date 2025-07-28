@@ -82,9 +82,7 @@ impl ConnectionManager {
     }
 
     pub async fn receive_init_packet(&mut self) -> Result<AppPacket, ServerError> {
-        let channel = oneshot::channel();
-        self.handle.sender.send(TcpConnectionMessage::receive_packet(channel.0, Some(self.global_timeout))).await?;
-        let packet: Option<AppPacket> = channel.1.await??;
+        let packet = self.handle.send_message_with_response(|tx| TcpConnectionMessage::receive_packet(tx, Some(self.global_timeout))).await??;
         let Some(app_packet) = packet else {
             return Err(ServerError::new(
                 ServerErrorKind::InvalidConnectionInitiation,
@@ -96,9 +94,7 @@ impl ConnectionManager {
 
     pub async fn transfer_packets(&mut self, tx: Sender<AppPacket>) -> Result<(), ServerError> {
         loop {
-            let channel = oneshot::channel();
-            self.handle.sender.send(TcpConnectionMessage::receive_packet(channel.0, None)).await?;
-            let packet: Option<AppPacket> = channel.1.await??;
+            let packet = self.handle.send_message_with_response(|tx| TcpConnectionMessage::receive_packet(tx, None)).await??;
             match packet {
                 None => return Ok(()),
                 Some(app_packet) => {

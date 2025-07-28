@@ -6,20 +6,20 @@ use bincode::{Decode, Encode};
 use std::fmt::Display;
 use std::hash::{Hash, Hasher};
 
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub enum AppPacket {
     Command(CommandPacket),
     Data(ProbePacket),
     Status(StatusPacket),
 }
 
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub enum CommandPacket {
     TransmitDevicePackets(PacketTransmitRequest),
     ReconnectProbe,
 }
 
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub enum StatusPacket {
     PingRequest,
     PingResponse,
@@ -30,7 +30,7 @@ pub enum StatusPacket {
     ProbeResponseConfig(ProbeConfigPacket),
 }
 
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub struct ProbeConfigElement {
     pub interface_name: String,
     pub bpf_filter: Option<String>,
@@ -45,7 +45,7 @@ impl ProbeConfigElement {
     }
 }
 
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub struct ProbeConfigPacket {
     pub interface_filter_map: Vec<ProbeConfigElement>,
 }
@@ -96,19 +96,19 @@ impl PartialEq for ProbePacket {
 
 impl Eq for ProbePacket {}
 
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub struct PacketTransmitRequest {
     pub device: PacketTransmitDevice,
     pub target: PacketTransmitTarget,
 }
 
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub struct PacketTransmitTarget {
     pub ip: String,
     pub port: u16,
 }
 
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub struct PacketTransmitDevice {
     pub probe_uuid: Uuid,
     pub mac: MacAddr,

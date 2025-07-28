@@ -32,30 +32,10 @@ async fn main() -> Result<(), AppError> {
     env_logger::init_from_env(Env::default().default_filter_or("info"));
     let pool = db_init().await?;
 
-    // tokio::select! {
-    //     server = run_server(pool.clone()) => server,
-    //     probe = run_probe() => probe
-    // }?;
-    // if let Err(e) = run_web(pool.clone()).await {
-    //     println!("{}",e);
-    // }
+    tokio::select! {
+        server = server_init(pool.clone()) => server?,
+        probe = probe_init() => probe?
+    }
 
-    // if let Err(e) = run_server(pool.clone()).await {
-    //     println!("{}",e);
-    // }
-    // if let Err(e) = run_probe().await {
-    //     println!("{}",e);
-    // }
-    // let (x, y) = tokio::join!(
-    //     run_server(pool.clone()),
-    //     run_probe());
-    // x?;
-    // y?;
-
-    let server = tokio::spawn(async move { run_server(pool.clone()).await });
-    let probe = tokio::spawn(async move { run_probe().await });
-
-    server.await??;
-    probe.await??;
     Ok(())
 }

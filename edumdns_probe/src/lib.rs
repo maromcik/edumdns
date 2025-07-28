@@ -17,7 +17,7 @@ pub mod probe;
 
 pub async fn probe_init() -> Result<(), ProbeError> {
     let uuid = Uuid(uuid::Uuid::from_u128(32));
-    let bind_ip = "192.168.80.41:0";
+    let bind_ip = "192.168.6.254:0";
     let server_addr_port = "127.0.0.1:5000";
 
     let probe_metadata = ProbeMetadata {
@@ -105,5 +105,4 @@ pub async fn probe_init() -> Result<(), ProbeError> {
             },
         }
     }
-    Ok(())
 }

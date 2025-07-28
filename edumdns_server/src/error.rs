@@ -67,12 +67,18 @@ impl From<DbError> for ServerError {
 
 impl From<tokio::sync::oneshot::error::RecvError> for ServerError {
     fn from(value: tokio::sync::oneshot::error::RecvError) -> Self {
-        Self::new(ServerErrorKind::TokioOneshotChannelError, value.to_string().as_str())
+        Self::new(
+            ServerErrorKind::TokioOneshotChannelError,
+            value.to_string().as_str(),
+        )
     }
 }
 
 impl<T> From<tokio::sync::mpsc::error::SendError<T>> for ServerError {
     fn from(value: tokio::sync::mpsc::error::SendError<T>) -> Self {
-        Self::new(ServerErrorKind::TokioMpscChannelError, value.to_string().as_str())
+        Self::new(
+            ServerErrorKind::TokioMpscChannelError,
+            value.to_string().as_str(),
+        )
     }
 }

@@ -21,8 +21,7 @@ async fn handle_connection(
     packet_sender: Sender<AppPacket>,
     pool: Pool<AsyncPgConnection>,
 ) -> Result<(), ServerError> {
-    let mut connection_manager =
-        ConnectionManager::new(stream, pool, Duration::from_secs(10))?;
+    let mut connection_manager = ConnectionManager::new(stream, pool, Duration::from_secs(10))?;
     connection_manager.connection_init_server().await?;
     connection_manager.transfer_packets(packet_sender).await?;
     debug!("Client disconnected");

@@ -16,15 +16,23 @@ use tokio::time::error::Elapsed;
 use tokio::time::{sleep, timeout};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
-async fn run_tcp_connection_receive_loop(mut actor: TcpConnectionReceiver) -> Result<(), CoreError> {
+async fn run_tcp_connection_receive_loop(
+    mut actor: TcpConnectionReceiver,
+) -> Result<(), CoreError> {
     while let Some(msg) = actor.receiver.recv().await {
         if let TcpConnectionMessage::ReceivePacket {
-                respond_to,
-                timeout,
-            } = msg {
-            respond_to.send(actor.receive_next(timeout).await)
-                .map_err(|e| CoreError::new(CoreErrorKind::TokioOneshotChannelError, format!("Could not send value {e:?}")
-                    .as_str()))?;
+            respond_to,
+            timeout,
+        } = msg
+        {
+            respond_to
+                .send(actor.receive_next(timeout).await)
+                .map_err(|e| {
+                    CoreError::new(
+                        CoreErrorKind::TokioOneshotChannelError,
+                        format!("Could not send value {e:?}").as_str(),
+                    )
+                })?;
         }
     }
     Ok(())
@@ -32,11 +40,15 @@ async fn run_tcp_connection_receive_loop(mut actor: TcpConnectionReceiver) -> Re
 
 async fn run_tcp_connection_send_loop(mut actor: TcpConnectionSender) -> Result<(), CoreError> {
     while let Some(msg) = actor.receiver.recv().await {
-        if let TcpConnectionMessage::SendPacket {
-            respond_to, packet
-            } = msg {
-            respond_to.send(actor.send_packet(&packet).await).map_err(|e| CoreError::new(CoreErrorKind::TokioOneshotChannelError, format!("Could not send value {e:?}")
-                .as_str()))?;
+        if let TcpConnectionMessage::SendPacket { respond_to, packet } = msg {
+            respond_to
+                .send(actor.send_packet(&packet).await)
+                .map_err(|e| {
+                    CoreError::new(
+                        CoreErrorKind::TokioOneshotChannelError,
+                        format!("Could not send value {e:?}").as_str(),
+                    )
+                })?;
         }
     }
     Ok(())
@@ -72,13 +84,13 @@ impl TcpConnectionMessage {
         respond_to: oneshot::Sender<Result<(), CoreError>>,
         packet: AppPacket,
     ) -> Self {
-        Self::SendPacket {
-            respond_to,
-            packet,
-        }
+        Self::SendPacket { respond_to, packet }
     }
 
-    pub fn receive_packet(respond_to: oneshot::Sender<Result<Option<AppPacket>, CoreError>>, timeout: Option<Duration>) -> Self {
+    pub fn receive_packet(
+        respond_to: oneshot::Sender<Result<Option<AppPacket>, CoreError>>,
+        timeout: Option<Duration>,
+    ) -> Self {
         Self::ReceivePacket {
             respond_to,
             timeout,
@@ -108,7 +120,8 @@ impl TcpConnectionHandle {
         )?;
 
         tokio::spawn(async move {
-            if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await{
+            if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
+            {
                 error!("I/O message multiplexer failed: {e}");
             }
         });
@@ -141,10 +154,12 @@ impl TcpConnectionHandle {
             send_channel.1,
             recv_channel.1,
             global_timeout,
-        ).await?;
+        )
+        .await?;
 
         tokio::spawn(async move {
-            if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await{
+            if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
+            {
                 error!("I/O message multiplexer failed: {e}");
             }
         });
@@ -165,15 +180,11 @@ impl TcpConnectionHandle {
     pub async fn send_message_with_response<T>(
         &self,
         message_creator: impl FnOnce(oneshot::Sender<T>) -> TcpConnectionMessage,
-    ) -> Result<T, CoreError>
-    {
+    ) -> Result<T, CoreError> {
         let (tx, rx) = oneshot::channel();
-        self.sender
-            .send(message_creator(tx))
-            .await?;
+        self.sender.send(message_creator(tx)).await?;
         rx.await.map_err(Into::into)
     }
-
 }
 
 pub struct TcpConnectionSender {

@@ -57,7 +57,6 @@ pub async fn probe_init() -> Result<(), ProbeError> {
             config.clone(),
         );
 
-
         let targets = ReceivePacketTargets {
             pinger: pinger_receive_transmitter,
         };

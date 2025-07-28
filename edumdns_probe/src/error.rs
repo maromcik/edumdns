@@ -85,12 +85,18 @@ impl From<std::net::AddrParseError> for ProbeError {
 
 impl From<tokio::sync::oneshot::error::RecvError> for ProbeError {
     fn from(value: tokio::sync::oneshot::error::RecvError) -> Self {
-        Self::new(ProbeErrorKind::TokioOneshotChannelError, value.to_string().as_str())   
+        Self::new(
+            ProbeErrorKind::TokioOneshotChannelError,
+            value.to_string().as_str(),
+        )
     }
 }
 
 impl<T> From<tokio::sync::mpsc::error::SendError<T>> for ProbeError {
     fn from(value: tokio::sync::mpsc::error::SendError<T>) -> Self {
-        Self::new(ProbeErrorKind::TokioMpscChannelError, value.to_string().as_str())
+        Self::new(
+            ProbeErrorKind::TokioMpscChannelError,
+            value.to_string().as_str(),
+        )
     }
 }

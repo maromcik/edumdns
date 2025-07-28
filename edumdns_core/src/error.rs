@@ -133,13 +133,19 @@ impl From<tokio::time::error::Elapsed> for CoreError {
 
 impl From<tokio::sync::oneshot::error::RecvError> for CoreError {
     fn from(value: tokio::sync::oneshot::error::RecvError) -> Self {
-        Self::new(CoreErrorKind::TokioOneshotChannelError, value.to_string().as_str())
+        Self::new(
+            CoreErrorKind::TokioOneshotChannelError,
+            value.to_string().as_str(),
+        )
     }
 }
 
 impl<T> From<tokio::sync::mpsc::error::SendError<T>> for CoreError {
     fn from(value: tokio::sync::mpsc::error::SendError<T>) -> Self {
-        Self::new(CoreErrorKind::TokioMpscChannelError, value.to_string().as_str())
+        Self::new(
+            CoreErrorKind::TokioMpscChannelError,
+            value.to_string().as_str(),
+        )
     }
 }
 

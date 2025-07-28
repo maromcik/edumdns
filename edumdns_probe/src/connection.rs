@@ -115,6 +115,28 @@ impl ConnectionManager {
         Ok(app_packet)
     }
 
+    pub async fn reconnect(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
+        match retry!(
+            TcpConnectionHandle::connect(
+                &self.server_connection_string,
+                &self.bind_ip,
+                self.global_timeout
+            )
+            .await,
+            self.max_retries,
+            self.retry_interval
+        ) {
+            Ok(connection) => {
+                self.handle = connection;
+                self.connection_init_probe().await
+            }
+            Err(e) => {
+                error!("Failed to reconnect: {e}");
+                Err(ProbeError::from(e))
+            }
+        }
+    }
+
     pub async fn transmit_packets(
         join_set: &mut JoinSet<Result<(), ProbeError>>,
         handle: TcpConnectionHandle,
@@ -125,7 +147,6 @@ impl ConnectionManager {
         retry_interval: Duration,
     ) -> Result<(), ProbeError> {
         join_set.spawn(async move {
-            println!("Transmit packets started");
             tokio::select! {
                 _ = cancellation_token.cancelled() => {
                     warn!("Transmit packets task cancelled");
@@ -147,8 +168,14 @@ impl ConnectionManager {
         retry_interval: Duration,
     ) -> Result<(), ProbeError> {
         while let Some(packet) = data_receiver.recv().await {
-            ConnectionManager::send_packet_with_reconnect(&handle, &command_transmitter, max_retries, retry_interval, packet)
-                .await?;
+            ConnectionManager::send_packet_with_reconnect(
+                &handle,
+                &command_transmitter,
+                max_retries,
+                retry_interval,
+                packet,
+            )
+            .await?;
         }
         Ok(())
     }
@@ -161,7 +188,6 @@ impl ConnectionManager {
         cancellation_token: CancellationToken,
     ) -> Result<(), ProbeError> {
         join_set.spawn(async move {
-            println!("Receive packets started");
             tokio::select! {
                 _ = cancellation_token.cancelled() => {
                     warn!("Receive packets task cancelled");
@@ -209,8 +235,6 @@ impl ConnectionManager {
         }
     }
 
-    // TODO receive and sort packets, use a channel for anyone requesting packets, aka demultiplex them.
-
     pub async fn send_packet_with_reconnect(
         handle: &TcpConnectionHandle,
         command_transmitter: &mpsc::Sender<AppPacket>,
@@ -229,39 +253,16 @@ impl ConnectionManager {
                 Ok(_) => return Ok(()),
                 Err(e) => {
                     error!("Failed to send packet: {e}");
-                    command_transmitter.send(AppPacket::Command(CommandPacket::ReconnectProbe)).await?;
+                    command_transmitter
+                        .send(AppPacket::Command(CommandPacket::ReconnectProbe))
+                        .await?;
                     if counter >= max_retries {
                         return Err(ProbeError::from(e));
                     }
                     counter += 1;
-                    warn!(
-                        "Retrying to send the packet; attempt: {counter} of {}",
-                        max_retries
-                    );
+                    warn!("Retrying to send the packet; attempt: {counter} of {max_retries}");
                     sleep(retry_interval).await;
                 }
-            }
-        }
-    }
-
-    pub async fn reconnect(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
-        match retry!(
-            TcpConnectionHandle::connect(
-                &self.server_connection_string,
-                &self.bind_ip,
-                self.global_timeout
-            )
-            .await,
-            self.max_retries,
-            self.retry_interval
-        ) {
-            Ok(connection) => {
-                self.handle = connection;
-                self.connection_init_probe().await
-            }
-            Err(e) => {
-                error!("Failed to reconnect: {e}");
-                Err(ProbeError::from(e))
             }
         }
     }

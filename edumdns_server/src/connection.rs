@@ -6,6 +6,7 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::{TcpConnection, TcpConnectionHandle, TcpConnectionMessage};
+use edumdns_core::error::CoreError;
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_db::models::Probe;
 use edumdns_db::repositories::common::{DbCreate, DbReadOne};
@@ -17,7 +18,6 @@ use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::oneshot;
 use tokio::time::sleep;
-use edumdns_core::error::CoreError;
 
 pub struct ConnectionManager {
     handle: TcpConnectionHandle,
@@ -52,11 +52,21 @@ impl ConnectionManager {
         let probe = self.upsert_probe(&hello_metadata).await?;
         if probe.adopted {
             self.handle
-                .send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, AppPacket::Status(StatusPacket::ProbeAdopted)))
+                .send_message_with_response(|tx| {
+                    TcpConnectionMessage::send_packet(
+                        tx,
+                        AppPacket::Status(StatusPacket::ProbeAdopted),
+                    )
+                })
                 .await??;
         } else {
             self.handle
-                .send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, AppPacket::Status(StatusPacket::ProbeUnknown)))
+                .send_message_with_response(|tx| {
+                    TcpConnectionMessage::send_packet(
+                        tx,
+                        AppPacket::Status(StatusPacket::ProbeUnknown),
+                    )
+                })
                 .await??;
             return Err(ServerError::new(
                 ServerErrorKind::ProbeNotAdopted,
@@ -76,13 +86,24 @@ impl ConnectionManager {
 
         let config = self.get_probe_config(&config_metadata).await?;
         self.handle
-            .send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, AppPacket::Status(StatusPacket::ProbeResponseConfig(config)))).await??;
+            .send_message_with_response(|tx| {
+                TcpConnectionMessage::send_packet(
+                    tx,
+                    AppPacket::Status(StatusPacket::ProbeResponseConfig(config)),
+                )
+            })
+            .await??;
 
         Ok(())
     }
 
     pub async fn receive_init_packet(&mut self) -> Result<AppPacket, ServerError> {
-        let packet = self.handle.send_message_with_response(|tx| TcpConnectionMessage::receive_packet(tx, Some(self.global_timeout))).await??;
+        let packet = self
+            .handle
+            .send_message_with_response(|tx| {
+                TcpConnectionMessage::receive_packet(tx, Some(self.global_timeout))
+            })
+            .await??;
         let Some(app_packet) = packet else {
             return Err(ServerError::new(
                 ServerErrorKind::InvalidConnectionInitiation,
@@ -94,7 +115,10 @@ impl ConnectionManager {
 
     pub async fn transfer_packets(&mut self, tx: Sender<AppPacket>) -> Result<(), ServerError> {
         loop {
-            let packet = self.handle.send_message_with_response(|tx| TcpConnectionMessage::receive_packet(tx, None)).await??;
+            let packet = self
+                .handle
+                .send_message_with_response(|tx| TcpConnectionMessage::receive_packet(tx, None))
+                .await??;
             match packet {
                 None => return Ok(()),
                 Some(app_packet) => {
@@ -106,10 +130,13 @@ impl ConnectionManager {
                                 StatusPacket::PingRequest => {
                                     // TODO log time since last ping, threshold for considering a probe dead.
 
-                                    self
-                                        .handle
-                                        .send_message_with_response(|tx|
-                                            TcpConnectionMessage::send_packet(tx, AppPacket::Status(StatusPacket::PingResponse)))
+                                    self.handle
+                                        .send_message_with_response(|tx| {
+                                            TcpConnectionMessage::send_packet(
+                                                tx,
+                                                AppPacket::Status(StatusPacket::PingResponse),
+                                            )
+                                        })
                                         .await??;
                                 }
                                 StatusPacket::PingResponse => {}

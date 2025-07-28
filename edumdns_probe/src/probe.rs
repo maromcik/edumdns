@@ -1,13 +1,13 @@
-use std::time::Duration;
-use log::{info, warn};
 use crate::capture::listen_and_send;
 use crate::error::{ProbeError, ProbeErrorKind};
 use edumdns_core::app_packet::{AppPacket, ProbeConfigElement, ProbeConfigPacket};
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::capture::PacketCaptureGeneric;
 use edumdns_core::metadata::ProbeMetadata;
+use log::{info, warn};
 use pcap::{Active, Direction};
 use pnet::datalink::interfaces;
+use std::time::Duration;
 use tokio::sync::mpsc::Sender;
 use tokio::task::{JoinHandle, JoinSet};
 use tokio::time::sleep;
@@ -31,7 +31,11 @@ impl ProbeCapture {
             probe_config,
         }
     }
-    pub async fn start_captures(&self, join_set: &mut JoinSet<Result<(), ProbeError>>, cancellation_token: CancellationToken) -> Result<(), ProbeError> {
+    pub async fn start_captures(
+        &self,
+        join_set: &mut JoinSet<Result<(), ProbeError>>,
+        cancellation_token: CancellationToken,
+    ) -> Result<(), ProbeError> {
         let listen_interfaces_names = vec![("wlp2s0", Some("port 5201".to_string()))];
 
         for config_element in &self.probe_config.interface_filter_map {

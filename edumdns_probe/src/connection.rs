@@ -1,25 +1,35 @@
 use crate::error::{ProbeError, ProbeErrorKind};
 use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbeConfigPacket, StatusPacket};
-use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::{TcpConnection, TcpConnectionHandle, TcpConnectionMessage};
+use edumdns_core::error::{CoreError, CoreErrorKind};
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_core::retry;
+use futures::SinkExt;
+use futures::stream::select_all;
 use log::{debug, error, info, warn};
 use pnet::packet;
+use std::mem;
 use std::pin::Pin;
 use std::time::Duration;
-use futures::SinkExt;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio::time::sleep;
-use edumdns_core::error::{CoreError, CoreErrorKind};
+use tokio_stream::StreamExt;
+use tokio_stream::wrappers::ReceiverStream;
+
+
+// TODO switch to probe manager
+// TODO spawn all tasks as tokio selects, when reconnect comes in, select dies and forces reconnect in probe manager's thread
+pub struct ReceivePacketTargets {
+    pub pinger: mpsc::Sender<AppPacket>,
+}
+
 
 pub struct ConnectionManager {
     probe_metadata: ProbeMetadata,
     server_connection_string: String,
     bind_ip: String,
     pub handle: TcpConnectionHandle,
-    pub send_receiver: Receiver<AppPacket>,
     max_retries: usize,
     retry_interval: Duration,
     global_timeout: Duration,
@@ -30,21 +40,21 @@ impl ConnectionManager {
         probe_metadata: ProbeMetadata,
         server_connection_string: &str,
         bind_ip: &str,
-        send_receiver: Receiver<AppPacket>,
         max_retries: usize,
         retry_interval: Duration,
         global_timeout: Duration,
     ) -> Result<Self, ProbeError> {
+        let handle = retry!(
+            TcpConnectionHandle::connect(server_connection_string, bind_ip, global_timeout).await,
+            max_retries,
+            retry_interval
+        )?;
+
         Ok(Self {
             probe_metadata,
             server_connection_string: server_connection_string.to_owned(),
             bind_ip: bind_ip.to_owned(),
-            handle: retry!(
-                TcpConnectionHandle::connect(server_connection_string, bind_ip, global_timeout).await,
-                max_retries,
-                retry_interval
-            )?,
-            send_receiver,
+            handle,
             max_retries,
             retry_interval,
             global_timeout,
@@ -57,9 +67,10 @@ impl ConnectionManager {
             "Invalid connection initiation",
         ));
         let hello_packet = AppPacket::Status(StatusPacket::ProbeHello(self.probe_metadata.clone()));
-        let channel = oneshot::channel();
-        self.handle.sender.send( TcpConnectionMessage::send_packet(channel.0, hello_packet) ).await?;
-        channel.1.await??;
+
+        self.handle
+            .send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, hello_packet))
+            .await??;
 
         let packet = self.receive_init_packet().await?;
 
@@ -71,12 +82,13 @@ impl ConnectionManager {
         let AppPacket::Status(StatusPacket::ProbeAdopted) = packet else {
             return error;
         };
-        let probe_packet = AppPacket::Status(StatusPacket::ProbeRequestConfig(self.probe_metadata.clone()));
-        let channel = oneshot::channel();
+        let probe_packet = AppPacket::Status(StatusPacket::ProbeRequestConfig(
+            self.probe_metadata.clone(),
+        ));
+
         self.handle
-            .sender.send( TcpConnectionMessage::send_packet(channel.0, probe_packet))
-            .await?;
-        channel.1.await??;
+            .send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, probe_packet))
+            .await??;
 
         let packet = self.receive_init_packet().await?;
 
@@ -88,9 +100,12 @@ impl ConnectionManager {
     }
 
     pub async fn receive_init_packet(&mut self) -> Result<AppPacket, ProbeError> {
-        let channel = oneshot::channel();
-        self.handle.sender.send(TcpConnectionMessage::receive_packet(channel.0, Some(self.global_timeout))).await?;
-        let packet: Option<AppPacket> = channel.1.await??;
+        let packet = self
+            .handle
+            .send_message_with_response(|tx| {
+                TcpConnectionMessage::receive_packet(tx, Some(self.global_timeout))
+            })
+            .await??;
         let Some(app_packet) = packet else {
             return Err(ProbeError::new(
                 ProbeErrorKind::InvalidConnectionInitiation,
@@ -100,12 +115,54 @@ impl ConnectionManager {
         Ok(app_packet)
     }
 
-    pub async fn transmit_packets(&mut self) -> Result<(), ProbeError> {
-        while let Some(packet) = self.send_receiver.recv().await {
-            self.send_packet_with_reconnect(packet).await?;
+    pub async fn transmit_packets(
+        &mut self,
+        data_receiver: mpsc::Receiver<AppPacket>,
+        command_receiver: mpsc::Receiver<AppPacket>,
+    ) -> Result<(), ProbeError> {
+        let receivers = vec![command_receiver, data_receiver];
+        let mut fused_streams = select_all(receivers.into_iter().map(ReceiverStream::new));
+        while let Some(packet) = fused_streams.next().await {
+            match packet {
+                AppPacket::Command(CommandPacket::ReconnectProbe) => {
+                    self.reconnect().await?;
+                }
+                _ => self.send_packet_with_reconnect(packet).await?,
+            }
         }
         Ok(())
     }
+
+    pub async fn receive_packets(handle: TcpConnectionHandle, target: ReceivePacketTargets) -> Result<(), ProbeError> {
+        loop {
+            let packet = handle
+                .send_message_with_response(|tx| TcpConnectionMessage::receive_packet(tx, None))
+                .await??;
+            match packet {
+                None => return Ok(()),
+                Some(app_packet) => match &app_packet {
+                    AppPacket::Command(command_packet) => {
+                        match command_packet {
+                            CommandPacket::ReconnectProbe => target.pinger.send(app_packet).await?,
+                            _ => {}
+                        }
+                    }
+                    AppPacket::Data(_) => {}
+                    AppPacket::Status(status) => match status {
+                        StatusPacket::PingResponse => target.pinger.send(app_packet).await?,
+                        StatusPacket::ProbeHello(_) => {}
+                        StatusPacket::ProbeAdopted => {}
+                        StatusPacket::ProbeUnknown => {}
+                        StatusPacket::ProbeRequestConfig(_) => {}
+                        StatusPacket::ProbeResponseConfig(_) => {}
+                        StatusPacket::PingRequest => {}
+                    },
+                },
+            }
+        }
+    }
+
+    // TODO receive and sort packets, use a channel for anyone requesting packets, aka demultiplex them.
 
     pub async fn send_packet_with_reconnect(
         &mut self,
@@ -113,12 +170,13 @@ impl ConnectionManager {
     ) -> Result<(), ProbeError> {
         let mut counter = 0;
         loop {
-            let channel = oneshot::channel();
-            self.handle
-                .sender.send( TcpConnectionMessage::send_packet(channel.0, packet.clone()))
-                .await?;
-
-            match channel.1.await? {
+            match self
+                .handle
+                .send_message_with_response(|tx| {
+                    TcpConnectionMessage::send_packet(tx, packet.clone())
+                })
+                .await?
+            {
                 Ok(_) => return Ok(()),
                 Err(e) => {
                     error!("Failed to send packet: {e}");
@@ -164,19 +222,29 @@ impl ConnectionManager {
         }
     }
 
-    pub async fn pinger(send_transmitter: Sender<AppPacket>, mut receive_receiver: Receiver<AppPacket>, command_transmitter: Sender<AppPacket>, interval: Duration) -> Result<(), CoreError> {
+    pub async fn pinger(
+        handle: TcpConnectionHandle,
+        mut packet_receiver: mpsc::Receiver<AppPacket>,
+        command_sender: mpsc::Sender<AppPacket>,
+        interval: Duration,
+    ) -> Result<(), CoreError> {
         debug!("Starting pinger");
         loop {
-            send_transmitter.send(AppPacket::Status(StatusPacket::PingRequest)).await.expect("Poisoned");
+            handle
+                .send_message_with_response(|tx| {
+                    TcpConnectionMessage::send_packet(
+                        tx,
+                        AppPacket::Status(StatusPacket::PingRequest),
+                    )
+                })
+                .await??;
             debug!("Ping sent");
-            let response = receive_receiver.recv().await.expect("Poisoned");
+            let packet = packet_receiver.recv().await;
             debug!("Ping response received");
-            let AppPacket::Status(StatusPacket::PingResponse) = response else {
-                command_transmitter.send(AppPacket::Command(CommandPacket::ReconnectProbe)).await.expect("Poisoned");
-                return Err(CoreError::new(
-                    CoreErrorKind::PingError,
-                    "Ping response has not been received, restarting probe",
-                ));
+            if Some(AppPacket::Status(StatusPacket::PingResponse)) != packet {
+                command_sender
+                    .send(AppPacket::Command(CommandPacket::ReconnectProbe))
+                    .await?
             };
             sleep(interval).await;
         }

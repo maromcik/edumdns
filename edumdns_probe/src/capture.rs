@@ -43,6 +43,6 @@ where
             continue;
         };
         let app_packet = AppPacket::Data(probe_packet);
-        tx.send(app_packet).await.expect("Poisoned");
+        tx.send(app_packet).await?;
     }
 }

@@ -148,7 +148,7 @@ impl ConnectionManager {
                             }
                         }
                     }
-                    tx.send(app_packet).await.expect("Poisoned");
+                    tx.send(app_packet).await?;
                 }
             }
         }

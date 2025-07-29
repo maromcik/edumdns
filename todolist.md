@@ -23,6 +23,6 @@
   - 3 nullable fields any of them should suffice
     - ip network client comes from
     - password client should send
-    - regex over AP hostname
+    - regex over AP hostname - get from radius active sessions
 - web UI
 - OIDC

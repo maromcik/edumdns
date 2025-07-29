@@ -57,15 +57,6 @@ impl PacketStorage {
 
     pub async fn handle_packets(&mut self) {
         while let Some(packet) = self.packet_receiver.recv().await {
-            // println!("Channel: {}", self.packet_receiver.len());
-            // if let Some(hash) = self.packets.get(&MacAddr(
-            //     "00:00:00:00:00:00"
-            //         .parse::<pnet::datalink::MacAddr>()
-            //         .unwrap(),
-            // )) {
-            //     let x = hash.read().await.len();
-            //     println!("Hash: {}", x);
-            // }
             match packet {
                 AppPacket::Command(command) => match command {
                     CommandPacket::TransmitDevicePackets(target) => {

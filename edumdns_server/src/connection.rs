@@ -1,23 +1,19 @@
 use crate::error::{ServerError, ServerErrorKind};
-use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
+use diesel_async::AsyncPgConnection;
 use edumdns_core::app_packet::{
-    AppPacket, CommandPacket, ProbeConfigElement, ProbeConfigPacket, StatusPacket,
+    AppPacket, ProbeConfigElement, ProbeConfigPacket, StatusPacket,
 };
-use edumdns_core::bincode_types::Uuid;
-use edumdns_core::connection::{TcpConnection, TcpConnectionHandle, TcpConnectionMessage};
-use edumdns_core::error::CoreError;
+use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_db::models::Probe;
-use edumdns_db::repositories::common::{DbCreate, DbReadOne};
+use edumdns_db::repositories::common::DbCreate;
 use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use ipnetwork::IpNetwork;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
-use tokio::sync::oneshot;
-use tokio::time::sleep;
 
 pub struct ConnectionManager {
     handle: TcpConnectionHandle,
@@ -123,8 +119,12 @@ impl ConnectionManager {
                 None => return Ok(()),
                 Some(app_packet) => {
                     match &app_packet {
-                        AppPacket::Command(_) => {}
-                        AppPacket::Data(_) => {}
+                        AppPacket::Command(_) => {
+                            tx.send(app_packet).await?;
+                        }
+                        AppPacket::Data(_) => {
+                            tx.send(app_packet).await?;
+                        }
                         AppPacket::Status(status) => {
                             match status {
                                 StatusPacket::PingRequest => {
@@ -148,7 +148,6 @@ impl ConnectionManager {
                             }
                         }
                     }
-                    tx.send(app_packet).await?;
                 }
             }
         }

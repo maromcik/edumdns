@@ -1,3 +1,4 @@
+use crate::app_packet::ProbeConfigElement;
 use pnet::datalink::ParseMacAddrErr;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -10,6 +11,8 @@ use thiserror::Error;
 pub enum CoreErrorKind {
     #[error("Capture error")]
     CaptureError,
+    #[error("Specific capture error")]
+    CaptureErrorSpecific(ProbeConfigElement),
     #[error("Network interface error")]
     NetworkInterfaceError,
     #[error("Network channel error")]

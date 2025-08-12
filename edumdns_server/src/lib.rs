@@ -5,6 +5,7 @@ use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 
 mod connection;
+mod database;
 pub mod error;
 pub mod listen;
 pub mod storage;

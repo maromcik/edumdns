@@ -1,26 +1,44 @@
 use crate::error::ProbeError;
-use edumdns_core::app_packet::{AppPacket, ProbePacket};
+use edumdns_core::app_packet::{AppPacket, ProbeConfigElement, ProbePacket};
 use edumdns_core::capture::PacketCapture;
-use edumdns_core::error::CoreError;
+use edumdns_core::connection::TcpConnectionHandle;
+use edumdns_core::error::{CoreError, CoreErrorKind};
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_core::network_packet::DataLinkPacket;
-use log::{debug, info};
+use log::{debug, info, warn};
 use pcap::{Activated, Error, State};
 use tokio::sync::mpsc::Sender;
+use tokio_util::sync::CancellationToken;
 
-pub async fn listen_and_send<T>(
+pub fn listen_and_send<T>(
     mut capture: impl PacketCapture<T>,
     probe_metadata: ProbeMetadata,
     tx: Sender<AppPacket>,
+    cancellation_token: CancellationToken,
+    config_element: ProbeConfigElement,
 ) -> Result<(), ProbeError>
 where
     T: State + Activated,
 {
-    capture.apply_filter()?;
+    capture.apply_filter().map_err(|e| {
+        CoreError::new(
+            CoreErrorKind::CaptureError,
+            format!(
+                "Capture on {} failed: {}",
+                config_element,
+                e.message.as_str()
+            )
+            .as_str(),
+        )
+    })?;
     let mut cap = capture.get_capture();
     info!("Capture ready!");
 
     loop {
+        if cancellation_token.is_cancelled() {
+            warn!("Probe capture for <{config_element}> cancelled");
+            return Ok(());
+        }
         let cap_packet = match cap.next_packet() {
             Ok(packet) => packet,
             Err(e) => match e {
@@ -43,6 +61,9 @@ where
             continue;
         };
         let app_packet = AppPacket::Data(probe_packet);
-        tx.send(app_packet).await?;
+        if let Err(e) = tx.blocking_send(app_packet) {
+            warn!("Failed to send packet: {e}");
+            return Ok(());
+        };
     }
 }

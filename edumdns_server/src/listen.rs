@@ -62,7 +62,7 @@ pub async fn listen(pool: Pool<AsyncPgConnection>) -> Result<(), ServerError> {
                 }
             }
         });
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        // tokio::time::sleep(Duration::from_secs(2)).await;
         // tx_local2
         //     .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
         //         packet_target.clone(),

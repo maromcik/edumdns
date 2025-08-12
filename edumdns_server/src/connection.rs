@@ -1,9 +1,7 @@
 use crate::error::{ServerError, ServerErrorKind};
-use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
-use edumdns_core::app_packet::{
-    AppPacket, ProbeConfigElement, ProbeConfigPacket, StatusPacket,
-};
+use diesel_async::pooled_connection::deadpool::Pool;
+use edumdns_core::app_packet::{AppPacket, ProbeConfigElement, ProbeConfigPacket, StatusPacket};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_db::models::Probe;
@@ -11,6 +9,7 @@ use edumdns_db::repositories::common::DbCreate;
 use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use ipnetwork::IpNetwork;
+use log::error;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
@@ -145,6 +144,9 @@ impl ConnectionManager {
                                 StatusPacket::ProbeUnknown => {}
                                 StatusPacket::ProbeRequestConfig(_) => {}
                                 StatusPacket::ProbeResponseConfig(_) => {}
+                                StatusPacket::ProbeInvalidConfig(e) => {
+                                    error!("Invalid config {e}")
+                                }
                             }
                         }
                     }

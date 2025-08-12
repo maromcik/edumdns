@@ -96,6 +96,7 @@ impl ConnectionManager {
             return error;
         };
         info!("Connected to the server {}", self.server_connection_string);
+        debug!("Obtained config <{config:?}>");
         Ok(config)
     }
 
@@ -151,8 +152,12 @@ impl ConnectionManager {
                 _ = cancellation_token.cancelled() => {
                     warn!("Transmit packets task cancelled");
                 }
-                _ = ConnectionManager::transmit_packets_worker(handle, data_receiver, command_transmitter, max_retries, retry_interval) => {
-                    info!("Transmit packets task finished");
+                result = ConnectionManager::transmit_packets_worker(handle, data_receiver, command_transmitter, max_retries, retry_interval) => {
+                    result.map_err(|e| {
+                        error!("Transmit packets task exited with error: {e}");
+                        e
+                    })?;
+                        info!("Transmit packets task finished");
                 }
             }
             Ok::<(), ProbeError>(())
@@ -192,9 +197,12 @@ impl ConnectionManager {
                 _ = cancellation_token.cancelled() => {
                     warn!("Receive packets task cancelled");
                 }
-                _ = ConnectionManager::receive_packets_worker(handle, target, command_transmitter) => {
-                    info!("Receive packets task finished");
-
+                result = ConnectionManager::receive_packets_worker(handle, target, command_transmitter) => {
+result.map_err(|e| {
+                        error!("Receive packets task exited with error: {e}");
+                        e
+                    })?;
+                        info!("Receive packets task finished");
                 }
             }
             Ok::<(), ProbeError>(())
@@ -229,6 +237,7 @@ impl ConnectionManager {
                         StatusPacket::ProbeRequestConfig(_) => {}
                         StatusPacket::ProbeResponseConfig(_) => {}
                         StatusPacket::PingRequest => {}
+                        StatusPacket::ProbeInvalidConfig(_) => {}
                     },
                 },
             }
@@ -280,8 +289,12 @@ impl ConnectionManager {
                 _ = cancellation_token.cancelled() => {
                     warn!("Pinger task cancelled");
                 }
-                _ = ConnectionManager::pinger_worker(handle, packet_receiver, command_sender, interval) => {
-                    info!("Pinger task finished");
+                result = ConnectionManager::pinger_worker(handle, packet_receiver, command_sender, interval) => {
+                    result.map_err(|e| {
+                        error!("Pinger task exited with error: {e}");
+                        e
+                    })?;
+                        info!("Pinger task finished");
                 }
             }
             Ok::<(), ProbeError>(())

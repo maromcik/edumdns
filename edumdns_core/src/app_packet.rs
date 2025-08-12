@@ -28,6 +28,7 @@ pub enum StatusPacket {
     ProbeUnknown,
     ProbeRequestConfig(ProbeMetadata),
     ProbeResponseConfig(ProbeConfigPacket),
+    ProbeInvalidConfig(String),
 }
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
@@ -49,7 +50,7 @@ impl Display for ProbeConfigElement {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Interface: {}; Filter: {}",
+            "<interface: {}; filter: {}>",
             self.interface_name,
             self.bpf_filter.as_ref().unwrap_or(&"None".to_string())
         )

@@ -12,7 +12,6 @@ use actix_web::web::{FormConfig, PayloadConfig};
 use actix_web::{App, HttpServer, cookie::Key};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use env_logger::Env;
 use log::{info, warn};
 use std::env;
 use std::sync::Arc;

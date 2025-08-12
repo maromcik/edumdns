@@ -19,7 +19,7 @@
   - the receiving function will be storing packets in the db.
   - during lookup bring probes and devices to the hashmap, query db for packets if missing
 ## Web
-- access control (modules?)
+- access control (modules - allow loading auth function - traits)
   - 3 nullable fields any of them should suffice
     - ip network client comes from
     - password client should send

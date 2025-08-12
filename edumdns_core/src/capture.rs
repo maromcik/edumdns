@@ -70,8 +70,8 @@ where
     }
     fn apply_filter(&mut self) -> Result<(), CoreError> {
         if let Some(filter) = &self.filter {
-            info!("Filter applied: {}", filter);
             self.capture.filter(filter, true)?;
+            info!("Filter applied: {filter}");
         }
         Ok(())
     }

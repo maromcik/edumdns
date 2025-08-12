@@ -67,16 +67,10 @@ impl PacketStorage {
                             );
                         };
                     }
-                    _ => {}
+                    CommandPacket::ReconnectProbe => todo!(),
                 },
                 AppPacket::Status(status) => match status {
-                    StatusPacket::PingRequest => {}
-                    StatusPacket::PingResponse => {}
-                    StatusPacket::ProbeHello(_) => {}
-                    StatusPacket::ProbeAdopted => {}
-                    StatusPacket::ProbeUnknown => {}
-                    StatusPacket::ProbeRequestConfig(_) => {}
-                    StatusPacket::ProbeResponseConfig(_) => {}
+                    _ => {}
                 },
                 AppPacket::Data(probe_packet) => {
                     let src_mac = probe_packet
@@ -89,78 +83,88 @@ impl PacketStorage {
 
                     let packet_repo = self.pg_packet_repository.clone();
                     let device_repo = self.pg_device_repository.clone();
-
-                    match self.packets.entry(probe_packet.probe_metadata.id) {
-                        Entry::Occupied(mut probe_entry) => {
-                            match probe_entry.get_mut().entry((src_mac, src_ip)) {
-                                Entry::Occupied(mut device_entry) => {
-                                    device_entry.get_mut().insert(probe_packet.clone());
-                                }
-                                Entry::Vacant(device_entry) => {
-                                    let device_entry = device_entry.insert(HashSet::new());
-                                    device_entry.insert(probe_packet.clone());
-                                }
-                            }
-                            // let packet = packet_repo
-                            //     .create(&CreatePacket::new(
-                            //         &5,
-                            //         &src_mac.to_octets(),
-                            //         &probe_packet
-                            //             .packet_metadata
-                            //             .datalink_metadata
-                            //             .mac_metadata
-                            //             .dst_mac
-                            //             .to_octets(),
-                            //         &probe_packet.packet_metadata.ip_metadata.src_ip.0,
-                            //         &probe_packet.packet_metadata.ip_metadata.dst_ip.0,
-                            //         &probe_packet.packet_metadata.transport_metadata.src_port,
-                            //         &probe_packet.packet_metadata.transport_metadata.dst_port,
-                            //         probe_packet.payload,
-                            //     ))
-                            //     .await
-                            //     .unwrap();
-                        }
-                        Entry::Vacant(probe_entry) => {
-                            let probe_entry = probe_entry.insert(HashMap::new());
-                            match probe_entry.entry((src_mac, src_ip)) {
-                                Entry::Occupied(mut device_entry) => {
-                                    device_entry.get_mut().insert(probe_packet.clone());
-                                }
-                                Entry::Vacant(device_entry) => {
-                                    let device_entry = device_entry.insert(HashSet::new());
-                                    device_entry.insert(probe_packet.clone());
-                                }
-                            }
-
-                            tokio::task::spawn(async move {
-                                let uuid = uuid!("00000000-0000-0000-0000-000000000020");
-                                // let device = device_repo.create(&CreateDevice::new(uuid, src_mac.0.octets(), IpNetwork::V4(Ipv4Network::new(Ipv4Addr::new(0,0,0,0),0).unwrap()), 0)).await.unwrap();
-                                // let packet = packet_repo
-                                //     .create(&CreatePacket::new(
-                                //         &5,
-                                //         &src_mac.to_octets(),
-                                //         &probe_packet
-                                //             .packet_metadata
-                                //             .datalink_metadata
-                                //             .mac_metadata
-                                //             .dst_mac
-                                //             .to_octets(),
-                                //         &probe_packet.packet_metadata.ip_metadata.src_ip.0,
-                                //         &probe_packet.packet_metadata.ip_metadata.dst_ip.0,
-                                //         &probe_packet.packet_metadata.transport_metadata.src_port,
-                                //         &probe_packet.packet_metadata.transport_metadata.dst_port,
-                                //         probe_packet.payload,
-                                //     ))
-                                //     .await
-                                //     .unwrap();
-                            });
-                        }
-                    }
-
-                    debug!("Packet stored in memory: {:?}", src_mac);
+                    let device_map = self
+                        .packets
+                        .entry(probe_packet.probe_metadata.id)
+                        .or_default();
+                    device_map
+                        .entry((src_mac, src_ip))
+                        .or_default()
+                        .insert(probe_packet);
+                    // debug!("Packet stored in memory: {:?}", src_mac);
+                    // match self.packets.entry(probe_packet.probe_metadata.id) {
+                    //     Entry::Occupied(mut probe_entry) => {
+                    //         match probe_entry.get_mut().entry((src_mac, src_ip)) {
+                    //             Entry::Occupied(mut device_entry) => {
+                    //                 device_entry.get_mut().insert(probe_packet.clone());
+                    //             }
+                    //             Entry::Vacant(device_entry) => {
+                    //                 let device_entry = device_entry.insert(HashSet::new());
+                    //                 device_entry.insert(probe_packet.clone());
+                    //             }
+                    //         }
+                    //
+                    //     }
+                    //     Entry::Vacant(probe_entry) => {
+                    //         let probe_entry = probe_entry.insert(HashMap::new());
+                    //         match probe_entry.entry((src_mac, src_ip)) {
+                    //             Entry::Occupied(mut device_entry) => {
+                    //                 device_entry.get_mut().insert(probe_packet.clone());
+                    //             }
+                    //             Entry::Vacant(device_entry) => {
+                    //                 let device_entry = device_entry.insert(HashSet::new());
+                    //                 device_entry.insert(probe_packet.clone());
+                    //             }
+                    //         }
+                    //     }
                 }
             }
         }
+    }
+    // pub fn store_packet(repository: PgPacketRepository, packet: AppPacket) {
+    //     repository
+    //         .create(&CreatePacket::new(
+    //             &5,
+    //             &src_mac.to_octets(),
+    //             &probe_packet
+    //                 .packet_metadata
+    //                 .datalink_metadata
+    //                 .mac_metadata
+    //                 .dst_mac
+    //                 .to_octets(),
+    //             &probe_packet.packet_metadata.ip_metadata.src_ip.0,
+    //             &probe_packet.packet_metadata.ip_metadata.dst_ip.0,
+    //             &probe_packet.packet_metadata.transport_metadata.src_port,
+    //             &probe_packet.packet_metadata.transport_metadata.dst_port,
+    //             probe_packet.payload,
+    //         ))
+    //         .await;
+    // }
+
+    pub fn store_device(repository: PgDeviceRepository, packet: AppPacket) {
+        // tokio::task::spawn(async move {
+        let uuid = uuid!("00000000-0000-0000-0000-000000000020");
+        // let device = device_repo.create(&CreateDevice::new(uuid, src_mac.0.octets(), IpNetwork::V4(Ipv4Network::new(Ipv4Addr::new(0,0,0,0),0).unwrap()), 0)).await.unwrap();
+        // let packet = packet_repo
+        //     .create(&CreatePacket::new(
+        //         &5,
+        //         &src_mac.to_octets(),
+        //         &probe_packet
+        //             .packet_metadata
+        //             .datalink_metadata
+        //             .mac_metadata
+        //             .dst_mac
+        //             .to_octets(),
+        //         &probe_packet.packet_metadata.ip_metadata.src_ip.0,
+        //         &probe_packet.packet_metadata.ip_metadata.dst_ip.0,
+        //         &probe_packet.packet_metadata.transport_metadata.src_port,
+        //         &probe_packet.packet_metadata.transport_metadata.dst_port,
+        //         probe_packet.payload,
+        //     ))
+        //     .await
+        //     .unwrap();
+        // });
+        // }
     }
 
     pub async fn transmit_device_packets(

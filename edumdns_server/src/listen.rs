@@ -34,19 +34,19 @@ pub async fn listen(pool: Pool<AsyncPgConnection>) -> Result<(), ServerError> {
     let (tx, rx) = tokio::sync::mpsc::channel(1000);
     let (tx_err, rx_err) = tokio::sync::mpsc::channel(100);
     let pool_local = pool.clone();
-    let packet_storage_task = tokio::task::spawn(async move {
+    let _packet_storage_task = tokio::task::spawn(async move {
         let mut packet_storage = PacketStorage::new(rx, tx_err, pool_local);
         packet_storage.handle_packets().await
     });
     info!("Packet storage initialized");
 
-    let packet_target = PacketTransmitRequest::new(
-        Uuid(uuid::Uuid::from_u128(32)),
-        MyMacAddr("b8:7b:d4:98:29:64".parse::<MacAddr>().unwrap()),
-        IpNetwork("192.168.8.97".parse::<ipnetwork::IpNetwork>().unwrap()),
-        "127.0.0.1".to_string(),
-        7654,
-    );
+    // let packet_target = PacketTransmitRequest::new(
+    //     Uuid(uuid::Uuid::from_u128(32)),
+    //     MyMacAddr("b8:7b:d4:98:29:64".parse::<MacAddr>().unwrap()),
+    //     IpNetwork("192.168.8.97".parse::<ipnetwork::IpNetwork>().unwrap()),
+    //     "127.0.0.1".to_string(),
+    //     7654,
+    // );
     loop {
         let (socket, addr) = listener.accept().await?;
         info!("Connection from {addr}");
@@ -62,54 +62,5 @@ pub async fn listen(pool: Pool<AsyncPgConnection>) -> Result<(), ServerError> {
                 }
             }
         });
-        // tokio::time::sleep(Duration::from_secs(2)).await;
-        // tx_local2
-        //     .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
-        //         packet_target.clone(),
-        //     )))
-        //     .await
-        //     .unwrap();
-        // tx_local2
-        //     .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
-        //         packet_target.clone(),
-        //     )))
-        //     .await
-        //     .unwrap();
-        // tx_local2
-        //     .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
-        //         packet_target.clone(),
-        //     )))
-        //     .await
-        //     .unwrap();
-        // tx_local2
-        //     .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
-        //         packet_target.clone(),
-        //     )))
-        //     .await
-        //     .unwrap();
-        // tx_local2
-        //     .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
-        //         packet_target.clone(),
-        //     )))
-        //     .await
-        //     .unwrap();
-        // tx_local2
-        //     .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
-        //         packet_target.clone(),
-        //     )))
-        //     .await
-        //     .unwrap();
-        // tx_local2
-        //     .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
-        //         packet_target.clone(),
-        //     )))
-        //     .await
-        //     .unwrap();
-        // tx_local2
-        //     .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
-        //         packet_target.clone(),
-        //     )))
-        //     .await
-        //     .unwrap();
     }
 }

@@ -96,13 +96,25 @@ impl ProbePacket {
 impl Hash for ProbePacket {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.probe_metadata.id.hash(state);
+        self.packet_metadata
+            .datalink_metadata
+            .mac_metadata
+            .src_mac
+            .hash(state);
+        self.packet_metadata.ip_metadata.src_ip.hash(state);
+        self.packet_metadata.ip_metadata.dst_ip.hash(state);
         self.payload.hash(state);
     }
 }
 
 impl PartialEq for ProbePacket {
     fn eq(&self, other: &Self) -> bool {
-        self.probe_metadata.id == other.probe_metadata.id && self.payload == other.payload
+        self.probe_metadata.id == other.probe_metadata.id
+            && self.payload == other.payload
+            && self.packet_metadata.datalink_metadata.mac_metadata.src_mac
+                == other.packet_metadata.datalink_metadata.mac_metadata.src_mac
+            && self.packet_metadata.ip_metadata.src_ip == other.packet_metadata.ip_metadata.src_ip
+            && self.packet_metadata.ip_metadata.dst_ip == other.packet_metadata.ip_metadata.dst_ip
     }
 }
 

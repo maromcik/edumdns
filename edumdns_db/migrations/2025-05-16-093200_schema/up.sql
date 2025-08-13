@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS "device"
     duration       float8,
     interval       float8,
 
-    UNIQUE (probe_id, mac),
+    UNIQUE (probe_id, mac, ip),
     FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE
 );
 
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS "packet"
     dst_port       int          NOT NULL,
     payload        bytea        NOT NULL,
 
-    UNIQUE (device_id, src_mac, src_addr, payload),
+    UNIQUE (device_id, src_mac, src_addr, dst_addr, payload),
     FOREIGN KEY (device_id) REFERENCES "device" (id) ON DELETE CASCADE
 );
 

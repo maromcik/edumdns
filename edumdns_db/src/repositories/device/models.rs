@@ -41,12 +41,12 @@ pub struct CreateDevice {
 }
 
 impl CreateDevice {
-    pub fn new(probe_id: Uuid, mac: [u8; 6], ip: IpNetwork, port: i32) -> Self {
+    pub fn new(probe_id: Uuid, mac: [u8; 6], ip: IpNetwork, port: u16) -> Self {
         Self {
             probe_id,
             mac,
             ip,
-            port,
+            port: port as i32,
         }
     }
 }

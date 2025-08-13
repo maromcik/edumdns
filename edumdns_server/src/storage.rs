@@ -8,7 +8,7 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_db::error::DbError;
-use edumdns_db::repositories::common::DbCreate;
+use edumdns_db::repositories::common::{DbCreate, DbResultSingle};
 use edumdns_db::repositories::device::models::CreateDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::CreatePacket;
@@ -16,6 +16,7 @@ use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use edumdns_db::schema::probe::dsl::probe;
+use ipnetwork::Ipv4Network;
 use log::{debug, error, info, warn};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
@@ -25,6 +26,7 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 use tokio::sync::mpsc::{Receiver, Sender};
 use uuid::uuid;
+use edumdns_db::schema::packet::dst_mac;
 
 pub struct PacketStorage {
     pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
@@ -69,9 +71,7 @@ impl PacketStorage {
                     }
                     CommandPacket::ReconnectProbe => todo!(),
                 },
-                AppPacket::Status(status) => match status {
-                    _ => {}
-                },
+                AppPacket::Status(status) => {},
                 AppPacket::Data(probe_packet) => {
                     let src_mac = probe_packet
                         .packet_metadata
@@ -81,17 +81,16 @@ impl PacketStorage {
 
                     let src_ip = probe_packet.packet_metadata.ip_metadata.src_ip;
 
-                    let packet_repo = self.pg_packet_repository.clone();
-                    let device_repo = self.pg_device_repository.clone();
-                    let device_map = self
+
+                    self
                         .packets
                         .entry(probe_packet.probe_metadata.id)
-                        .or_default();
-                    device_map
+                        .or_default()
                         .entry((src_mac, src_ip))
                         .or_default()
-                        .insert(probe_packet);
-                    // debug!("Packet stored in memory: {:?}", src_mac);
+                        .insert(probe_packet.clone());
+                    debug!("Packet <MAC: {src_mac}, IP: {src_ip}> stored in memory");
+                    self.store_in_database(probe_packet).await;
                     // match self.packets.entry(probe_packet.probe_metadata.id) {
                     //     Entry::Occupied(mut probe_entry) => {
                     //         match probe_entry.get_mut().entry((src_mac, src_ip)) {
@@ -103,7 +102,6 @@ impl PacketStorage {
                     //                 device_entry.insert(probe_packet.clone());
                     //             }
                     //         }
-                    //
                     //     }
                     //     Entry::Vacant(probe_entry) => {
                     //         let probe_entry = probe_entry.insert(HashMap::new());
@@ -117,55 +115,63 @@ impl PacketStorage {
                     //             }
                     //         }
                     //     }
+                    // }
                 }
             }
         }
     }
-    // pub fn store_packet(repository: PgPacketRepository, packet: AppPacket) {
-    //     repository
-    //         .create(&CreatePacket::new(
-    //             &5,
-    //             &src_mac.to_octets(),
-    //             &probe_packet
-    //                 .packet_metadata
-    //                 .datalink_metadata
-    //                 .mac_metadata
-    //                 .dst_mac
-    //                 .to_octets(),
-    //             &probe_packet.packet_metadata.ip_metadata.src_ip.0,
-    //             &probe_packet.packet_metadata.ip_metadata.dst_ip.0,
-    //             &probe_packet.packet_metadata.transport_metadata.src_port,
-    //             &probe_packet.packet_metadata.transport_metadata.dst_port,
-    //             probe_packet.payload,
-    //         ))
-    //         .await;
-    // }
 
-    pub fn store_device(repository: PgDeviceRepository, packet: AppPacket) {
-        // tokio::task::spawn(async move {
-        let uuid = uuid!("00000000-0000-0000-0000-000000000020");
-        // let device = device_repo.create(&CreateDevice::new(uuid, src_mac.0.octets(), IpNetwork::V4(Ipv4Network::new(Ipv4Addr::new(0,0,0,0),0).unwrap()), 0)).await.unwrap();
-        // let packet = packet_repo
-        //     .create(&CreatePacket::new(
-        //         &5,
-        //         &src_mac.to_octets(),
-        //         &probe_packet
-        //             .packet_metadata
-        //             .datalink_metadata
-        //             .mac_metadata
-        //             .dst_mac
-        //             .to_octets(),
-        //         &probe_packet.packet_metadata.ip_metadata.src_ip.0,
-        //         &probe_packet.packet_metadata.ip_metadata.dst_ip.0,
-        //         &probe_packet.packet_metadata.transport_metadata.src_port,
-        //         &probe_packet.packet_metadata.transport_metadata.dst_port,
-        //         probe_packet.payload,
-        //     ))
-        //     .await
-        //     .unwrap();
-        // });
-        // }
+    pub async fn store_in_database(&self, packet: ProbePacket) {
+        let src_mac = packet
+            .packet_metadata
+            .datalink_metadata
+            .mac_metadata
+            .src_mac;
+        let src_ip = packet.packet_metadata.ip_metadata.src_ip;
+        let packet_repo = self.pg_packet_repository.clone();
+        let device_repo = self.pg_device_repository.clone();
+        tokio::task::spawn(async move {
+            let device = device_repo
+                .create(&CreateDevice::new(
+                    packet.probe_metadata.id.0,
+                    src_mac
+                        .0
+                        .octets(),
+                    src_ip
+                        .0,
+                    packet.packet_metadata.transport_metadata.dst_port,
+                ))
+                .await;
+            let device = match device {
+                Ok(d) => {
+                    debug!("Device <ID: {}, MAC: {}, IP: {}> stored in database", d.id, src_mac, d.ip);
+                    d
+                },
+                Err(e) => {
+                    error!("Could not store device <MAC: {}, IP: {}> in database: {e}", src_mac, src_ip);
+                    return;
+                },
+            };
+
+            let packet = packet_repo
+                .create(&CreatePacket::new(
+                    device.id,
+                    src_mac.0.octets(),
+                    packet.packet_metadata.datalink_metadata.mac_metadata.dst_mac.0.octets(),
+                    src_ip.0,
+                    packet.packet_metadata.ip_metadata.dst_ip.0,
+                    packet.packet_metadata.transport_metadata.src_port,
+                    packet.packet_metadata.transport_metadata.dst_port,
+                    packet.payload
+                ))
+                .await;
+            match packet {
+                Ok(p) => debug!("Packet <ID: {}, MAC: {}, IP: {}> stored in database", p.id, src_mac, p.src_addr),
+                Err(e) => error!("Could not store packet <MAC: {}, IP: {}> in database: {e}", src_mac, src_ip)
+            }
+        });
     }
+
 
     pub async fn transmit_device_packets(
         &mut self,

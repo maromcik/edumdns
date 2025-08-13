@@ -78,6 +78,9 @@ impl DbCreate<CreateDevice, Device> for PgDeviceRepository {
         diesel::insert_into(schema::device::table)
             .values(data)
             .returning(Device::as_returning())
+            .on_conflict((probe_id, mac, ip,))
+            .do_update()
+            .set((port.eq(data.port),))
             .get_result(&mut conn)
             .await
             .map_err(DbError::from)

@@ -90,6 +90,9 @@ impl DbCreate<CreatePacket, Packet> for PgPacketRepository {
         diesel::insert_into(schema::packet::table)
             .values(data)
             .returning(Packet::as_returning())
+            .on_conflict((device_id, src_mac, src_addr, dst_addr, payload,))
+            .do_update()
+            .set((dst_mac.eq(data.dst_mac), src_port.eq(data.src_port), dst_port.eq(data.dst_port),))
             .get_result(&mut conn)
             .await
             .map_err(DbError::from)

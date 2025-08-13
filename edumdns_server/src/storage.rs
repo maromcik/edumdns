@@ -1,6 +1,6 @@
 use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
-use diesel_async::AsyncPgConnection;
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::{AsyncDieselConnectionManager, PoolError};
 use edumdns_core::app_packet::{
@@ -8,10 +8,10 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_db::error::DbError;
-use edumdns_db::repositories::common::{DbCreate, DbResultSingle};
+use edumdns_db::repositories::common::{DbCreate, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle};
 use edumdns_db::repositories::device::models::CreateDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use edumdns_db::repositories::packet::models::CreatePacket;
+use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyFilter};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
@@ -62,12 +62,7 @@ impl PacketStorage {
             match packet {
                 AppPacket::Command(command) => match command {
                     CommandPacket::TransmitDevicePackets(target) => {
-                        if let Err(e) = self.transmit_device_packets(&target).await {
-                            error!(
-                                "Error while transmitting packets to target {}: {}",
-                                &target, e
-                            );
-                        };
+                        self.transmit_device_packets(target);
                     }
                     CommandPacket::ReconnectProbe => todo!(),
                 },
@@ -173,36 +168,50 @@ impl PacketStorage {
     }
 
 
-    pub async fn transmit_device_packets(
+    pub fn transmit_device_packets(
         &mut self,
-        target: &PacketTransmitRequest,
-    ) -> Result<(), ServerError> {
-        let probe_packets = self.packets.get(&target.device.probe_uuid);
-        let Some(packets) = probe_packets else {
-            warn!("No packets found for mac address: {}", target.device.mac);
-            return Ok(());
-        };
+        transmit_request: PacketTransmitRequest,
+    ) {
 
-        let device_packets = packets.get(&(target.device.mac, target.device.ip));
+        let packet_repo = self.pg_packet_repository.clone();
+        let device_repo = self.pg_device_repository.clone();
+        
+        tokio::task::spawn(async move {
+            let device = match device_repo.read_one(&transmit_request.device.probe_uuid.0).await {
+                Ok(d) => d,
+                Err(e) => {
+                    warn!("No target device: {transmit_request}: {e}");
+                    return;
+                }
+            };
 
-        let Some(packets) = device_packets else {
-            warn!("No packets found for target: {}", target);
-            return Ok(());
-        };
+            info!("Target device found: {}", transmit_request);
+            
+            let packets = match packet_repo.read_many(&SelectManyFilter::new(Some(device.id), None, None, None,None,None,None,None)).await {
+                Ok(p) => p,
+                Err(e) => {
+                    warn!("No packets found for device: {device}");
+                    return;
+                }
+            };
 
-        info!("Packets found for target: {}", target);
-        let packets = packets.clone();
-        let transmitter = PacketTransmitter::new(
-            packets,
-            target,
-            Duration::from_secs(60),
-            Duration::from_millis(100),
-            Duration::from_secs(1),
-        )
-        .await?;
-        self.transmitter_tasks
-            .push(PacketTransmitterTask::new(transmitter));
-
-        Ok(())
+            info!("Packets found for target: {}", transmit_request);
+            
+            let payloads = packets.into_iter().map(|(d, p)| p.payload).collect::<HashSet<Vec<u8>>>();
+            let transmitter = PacketTransmitter::new(
+                payloads,
+                transmit_request.clone(),
+                Duration::from_secs(60),
+                Duration::from_millis(100),
+                Duration::from_secs(1),
+            ).await;
+            
+            let Ok(transmitter) = transmitter else {
+                error!("Could not create transmitter for target: {transmit_request}");
+                return;
+            };
+            PacketTransmitterTask::new(transmitter);
+            
+        });
     }
 }

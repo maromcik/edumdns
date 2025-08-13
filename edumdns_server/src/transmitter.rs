@@ -29,7 +29,7 @@ impl PacketTransmitterTask {
 }
 
 pub struct PacketTransmitter {
-    pub packets: HashSet<ProbePacket>,
+    pub payloads: HashSet<Vec<u8>>,
     pub transmit_request: PacketTransmitRequest,
     pub udp_connection: UdpConnection,
     pub duration: Duration,
@@ -39,14 +39,14 @@ pub struct PacketTransmitter {
 
 impl PacketTransmitter {
     pub async fn new(
-        packets: HashSet<ProbePacket>,
-        target: &PacketTransmitRequest,
+        payloads: HashSet<Vec<u8>>,
+        target: PacketTransmitRequest,
         duration: Duration,
         interval: Duration,
         global_timeout: Duration,
     ) -> Result<Self, ServerError> {
         Ok(Self {
-            packets,
+            payloads,
             transmit_request: target.clone(),
             udp_connection: UdpConnection::new(global_timeout).await?,
             duration,
@@ -63,16 +63,12 @@ impl PacketTransmitter {
         );
         loop {
             let start_time = Instant::now();
-            let packets = {
-                let packets = &self.packets;
-                packets.clone()
-            };
-            for packet in packets.iter() {
+            for payload in self.payloads.iter() {
                 self.udp_connection
-                    .send_packet(host.as_str(), packet.payload.as_ref())
+                    .send_packet(host.as_str(), payload.as_ref())
                     .await?;
                 tokio::time::sleep(self.interval).await;
-                debug!("Packet sent: {:?}", packet.probe_metadata.id);
+                debug!("Packet sent from device: {} to client: {}", self.transmit_request.device.ip, self.transmit_request.target.ip);
             }
             let total = start_time.elapsed();
             current_time += total;

@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use crate::repositories::common::Id;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -83,4 +84,10 @@ pub struct User {
     pub created_at: OffsetDateTime,
     pub edited_at: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
+}
+
+impl Display for Device {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Device <ID: {}, MAC: {:?}, IP: {}", self.id, self.mac, self.ip)
+    }
 }

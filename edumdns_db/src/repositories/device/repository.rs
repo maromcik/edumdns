@@ -36,6 +36,19 @@ impl DbReadOne<Id, Device> for PgDeviceRepository {
     }
 }
 
+impl DbReadOne<Uuid, Device> for PgDeviceRepository {
+    async fn read_one(&self, params: &Uuid) -> DbResultSingle<Device> {
+        let mut conn = self.pg_pool.get().await?;
+        device
+            .filter(probe_id.eq(params))
+            .select(Device::as_select())
+            .first(&mut conn)
+            .await
+            .map_err(DbError::from)
+    }
+}
+
+
 impl DbReadMany<SelectManyFilter, (Probe, Device)> for PgDeviceRepository {
     async fn read_many(&self, params: &SelectManyFilter) -> DbResultMultiple<(Probe, Device)> {
         let mut query = device.into_boxed();

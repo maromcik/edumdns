@@ -51,8 +51,8 @@ pub struct Device {
     pub mac: [u8; 6],
     pub ip: ipnetwork::IpNetwork,
     pub port: i32,
-    pub duration: Option<f64>,
-    pub interval: Option<f64>,
+    pub duration: Option<i64>,
+    pub interval: Option<i64>,
 }
 
 #[derive(Serialize, Deserialize, Queryable, Selectable)]

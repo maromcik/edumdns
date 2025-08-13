@@ -13,8 +13,8 @@ diesel::table! {
         mac -> Macaddr,
         ip -> Cidr,
         port -> Int4,
-        duration -> Nullable<Float8>,
-        interval -> Nullable<Float8>,
+        duration -> Nullable<Int8>,
+        interval -> Nullable<Int8>,
     }
 }
 
@@ -76,7 +76,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    probe_config (probe_id) {
+    probe_config (probe_id, interface) {
         probe_id -> Uuid,
         interface -> Text,
         filter -> Nullable<Text>,

@@ -14,6 +14,7 @@ use std::process::exit;
 use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc::Sender;
+use tokio::time::sleep;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 async fn handle_connection(
@@ -40,13 +41,13 @@ pub async fn listen(pool: Pool<AsyncPgConnection>) -> Result<(), ServerError> {
     });
     info!("Packet storage initialized");
 
-    // let packet_target = PacketTransmitRequest::new(
-    //     Uuid(uuid::Uuid::from_u128(32)),
-    //     MyMacAddr("b8:7b:d4:98:29:64".parse::<MacAddr>().unwrap()),
-    //     IpNetwork("192.168.8.97".parse::<ipnetwork::IpNetwork>().unwrap()),
-    //     "127.0.0.1".to_string(),
-    //     7654,
-    // );
+    let packet_target = PacketTransmitRequest::new(
+        Uuid(uuid::Uuid::from_u128(32)),
+        MyMacAddr("42:ba:e5:56:9a:66".parse::<MacAddr>().unwrap()),
+        IpNetwork("100.66.2.58".parse::<ipnetwork::IpNetwork>().unwrap()),
+        "127.0.0.1".to_string(),
+        7654,
+    );
     loop {
         let (socket, addr) = listener.accept().await?;
         info!("Connection from {addr}");
@@ -62,5 +63,12 @@ pub async fn listen(pool: Pool<AsyncPgConnection>) -> Result<(), ServerError> {
                 }
             }
         });
+        sleep(Duration::from_secs(10)).await;
+        tx_local2
+            .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
+                packet_target.clone(),
+            )))
+            .await
+            .unwrap();
     }
 }

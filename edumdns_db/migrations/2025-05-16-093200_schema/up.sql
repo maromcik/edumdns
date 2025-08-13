@@ -46,10 +46,11 @@ CREATE TABLE IF NOT EXISTS "probe"
 
 CREATE TABLE IF NOT EXISTS "probe_config"
 (
-    probe_id       uuid         PRIMARY KEY,
+    probe_id       uuid         NOT NULL,
     interface      text         NOT NULL,
     filter         text,
 
+    PRIMARY KEY (probe_id, interface),
     UNIQUE (probe_id, interface, filter),
     FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE
 );
@@ -86,8 +87,8 @@ CREATE TABLE IF NOT EXISTS "device"
     mac            macaddr      NOT NULL,
     ip             cidr         NOT NULL,
     port           int          NOT NULL,
-    duration       float8,
-    interval       float8,
+    duration       bigint,
+    interval       bigint,
 
     UNIQUE (probe_id, mac, ip),
     FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE

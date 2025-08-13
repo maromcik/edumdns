@@ -175,7 +175,7 @@ impl PacketStorage {
 
         let packet_repo = self.pg_packet_repository.clone();
         let device_repo = self.pg_device_repository.clone();
-        
+
         tokio::task::spawn(async move {
             let device = match device_repo.read_one(&transmit_request.device.probe_uuid.0).await {
                 Ok(d) => d,
@@ -186,7 +186,7 @@ impl PacketStorage {
             };
 
             info!("Target device found: {}", transmit_request);
-            
+
             let packets = match packet_repo.read_many(&SelectManyFilter::new(Some(device.id), None, None, None,None,None,None,None)).await {
                 Ok(p) => p,
                 Err(e) => {
@@ -196,22 +196,22 @@ impl PacketStorage {
             };
 
             info!("Packets found for target: {}", transmit_request);
-            
+
             let payloads = packets.into_iter().map(|(d, p)| p.payload).collect::<HashSet<Vec<u8>>>();
             let transmitter = PacketTransmitter::new(
                 payloads,
                 transmit_request.clone(),
-                Duration::from_secs(60),
-                Duration::from_millis(100),
+                Duration::from_secs(device.duration.unwrap_or(60) as u64),
+                Duration::from_millis(device.interval.unwrap_or(1000) as u64),
                 Duration::from_secs(1),
             ).await;
-            
+
             let Ok(transmitter) = transmitter else {
                 error!("Could not create transmitter for target: {transmit_request}");
                 return;
             };
             PacketTransmitterTask::new(transmitter);
-            
+
         });
     }
 }

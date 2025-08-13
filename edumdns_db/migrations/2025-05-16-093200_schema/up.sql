@@ -96,9 +96,7 @@ CREATE TABLE IF NOT EXISTS "device"
 
 CREATE TABLE IF NOT EXISTS "packet"
 (
-    id             bigserial    PRIMARY KEY,
-    ---------------------------------------------
-    device_id      bigint       NOT NULL,
+    probe_id       uuid         NOT NULL,
     src_mac        macaddr      NOT NULL,
     dst_mac        macaddr      NOT NULL,
     src_addr       cidr         NOT NULL,
@@ -107,8 +105,8 @@ CREATE TABLE IF NOT EXISTS "packet"
     dst_port       int          NOT NULL,
     payload        bytea        NOT NULL,
 
-    UNIQUE (device_id, src_mac, src_addr, dst_addr, payload),
-    FOREIGN KEY (device_id) REFERENCES "device" (id) ON DELETE CASCADE
+    PRIMARY KEY (probe_id, src_mac, src_addr),
+    UNIQUE (probe_id, src_mac, src_addr, dst_addr, payload)
 );
 
 
@@ -118,5 +116,4 @@ CREATE INDEX IF NOT EXISTS "Probe_owner_id" ON "probe" (owner_id);
 CREATE INDEX IF NOT EXISTS "Probe_location_id" ON "probe" (location_id);
 CREATE INDEX IF NOT EXISTS "ProbeConfig_probe_id" ON "probe_config" (probe_id);
 CREATE INDEX IF NOT EXISTS "GroupProbePermission_group_id_probe_id" ON "group_probe_permission" (group_id, probe_id);
-CREATE INDEX IF NOT EXISTS "Device_probe_id_mac" ON "device" (probe_id, mac);
-CREATE INDEX IF NOT EXISTS "Packet_device_id" ON "packet" (device_id);
+CREATE INDEX IF NOT EXISTS "Device_probe_id_mac" ON "device" (probe_id, mac, ip);

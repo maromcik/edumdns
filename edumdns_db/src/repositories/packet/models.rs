@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyFilter {
-    pub device_id: Option<Id>,
+    pub probe_id: Option<Uuid>,
     pub src_mac: Option<[u8; 6]>,
     pub dst_mac: Option<[u8; 6]>,
     pub src_addr: Option<IpNetwork>,
@@ -18,7 +18,7 @@ pub struct SelectManyFilter {
 
 impl SelectManyFilter {
     pub fn new(
-        device_id: Option<Id>,
+        probe_id: Option<Uuid>,
         src_mac: Option<[u8; 6]>,
         dst_mac: Option<[u8; 6]>,
         src_addr: Option<IpNetwork>,
@@ -28,7 +28,7 @@ impl SelectManyFilter {
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
-            device_id,
+            probe_id,
             src_mac,
             dst_mac,
             src_addr,
@@ -40,10 +40,32 @@ impl SelectManyFilter {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct SelectSingleFilter {
+    pub probe_id: Uuid,
+    pub src_mac: [u8; 6],
+    pub src_addr: IpNetwork,
+}
+
+impl SelectSingleFilter {
+    pub fn new(
+        probe_id: Uuid,
+        src_mac: [u8; 6],
+        src_addr: IpNetwork,
+
+    ) -> Self {
+        Self {
+            probe_id,
+            src_mac,
+            src_addr,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, AsChangeset, Insertable)]
 #[diesel(table_name = crate::schema::packet)]
 pub struct CreatePacket {
-    pub device_id: Id,
+    pub probe_id: Uuid,
     pub src_mac: [u8; 6],
     pub dst_mac: [u8; 6],
     pub src_addr: IpNetwork,
@@ -55,7 +77,7 @@ pub struct CreatePacket {
 
 impl CreatePacket {
     pub fn new(
-        device_id: Id,
+        probe_id: Uuid,
         src_mac: [u8; 6],
         dst_mac: [u8; 6],
         src_addr: IpNetwork,
@@ -65,7 +87,7 @@ impl CreatePacket {
         payload: Vec<u8>,
     ) -> Self {
         Self {
-            device_id,
+            probe_id,
             src_mac,
             dst_mac,
             src_addr,

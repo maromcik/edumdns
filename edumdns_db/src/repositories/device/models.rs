@@ -31,6 +31,28 @@ impl SelectManyFilter {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct SelectSingleFilter {
+    pub probe_id: Uuid,
+    pub mac: [u8; 6],
+    pub ip: IpNetwork,
+}
+
+impl SelectSingleFilter {
+    pub fn new(
+        probe_id: Uuid,
+        mac: [u8; 6],
+        ip: IpNetwork,
+
+    ) -> Self {
+        Self {
+            probe_id,
+            mac,
+            ip,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, AsChangeset, Insertable)]
 #[diesel(table_name = crate::schema::device)]
 pub struct CreateDevice {

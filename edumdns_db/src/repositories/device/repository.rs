@@ -3,7 +3,7 @@ use crate::models::{Device, Probe};
 use crate::repositories::common::{
     DbCreate, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultSingle, Id,
 };
-use crate::repositories::device::models::{CreateDevice, SelectManyFilter};
+use crate::repositories::device::models::{CreateDevice, SelectManyFilter, SelectSingleFilter};
 use crate::schema;
 use crate::schema::probe::dsl::probe;
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
@@ -36,18 +36,19 @@ impl DbReadOne<Id, Device> for PgDeviceRepository {
     }
 }
 
-impl DbReadOne<Uuid, Device> for PgDeviceRepository {
-    async fn read_one(&self, params: &Uuid) -> DbResultSingle<Device> {
+impl DbReadOne<SelectSingleFilter, Device> for PgDeviceRepository {
+    async fn read_one(&self, params: &SelectSingleFilter) -> DbResultSingle<Device> {
         let mut conn = self.pg_pool.get().await?;
         device
-            .filter(probe_id.eq(params))
+            .filter(probe_id.eq(params.probe_id))
+            .filter(mac.eq(params.mac))
+            .filter(ip.eq(params.ip))
             .select(Device::as_select())
             .first(&mut conn)
             .await
             .map_err(DbError::from)
     }
 }
-
 
 impl DbReadMany<SelectManyFilter, (Probe, Device)> for PgDeviceRepository {
     async fn read_many(&self, params: &SelectManyFilter) -> DbResultMultiple<(Probe, Device)> {
@@ -91,7 +92,7 @@ impl DbCreate<CreateDevice, Device> for PgDeviceRepository {
         diesel::insert_into(schema::device::table)
             .values(data)
             .returning(Device::as_returning())
-            .on_conflict((probe_id, mac, ip,))
+            .on_conflict((probe_id, mac, ip))
             .do_update()
             .set((port.eq(data.port),))
             .get_result(&mut conn)

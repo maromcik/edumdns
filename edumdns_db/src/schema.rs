@@ -51,9 +51,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    packet (id) {
-        id -> Int8,
-        device_id -> Int8,
+    packet (probe_id, src_mac, src_addr) {
+        probe_id -> Uuid,
         src_mac -> Macaddr,
         dst_mac -> Macaddr,
         src_addr -> Cidr,
@@ -103,7 +102,6 @@ diesel::joinable!(group_probe_permission -> group (group_id));
 diesel::joinable!(group_probe_permission -> probe (probe_id));
 diesel::joinable!(group_user -> group (group_id));
 diesel::joinable!(group_user -> user (user_id));
-diesel::joinable!(packet -> device (device_id));
 diesel::joinable!(probe -> location (location_id));
 diesel::joinable!(probe -> user (owner_id));
 diesel::joinable!(probe_config -> probe (probe_id));

@@ -59,8 +59,7 @@ pub struct Device {
 #[diesel(table_name = crate::schema::packet)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Packet {
-    pub id: Id,
-    pub device_id: Id,
+    pub probe_id: Uuid,
     pub src_mac: [u8; 6],
     pub dst_mac: [u8; 6],
     pub src_addr: ipnetwork::IpNetwork,

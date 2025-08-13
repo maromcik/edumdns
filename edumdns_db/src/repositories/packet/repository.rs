@@ -3,10 +3,8 @@ use crate::models::{Device, Packet, Probe};
 use crate::repositories::common::{
     DbCreate, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, Id,
 };
-use crate::repositories::packet::models::{CreatePacket, SelectManyFilter};
+use crate::repositories::packet::models::{CreatePacket, SelectManyFilter, SelectSingleFilter};
 use crate::schema;
-use crate::schema::device::dsl::device;
-use crate::schema::probe::dsl::probe;
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
@@ -24,11 +22,13 @@ impl PgPacketRepository {
     }
 }
 
-impl DbReadOne<Id, Packet> for PgPacketRepository {
-    async fn read_one(&self, params: &Id) -> DbResultSingle<Packet> {
+impl DbReadOne<SelectSingleFilter, Packet> for PgPacketRepository {
+    async fn read_one(&self, params: &SelectSingleFilter) -> DbResultSingle<Packet> {
         let mut conn = self.pg_pool.get().await?;
         packet
-            .find(params)
+            .filter(probe_id.eq(params.probe_id))
+            .filter(src_mac.eq(params.src_mac))
+            .filter(src_addr.eq(params.src_addr))
             .select(Packet::as_select())
             .first(&mut conn)
             .await
@@ -36,12 +36,12 @@ impl DbReadOne<Id, Packet> for PgPacketRepository {
     }
 }
 
-impl DbReadMany<SelectManyFilter, (Device, Packet)> for PgPacketRepository {
-    async fn read_many(&self, params: &SelectManyFilter) -> DbResultMultiple<(Device, Packet)> {
+impl DbReadMany<SelectManyFilter, Packet> for PgPacketRepository {
+    async fn read_many(&self, params: &SelectManyFilter) -> DbResultMultiple<Packet> {
         let mut query = packet.into_boxed();
 
-        if let Some(q) = &params.device_id {
-            query = query.filter(device_id.eq(q));
+        if let Some(q) = &params.probe_id {
+            query = query.filter(probe_id.eq(q));
         }
 
         if let Some(q) = &params.src_mac {
@@ -75,9 +75,8 @@ impl DbReadMany<SelectManyFilter, (Device, Packet)> for PgPacketRepository {
 
         let mut conn = self.pg_pool.get().await?;
         let packets = query
-            .inner_join(device)
-            .select((Device::as_select(), Packet::as_select()))
-            .load::<(Device, Packet)>(&mut conn)
+            .select(Packet::as_select())
+            .load::<Packet>(&mut conn)
             .await?;
 
         Ok(packets)
@@ -90,7 +89,7 @@ impl DbCreate<CreatePacket, Packet> for PgPacketRepository {
         diesel::insert_into(schema::packet::table)
             .values(data)
             .returning(Packet::as_returning())
-            .on_conflict((device_id, src_mac, src_addr, dst_addr, payload,))
+            .on_conflict((probe_id, src_mac, src_addr, dst_addr, payload,))
             .do_update()
             .set((dst_mac.eq(data.dst_mac), src_port.eq(data.src_port), dst_port.eq(data.dst_port),))
             .get_result(&mut conn)

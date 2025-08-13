@@ -96,6 +96,8 @@ CREATE TABLE IF NOT EXISTS "device"
 
 CREATE TABLE IF NOT EXISTS "packet"
 (
+    id             bigserial    PRIMARY KEY,
+    ---------------------------------------------
     probe_id       uuid         NOT NULL,
     src_mac        macaddr      NOT NULL,
     dst_mac        macaddr      NOT NULL,
@@ -105,10 +107,18 @@ CREATE TABLE IF NOT EXISTS "packet"
     dst_port       int          NOT NULL,
     payload        bytea        NOT NULL,
 
-    PRIMARY KEY (probe_id, src_mac, src_addr),
     UNIQUE (probe_id, src_mac, src_addr, dst_addr, payload)
 );
 
+CREATE TABLE IF NOT EXISTS "packet_transmit_request"
+(
+    probe_id       uuid         NOT NULL,
+    device_mac     macaddr      NOT NULL,
+    device_ip      cidr         NOT NULL,
+    target_ip      cidr         NOT NULL,
+    target_port    int          NOT NULL,
+    PRIMARY KEY (probe_id, device_mac, device_ip, target_ip, target_port)
+);
 
 
 

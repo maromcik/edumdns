@@ -120,25 +120,28 @@ impl PartialEq for ProbePacket {
 
 impl Eq for ProbePacket {}
 
-#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct PacketTransmitRequest {
-    pub device: PacketTransmitDevice,
-    pub target: PacketTransmitTarget,
+    pub probe_uuid: Uuid,
+    pub device_mac: MacAddr,
+    pub device_ip: IpNetwork,
+    pub target_ip: String,
+    pub target_port: u16,
 }
 
-#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct PacketTransmitTarget {
     pub ip: String,
     pub port: u16,
 }
 
-#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
-pub struct PacketTransmitDevice {
-    pub probe_uuid: Uuid,
-    pub mac: MacAddr,
-    pub ip: IpNetwork,
-}
-
+// #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq, Hash)]
+// pub struct PacketTransmitDevice {
+//     pub probe_uuid: Uuid,
+//     pub mac: MacAddr,
+//     pub ip: IpNetwork,
+// }
+//
 impl PacketTransmitRequest {
     pub fn new(
         probe_uuid: Uuid,
@@ -148,29 +151,21 @@ impl PacketTransmitRequest {
         target_port: u16,
     ) -> Self {
         Self {
-            device: PacketTransmitDevice {
-                probe_uuid,
-                mac: device_mac,
-                ip: device_ip,
-            },
-            target: PacketTransmitTarget {
-                ip: target_ip,
-                port: target_port,
-            },
+            probe_uuid,
+            device_mac,
+            device_ip,
+            target_ip,
+            target_port,
         }
     }
 }
 
 impl Display for PacketTransmitRequest {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "Device Probe_ID: {}, MAC: {}, IP: {}; Target: {}:{}",
-            self.device.probe_uuid,
-            self.device.mac,
-            self.device.ip,
-            self.target.ip,
-            self.target.port
+            self.probe_uuid, self.device_mac, self.device_ip, self.target_ip, self.target_port
         )
     }
 }

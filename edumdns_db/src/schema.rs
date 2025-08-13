@@ -51,7 +51,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    packet (probe_id, src_mac, src_addr) {
+    packet (id) {
+        id -> Int8,
         probe_id -> Uuid,
         src_mac -> Macaddr,
         dst_mac -> Macaddr,
@@ -60,6 +61,16 @@ diesel::table! {
         src_port -> Int4,
         dst_port -> Int4,
         payload -> Bytea,
+    }
+}
+
+diesel::table! {
+    packet_transmit_request (probe_id, device_mac, device_ip, target_ip, target_port) {
+        probe_id -> Uuid,
+        device_mac -> Macaddr,
+        device_ip -> Cidr,
+        target_ip -> Cidr,
+        target_port -> Int4,
     }
 }
 
@@ -113,6 +124,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     group_user,
     location,
     packet,
+    packet_transmit_request,
     probe,
     probe_config,
     user,

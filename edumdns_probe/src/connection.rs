@@ -6,7 +6,7 @@ use edumdns_core::metadata::ProbeMetadata;
 use edumdns_core::retry;
 use futures::SinkExt;
 use futures::stream::select_all;
-use log::{debug, error, info, warn};
+use log::{debug, error, info, trace, warn};
 use pnet::packet;
 use std::mem;
 use std::pin::Pin;
@@ -318,11 +318,11 @@ result.map_err(|e| {
                     )
                 })
                 .await??;
-            debug!("Ping request sent");
+            trace!("Ping request sent");
             let packet = packet_receiver.recv().await;
-            debug!("Ping response received");
+            trace!("Ping response received");
             if Some(AppPacket::Status(StatusPacket::PingResponse)) != packet {
-                warn!("Not a ping response");
+                debug!("Not a ping response");
                 command_sender
                     .send(AppPacket::Command(CommandPacket::ReconnectProbe))
                     .await?

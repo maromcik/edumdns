@@ -1,4 +1,4 @@
-DROP TABLE IF EXISTS "location", "user", "group", "probe", "probe_config", "group_user", "group_probe_permission", "device", "packet" CASCADE;
+DROP TABLE IF EXISTS "location", "user", "group", "probe", "probe_config", "group_user", "group_probe_permission", "device", "packet", "packet_transmit_request" CASCADE;
 DROP INDEX IF EXISTS "Probe_owner_id";
 DROP INDEX IF EXISTS "Probe_location_id";
 DROP INDEX IF EXISTS "ProbeConfig_probe_id";

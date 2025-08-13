@@ -1,28 +1,25 @@
-use crate::error::ServerError;
+use crate::error::{ServerError, ServerErrorKind};
 use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequest, ProbePacket};
 use edumdns_core::connection::UdpConnection;
-use log::debug;
+use log::{debug, error};
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
+use edumdns_core::error::CoreError;
 
 pub struct PacketTransmitterTask {
-    pub target: PacketTransmitRequest,
-    pub transmitter_task: JoinHandle<Result<(), ServerError>>,
+    pub transmitter_task: JoinHandle<()>,
 }
 
 impl PacketTransmitterTask {
     pub fn new(transmitter: PacketTransmitter) -> Self {
-        let target = transmitter.transmit_request.clone();
         let transmitter_task = tokio::task::spawn(async move {
-            transmitter.transmit().await?;
-            Ok::<(), ServerError>(())
+            transmitter.transmit().await
         });
         Self {
-            target,
             transmitter_task,
         }
     }
@@ -55,20 +52,27 @@ impl PacketTransmitter {
         })
     }
 
-    pub async fn transmit(&self) -> Result<(), ServerError> {
+    pub async fn transmit(&self) {
         let mut current_time = Duration::default();
         let host = format!(
             "{}:{}",
-            self.transmit_request.target.ip, self.transmit_request.target.port
+            self.transmit_request.target_ip, self.transmit_request.target_port
         );
+
         loop {
             let start_time = Instant::now();
             for payload in self.payloads.iter() {
-                self.udp_connection
+                match self.udp_connection
                     .send_packet(host.as_str(), payload.as_ref())
-                    .await?;
+                    .await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!("Error sending packet to: {host}: {e}");
+                        return;
+                    }
+                }
                 tokio::time::sleep(self.interval).await;
-                debug!("Packet sent from device: {} to client: {}", self.transmit_request.device.ip, self.transmit_request.target.ip);
+                debug!("Packet sent from device: {} to client: {}", self.transmit_request.device_ip, self.transmit_request.target_ip);
             }
             let total = start_time.elapsed();
             current_time += total;
@@ -76,6 +80,5 @@ impl PacketTransmitter {
                 break;
             }
         }
-        Ok(())
     }
 }

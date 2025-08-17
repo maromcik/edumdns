@@ -37,10 +37,20 @@ async fn main() -> Result<(), AppError> {
         .init();
 
     let pool = db_init().await?;
+    let pool_local = pool.clone();
+    tokio::spawn(async move {
+        server_init(pool_local).await.expect("Failed to start server");
+    });
+
+    tokio::spawn(async move {
+       probe_init().await.expect("Failed to start probe");
+    });
+
 
     tokio::select! {
         server = server_init(pool.clone()) => server?,
-        probe = probe_init() => probe?
+        probe = probe_init() => probe?,
+        web = web_init(pool) => web?,
     }
 
     Ok(())

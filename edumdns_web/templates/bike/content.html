@@ -1,0 +1,20 @@
+<div class="mx-auto px-4 sm:px-8 mb-10 md:mb-5">
+  <!-- Header Section -->
+  <div class="flex justify-between items-center mb-3">
+    {% if logged_in %}
+    <button hx-get="/bike/create" hx-target-error="#content-area" hx-push-url="/bike/create"
+            hx-target="#content-area"
+            class="bg-acc  text-button font-bold py-2 px-6 rounded-lg focus:outline-none focus:ring focus:ring-stone-300 hover:scale-105 transition-all duration-200"
+            type="submit">
+      New Bike
+    </button>
+    {% endif %}
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+    {% for bike in bikes %}
+    {% include "bike/card/content.html" %}
+    {% endfor %}
+  </div>
+
+</div>

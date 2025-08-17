@@ -1,0 +1,49 @@
+<a href="/brand" class="absolute top-0 left-0 mt-20 ml-5 sm:ml-10 sm:mt-24 bg-acc  text-button py-2 px-4 font-bold rounded focus:outline-none focus:shadow-outline flex items-center">
+    <i class="fas fa-arrow-left text-button" style="a {
+        @apply text-button hover:text-button transition-colors;
+    }"></i>
+</a>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-8 py-10">
+
+    <div class="text-center md:text-left grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <!-- Top Section: Thumbnail and Basic Details -->
+        <div class="flex flex-col space-y-6">
+            <h1 class="text-3xl md:text-5xl font-bold text-sat-xl mb-0">{{ brand.name }}</h1>
+            {% if logged_in %}
+            <div class="flex space-x-4 justify-center md:justify-start ">
+                    <button hx-get="/brand/{{ brand.id }}/edit" hx-target-error="#content-area"
+                            hx-push-url="/brand/{{ brand.id }}/edit" hx-target="#content-area"
+                            class="bg-acc  rounded-md p-3 text-button text-lg shadow-md w-12">
+                        <i class="fa-solid fa-pencil"></i>
+                    </button>
+                    <button hx-delete="/brand/{{ brand.id }}/delete" hx-target-error="#content-area" hx-target="#content-area" hx-push-url="/brand"
+                            class="bg-red-800 hover:bg-red-900 rounded-md p-3 text-button text-lg shadow-md w-12">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+        <!-- Description Section -->
+        <div class="mt-10 text-center md:text-left">
+            <h2 class="text-2xl text-sat-xl font-bold mb-4">Description</h2>
+            <div class="bg-panes p-5 rounded-lg shadow-md text-sat-l">
+                {{ brand.description | safe }}
+            </div>
+        </div>
+</div>
+
+
+<div class="max-w-7xl mx-auto px-4 sm:px-8 mt-10 text-center md:text-left mb-10 md:mb-5">
+    <h3 class="text-3xl font-bold text-sat-xl mb-4">Models</h3>
+    <div class="bg-panes rounded-lg p-6 shadow-md">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
+            {% for model in models %}
+            {% include "model/card/content.html"%}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+

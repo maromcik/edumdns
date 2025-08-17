@@ -63,12 +63,12 @@ pub async fn listen(pool: Pool<AsyncPgConnection>) -> Result<(), ServerError> {
                 }
             }
         });
-        sleep(Duration::from_secs(10)).await;
-        tx_local2
-            .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
-                packet_target.clone(),
-            )))
-            .await
-            .unwrap();
+    //     sleep(Duration::from_secs(10)).await;
+    //     tx_local2
+    //         .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
+    //             packet_target.clone(),
+    //         )))
+    //         .await
+    //         .unwrap();
     }
 }

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+{% include "head.html" %}
+<body class="h-screen flex justify-center items-center bg-page">
+    <div id="generic-error" class="w-full h-full flex justify-center items-center">
+        <div class="bg-forms shadow-lg border border-base rounded-lg p-5 flex flex-col items-center">
+            <h2 class="text-forms text-2xl mb-6">Error</h2>
+            <div id="generic-error-area" class="text-forms text-center mx-auto mb-3">
+                <p> {{ code }} </p>
+                <p>{{ description }}</p>
+            </div>
+
+            <p class="text-forms">Please, return to <a href="/" class="text-acc font-bold "> homepage</a></p>
+        </div>
+    </div>
+</body>
+</html>

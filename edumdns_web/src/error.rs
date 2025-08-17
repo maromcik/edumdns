@@ -10,6 +10,7 @@ use serde::Serialize;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::Error;
 use std::num::ParseIntError;
+use std::str::ParseBoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
@@ -40,6 +41,8 @@ pub enum WebErrorKind {
     EmailAddressError,
     #[error("zip error")]
     ZipError,
+    #[error("parse error")]
+    ParseError,
 }
 
 // impl From<askama::Error> for AppError {
@@ -169,7 +172,8 @@ impl ResponseError for WebError {
             | WebErrorKind::SessionError
             | WebErrorKind::EmailError
             | WebErrorKind::FileError
-            | WebErrorKind::ZipError => StatusCode::INTERNAL_SERVER_ERROR,
+            | WebErrorKind::ZipError
+            | WebErrorKind::ParseError => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 
@@ -177,6 +181,13 @@ impl ResponseError for WebError {
         render_generic(self)
     }
 }
+
+impl From<ParseBoolError> for WebError {
+    fn from(value: ParseBoolError) -> Self {
+        Self::new(WebErrorKind::ParseError, value.to_string().as_str())
+    }
+}
+
 
 fn render_generic(error: &WebError) -> HttpResponse {
     let mut env = Environment::new();

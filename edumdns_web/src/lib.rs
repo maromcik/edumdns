@@ -15,12 +15,15 @@ use diesel_async::pooled_connection::deadpool::Pool;
 use log::{info, warn};
 use std::env;
 use std::sync::Arc;
+use actix_web::dev::{HttpServiceFactory, ServerHandle};
+use tokio::io::AsyncWriteExt;
 
 pub mod error;
 
 mod init;
 mod templates;
 mod utils;
+mod handlers;
 
 const DEFAULT_HOSTNAME: &str = "localhost";
 const DEFAULT_PORT: &str = "8000";
@@ -30,13 +33,13 @@ const PAYLOAD_LIMIT: usize = 16 * 1024 * 1024 * 1024; // 16GiB
 const FORM_LIMIT: usize = 16 * 1024 * 1024; // 16MiB
 const MIN_PASS_LEN: usize = 6;
 
-pub async fn web_init(pool: Pool<AsyncPgConnection>) -> Result<(), WebError> {
+pub async fn web_init(pool: Pool<AsyncPgConnection>) ->  Result<(), WebError> {
     let _dir = env::temp_dir();
 
     let host = parse_host();
     let host2 = host.clone();
 
-    let jinja = Arc::new(create_reloader("templates".to_owned()));
+    let jinja = Arc::new(create_reloader("edumdns_web/templates".to_owned()));
 
     let app_state = AppState::new(jinja.clone());
 
@@ -50,8 +53,7 @@ pub async fn web_init(pool: Pool<AsyncPgConnection>) -> Result<(), WebError> {
     // TODO remove unwrap
     let use_secure_cookie = env::var("USE_SECURE_COOKIE")
         .unwrap_or("false".to_string())
-        .parse::<bool>()
-        .unwrap();
+        .parse::<bool>()?;
     info!("USE_SECURE_COOKIE: {}", use_secure_cookie);
 
     if let Err(e) = dotenvy::dotenv() {
@@ -59,7 +61,7 @@ pub async fn web_init(pool: Pool<AsyncPgConnection>) -> Result<(), WebError> {
     };
     info!("starting server on {host}");
 
-    HttpServer::new(move || {
+    let server = HttpServer::new(move || {
         App::new()
             .app_data(
                 MultipartFormConfig::default()
@@ -90,9 +92,9 @@ pub async fn web_init(pool: Pool<AsyncPgConnection>) -> Result<(), WebError> {
             .wrap(Logger::default())
             .configure(configure_webapp(&pool, app_state.clone()))
     })
-    .bind(host2)?
-    .run()
-    .await?;
+        .bind(host2)?
+        .run()
+        .await;
     Ok(())
 }
 

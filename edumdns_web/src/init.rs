@@ -1,5 +1,5 @@
 use crate::utils::AppState;
-use actix_files::Files as ActixFiles;
+use crate::handlers::index::{index};
 use actix_web::web;
 use actix_web::web::ServiceConfig;
 use diesel_async::AsyncPgConnection;
@@ -13,8 +13,9 @@ pub fn configure_webapp(
 
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.app_data(web::Data::new(app_state))
-            .service(ActixFiles::new("/media", "./media").prefer_utf8(true))
-            .service(ActixFiles::new("/static", "./static").prefer_utf8(true))
-            .service(ActixFiles::new("/", "./webroot").prefer_utf8(true));
+            .service(index);
+            // .service(ActixFiles::new("/media", "./media").prefer_utf8(true))
+            // .service(ActixFiles::new("/static", "./static").prefer_utf8(true))
+            // .service(ActixFiles::new("/", "./webroot").prefer_utf8(true));
     })
 }

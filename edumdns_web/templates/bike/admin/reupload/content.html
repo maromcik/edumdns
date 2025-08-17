@@ -1,0 +1,67 @@
+<div class="container mx-auto p-6 max-w-7xl">
+    <form id="bike_reupload_form" hx-post="/bike/reupload" hx-target="#content-area" hx-target-error="#error-area" enctype="multipart/form-data"
+          class="bg-forms shadow-md rounded px-8 pt-6 pb-8 mb-4 h-full">
+        <label>
+            <input class="hidden" name="bike_id" type="text" value="{{ bike_id }}">
+        </label>
+        <h2 class="block text-forms text-xl font-bold mb-2 text-center">Upload Images</h2>
+        <div id="error-area" class="text-error mb-3 text-center">
+            {{ message }}
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-1 gap-6 mt-10">
+                <label class="text-forms text-sm font-bold mb-2 flex flex-col items-center" for="photos">
+                    <i class="fa-regular text-7l fa-image"></i>
+                    Images
+                </label>
+                <input class="shadow appearance-none flex border rounded py-2 px-3 text-forms leading-tight focus:outline-none focus:shadow-outline"
+                       accept="image/*" id="photos" type="file" multiple name="files">
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-1 gap-6 mt-10">
+            <label for="delete_existing" class="text-forms text-sm font-bold flex items-center space-x-3">
+                <input id="delete_existing" name="delete_existing" type="checkbox" value="true" class="form-checkbox h-5 w-5 text-acc bg-forms border-gray-600 focus:ring focus:ring-amber-600 rounded">
+                <span>Delete Existing Images</span>
+            </label>
+        </div>
+
+        <div class="flex justify-end mt-10 mb-5">
+            <button class="bg-acc  text-button font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                    type="submit"
+                    onclick="document.getElementById('upload-indicator').style.display = 'inline-block';">
+                <img id="upload-indicator"
+                     class="inline-block h-5 w-5 mr-2"
+                     src="/static/images/bars.svg"
+                     alt="working"
+                     style="display: none;" />
+                Upload
+            </button>
+        </div>
+
+        <div class="w-full bg-cards rounded-full dark:bg-forms">
+            <div id="progress" class="bg-acc-l text-button text-xs font-medium text-center p-0.5 leading-none rounded-full" style="width: 0; display: none;">0%</div>
+        </div>
+
+    </form>
+</div>
+
+<style>
+    .hide-if-empty[value="0"]:empty {
+        display: none;
+    }
+</style>
+
+<script>
+    htmx.on('#bike_reupload_form', 'htmx:xhr:progress', function(evt) {
+        var progressElement = htmx.find('#progress');
+        var progress = (evt.detail.loaded / evt.detail.total * 100).toFixed(2);
+
+        progressElement.style.width = progress + '%';
+        progressElement.textContent = progress + '%';
+
+        if (progress > 0) {
+            progressElement.style.display = 'block';
+        } else {
+            progressElement.style.display = 'none';
+        }
+    });
+</script>

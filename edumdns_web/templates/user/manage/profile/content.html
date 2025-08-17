@@ -1,0 +1,68 @@
+<div id="profile-update-fields" class="max-w-5xl mx-auto">
+    <div id="user-mgmt-profile-form">
+        <div class="p-4 text-center bg-forms rounded-lg ">
+            <form hx-post="/user/manage" hx-target="#user-mgmt-profile-form" hx-target-error="#content-area"
+                  class="rounded-lg flex flex-col items-center mx-auto">
+                {% if success %}
+                <div id="success-area" class="text-success mb-3" onclick=" { this.style.display = 'none'; }">
+                    {% else %}
+                    <div id="error-area2" class="text-error mb-3" onclick=" { this.style.display = 'none'; }">
+                        {% endif %}
+                        {{ message }}
+                    </div>
+                    <div class="flex flex-wrap justify-between text-center">
+                        <div class="px-2">
+                            <table class="w-full">
+                                <tbody>
+                                <tr>
+                                    <td class="text-right pr-2">
+                                        <label for="profile-id-name" class="font-bold text-forms">Name</label>
+                                    </td>
+                                    <td class="pb-2">
+                                        <input type="text" id="profile-id-name" name="name" value="{{ user.name }}"
+                                               placeholder="{{ user.name }}"
+                                               class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-right pr-2">
+                                        <label for="profile-id-surname" class="font-bold text-forms">Surname</label>
+                                    </td>
+                                    <td class="pb-2">
+                                        <input type="text" id="profile-id-surname" name="surname"
+                                               value="{{ user.surname }}" placeholder="{{ user.surname }}"
+                                               class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-right pr-2">
+                                        <label for="profile-id-email" class="font-bold text-forms">Email</label>
+                                    </td>
+                                    <td class="pb-2">
+                                        <input type="text" id="profile-id-email" name="email" value="{{ user.email }}"
+                                               placeholder="{{ user.email }}"
+                                               class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 mt-2">
+                        <button type="submit"
+                                class="bg-acc  rounded-md p-2 text-button text-md shadow-md">
+                            Update Profile
+                        </button>
+                        <a hx-get="/user/manage/password" hx-replace-url="false" hx-target="#profile-update-fields"
+                           hx-target-error="#content-area" hx-swap="innerHTML" hx-boost="true">
+                            <button type="submit"
+                                    class="bg-acc  rounded-md p-2 text-button text-md shadow-md">
+                                Change Password
+                            </button>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

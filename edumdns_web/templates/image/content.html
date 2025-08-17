@@ -1,0 +1,54 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-5 ">
+    <!-- Header Section -->
+    <div class="flex flex-col items-center py-6">
+        <h2 class="text-4xl font-bold text-sat-xl">Images</h2>
+        {% if logged_in %}
+        <button hx-get="/image/upload" hx-target-error="#content-area" hx-push-url="/image"
+                hx-target="#content-area"
+                class="bg-acc  text-button font-bold py-2 px-6 rounded-lg focus:outline-none focus:ring focus:ring-stone-300 hover:scale-105 transition-all duration-200"
+                type="submit">
+            New Image
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="pswp-gallery" id="other-image-gallery">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {% for image in images %}
+            <div class="w-full h-full rounded-lg overflow-hidden border border-base flex flex-col transition-transform duration-300 items-center hover:scale-105 hover:shadow-md">
+                <div class="px-4 py-2 flex flex-col w-full h-full text-center bg-cards rounded-lg">
+                    <button hx-delete="/image/{{ image.id }}/delete" hx-target-error="#content-area"
+                            hx-push-url="/image"
+                            hx-target="#content-area"
+                            class="bg-red-800 hover:bg-red-900 rounded-md p-1 text-white mb-3">
+                        <i class="fa-solid fa-trash"></i>
+
+                    </button>
+                    <a href="{{ image.path }}" data-pswp-width="{{ image.width }}" data-pswp-height="{{ image.height }}"
+                       target="_blank">
+                        <img class="object-cover rounded-lg w-full h-60" src="{{ image.thumbnail_path }}"
+                             alt="Image">
+                    </a>
+                    <div class="font-semibold text-lg text-sat-xl mt-2">
+                        {{ image.image_type_name }}
+                    </div>
+                    <div class="font-semibold text-lg text-sat-xl mt-2">
+                        <pre>{{ image.path }}</pre>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script type='module'>
+    import PhotoSwipeLightbox from '/static/photoswipe/photoswipe-lightbox.esm.js';
+
+    const lightbox = new PhotoSwipeLightbox({
+        gallery: '#other-image-gallery',
+        children: 'a',
+        pswpModule: () => import('/static/photoswipe/photoswipe.esm.js')
+    });
+    lightbox.init();
+</script>

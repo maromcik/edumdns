@@ -1,0 +1,7 @@
+<div id="like-count" class="flex items-center pl-5 text-3xl">
+    {% if is_liked %}
+    <i class="fa-solid fa-heart text-3xl"></i> <p class="pl-5 text-forms text-2xl">{{ likes }}</p>
+    {% else %}
+    <i class="fa-regular fa-heart text-3xl"></i> <p class="pl-5 text-forms text-2xl">{{ likes }}</p>
+    {% endif %}
+</div>

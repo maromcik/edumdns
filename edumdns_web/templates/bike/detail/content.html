@@ -1,0 +1,253 @@
+<a href="/bike"
+   class="absolute top-0 left-0 mt-20 ml-5 sm:ml-10 sm:mt-24 bg-acc  text-button py-2 px-4 font-bold rounded focus:outline-none focus:shadow-outline flex items-center">
+    <i class="fas fa-arrow-left text-button" style="a {
+        @apply text-button hover:text-button transition-colors;
+    }"></i>
+</a>
+
+<div class="max-w-7xl mx-auto px-4 mb-10 md:mb-5 sm:px-8">
+    <!-- Top Section: Thumbnail and Basic Details -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-10">
+        <!-- Thumbnail -->
+        <!-- Images Section -->
+        <div class="mt-10" style="height: 450px; overflow-y: auto">
+
+            <div class="pswp-gallery" id="bike-detail-gallery">
+
+                <div id="bike-thumbnail-box" class="group">
+                    <div class="w-full h-60 sm:w-full sm:h-60 rounded-lg shadow-md relative">
+                        {% if logged_in %}
+                        {% include "bike/admin/thumbnail/detail/content.html" %}
+                        {% endif %}
+                        <a href="{{ bike.preview_path }}" data-pswp-width="{{ bike.preview_width }}" data-pswp-height="{{ bike.preview_height }}">
+                            <img class="responsive-image rounded-lg" src="{{ bike.preview_thumbnail_path }}"
+                                 alt="Bike Thumbnail">
+
+                        </a>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1 mt-1">
+
+                    {% for image in bike_images %}
+                    <a href="{{ image.path }}" data-pswp-width="{{ image.width }}" data-pswp-height="{{ image.height }}"
+                       target="_blank">
+                        <div class=" w-full h-32 rounded-lg overflow-hidden shadow-md hover:scale-105 transition-transform">
+                            <img class="object-cover w-full h-32" src="{{ image.thumbnail_path }}" alt="Bike Image">
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Bike Details -->
+        <div class="items-center flex sm:justify-start flex-col space-y-6 text-center">
+            <h1 class="text-2xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-sat-xl text-center ">{{
+                bike.name }}</h1>
+            <div class="grid grid-cols-2 md:grid-cols-2 gap-6">
+                <div>
+                    <h2 class="text-2xl font-semibold text-sat-l text-center">Brand</h2>
+                    <a class=" bg-panes text-sat-xl hover:text-white font-medium text-lg rounded-md px-4 py-2 shadow-md cursor-pointer"
+                       href="/brand/{{ bike.brand_id }}">
+                        {{ bike.brand_name }}
+                    </a>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-semibold text-sat-l text-center">Model</h2>
+                    <a class=" bg-panes  text-sat-xl hover:text-white font-medium text-lg rounded-md px-4 py-2 shadow-md cursor-pointer"
+                       href="/model/{{ bike.model_id }}">
+                        {{ bike.model_name }}
+                    </a>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-semibold text-sat-l text-center">Year</h2>
+                    <a class="bg-panes text-sat-xl font-medium text-lg rounded-md px-4 py-2 shadow-md">
+                        {{ bike.year }}
+                    </a>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-semibold text-sat-l text-center">Price</h2>
+                    <a class="bg-panes text-sat-xl font-medium text-lg rounded-md px-4 py-2 shadow-md">
+                        {{ bike.price }} €
+                    </a>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-center mt-5 text-sat-m space-x-3">
+                <i class="fa-solid fa-eye text-2xl"></i>
+                <span class="text-2xl">{{ bike.view_count }}</span>
+            </div>
+            <div class="h-2"></div> <!-- Spacer element for vertical spacing -->
+            {% if logged_in %}
+            <div class="flex justify-center items-center">
+                <div class="flex space-x-4">
+                    <button hx-get="/bike/{{ bike.id }}/edit" hx-target-error="#content-area"
+                            hx-push-url="/bike/{{ bike.id }}/edit"
+                            hx-target="#content-area"
+                            class="bg-yellow-400 hover:bg-yellow-500  rounded-md p-3 text-button text-lg shadow-md w-12">
+                        <i class="fa-solid fa-pencil"></i>
+                    </button>
+                    <button hx-get="/bike/{{ bike.id }}/reupload" hx-target-error="#content-area"
+                            hx-target="#content-area"
+                            class="bg-purple-500 hover:bg-purple-600  rounded-md p-3 text-button text-lg shadow-md w-12">
+                        <i class="fa-solid fa-upload"></i>
+                    </button>
+                    <a href="/bike/{{ bike.id }}/download"
+                       class="bg-cyan-500 hover:bg-cyan-600  rounded-md p-3 text-button text-lg shadow-md w-12">
+                        <i class="fa-solid fa-download"></i>
+                    </a>
+                    <button hx-get="/bike/{{ bike.id }}/clone" hx-target-error="#content-area" hx-push-url="/bike"
+                            hx-target="#content-area"
+                            class="bg-blue-500 hover:bg-blue-600 rounded-md p-3 text-button text-lg shadow-md w-12">
+                        <i class="fa-solid fa-clone"></i>
+                    </button>
+                    {% if bike.hidden %}
+                    <button hx-put="/bike/{{ bike.id }}/restore" hx-target-error="#content-area"
+                            hx-target="#content-area"
+                            class="bg-lime-500 hover:bg-lime-600 rounded-md p-3 text-button text-lg shadow-md w-12">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                    <button hx-delete="/bike/{{ bike.id }}/delete" hx-target-error="#content-area"
+                            hx-target="#content-area" hx-push-url="/bike"
+                            class="bg-red-600 hover:bg-red-700 rounded-md p-3 text-button text-lg shadow-md w-12">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                    {% else %}
+                    <button hx-delete="/bike/{{ bike.id }}/hide" hx-target-error="#content-area"
+                            hx-target="#content-area"
+                            class="bg-fuchsia-400 hover:bg-fuchsia-500 rounded-md p-3 text-button text-lg shadow-md w-12">
+                        <i class="fa-solid fa-eye-slash"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            <div class="mt-10 mx-auto container">
+                <button id="contact-us-btn"
+                        class="bg-acc font-bold text-xl mx-auto rounded-md p-3 block text-button shadow-md">
+                    Make an Inquiry
+                </button>
+            </div>
+        </div>
+    </div>
+
+<!--    hideable contact form-->
+    <div id="contact-form-container" class="hidden mt-6">
+        {% include "user/contact/content.html" %}
+    </div>
+
+    <!-- Description Section -->
+    <div class="mt-10">
+        <h2 class="text-2xl text-sat-xl font-bold mb-4">Description</h2>
+        <div class="bg-panes p-5 rounded-lg shadow-md text-sat-l">
+            {{ bike.description | safe }}
+        </div>
+    </div>
+
+    <!-- Specification Section -->
+    <div class="mt-10">
+        <h2 class="text-2xl font-bold mb-4 text-sat-xl">Specifications</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Frame</span>
+                <span class="text-sat-m">{{ bike.frame }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Seat Tube Sizes</span>
+                <span class="text-sat-m">{{ bike.seat_tube_sizes }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Top Tube Size</span>
+                <span class="text-sat-m">{{ bike.top_tube_size }} cm</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Height</span>
+                <span class="text-sat-m">{{ bike.height }} cm</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Headset</span>
+                <span class="text-sat-m">{{ bike.headset }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Crankset</span>
+                <span class="text-sat-m">{{ bike.crankset }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Bottom Bracket</span>
+                <span class="text-sat-m">{{ bike.bottom_bracket }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Front Derailleur</span>
+                <span class="text-sat-m">{{ bike.front_derail }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Rear Derailleur</span>
+                <span class="text-sat-m">{{ bike.rear_derail }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Brakes</span>
+                <span class="text-sat-m">{{ bike.brakes }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Shifters</span>
+                <span class="text-sat-m">{{ bike.shifters }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Brake Levers</span>
+                <span class="text-sat-m">{{ bike.brake_levers }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Saddle</span>
+                <span class="text-sat-m">{{ bike.saddle }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Seat Post</span>
+                <span class="text-sat-m">{{ bike.seat_post }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Hubs</span>
+                <span class="text-sat-m">{{ bike.hubs }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Rims</span>
+                <span class="text-sat-m">{{ bike.rims }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Handlebar</span>
+                <span class="text-sat-m">{{ bike.handlebar }}</span>
+            </div>
+            <div class="bg-panes p-1 rounded-lg shadow items-center flex sm:justify-start flex-col space-y-1">
+                <span class="font-semibold text-sat-l">Stem</span>
+                <span class="text-sat-m">{{ bike.stem }}</span>
+            </div>
+        </div>
+    </div>
+
+
+    {% if logged_in %}
+    <div class="mt-10 text-sat-xl">
+        <h3>Image Status</h3>
+        {{ bike.status|safe }}
+    </div>
+    {% endif %}
+</div>
+
+
+<script>
+    document.getElementById('contact-us-btn').addEventListener('click', () => {
+        const contactForm = document.getElementById('contact-form-container');
+        contactForm.classList.toggle('hidden'); // Toggles the 'hidden' class
+    });
+</script>
+
+<script type='module'>
+    import PhotoSwipeLightbox from '/static/photoswipe/photoswipe-lightbox.esm.js';
+
+    const lightbox = new PhotoSwipeLightbox({
+        gallery: '#bike-detail-gallery',
+        children: 'a',
+        pswpModule: () => import('/static/photoswipe/photoswipe.esm.js')
+    });
+    lightbox.init();
+</script>

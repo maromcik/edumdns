@@ -1,3 +1,4 @@
+use actix_files::Files;
 use crate::utils::AppState;
 use crate::handlers::index::{index};
 use actix_web::web;
@@ -13,9 +14,8 @@ pub fn configure_webapp(
 
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.app_data(web::Data::new(app_state))
-            .service(index);
-            // .service(ActixFiles::new("/media", "./media").prefer_utf8(true))
-            // .service(ActixFiles::new("/static", "./static").prefer_utf8(true))
-            // .service(ActixFiles::new("/", "./webroot").prefer_utf8(true));
+            .service(index)
+            .service(Files::new("/static", "./edumdns_web/static").prefer_utf8(true))
+            .service(Files::new("/", "./edumdns_web/webroot").prefer_utf8(true));
     })
 }

@@ -41,7 +41,7 @@ where
             .immediate_mode(true)
             .open()
             .map_err(CoreError::from)?;
-
+        let capture = capture.setnonblock()?;
         info!("Listening on: {:?}", target_name);
 
         Ok(PacketCaptureGeneric {

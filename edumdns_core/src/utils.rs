@@ -1,3 +1,5 @@
+use tokio_util::sync::WaitForCancellationFuture;
+
 #[macro_export]
 macro_rules! retry {
     ($f:expr, $count:expr, $interval:expr) => {{
@@ -24,4 +26,9 @@ macro_rules! retry {
     ($f:expr) => {
         retry!($f, 5, 1000)
     };
+}
+
+pub trait Cancellable {
+    fn cancel(&mut self);
+    fn is_cancelled(&self) -> bool;
 }

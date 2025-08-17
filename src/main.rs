@@ -1,6 +1,8 @@
 use crate::error::AppError;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
+use log::info;
+use tokio_util::sync::CancellationToken;
 use edumdns_db::db_init;
 use edumdns_probe::probe_init;
 use edumdns_server::server_init;
@@ -9,20 +11,20 @@ use tracing_subscriber::EnvFilter;
 
 mod error;
 
-pub async fn run_probe() -> Result<(), AppError> {
-    probe_init().await?;
-    Ok(())
-}
-
-pub async fn run_server(pool: Pool<AsyncPgConnection>) -> Result<(), AppError> {
-    server_init(pool).await?;
-    Ok(())
-}
-
-pub async fn run_web(pool: Pool<AsyncPgConnection>) -> Result<(), AppError> {
-    web_init(pool).await?;
-    Ok(())
-}
+// pub async fn run_probe() -> Result<(), AppError> {
+//     probe_init().await?;
+//     Ok(())
+// }
+//
+// pub async fn run_server(pool: Pool<AsyncPgConnection>) -> Result<(), AppError> {
+//     server_init(pool).await?;
+//     Ok(())
+// }
+//
+// pub async fn run_web(pool: Pool<AsyncPgConnection>) -> Result<(), AppError> {
+//     web_init(pool).await?;
+//     Ok(())
+// }
 
 #[actix_web::main]
 async fn main() -> Result<(), AppError> {
@@ -37,11 +39,15 @@ async fn main() -> Result<(), AppError> {
         .init();
 
     let pool = db_init().await?;
-
+    let token = CancellationToken::new();
     tokio::select! {
         server = server_init(pool.clone()) => server?,
-        probe = probe_init() => probe?,
+        probe = probe_init(token.clone()) => probe?,
         web = web_init(pool) => web?,
+        _ = tokio::signal::ctrl_c() => {
+            info!("Received Ctrl+C, exiting...");
+            token.cancel();
+        }
     }
 
     Ok(())

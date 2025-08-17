@@ -10,14 +10,43 @@ use std::net::IpAddr;
 use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::sleep;
-use tokio_util::sync::CancellationToken;
+use tokio_util::sync::{CancellationToken, WaitForCancellationFuture};
+use edumdns_core::utils::Cancellable;
 
 pub mod capture;
 pub mod connection;
 pub mod error;
 pub mod probe;
 
-pub async fn probe_init() -> Result<(), ProbeError> {
+
+#[derive(Clone)]
+pub struct CancelToken {
+    task_token: CancellationToken,
+    main_token: CancellationToken,
+}
+
+impl Cancellable for CancelToken {
+    fn cancel(&mut self) {
+        self.task_token.cancel();
+        self.main_token.cancel();
+    }
+
+    fn is_cancelled(&self) -> bool {
+        self.task_token.is_cancelled() || self.main_token.is_cancelled()
+    }
+}
+
+impl CancelToken {
+    pub fn new(main_token: CancellationToken) -> Self {
+        let task_token = CancellationToken::new();
+        Self {
+            task_token,
+            main_token,
+        }
+    }
+}
+
+pub async fn probe_init(main_cancellation_token: CancellationToken) -> Result<(), ProbeError> {
     let uuid = Uuid(uuid::Uuid::from_u128(32));
     let bind_ip = "127.0.0.1:0";
     let server_addr_port = "127.0.0.1:5000";
@@ -44,10 +73,12 @@ pub async fn probe_init() -> Result<(), ProbeError> {
 
     let mut config = connection_manager.connection_init_probe().await?;
 
+
+
     loop {
         let handle = connection_manager.handle.clone();
         let handle_local = connection_manager.handle.clone();
-        let cancellation_token = CancellationToken::new();
+        let mut cancellation_token = CancelToken::new(main_cancellation_token.clone());
         let mut join_set = tokio::task::JoinSet::new();
 
         let (send_transmitter, send_receiver) = mpsc::channel(1000);

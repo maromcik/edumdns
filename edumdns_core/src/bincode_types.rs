@@ -3,6 +3,7 @@ use bincode::error::EncodeError;
 use std::error::Error;
 use std::fmt::Display;
 use std::hash::Hash;
+use serde::{Serialize, Serializer};
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MacAddr(pub pnet::datalink::MacAddr);
@@ -72,6 +73,15 @@ impl MacAddr {
         Self(pnet::datalink::MacAddr::new(
             octets[0], octets[1], octets[2], octets[3], octets[4], octets[5],
         ))
+    }
+}
+
+impl Serialize for MacAddr {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer
+    {
+        serializer.serialize_str(self.to_string().to_uppercase().as_str())
     }
 }
 

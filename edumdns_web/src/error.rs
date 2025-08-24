@@ -13,10 +13,16 @@ use std::num::ParseIntError;
 use std::str::ParseBoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
+use edumdns_core::error::CoreError;
+use edumdns_db::error::DbError;
 
 /// User facing error type
-#[derive(Error, Debug, Serialize, Clone)]
+#[derive(Error, Debug, Clone)]
 pub enum WebErrorKind {
+    #[error("{0}")]
+    CoreError(CoreError),
+    #[error("{0}")]
+    DbError(DbError),
     #[error("internal server error")]
     InternalServerError,
     #[error("not found")]
@@ -51,9 +57,9 @@ pub enum WebErrorKind {
 //     }
 // }
 
-#[derive(Error, Debug, Clone, Serialize)]
+#[derive(Error, Debug, Clone)]
 pub struct WebError {
-    pub app_error_kind: WebErrorKind,
+    pub error_kind: WebErrorKind,
     pub message: String,
 }
 
@@ -62,9 +68,31 @@ impl WebError {
     #[inline]
     pub fn new(error: WebErrorKind, description: &str) -> Self {
         Self {
-            app_error_kind: error,
+            error_kind: error,
             message: description.to_owned(),
         }
+    }
+}
+
+impl Display for WebError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.error_kind {
+            WebErrorKind::CoreError(e) => write!(f, "WebError -> {}", e),
+            WebErrorKind::DbError(e) => write!(f, "WebError -> {}", e),
+            _ => write!(f, "WebError: {}: {}", self.error_kind, self.message),
+        }
+    }
+}
+
+impl From<CoreError> for WebError {
+    fn from(value: CoreError) -> Self {
+        Self::new(WebErrorKind::CoreError(value), "")
+    }
+}
+
+impl From<DbError> for WebError {
+    fn from(value: DbError) -> Self {
+        Self::new(WebErrorKind::DbError(value), "")
     }
 }
 
@@ -149,24 +177,17 @@ impl From<ParseIntError> for WebError {
     }
 }
 
-impl Display for WebError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Error code: {}, Error message: {}",
-            self.app_error_kind, self.message
-        )
-    }
-}
 
 impl ResponseError for WebError {
     fn status_code(&self) -> StatusCode {
-        match self.app_error_kind {
+        match self.error_kind {
             WebErrorKind::BadRequest | WebErrorKind::EmailAddressError => StatusCode::BAD_REQUEST,
             WebErrorKind::NotFound => StatusCode::NOT_FOUND,
             WebErrorKind::Conflict => StatusCode::CONFLICT,
             WebErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
-            WebErrorKind::TemplatingError
+            WebErrorKind::CoreError(_)
+            | WebErrorKind::DbError(_)
+            | WebErrorKind::TemplatingError
             | WebErrorKind::InternalServerError
             | WebErrorKind::IdentityError
             | WebErrorKind::SessionError
@@ -191,13 +212,13 @@ impl From<ParseBoolError> for WebError {
 
 fn render_generic(error: &WebError) -> HttpResponse {
     let mut env = Environment::new();
-    env.set_loader(path_loader("templates"));
+    env.set_loader(path_loader("edumdns_web/templates"));
     let template = env
         .get_template("error.html")
         .expect("Failed to read the error template");
     let context = GenericError {
         code: error.status_code().to_string(),
-        description: error.message.clone(),
+        description: error.to_string(),
     };
     let body = template.render(context).unwrap_or_default();
     HttpResponse::build(error.status_code())

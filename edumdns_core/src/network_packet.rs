@@ -600,6 +600,26 @@ impl<'a> ApplicationPacket<'a> {
             _ => None,
         }
     }
+    pub fn from_bytes(bytes: &'a [u8]) -> Result<ApplicationPacket<'a>, CoreError> {
+        let dns_packet = DnsPacket::parse(bytes).map_err(|e| CoreError::new(CoreErrorKind::PacketConstructionError, format!("Could not build a DNS packet: {e}").as_str()))?;
+
+        Ok(ApplicationPacket {
+            application_packet_type: ApplicationPacketType::DnsPacket(dns_packet),
+        })
+    }
+
+    pub fn read_content(&self) -> Vec<String> {
+        let mut lines: Vec<String> = Vec::default();
+        match &self.application_packet_type {
+            ApplicationPacketType::DnsPacket(packet) => {
+                let q = packet.questions.iter().map(|q| q.qname.to_string()).collect::<Vec<String>>();
+                let r = packet.answers.iter().map(|r| r.name.to_string()).collect::<Vec<String>>();
+                lines.extend(q);
+                lines.extend(r);
+            },
+        }
+        lines
+    }
 }
 
 impl ApplicationPacketType<'_> {

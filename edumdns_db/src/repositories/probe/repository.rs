@@ -39,11 +39,11 @@ impl DbReadOne<Uuid, Probe> for PgProbeRepository {
     }
 }
 
-impl DbReadMany<SelectManyFilter, (Location, User, Probe)> for PgProbeRepository {
+impl DbReadMany<SelectManyFilter, (Option<Location>, Option<User>, Probe)> for PgProbeRepository {
     async fn read_many(
         &self,
         params: &SelectManyFilter,
-    ) -> DbResultMultiple<(Location, User, Probe)> {
+    ) -> DbResultMultiple<(Option<Location>, Option<User>, Probe)> {
         let mut query = probe.into_boxed();
 
         if let Some(q) = &params.adopted {
@@ -73,10 +73,14 @@ impl DbReadMany<SelectManyFilter, (Location, User, Probe)> for PgProbeRepository
 
         let mut conn = self.pg_pool.get().await?;
         let probes = query
-            .inner_join(location)
-            .inner_join(user)
-            .select((Location::as_select(), User::as_select(), Probe::as_select()))
-            .load::<(Location, User, Probe)>(&mut conn)
+            .left_outer_join(location)
+            .left_outer_join(user)
+            .select((
+                Option::<Location>::as_select(),
+                Option::<User>::as_select(),
+                Probe::as_select(),
+            ))
+            .load::<(Option<Location>, Option<User>, Probe)>(&mut conn)
             .await?;
 
         Ok(probes)

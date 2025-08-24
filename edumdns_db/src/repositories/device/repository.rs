@@ -50,8 +50,8 @@ impl DbReadOne<SelectSingleFilter, Device> for PgDeviceRepository {
     }
 }
 
-impl DbReadMany<SelectManyFilter, (Probe, Device)> for PgDeviceRepository {
-    async fn read_many(&self, params: &SelectManyFilter) -> DbResultMultiple<(Probe, Device)> {
+impl DbReadMany<SelectManyFilter, (Option<Probe>, Device)> for PgDeviceRepository {
+    async fn read_many(&self, params: &SelectManyFilter) -> DbResultMultiple<(Option<Probe>, Device)> {
         let mut query = device.into_boxed();
 
         if let Some(q) = &params.probe_id {
@@ -77,9 +77,9 @@ impl DbReadMany<SelectManyFilter, (Probe, Device)> for PgDeviceRepository {
 
         let mut conn = self.pg_pool.get().await?;
         let devices = query
-            .inner_join(probe)
-            .select((Probe::as_select(), Device::as_select()))
-            .load::<(Probe, Device)>(&mut conn)
+            .left_outer_join(probe)
+            .select((Option::<Probe>::as_select(), Device::as_select()))
+            .load::<(Option<Probe>, Device)>(&mut conn)
             .await?;
 
         Ok(devices)

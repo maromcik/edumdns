@@ -161,6 +161,10 @@
     @apply text-gray-800 dark:text-gray-100
 }
 
+.text-code {
+    @apply text-gray-100 dark:text-gray-800
+}
+
 .text-button {
     @apply text-stone-700 dark:text-stone-900
 }

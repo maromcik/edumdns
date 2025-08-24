@@ -1,0 +1,87 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-4xl font-semibold text-sat-l">Packet Detail</h1>
+    <div class="flex items-center gap-2">
+      <a href="/packet" class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
+        ← Back to packets
+      </a>
+      <a href="/probe/{{ packet.probe_id }}" class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
+        View probe
+      </a>
+    </div>
+  </div>
+
+  <!-- Packet Card -->
+  <div class="rounded-lg border border-base bg-cards p-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- ID -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
+        <span class="font-mono text-code"><code>{{ packet.id }}</code></span>
+      </div>
+
+      <!-- Probe ID -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">Probe ID</span>
+        <span class="font-mono text-code">
+          <a class="underline text-acc hover:text-acc-xl" href="/probe/{{ packet.probe_id }}"><code>{{ packet.probe_id }}</code></a>
+        </span>
+      </div>
+
+      <!-- Source MAC -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">Source MAC</span>
+        <span class="font-mono text-code"><code>{{ packet.src_mac }}</code></span>
+      </div>
+
+      <!-- Destination MAC -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">Destination MAC</span>
+        <span class="font-mono text-code"><code>{{ packet.dst_mac }}</code></span>
+      </div>
+
+      <!-- Source Address -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">Source Address</span>
+        <span class="font-mono text-code"><code>{{ packet.src_addr }}</code></span>
+      </div>
+
+      <!-- Destination Address -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">Destination Address</span>
+        <span class="font-mono text-code"><code>{{ packet.dst_addr }}</code></span>
+      </div>
+
+      <!-- Source Port -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">Source Port</span>
+        <span class="text-code"><code>{{ packet.src_port }}</code></span>
+      </div>
+
+      <!-- Destination Port -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">Destination Port</span>
+        <span class="font-mono text-code"><code>{{ packet.dst_port }}</code></span>
+      </div>
+    </div>
+
+    <!-- Payload -->
+    <div class="mt-6">
+      <h3 class="text-2xl font-medium mb-3 text-sat-l">Payload</h3>
+      {% if packet.payload and packet.payload | length > 0 %}
+        <div class="rounded-lg border border-base bg-panes p-4 overflow-x-auto">
+          <ul class="list-disc text-sat-l pl-6 mb-0">
+            {% for line in packet.payload %}
+              <li class="mb-1"><code class="text-code">{{ line }}</code></li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% else %}
+        <div class="rounded-lg border border-base bg-panes p-4 text-sat-m">
+          — No payload —
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>

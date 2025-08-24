@@ -1299,6 +1299,7 @@ dependencies = [
  "futures-util",
  "hmac 0.13.0-pre.5",
  "image",
+ "ipnetwork 0.21.1",
  "itertools 0.14.0",
  "lazy_static",
  "lettre",

@@ -33,6 +33,7 @@ impl Display for ServerError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.error_kind {
             ServerErrorKind::CoreError(e) => write!(f, "ServerError -> {}", e),
+            ServerErrorKind::DbError(e) => write!(f, "ServerError -> {}", e),
             _ => write!(f, "ServerError: {}: {}", self.error_kind, self.message),
         }
     }

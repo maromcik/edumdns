@@ -30,10 +30,12 @@ pub struct DbError {
 
 impl Display for DbError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ProbeError: {}: {}", self.error_kind, self.message)
+        match &self.error_kind {
+            DbErrorKind::BackendError(e) => write!(f, "DbError -> {}", e),
+            _ => write!(f, "DbError: {}: {}", self.error_kind, self.message),
+        }
     }
 }
-
 impl DbError {
     pub fn new(error_kind: DbErrorKind, message: &str) -> Self {
         Self {
@@ -134,8 +136,8 @@ impl BackendError {
     }
 }
 
-impl Display for BackendError {
+impl Display for BackendError{
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.fmt(f)
+        write!(f, "Backend Error: {}: {}", self.error_kind, self.message)
     }
 }

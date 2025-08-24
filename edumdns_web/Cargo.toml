@@ -35,4 +35,5 @@ itertools = "0.14.0"
 markdown = "1.0.0-alpha.21"
 lettre = { version = "0.11.11", features = ["tokio1-native-tls"] }
 tokio = "1.46.1"
+ipnetwork = "0.21.1"
 

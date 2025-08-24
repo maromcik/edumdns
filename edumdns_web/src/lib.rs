@@ -15,8 +15,7 @@ use diesel_async::pooled_connection::deadpool::Pool;
 use log::{info, warn};
 use std::env;
 use std::sync::Arc;
-use actix_web::dev::{HttpServiceFactory, ServerHandle};
-use tokio::io::AsyncWriteExt;
+use actix_web::dev::ServerHandle;
 
 pub mod error;
 
@@ -24,6 +23,7 @@ mod init;
 mod templates;
 mod utils;
 mod handlers;
+mod models;
 
 const DEFAULT_HOSTNAME: &str = "localhost";
 const DEFAULT_PORT: &str = "8000";

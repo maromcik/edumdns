@@ -1,14 +1,14 @@
 use crate::error::DbError;
-use crate::models::{Device, Packet, Probe};
+use crate::models::{Packet};
 use crate::repositories::common::{
     DbCreate, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, Id,
 };
 use crate::repositories::packet::models::{CreatePacket, SelectManyFilter, SelectSingleFilter};
 use crate::schema;
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
+use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
-use diesel_async::pooled_connection::deadpool::Pool;
 use schema::packet::dsl::*;
 
 #[derive(Clone)]
@@ -29,6 +29,18 @@ impl DbReadOne<SelectSingleFilter, Packet> for PgPacketRepository {
             .filter(probe_id.eq(params.probe_id))
             .filter(src_mac.eq(params.src_mac))
             .filter(src_addr.eq(params.src_addr))
+            .select(Packet::as_select())
+            .first(&mut conn)
+            .await
+            .map_err(DbError::from)
+    }
+}
+
+impl DbReadOne<Id, Packet> for PgPacketRepository {
+    async fn read_one(&self, params: &Id) -> DbResultSingle<Packet> {
+        let mut conn = self.pg_pool.get().await?;
+        packet
+            .find(params)
             .select(Packet::as_select())
             .first(&mut conn)
             .await

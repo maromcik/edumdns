@@ -13,11 +13,6 @@
   - config
   - data
 - transmit cancellation
-- packet storage
-  - use `HashMap<probe_uuid, HashMap<(device_mac, device_ip), HashSet<Packet>>>`
-  - when a new packet comes in, pass it to a bounded channel
-  - the receiving function will be storing packets in the db.
-  - during lookup bring probes and devices to the hashmap, query db for packets if missing
 ## Web
 - access control (modules - allow loading auth function - traits)
   - 3 nullable fields any of them should suffice

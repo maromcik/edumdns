@@ -1,0 +1,15 @@
+use serde::Serialize;
+use edumdns_db::models::{Device, Location, User};
+use crate::models::display::{PacketDisplay, ProbeDisplay};
+
+#[derive(Serialize)]
+pub struct PacketTemplate<'a> {
+    pub logged_in: bool,
+    pub packets: &'a Vec<PacketDisplay>,
+}
+
+#[derive(Serialize)]
+pub struct PacketDetailTemplate<'a> {
+    pub logged_in: bool,
+    pub packet: &'a PacketDisplay,
+}

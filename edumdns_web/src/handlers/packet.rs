@@ -1,12 +1,11 @@
 use crate::error::WebError;
 use crate::handlers::helpers::get_template_name;
-use crate::models::display::PacketDisplay;
 use crate::templates::packet::{PacketDetailTemplate, PacketTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::{get, web, HttpRequest, HttpResponse};
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id};
-use edumdns_db::repositories::packet::models::SelectManyFilter;
+use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 
 #[get("")]
@@ -17,7 +16,7 @@ pub async fn get_packets(
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
     let packets = packet_repo
-        .read_many(&SelectManyFilter::new(None, None, None, None, None, None, None, None))
+        .read_many(&SelectManyPackets::new(None, None, None, None, None, None, None, None))
         .await?
         .into_iter()
         .map(PacketDisplay::from)
@@ -44,7 +43,7 @@ pub async fn get_packet(
     path: web::Path<(Id,)>,
 ) -> Result<HttpResponse, WebError> {
     let packet = packet_repo
-        .read_one(&path.0)
+        .read_one(&path.into_inner().0)
         .await?;
 
     let template_name = get_template_name(&request, "packet/detail");

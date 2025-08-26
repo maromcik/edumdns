@@ -3,7 +3,7 @@ use crate::models::{Packet};
 use crate::repositories::common::{
     DbCreate, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, Id,
 };
-use crate::repositories::packet::models::{CreatePacket, SelectManyFilter, SelectSingleFilter};
+use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSingleFilter};
 use crate::schema;
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -48,8 +48,8 @@ impl DbReadOne<Id, Packet> for PgPacketRepository {
     }
 }
 
-impl DbReadMany<SelectManyFilter, Packet> for PgPacketRepository {
-    async fn read_many(&self, params: &SelectManyFilter) -> DbResultMultiple<Packet> {
+impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
+    async fn read_many(&self, params: &SelectManyPackets) -> DbResultMultiple<Packet> {
         let mut query = packet.into_boxed();
 
         if let Some(q) = &params.probe_id {

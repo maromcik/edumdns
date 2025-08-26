@@ -229,9 +229,12 @@ impl ConnectionManager {
                 None => return Ok(()),
                 Some(app_packet) => match &app_packet {
                     AppPacket::Command(command_packet) => match command_packet {
-                        CommandPacket::ReconnectProbe => {
+                        CommandPacket::ReconnectProbe(_) => {
                             command_transmitter.send(app_packet).await?
-                        }
+                        },
+                        CommandPacket::ReconnectThisProbe => {
+                            command_transmitter.send(app_packet).await?
+                        },
                         _ => {}
                     },
                     AppPacket::Data(_) => {}
@@ -269,7 +272,7 @@ impl ConnectionManager {
                 Err(e) => {
                     error!("Failed to send packet: {e}");
                     command_transmitter
-                        .send(AppPacket::Command(CommandPacket::ReconnectProbe))
+                        .send(AppPacket::Command(CommandPacket::ReconnectThisProbe))
                         .await?;
                     if counter >= max_retries {
                         return Err(ProbeError::from(e));
@@ -333,7 +336,7 @@ impl ConnectionManager {
             if Some(AppPacket::Status(StatusPacket::PingResponse)) != packet {
                 debug!("Not a ping response");
                 command_sender
-                    .send(AppPacket::Command(CommandPacket::ReconnectProbe))
+                    .send(AppPacket::Command(CommandPacket::ReconnectThisProbe))
                     .await?
             };
             sleep(interval).await;

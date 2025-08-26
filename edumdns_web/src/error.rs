@@ -66,10 +66,10 @@ pub struct WebError {
 impl WebError {
     #[must_use]
     #[inline]
-    pub fn new(error: WebErrorKind, description: &str) -> Self {
+    pub fn new(error: WebErrorKind, message: &str) -> Self {
         Self {
             error_kind: error,
-            message: description.to_owned(),
+            message: message.to_owned(),
         }
     }
 }

@@ -51,7 +51,7 @@ impl From<diesel::result::Error> for DbError {
             diesel::result::Error::NotFound => DbError::new(
                 DbErrorKind::BackendError(BackendError::new(
                     BackendErrorKind::DoesNotExist,
-                    "".to_string(),
+                    "",
                 )),
                 error.to_string().as_str(),
             ),
@@ -96,6 +96,15 @@ impl From<diesel_async::pooled_connection::deadpool::PoolError> for DbError {
     }
 }
 
+impl From<pbkdf2::password_hash::Error> for DbError {
+    fn from(value: pbkdf2::password_hash::Error) -> Self {
+        Self::new(
+            DbErrorKind::BackendError(BackendError::new(BackendErrorKind::UserPasswordVerificationFailed, value.to_string().as_str())),
+            ""
+        )
+    }
+}
+
 impl From<BackendError> for DbError {
     fn from(value: BackendError) -> Self {
         Self::new(DbErrorKind::BackendError(value), "")
@@ -113,6 +122,8 @@ pub enum BackendErrorKind {
     UpdateParametersEmpty,
     #[error("The provided email and password combination is incorrect.")]
     UserPasswordDoesNotMatch,
+    #[error("password verification failed")]
+    UserPasswordVerificationFailed,
 }
 
 #[derive(Clone, Debug, Error)]
@@ -122,22 +133,22 @@ pub struct BackendError {
 }
 
 impl BackendError {
-    #[must_use]
-    #[inline]
-    pub const fn new(error: BackendErrorKind, message: String) -> Self {
+    pub fn new(error: BackendErrorKind, message: &str) -> Self {
         Self {
             error_kind: error,
-            message,
+            message: message.to_owned(),
         }
-    }
-
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "BackendError: {}: {}", self.message, self.error_kind)
     }
 }
 
 impl Display for BackendError{
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Backend Error: {}: {}", self.error_kind, self.message)
+        if self.message.is_empty() {
+            write!(f, "Backend Error: {}", self.error_kind)
+        }
+        else {
+            write!(f, "Backend Error: {}: {}", self.error_kind, self.message)
+        }
+
     }
 }

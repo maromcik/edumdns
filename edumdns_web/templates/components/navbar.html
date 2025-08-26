@@ -3,13 +3,14 @@
     <!-- Logo -->
     <a id="navbar-image" href="/" class="flex items-center">
         <!-- Desktop Image -->
-        <picture>
-            <source srcset="/static/images/export/alema-white.png" media="(prefers-color-scheme:dark)">
-            <img src="/static/images/export/alema-black.png"
-                 alt="Logo"
-                 class="w-full h-16 py-2 sm:py-2 md:py-1 lg:py-1 xl:py-1 2xl:py-1"
-            >
-        </picture>
+        edumdns
+        <!--        <picture>-->
+<!--            <source srcset="/static/images/export/alema-white.png" media="(prefers-color-scheme:dark)">-->
+<!--            <img src="/static/images/export/alema-black.png"-->
+<!--                 alt="Logo"-->
+<!--                 class="w-full h-16 py-2 sm:py-2 md:py-1 lg:py-1 xl:py-1 2xl:py-1"-->
+<!--            >-->
+<!--        </picture>-->
 
         <!-- Mobile Image -->
         <!--        <img src="/static/images/export/alema-icon-black.png"-->
@@ -28,47 +29,27 @@
             </svg>
             Home
         </a>
+        <a href="/group"
+           class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer">
+            <i class="fa-solid fa-users text-3l w-6 h-6 mr-2 lg:mt-2 xl:mt-1"></i>
+            Groups
+        </a>
         <a href="/probe"
            class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer">
-            <i class="fa-solid fa-bicycle text-3l w-6 h-6 mr-2 lg:mt-2 xl:mt-1"></i>
+            <i class="fa-solid fa-server text-3l w-6 h-6 mr-2 lg:mt-2 xl:mt-1"></i>
             Probes
         </a>
         <a href="/device"
            class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
-                 stroke="currentColor"
-                 class="w-6 h-6 mr-2 mt-0 xl:mt-0.5">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/>
-            </svg>
+            <i class="fa-solid fa-television text-3l w-6 h-6 mr-2 lg:mt-2 xl:mt-1"></i>
             Devices
         </a>
         <a href="/packet"
            class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
-                 stroke="currentColor"
-                 class="w-6 h-6 mr-2 mt-0 xl:mt-0.5">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/>
-            </svg>
+            <i class="fa-solid fa-archive text-3l w-6 h-6 mr-2 lg:mt-2 xl:mt-1"></i>
             Packets
         </a>
-        <a href="/about"
-           class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
-                 stroke="currentColor"
-                 class="w-6 h-6 mr-2 mt-0 xl:mt-0.5">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/>
-            </svg>
-            About Us
-        </a>
         {% if logged_in %}
-        <a href="/image"
-           class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer">
-            <i class="fa-solid fa-image text-3l w-6 h-6 mr-2 lg:mt-2 xl:mt-1"></i>
-            Images
-        </a>
         <a href="/user/manage"
            class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
@@ -131,22 +112,16 @@
         <a href="/" class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Home
         </a>
-        <a href="/bike" class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
-            Bikes
+        <a href="/probe" class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
+            Probes
         </a>
-        <a href="/brand" class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
-            Brands
+        <a href="/device" class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
+            Devices
         </a>
-        <a href="/model" class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
-            Models
-        </a>
-        <a href="/about" class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
-            About Us
+        <a href="/packet" class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
+            Packets
         </a>
         {% if logged_in %}
-        <a href="/image" class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
-            Images
-        </a>
         <a href="/user/manage"
            class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Profile

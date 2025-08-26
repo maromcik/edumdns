@@ -16,3 +16,5 @@ serde = { version = "1.0.219", features = ["derive", "std"] }
 time = { version = "0.3.41", features = ["serde"] }
 uuid = { version = "1.16.0", features = ["v7", "serde"] }
 ipnetwork = { version = "0.21.1", features = ["serde"] }
+pbkdf2 = { version = "0.12.2", features = ["simple"] }
+rand_core = { version = "0.6.4", features = ["std"] }

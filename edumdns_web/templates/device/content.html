@@ -7,68 +7,68 @@
     <div class="overflow-x-auto rounded-lg border border-base bg-cards">
         <table class="min-w-full divide-y divide-base">
             <thead class="bg-muted/10">
-                <tr>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">ID</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Probe</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">MAC</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">IP</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Port</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Duration</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Interval</th>
-                    <th scope="col" class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
-                </tr>
+            <tr>
+                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">ID</th>
+                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Probe</th>
+                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">MAC</th>
+                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">IP</th>
+                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Port</th>
+                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Duration</th>
+                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Interval</th>
+                <th scope="col" class="px-4 py-3 text-right text-xs text-sat-l  font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
+            </tr>
             </thead>
             <tbody class="divide-y divide-base">
-                {% for device in devices %}
-                <tr class="hover:bg-muted/5 transition-colors">
-                    <!-- device[1] is Device -->
-                    <td class="px-4 py-3 font-mono text-sm text-sat-l">
-                        <a href="/device/{{ device[1].id }}" class="text-primary hover:underline">
-                            {{ device[1].id }}
-                        </a>
-                    </td>
+            {% for device in devices %}
+            <tr class="hover:bg-muted/5 transition-colors">
+                <!-- device[1] is Device -->
+                <td class="px-4 py-3 font-mono text-sm text-sat-l">
+                    <a href="/device/{{ device[1].id }}" class="text-primary hover:underline">
+                        {{ device[1].id }}
+                    </a>
+                </td>
 
-                    <!-- device[0] is Option<Probe> -->
-                    <td class="px-4 py-3 text-sm">
-                        {% if device[0] %}
-                            <a href="/probe/{{ device[0].id }}" class="text-primary hover:underline">
-                                {{ device[0].id }}
-                            </a>
-                        {% else %}
-                            <span class="text-muted-foreground">—</span>
-                        {% endif %}
-                    </td>
+                <!-- device[0] is Option<Probe> -->
+                <td class="px-4 py-3 text-sm">
+                    {% if device[0] %}
+                    <a href="/probe/{{ device[0].id }}" class="text-primary hover:underline">
+                        {{ device[0].id }}
+                    </a>
+                    {% else %}
+                    <span class="text-muted-foreground">—</span>
+                    {% endif %}
+                </td>
 
-                    <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].mac }}</td>
-                    <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].ip }}</td>
-                    <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].port }}</td>
-                    <td class="px-4 py-3 text-sm">
-                        {% if device[1].duration is not none %}
-                            {{ device[1].duration }}
-                        {% else %}
-                            <span class="text-muted-foreground">—</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-4 py-3 text-sm">
-                        {% if device[1].interval is not none %}
-                            {{ device[1].interval }}
-                        {% else %}
-                            <span class="text-muted-foreground">—</span>
-                        {% endif %}
-                    </td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].mac }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].ip }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].port }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">
+                    {% if device[1].duration is not none %}
+                    {{ device[1].duration }}
+                    {% else %}
+                    <span class="text-muted-foreground">—</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-sm text-sat-l">
+                    {% if device[1].interval is not none %}
+                    {{ device[1].interval }}
+                    {% else %}
+                    <span class="text-muted-foreground">—</span>
+                    {% endif %}
+                </td>
 
-                    <td class="px-4 py-3 text-right">
-                        <a href="/device/{{ device[1].id }}" class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
-                            View
-                        </a>
-                        {% if device[0] %}
-                        <a href="/probe/{{ device[0].id }}" class="ml-2 inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
-                            Probe
-                        </a>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
+                <td class="px-4 py-3 text-right">
+                    <a href="/device/{{ device[1].id }}" class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
+                        View
+                    </a>
+                    {% if device[0] %}
+                    <a href="/probe/{{ device[0].id }}" class="ml-2 inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
+                        Probe
+                    </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
             </tbody>
         </table>
 

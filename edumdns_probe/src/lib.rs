@@ -147,7 +147,7 @@ pub async fn probe_init(main_cancellation_token: CancellationToken) -> Result<()
             } => {
                 result?;
             },
-            Some(AppPacket::Command(CommandPacket::ReconnectProbe)) = command_receiver.recv() => {
+            Some(AppPacket::Command(CommandPacket::ReconnectThisProbe)) = command_receiver.recv() => {
                 warn!("Reconnect signal received. Canceling tasks.");
                 cancellation_token.task_token.cancel();
                 info!("Reconnecting...");

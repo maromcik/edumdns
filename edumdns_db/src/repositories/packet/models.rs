@@ -3,9 +3,13 @@ use diesel::{AsChangeset, Insertable};
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use edumdns_core::bincode_types::MacAddr;
+use edumdns_core::error::CoreError;
+use edumdns_core::network_packet::ApplicationPacket;
+use crate::models::Packet;
 
 #[derive(Serialize, Deserialize)]
-pub struct SelectManyFilter {
+pub struct SelectManyPackets {
     pub probe_id: Option<Uuid>,
     pub src_mac: Option<[u8; 6]>,
     pub dst_mac: Option<[u8; 6]>,
@@ -16,7 +20,7 @@ pub struct SelectManyFilter {
     pub pagination: Option<Pagination>,
 }
 
-impl SelectManyFilter {
+impl SelectManyPackets {
     pub fn new(
         probe_id: Option<Uuid>,
         src_mac: Option<[u8; 6]>,
@@ -96,5 +100,37 @@ impl CreatePacket {
             dst_port: dst_port as i32,
             payload,
         }
+    }
+}
+
+
+#[derive(Serialize)]
+pub struct PacketDisplay {
+    pub id: Id,
+    pub probe_id: Uuid,
+    pub src_mac: MacAddr,
+    pub dst_mac: MacAddr,
+    pub src_addr: IpNetwork,
+    pub dst_addr: IpNetwork,
+    pub src_port: i32,
+    pub dst_port: i32,
+    pub payload: Vec<String>,
+}
+
+impl PacketDisplay {
+    pub fn from(value: Packet) -> Result<PacketDisplay, CoreError> {
+        let payload = ApplicationPacket::from_bytes(&value.payload)?;
+
+        Ok(Self {
+            id: value.id,
+            probe_id: value.probe_id,
+            src_mac: MacAddr::from_octets(value.src_mac),
+            dst_mac: MacAddr::from_octets(value.dst_mac),
+            src_addr: value.src_addr,
+            dst_addr: value.dst_addr,
+            src_port: value.src_port,
+            dst_port: value.dst_port,
+            payload: payload.read_content(),
+        })
     }
 }

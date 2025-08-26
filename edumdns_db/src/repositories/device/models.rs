@@ -1,11 +1,13 @@
-use crate::repositories::common::Pagination;
+use crate::repositories::common::{Id, Pagination};
 use diesel::{AsChangeset, Insertable};
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use edumdns_core::bincode_types::MacAddr;
+use crate::models::Device;
 
 #[derive(Serialize, Deserialize)]
-pub struct SelectManyFilter {
+pub struct SelectManyDevices {
     pub probe_id: Option<Uuid>,
     pub mac: Option<[u8; 6]>,
     pub ip: Option<IpNetwork>,
@@ -13,7 +15,7 @@ pub struct SelectManyFilter {
     pub pagination: Option<Pagination>,
 }
 
-impl SelectManyFilter {
+impl SelectManyDevices {
     pub fn new(
         probe_id: Option<Uuid>,
         mac: Option<[u8; 6]>,
@@ -69,6 +71,33 @@ impl CreateDevice {
             mac,
             ip,
             port: port as i32,
+        }
+    }
+}
+
+
+
+#[derive(Serialize)]
+pub struct DeviceDisplay {
+    pub id: Id,
+    pub probe_id: Uuid,
+    pub mac: MacAddr,
+    pub ip: IpNetwork,
+    pub port: i32,
+    pub duration: Option<i64>,
+    pub interval: Option<i64>,
+}
+
+impl From<Device> for DeviceDisplay {
+    fn from(value: Device) -> Self {
+        Self {
+            id: value.id,
+            probe_id: value.probe_id,
+            mac: MacAddr::from_octets(value.mac),
+            ip: value.ip,
+            port: value.port,
+            duration: value.duration,
+            interval: value.interval,
         }
     }
 }

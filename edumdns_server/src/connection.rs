@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+use std::sync::Arc;
 use crate::error::{ServerError, ServerErrorKind};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{AppPacket, ProbeConfigElement, ProbeConfigPacket, StatusPacket};
+use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbeConfigElement, ProbeConfigPacket, StatusPacket};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_db::models::Probe;
@@ -13,10 +15,15 @@ use log::error;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
+use tokio::sync::RwLock;
+use edumdns_core::bincode_types::Uuid;
+use edumdns_core::error::CoreError;
 
 pub struct ConnectionManager {
     handle: TcpConnectionHandle,
     pg_probe_repository: PgProbeRepository,
+    tx: Sender<AppPacket>,
+    handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
     global_timeout: Duration,
 }
 
@@ -24,11 +31,15 @@ impl ConnectionManager {
     pub fn new(
         stream: TcpStream,
         pool: Pool<AsyncPgConnection>,
+        tx: Sender<AppPacket>,
+        handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
         global_timeout: Duration,
     ) -> Result<Self, ServerError> {
         Ok(Self {
             handle: TcpConnectionHandle::stream_to_framed(stream, global_timeout)?,
             pg_probe_repository: PgProbeRepository::new(pool.clone()),
+            tx,
+            handles,
             global_timeout,
         })
     }
@@ -88,7 +99,9 @@ impl ConnectionManager {
                 )
             })
             .await??;
-
+        
+        self.handles.write().await.insert(config_metadata.id, self.handle.clone());
+        
         Ok(())
     }
 
@@ -108,7 +121,7 @@ impl ConnectionManager {
         Ok(app_packet)
     }
 
-    pub async fn transfer_packets(&mut self, tx: Sender<AppPacket>) -> Result<(), ServerError> {
+    pub async fn transfer_packets(&mut self) -> Result<(), ServerError> {
         loop {
             let packet = self
                 .handle
@@ -119,10 +132,10 @@ impl ConnectionManager {
                 Some(app_packet) => {
                     match &app_packet {
                         AppPacket::Command(_) => {
-                            tx.send(app_packet).await?;
+                            self.tx.send(app_packet).await.map_err(CoreError::from)?;
                         }
                         AppPacket::Data(_) => {
-                            tx.send(app_packet).await?;
+                            self.tx.send(app_packet).await.map_err(CoreError::from)?;
                         }
                         AppPacket::Status(status) => {
                             match status {

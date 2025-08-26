@@ -1,57 +1,52 @@
-use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use diesel_async::pooled_connection::deadpool::Pool;
-use diesel_async::pooled_connection::{AsyncDieselConnectionManager, PoolError};
-use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use diesel_async::{AsyncPgConnection};
 use edumdns_core::app_packet::{
-    AppPacket, CommandPacket, PacketTransmitRequest, ProbePacket, StatusPacket,
+    AppPacket, CommandPacket, PacketTransmitRequest, ProbePacket,
 };
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
-use edumdns_db::error::DbError;
 use edumdns_db::repositories::common::{
-    DbCreate, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle,
+    DbCreate, DbReadMany, DbReadOne,
 };
 use edumdns_db::repositories::device::models::{CreateDevice, SelectSingleFilter};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyFilter};
+use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
-use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
-use edumdns_db::schema::packet::dst_mac;
-use edumdns_db::schema::probe::dsl::probe;
-use ipnetwork::Ipv4Network;
 use log::{debug, error, info, warn};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
-use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Mutex, RwLock};
-use tokio::sync::mpsc::{Receiver, Sender};
-use uuid::uuid;
+use tokio::sync::mpsc::{Receiver};
+use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
+use edumdns_core::error::CoreError;
+use crate::error::ServerError;
 
 pub struct PacketStorage {
     pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
     pub packet_receiver: Receiver<AppPacket>,
     pub transmitter_tasks: Arc<Mutex<HashMap<PacketTransmitRequest, PacketTransmitterTask>>>,
-    pub error_sender: Sender<ServerError>,
+    pub handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
     pub db_pool: Pool<AsyncPgConnection>,
     pub pg_probe_repository: PgProbeRepository,
     pub pg_device_repository: PgDeviceRepository,
     pub pg_packet_repository: PgPacketRepository,
+
 }
 
 impl PacketStorage {
     pub fn new(
         receiver: Receiver<AppPacket>,
-        error_sender: Sender<ServerError>,
         db_pool: Pool<AsyncPgConnection>,
+        handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
     ) -> Self {
         Self {
             packets: HashMap::new(),
             packet_receiver: receiver,
             transmitter_tasks: Arc::new(Mutex::new(HashMap::new())),
-            error_sender,
+            handles,
             pg_probe_repository: PgProbeRepository::new(db_pool.clone()),
             pg_device_repository: PgDeviceRepository::new(db_pool.clone()),
             pg_packet_repository: PgPacketRepository::new(db_pool.clone()),
@@ -66,7 +61,24 @@ impl PacketStorage {
                     CommandPacket::TransmitDevicePackets(target) => {
                         self.transmit_device_packets(target);
                     }
-                    CommandPacket::ReconnectProbe => todo!(),
+                    CommandPacket::ReconnectProbe(id) => {
+                        error!("PICAAAA");
+                        if let Some(handle) = self.handles.read().await.get(&id) {
+                            let res = handle.send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, AppPacket::Command(CommandPacket::ReconnectThisProbe))).await.map_err(ServerError::from);
+                            match res {
+                                Ok(o) => {
+                                    if let Err(e) = o {
+                                        error!("Error while reconnecting probe {id}: {}", ServerError::from(e));
+                                    }
+                                }
+                                Err(e) => {
+                                    error!("Error while reconnecting probe {id}: {e}");
+                                }
+                            }
+                        }
+                        else { error!("KURVAAAAA") }
+                    },
+                    _ => {}
                 },
                 AppPacket::Status(status) => {}
                 AppPacket::Data(probe_packet) => {
@@ -225,7 +237,7 @@ impl PacketStorage {
             info!("Target device found: {}", transmit_request);
 
             let packets = match packet_repo
-                .read_many(&SelectManyFilter::new(
+                .read_many(&SelectManyPackets::new(
                     Some(probe_id),
                     None,
                     None,

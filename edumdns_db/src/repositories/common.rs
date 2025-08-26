@@ -1,5 +1,6 @@
 use crate::error::DbError;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 pub type DbResult<T> = Result<T, DbError>;
 

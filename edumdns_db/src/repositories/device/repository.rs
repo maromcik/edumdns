@@ -3,7 +3,7 @@ use crate::models::{Device, Probe};
 use crate::repositories::common::{
     DbCreate, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultSingle, Id,
 };
-use crate::repositories::device::models::{CreateDevice, SelectManyFilter, SelectSingleFilter};
+use crate::repositories::device::models::{CreateDevice, SelectManyDevices, SelectSingleFilter};
 use crate::schema;
 use crate::schema::probe::dsl::probe;
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
@@ -50,8 +50,8 @@ impl DbReadOne<SelectSingleFilter, Device> for PgDeviceRepository {
     }
 }
 
-impl DbReadMany<SelectManyFilter, (Option<Probe>, Device)> for PgDeviceRepository {
-    async fn read_many(&self, params: &SelectManyFilter) -> DbResultMultiple<(Option<Probe>, Device)> {
+impl DbReadMany<SelectManyDevices, (Option<Probe>, Device)> for PgDeviceRepository {
+    async fn read_many(&self, params: &SelectManyDevices) -> DbResultMultiple<(Option<Probe>, Device)> {
         let mut query = device.into_boxed();
 
         if let Some(q) = &params.probe_id {

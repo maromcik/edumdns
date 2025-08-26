@@ -29,7 +29,7 @@ mod error;
 #[actix_web::main]
 async fn main() -> Result<(), AppError> {
     dotenvy::dotenv().ok();
-
+    let command_channel = tokio::sync::mpsc::channel(1000);
     let env = EnvFilter::try_from_env("EDUMDNS_LOG_LEVEL").unwrap_or(EnvFilter::new("info"));
     let timer = tracing_subscriber::fmt::time::LocalTime::rfc_3339();
     tracing_subscriber::fmt()
@@ -41,9 +41,9 @@ async fn main() -> Result<(), AppError> {
     let pool = db_init().await?;
     let token = CancellationToken::new();
     tokio::select! {
-        server = server_init(pool.clone()) => server?,
         probe = probe_init(token.clone()) => probe?,
-        web = web_init(pool) => web?,
+        web = web_init(pool.clone(), command_channel.0.clone()) => web?,
+        server = server_init(pool.clone(), command_channel) => server?,
         _ = tokio::signal::ctrl_c() => {
             info!("Received Ctrl+C, exiting...");
             token.cancel();

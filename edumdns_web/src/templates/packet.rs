@@ -1,6 +1,5 @@
+use edumdns_db::repositories::packet::models::PacketDisplay;
 use serde::Serialize;
-use edumdns_db::models::{Device, Location, User};
-use crate::models::display::{PacketDisplay, ProbeDisplay};
 
 #[derive(Serialize)]
 pub struct PacketTemplate<'a> {

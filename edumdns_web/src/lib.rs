@@ -15,7 +15,8 @@ use diesel_async::pooled_connection::deadpool::Pool;
 use log::{info, warn};
 use std::env;
 use std::sync::Arc;
-use actix_web::dev::ServerHandle;
+use tokio::sync::mpsc::Sender;
+use edumdns_core::app_packet::AppPacket;
 
 pub mod error;
 
@@ -23,7 +24,7 @@ mod init;
 mod templates;
 mod utils;
 mod handlers;
-mod models;
+mod forms;
 
 const DEFAULT_HOSTNAME: &str = "localhost";
 const DEFAULT_PORT: &str = "8000";
@@ -33,7 +34,7 @@ const PAYLOAD_LIMIT: usize = 16 * 1024 * 1024 * 1024; // 16GiB
 const FORM_LIMIT: usize = 16 * 1024 * 1024; // 16MiB
 const MIN_PASS_LEN: usize = 6;
 
-pub async fn web_init(pool: Pool<AsyncPgConnection>) ->  Result<(), WebError> {
+pub async fn web_init(pool: Pool<AsyncPgConnection>, command_channel: Sender<AppPacket>) ->  Result<(), WebError> {
     let _dir = env::temp_dir();
 
     let host = parse_host();
@@ -41,7 +42,7 @@ pub async fn web_init(pool: Pool<AsyncPgConnection>) ->  Result<(), WebError> {
 
     let jinja = Arc::new(create_reloader("edumdns_web/templates".to_owned()));
 
-    let app_state = AppState::new(jinja.clone());
+    let app_state = AppState::new(jinja.clone(), command_channel.clone());
 
     let key = Key::from(
         &env::var("COOKIE_SESSION_KEY")

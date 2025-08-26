@@ -1,11 +1,14 @@
 use crate::repositories::common::{Id, Pagination};
 use diesel::{AsChangeset, Insertable, Queryable, Selectable};
+use diesel::pg::Pg;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use edumdns_core::bincode_types::MacAddr;
+use crate::models::Probe;
 
 #[derive(Serialize, Deserialize)]
-pub struct SelectManyFilter {
+pub struct SelectManyProbes {
     pub owner_id: Option<Id>,
     pub location_id: Option<Id>,
     pub adopted: Option<bool>,
@@ -14,7 +17,7 @@ pub struct SelectManyFilter {
     pub pagination: Option<Pagination>,
 }
 
-impl SelectManyFilter {
+impl SelectManyProbes {
     pub fn new(
         owner_id: Option<Id>,
         location_id: Option<Id>,
@@ -52,6 +55,29 @@ impl CreateProbe {
             id: id.0,
             mac: mac.0.octets(),
             ip,
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct ProbeDisplay {
+    pub id: Uuid,
+    pub owner_id: Option<Id>,
+    pub location_id: Option<Id>,
+    pub adopted: bool,
+    pub mac: MacAddr,
+    pub ip: ipnetwork::IpNetwork,
+}
+
+impl From<Probe> for ProbeDisplay {
+    fn from(value: Probe) -> Self {
+        Self {
+            id: value.id,
+            owner_id: value.owner_id,
+            location_id: value.location_id,
+            adopted: value.adopted,
+            mac: MacAddr::from_octets(value.mac),
+            ip: value.ip,
         }
     }
 }

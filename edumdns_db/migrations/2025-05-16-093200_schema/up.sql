@@ -1,10 +1,14 @@
-CREATE TYPE permission AS ENUM('create', 'read', 'update', 'delete');
-
 CREATE TABLE IF NOT EXISTS "location"
 (
     id            bigserial     PRIMARY KEY,
     ---------------------------------------------
-    name          text          NOT NULL
+    name          text          NOT NULL,
+    building      text,
+    floor         int,
+    room          int,
+    address       text,
+    city          text,
+    description   text
 );
 
 
@@ -12,7 +16,16 @@ CREATE TABLE IF NOT EXISTS "group"
 (
     id            bigserial     PRIMARY KEY,
     ---------------------------------------------
-    name          text          NOT NULL
+    name          text          NOT NULL,
+    description   text
+);
+
+CREATE TABLE IF NOT EXISTS "permission"
+(
+    id            bigserial     PRIMARY KEY,
+    ---------------------------------------------
+    name          text          NOT NULL,
+    description   text
 );
 
 CREATE TABLE IF NOT EXISTS "user"
@@ -71,11 +84,12 @@ CREATE TABLE IF NOT EXISTS "group_probe_permission"
 (
     group_id        bigint      NOT NULL,
     probe_id        uuid        NOT NULL,
-    permission      permission  NOT NULL,
+    permission_id   bigint      NOT NULL,
 
     PRIMARY KEY (group_id, probe_id),
     FOREIGN KEY (group_id) REFERENCES "group" (id) ON DELETE CASCADE,
-    FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE
+    FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE,
+    FOREIGN KEY (permission_id) REFERENCES "permission" (id) ON DELETE CASCADE
 
 );
 

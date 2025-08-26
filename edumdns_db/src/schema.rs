@@ -1,11 +1,5 @@
 // @generated automatically by Diesel CLI.
 
-pub mod sql_types {
-    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "permission"))]
-    pub struct Permission;
-}
-
 diesel::table! {
     device (id) {
         id -> Int8,
@@ -22,17 +16,15 @@ diesel::table! {
     group (id) {
         id -> Int8,
         name -> Text,
+        description -> Nullable<Text>,
     }
 }
 
 diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::Permission;
-
     group_probe_permission (group_id, probe_id) {
         group_id -> Int8,
         probe_id -> Uuid,
-        permission -> Permission,
+        permission_id -> Int8,
     }
 }
 
@@ -47,6 +39,12 @@ diesel::table! {
     location (id) {
         id -> Int8,
         name -> Text,
+        building -> Nullable<Text>,
+        floor -> Nullable<Int4>,
+        room -> Nullable<Int4>,
+        address -> Nullable<Text>,
+        city -> Nullable<Text>,
+        description -> Nullable<Text>,
     }
 }
 
@@ -71,6 +69,14 @@ diesel::table! {
         device_ip -> Cidr,
         target_ip -> Cidr,
         target_port -> Int4,
+    }
+}
+
+diesel::table! {
+    permission (id) {
+        id -> Int8,
+        name -> Text,
+        description -> Nullable<Text>,
     }
 }
 
@@ -110,6 +116,7 @@ diesel::table! {
 
 diesel::joinable!(device -> probe (probe_id));
 diesel::joinable!(group_probe_permission -> group (group_id));
+diesel::joinable!(group_probe_permission -> permission (permission_id));
 diesel::joinable!(group_probe_permission -> probe (probe_id));
 diesel::joinable!(group_user -> group (group_id));
 diesel::joinable!(group_user -> user (user_id));
@@ -125,6 +132,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     location,
     packet,
     packet_transmit_request,
+    permission,
     probe,
     probe_config,
     user,

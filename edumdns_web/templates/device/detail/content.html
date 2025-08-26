@@ -1,61 +1,125 @@
-<a href="/model" class="absolute top-0 left-0 mt-20 ml-5 sm:ml-10 sm:mt-24 bg-acc  text-button py-2 px-4 font-bold rounded flex items-center">
-    <i class="fas fa-arrow-left text-button" style="a {
-        @apply text-button hover:text-button transition-colors;
-    }"></i>
-</a>
+<div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-4xl font-semibold text-sat-xl">Device {{ device.id }}</h1>
+    <div class="flex items-center gap-2">
+      <a href="/device" class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
+        ← Back to devices
+      </a>
+      <a href="/probe/{{ device.probe_id }}" class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
+        View probe
+      </a>
+    </div>
+  </div>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-8 py-10">
-    <!-- Top Section: Thumbnail and Basic Details -->
-    <div class="text-center md:text-left grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <!-- Brand Details -->
-        <div class="flex flex-col space-y-6">
-            <h1 class="text-3xl md:text-5xl font-bold text-sat-xl mb-0">{{ model.name }}</h1>
-            {% if logged_in %}
-            <!-- Action Buttons Next to Brand -->
-            <div class="flex space-x-4 justify-center md:justify-start ">
-                <button hx-get="/model/{{ model.id }}/edit" hx-target-error="#content-area"
-                        hx-push-url="/model/{{ model.id }}/edit" hx-target="#content-area"
-                        class="bg-acc  rounded-md p-3 text-button text-lg shadow-md w-12">
-                    <i class="fa-solid fa-pencil"></i>
-                </button>
-                <button hx-delete="/model/{{ model.id }}/delete" hx-target-error="#content-area" hx-target="#content-area"
-                        hx-push-url="/model"
-                        class="bg-red-800 hover:bg-red-900 rounded-md p-3 text-button text-lg shadow-md w-12">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
-            </div>
-            {% endif %}
+  <!-- Device Card -->
+  <div class="rounded-lg border border-base bg-cards p-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- ID -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
+        <span class="font-mono text-code"><code>{{ device.id }}</code></span>
+      </div>
 
-            <div class="flex items-center space-x-40 justify-center md:justify-start ">
-                <div>
-                    <h2 class="text-2xl font-semibold text-sat-xl">Brand</h2>
-                    <a class=" bg-panes text-sat-xl hover:text-white font-medium text-lg rounded-md px-4 py-2 shadow-md cursor-pointer"
-                       href="/brand/{{ model.brand_id }}">
-                        {{ model.brand_name }}
-                    </a>
-                </div>
-            </div>
-        </div>
+      <!-- Probe ID -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">Probe ID</span>
+        <span class="font-mono text-code">
+          <a class="underline text-acc hover:text-acc-xl" href="/probe/{{ device.probe_id }}"><code>{{ device.probe_id }}</code></a>
+        </span>
+      </div>
 
+      <!-- MAC -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">MAC</span>
+        <span class="font-mono text-code"><code>{{ device.mac }}</code></span>
+      </div>
+
+      <!-- IP -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">IP</span>
+        <span class="font-mono text-code"><code>{{ device.ip }}</code></span>
+      </div>
+
+      <!-- Port -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">Port</span>
+        <span class="font-mono text-code"><code>{{ device.port }}</code></span>
+      </div>
+
+      <!-- Duration -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">Duration</span>
+        <span class="font-mono text-code">
+          {% if device.duration is not none %}
+            <code>{{ device.duration }}</code>
+          {% else %}
+            <span class="text-muted-foreground">—</span>
+          {% endif %}
+        </span>
+      </div>
+
+      <!-- Interval -->
+      <div class="flex flex-col">
+        <span class="text-xs uppercase tracking-wide text-sat-m">Interval</span>
+        <span class="font-mono text-code">
+          {% if device.interval is not none %}
+            <code>{{ device.interval }}</code>
+          {% else %}
+            <span class="text-muted-foreground">—</span>
+          {% endif %}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Packets Table -->
+  <div class="overflow-x-auto rounded-lg border border-base bg-cards">
+    <div class="flex flex-col justify-center items-center py-4">
+      <h2 class="text-3xl font-medium text-sat-xl">Packets</h2>
     </div>
 
-    <!-- Description Section -->
-    <div class="mt-10 text-center md:text-left">
-        <h2 class="text-2xl text-sat-xl font-bold mb-4">Description</h2>
-        <div class="bg-panes p-5 rounded-lg shadow-md text-sat-l">
-            {{ model.description | safe }}
-        </div>
-    </div>
-</div>
+    <table class="min-w-full divide-y divide-base">
+      <thead class="bg-muted/10">
+        <tr>
+          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">ID</th>
+          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Src MAC</th>
+          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Dst MAC</th>
+          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Src Addr</th>
+          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Dst Addr</th>
+          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Src Port</th>
+          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Dst Port</th>
+          <th scope="col" class="px-4 py-3 text-right text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-base">
+        {% for packet in packets %}
+        <tr class="hover:bg-muted/5 transition-colors">
+          <td class="px-4 py-3 font-mono text-sm text-sat-l">
+            <a href="/packet/{{ packet.id }}" class="text-primary hover:underline">
+              {{ packet.id }}
+            </a>
+          </td>
+          <td class="px-4 py-3 text-sm text-sat-l">{{ packet.src_mac }}</td>
+          <td class="px-4 py-3 text-sm text-sat-l">{{ packet.dst_mac }}</td>
+          <td class="px-4 py-3 text-sm text-sat-l">{{ packet.src_addr }}</td>
+          <td class="px-4 py-3 text-sm text-sat-l">{{ packet.dst_addr }}</td>
+          <td class="px-4 py-3 text-sm text-sat-l">{{ packet.src_port }}</td>
+          <td class="px-4 py-3 text-sm text-sat-l">{{ packet.dst_port }}</td>
+          <td class="px-4 py-3 text-right">
+            <a href="/packet/{{ packet.id }}" class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
+              View
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
 
-<!-- Bikes Section -->
-<div class="max-w-7xl mx-auto px-4 sm:px-8 mt-10 text-center md:text-left mb-10 md:mb-5 ">
-    <h2 class="text-3xl font-bold text-sat-xl mb-4">Bikes</h2>
-    <div class="bg-panes rounded-lg p-6 shadow-md">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-            {% for bike in bikes %}
-            {% include "bike/card/content.html" %}
-            {% endfor %}
-        </div>
+    {% if packets|length == 0 %}
+    <div class="p-6 text-center text-muted-foreground">
+      No packets found for this device.
     </div>
+    {% endif %}
+  </div>
 </div>

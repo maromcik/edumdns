@@ -1,15 +1,16 @@
 use crate::error::DbError;
-use crate::models::{Location, Probe, ProbeConfig, User};
+use crate::models::{Device, Location, Probe, ProbeConfig, User};
 use crate::repositories::common::{
     DbCreate, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultSingle,
 };
-use crate::repositories::probe::models::{CreateProbe, SelectManyFilter};
+use crate::repositories::probe::models::{CreateProbe, SelectManyProbes};
 use crate::schema;
 use crate::schema::location::dsl::location;
 use crate::schema::probe_config::dsl::probe_config;
 use crate::schema::probe_config::probe_id;
 use crate::schema::user::dsl::user;
-use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
+use diesel::{BelongingToDsl, ExpressionMethods, QueryDsl, Queryable, Selectable, SelectableHelper};
+use diesel::pg::Pg;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -39,10 +40,10 @@ impl DbReadOne<Uuid, Probe> for PgProbeRepository {
     }
 }
 
-impl DbReadMany<SelectManyFilter, (Option<Location>, Option<User>, Probe)> for PgProbeRepository {
+impl DbReadMany<SelectManyProbes, (Option<Location>, Option<User>, Probe)> for PgProbeRepository {
     async fn read_many(
         &self,
-        params: &SelectManyFilter,
+        params: &SelectManyProbes,
     ) -> DbResultMultiple<(Option<Location>, Option<User>, Probe)> {
         let mut query = probe.into_boxed();
 
@@ -70,6 +71,7 @@ impl DbReadMany<SelectManyFilter, (Option<Location>, Option<User>, Probe)> for P
             query = query.limit(pagination.limit.unwrap_or(i64::MAX));
             query = query.offset(pagination.offset.unwrap_or(0));
         }
+
 
         let mut conn = self.pg_pool.get().await?;
         let probes = query
@@ -110,6 +112,21 @@ impl PgProbeRepository {
             .execute(&mut conn)
             .await?;
         Ok(())
+    }
+
+    pub async fn read_probe_and_devices(&self, params: &Uuid) -> DbResultSingle<(Probe, Vec<Device>)> {
+        let mut conn = self.pg_pool.get().await?;
+        let p = probe
+            .find(params)
+            .select(Probe::as_select())
+            .get_result(&mut conn)
+            .await?;
+
+        let devices = Device::belonging_to(&p)
+            .select(Device::as_select())
+            .load(&mut conn)
+            .await?;
+        Ok((p, devices))
     }
 
     pub async fn adopt(&self, params: &Uuid) -> DbResult<()> {

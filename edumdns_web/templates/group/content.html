@@ -1,0 +1,52 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-5">
+  <!-- Header Section -->
+  <div class="flex flex-col justify-center items-center py-6">
+    <h2 class="text-4xl font-bold text-sat-xl">Groups</h2>
+  </div>
+
+  <div class="overflow-x-auto rounded-lg border border-base bg-cards">
+    <table class="min-w-full divide-y divide-base">
+      <thead class="bg-muted/10">
+        <tr>
+          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">ID</th>
+          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Name</th>
+          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Description</th>
+          <th scope="col" class="px-4 py-3 text-right text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
+        </tr>
+      </thead>
+
+      <tbody class="divide-y divide-base">
+        {% for group in groups %}
+        <tr class="hover:bg-muted/5 transition-colors">
+          <td class="px-4 py-3 font-mono text-sm text-sat-l">
+            <a href="/group/{{ group.id }}" class="text-primary hover:underline">
+              {{ group.id }}
+            </a>
+          </td>
+          <td class="px-4 py-3 text-sm text-sat-l">
+            {{ group.name }}
+          </td>
+          <td class="px-4 py-3 text-sm text-sat-l">
+            {% if group.description is not none and group.description|length > 0 %}
+              {{ group.description }}
+            {% else %}
+              <span class="text-muted-foreground">—</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-right">
+            <a href="/group/{{ group.id }}" class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
+              View
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if groups|length == 0 %}
+    <div class="p-6 text-center text-muted-foreground">
+      No groups found.
+    </div>
+    {% endif %}
+  </div>
+</div>

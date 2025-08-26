@@ -1,9 +1,11 @@
 use bincode::enc::Encoder;
 use bincode::error::EncodeError;
 use std::error::Error;
-use std::fmt::Display;
+use std::fmt::{Display, Formatter};
 use std::hash::Hash;
-use serde::{Serialize, Serializer};
+use pnet::datalink::ParseMacAddrErr;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::de::Visitor;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MacAddr(pub pnet::datalink::MacAddr);
@@ -82,6 +84,47 @@ impl Serialize for MacAddr {
         S: Serializer
     {
         serializer.serialize_str(self.to_string().to_uppercase().as_str())
+    }
+}
+
+struct MacAddrVisitor;
+
+impl<'de> Visitor<'de> for MacAddrVisitor {
+    type Value = MacAddr;
+
+    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+        formatter.write_str("a string representation of a valid MAC address")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        let pnet_mac = v.parse::<pnet::datalink::MacAddr>().map_err(|e| serde::de::Error::custom(e.to_string()))?;
+        Ok(MacAddr(pnet_mac))
+    }
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        self.visit_str(&v)
+    }
+}
+
+impl<'de> Deserialize<'de> for MacAddr {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>
+    {
+        deserializer.deserialize_string(MacAddrVisitor)
+    }
+}
+impl From<String> for MacAddr {
+    fn from(value: String) -> Self {
+        match value.parse::<pnet::datalink::MacAddr>() {
+            Ok(mac) => MacAddr(mac),
+            Err(_) => MacAddr::default(),
+        }
     }
 }
 

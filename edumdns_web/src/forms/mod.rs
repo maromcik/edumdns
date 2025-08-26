@@ -1,2 +1,2 @@
 pub mod user;
-mod packet;
+pub mod packet;

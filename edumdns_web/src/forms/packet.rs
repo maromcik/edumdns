@@ -1,12 +1,15 @@
 use ipnetwork::IpNetwork;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use edumdns_core::bincode_types::MacAddr;
 use edumdns_db::repositories::common::Pagination;
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PacketQuery {
-    pub page: i32,
+    pub page: i64,
     pub probe_id: Option<Uuid>,
-    pub src_mac: Option<[u8; 6]>,
-    pub dst_mac: Option<[u8; 6]>,
+    pub src_mac: Option<MacAddr>,
+    pub dst_mac: Option<MacAddr>,
     pub src_addr: Option<IpNetwork>,
     pub dst_addr: Option<IpNetwork>,
     pub src_port: Option<i32>,

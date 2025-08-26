@@ -1,13 +1,12 @@
+use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
+use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use diesel_async::{AsyncPgConnection};
-use edumdns_core::app_packet::{
-    AppPacket, CommandPacket, PacketTransmitRequest, ProbePacket,
-};
+use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequest, ProbePacket};
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
-use edumdns_db::repositories::common::{
-    DbCreate, DbReadMany, DbReadOne,
-};
+use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
+use edumdns_core::error::CoreError;
+use edumdns_db::repositories::common::{DbCreate, DbReadMany, DbReadOne};
 use edumdns_db::repositories::device::models::{CreateDevice, SelectSingleFilter};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
@@ -18,11 +17,8 @@ use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::mpsc::Receiver;
 use tokio::sync::{Mutex, RwLock};
-use tokio::sync::mpsc::{Receiver};
-use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
-use edumdns_core::error::CoreError;
-use crate::error::ServerError;
 
 pub struct PacketStorage {
     pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
@@ -33,7 +29,6 @@ pub struct PacketStorage {
     pub pg_probe_repository: PgProbeRepository,
     pub pg_device_repository: PgDeviceRepository,
     pub pg_packet_repository: PgPacketRepository,
-
 }
 
 impl PacketStorage {
@@ -58,26 +53,8 @@ impl PacketStorage {
         while let Some(packet) = self.packet_receiver.recv().await {
             match packet {
                 AppPacket::Command(command) => match command {
-                    CommandPacket::TransmitDevicePackets(target) => {
-                        self.transmit_device_packets(target);
-                    }
-                    CommandPacket::ReconnectProbe(id) => {
-                        error!("PICAAAA");
-                        if let Some(handle) = self.handles.read().await.get(&id) {
-                            let res = handle.send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, AppPacket::Command(CommandPacket::ReconnectThisProbe))).await.map_err(ServerError::from);
-                            match res {
-                                Ok(o) => {
-                                    if let Err(e) = o {
-                                        error!("Error while reconnecting probe {id}: {}", ServerError::from(e));
-                                    }
-                                }
-                                Err(e) => {
-                                    error!("Error while reconnecting probe {id}: {e}");
-                                }
-                            }
-                        }
-                        else { error!("KURVAAAAA") }
-                    },
+                    CommandPacket::TransmitDevicePackets(target) => self.transmit_device_packets(target),
+                    CommandPacket::ReconnectProbe(id) => self.send_reconnect(id).await,
                     _ => {}
                 },
                 AppPacket::Status(status) => {}
@@ -108,7 +85,6 @@ impl PacketStorage {
                                     } else {
                                         debug!("Probe, device and packet found; no action");
                                     }
-
                                 }
                                 Entry::Vacant(device_entry) => {
                                     let device_entry = device_entry.insert(HashSet::new());
@@ -127,10 +103,39 @@ impl PacketStorage {
                                 .insert(probe_packet.clone());
                             self.store_device_in_database(probe_packet.clone()).await;
                             self.store_packet_in_database(probe_packet.clone()).await;
-                            debug!("Probe not found in hashmap; stored device and packet in database");
+                            debug!(
+                                "Probe not found in hashmap; stored device and packet in database"
+                            );
                         }
                     }
                     debug!("Packet <MAC: {src_mac}, IP: {src_ip}> stored in memory");
+                }
+            }
+        }
+    }
+
+    pub async fn send_reconnect(&self, id: Uuid) {
+        if let Some(handle) = self.handles.read().await.get(&id) {
+            let res = handle
+                .send_message_with_response(|tx| {
+                    TcpConnectionMessage::send_packet(
+                        tx,
+                        AppPacket::Command(CommandPacket::ReconnectThisProbe),
+                    )
+                })
+                .await
+                .map_err(ServerError::from);
+            match res {
+                Ok(o) => {
+                    if let Err(e) = o {
+                        error!(
+                            "Error while reconnecting probe {id}: {}",
+                            ServerError::from(e)
+                        );
+                    }
+                }
+                Err(e) => {
+                    error!("Error while reconnecting probe {id}: {e}");
                 }
             }
         }
@@ -276,7 +281,11 @@ impl PacketStorage {
                 return;
             };
             let task = PacketTransmitterTask::new(transmitter);
-            transmitter_tasks.lock().await.entry(transmit_request).or_insert(task);
+            transmitter_tasks
+                .lock()
+                .await
+                .entry(transmit_request)
+                .or_insert(task);
         });
     }
 }

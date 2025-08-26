@@ -3,13 +3,13 @@ use crate::models::Group;
 use crate::repositories::common::{
     DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, Id,
 };
-use crate::repositories::group::models::{CreateGroup, SelectManyFilter};
+use crate::repositories::group::models::{CreateGroup, SelectManyGroups};
 use std::ops::DerefMut;
 
 use crate::schema;
 use crate::schema::group::name;
 use diesel::result::Error;
-use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
+use diesel::{ExpressionMethods, QueryDsl, SelectableHelper, TextExpressionMethods};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
@@ -39,12 +39,12 @@ impl DbReadOne<Id, Group> for PgGroupRepository {
     }
 }
 
-impl DbReadMany<SelectManyFilter, Group> for PgGroupRepository {
-    async fn read_many(&self, params: &SelectManyFilter) -> DbResultMultiple<Group> {
+impl DbReadMany<SelectManyGroups, Group> for PgGroupRepository {
+    async fn read_many(&self, params: &SelectManyGroups) -> DbResultMultiple<Group> {
         let mut query = group.into_boxed();
 
         if let Some(n) = &params.name {
-            query = query.filter(name.eq(n));
+            query = query.filter(name.like(format!("%{n}%")));
         }
 
         if let Some(pagination) = params.pagination {

@@ -27,8 +27,7 @@ pub async fn get_packets(
             query.dst_addr,
             query.src_port,
             query.dst_port,
-            Some(Pagination::new(Some(20), Some(query.page * 20))),
-        ))
+            Some(Pagination::default_pagination(query.page))))
         .await?
         .into_iter()
         .map(PacketDisplay::from)

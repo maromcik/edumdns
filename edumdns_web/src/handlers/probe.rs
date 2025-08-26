@@ -1,17 +1,16 @@
 use crate::error::WebError;
+use crate::forms::probe::ProbeQuery;
 use crate::handlers::helpers::get_template_name;
 use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, get, web};
-use diesel_async::RunQueryDsl;
+use actix_web::{get, web, HttpRequest, HttpResponse};
+use log::error;
 use edumdns_core::app_packet::{AppPacket, CommandPacket};
 use edumdns_core::error::CoreError;
-use edumdns_db::models::Probe;
-use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id};
-use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
-use edumdns_db::repositories::device::repository::PgDeviceRepository;
+use edumdns_db::repositories::common::{DbReadMany, Pagination};
+use edumdns_db::repositories::device::models::DeviceDisplay;
 use edumdns_db::repositories::probe::models::{ProbeDisplay, SelectManyProbes};
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use uuid::Uuid;
@@ -22,9 +21,16 @@ pub async fn get_probes(
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
+    query: web::Query<ProbeQuery>
 ) -> Result<HttpResponse, WebError> {
     let probes = probe_repo
-        .read_many(&SelectManyProbes::new(None, None, None, None, None, None))
+        .read_many(&SelectManyProbes::new(
+            query.owner_id,
+            query.location_id,
+            query.adopted,
+            query.mac.map(|addr| addr.to_octets()),
+            query.ip,
+            Some(Pagination::default_pagination(query.page))))
         .await?
         .into_iter()
         .map(|(l, u, p)| (l, u, ProbeDisplay::from(p)))
@@ -74,7 +80,6 @@ pub async fn adopt(
     path: web::Path<(Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
     probe_repo.adopt(&path.0).await?;
-
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, "/probe"))
         .finish())
@@ -91,7 +96,9 @@ pub async fn forget(
     probe_repo.forget(&path.0).await?;
     state
         .command_channel
-        .send(AppPacket::Command(CommandPacket::ReconnectProbe(edumdns_core::bincode_types::Uuid(path.0))))
+        .send(AppPacket::Command(CommandPacket::ReconnectProbe(
+            edumdns_core::bincode_types::Uuid(path.0),
+        )))
         .await
         .map_err(CoreError::from)?;
 
@@ -110,7 +117,9 @@ pub async fn restart(
 ) -> Result<HttpResponse, WebError> {
     state
         .command_channel
-        .send(AppPacket::Command(CommandPacket::ReconnectProbe(edumdns_core::bincode_types::Uuid(path.0))))
+        .send(AppPacket::Command(CommandPacket::ReconnectProbe(
+            edumdns_core::bincode_types::Uuid(path.0),
+        )))
         .await
         .map_err(CoreError::from)?;
 

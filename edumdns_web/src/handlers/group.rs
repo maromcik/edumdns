@@ -1,9 +1,10 @@
 use actix_identity::Identity;
 use actix_web::{get, web, HttpRequest, HttpResponse};
-use edumdns_db::repositories::common::DbReadMany;
-use edumdns_db::repositories::group::models::SelectManyFilter;
+use edumdns_db::repositories::common::{DbReadMany, Pagination};
+use edumdns_db::repositories::group::models::SelectManyGroups;
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 use crate::error::WebError;
+use crate::forms::group::GroupQuery;
 use crate::handlers::helpers::get_template_name;
 use crate::templates::group::GroupTemplate;
 use crate::utils::AppState;
@@ -14,9 +15,12 @@ pub async fn get_groups(
     identity: Option<Identity>,
     group_repo: web::Data<PgGroupRepository>,
     state: web::Data<AppState>,
+    query: web::Query<GroupQuery>
 ) -> Result<HttpResponse, WebError> {
     let groups = group_repo
-        .read_many(&SelectManyFilter::new(None, None))
+        .read_many(&SelectManyGroups::new(
+            query.name.clone(),
+            Some(Pagination::default_pagination(query.page))))
         .await?;
 
     let template_name = get_template_name(&request, "group");

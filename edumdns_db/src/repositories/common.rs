@@ -1,6 +1,7 @@
 use crate::error::DbError;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+
+const PAGINATION_ELEMENTS_PER_PAGE: i64 = 20;
 
 pub type DbResult<T> = Result<T, DbError>;
 
@@ -99,6 +100,12 @@ pub struct Pagination {
 impl Pagination {
     pub fn new(limit: Option<i64>, offset: Option<i64>) -> Self {
         Self { limit, offset }
+    }
+    pub fn default_pagination(page: Option<i64>) -> Self {
+        Self {
+            limit: Some(PAGINATION_ELEMENTS_PER_PAGE),
+            offset: Some((page.unwrap_or(1) - 1) * PAGINATION_ELEMENTS_PER_PAGE),
+        }
     }
 }
 

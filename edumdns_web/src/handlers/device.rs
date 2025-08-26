@@ -4,11 +4,12 @@ use crate::templates::device::{DeviceDetailTemplate, DeviceTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, get, web};
-use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id};
+use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
 use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
+use crate::forms::device::DeviceQuery;
 
 #[get("")]
 pub async fn get_devices(
@@ -17,9 +18,15 @@ pub async fn get_devices(
     device_repo: web::Data<PgDeviceRepository>,
     packet_repo: web::Data<PgPacketRepository>,
     state: web::Data<AppState>,
+    query: web::Query<DeviceQuery>
 ) -> Result<HttpResponse, WebError> {
     let devices = device_repo
-        .read_many(&SelectManyDevices::new(None, None, None, None, None))
+        .read_many(&SelectManyDevices::new(
+            query.probe_id,
+            query.mac,
+            query.ip,
+            query.port,
+            Some(Pagination::default_pagination(query.page))))
         .await?
         .into_iter()
         .map(|(p, d)| (p, DeviceDisplay::from(d)))

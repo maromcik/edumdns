@@ -45,8 +45,9 @@ pub async fn validate_permissions(
                     DbErrorKind::BackendError(BackendError::new(
                         BackendErrorKind::PermissionDenied,
                         format!(
-                            "User {} does not have read permissions for this probe",
-                            user_entry.email
+                            "User {} does not have {} permissions for this probe",
+                            user_entry.email,
+                            permission_type
                         )
                         .as_str(),
                     )),

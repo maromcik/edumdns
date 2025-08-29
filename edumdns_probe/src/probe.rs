@@ -8,7 +8,6 @@ use std::collections::HashSet;
 use tokio::sync::mpsc::Sender;
 use tokio::task::{Id, JoinSet};
 use tokio_util::sync::CancellationToken;
-use crate::CancelToken;
 
 pub struct ProbeCapture {
     tx: Sender<AppPacket>,
@@ -31,7 +30,7 @@ impl ProbeCapture {
     pub async fn start_captures(
         &self,
         join_set: &mut JoinSet<Result<(), ProbeError>>,
-        cancellation_token: CancelToken,
+        cancellation_token: CancellationToken,
     ) -> Result<HashSet<Id>, ProbeError> {
         let mut handles = HashSet::new();
         for config_element in &self.probe_config.interface_filter_map {

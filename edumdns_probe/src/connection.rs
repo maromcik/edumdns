@@ -1,23 +1,13 @@
-use crate::CancelToken;
 use crate::error::{ProbeError, ProbeErrorKind};
 use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbeConfigPacket, StatusPacket};
-use edumdns_core::connection::{TcpConnection, TcpConnectionHandle, TcpConnectionMessage};
-use edumdns_core::error::{CoreError, CoreErrorKind};
+use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_core::retry;
-use futures::SinkExt;
-use futures::stream::select_all;
 use log::{debug, error, info, trace, warn};
-use pnet::packet;
-use std::mem;
-use std::pin::Pin;
 use std::time::Duration;
 use tokio::sync::mpsc;
-use tokio::sync::oneshot;
-use tokio::task::{JoinHandle, JoinSet};
+use tokio::task::JoinSet;
 use tokio::time::sleep;
-use tokio_stream::StreamExt;
-use tokio_stream::wrappers::ReceiverStream;
 use tokio_util::sync::CancellationToken;
 
 // TODO switch to probe manager
@@ -144,16 +134,13 @@ impl ConnectionManager {
         handle: TcpConnectionHandle,
         data_receiver: mpsc::Receiver<AppPacket>,
         command_transmitter: mpsc::Sender<AppPacket>,
-        cancellation_token: CancelToken,
+        cancellation_token: CancellationToken,
         max_retries: usize,
         retry_interval: Duration,
     ) -> Result<(), ProbeError> {
         join_set.spawn(async move {
             tokio::select! {
-                _ = cancellation_token.main_token.cancelled() => {
-                    warn!("Transmit packets task cancelled from main");
-                }
-                _ = cancellation_token.task_token.cancelled() => {
+                _ = cancellation_token.cancelled() => {
                     warn!("Transmit packets task cancelled");
                 }
                 result = ConnectionManager::transmit_packets_worker(handle, data_receiver, command_transmitter, max_retries, retry_interval) => {
@@ -194,14 +181,11 @@ impl ConnectionManager {
         handle: TcpConnectionHandle,
         target: ReceivePacketTargets,
         command_transmitter: mpsc::Sender<AppPacket>,
-        cancellation_token: CancelToken,
+        cancellation_token: CancellationToken,
     ) -> Result<(), ProbeError> {
         join_set.spawn(async move {
             tokio::select! {
-                _ = cancellation_token.main_token.cancelled() => {
-                    warn!("Receive packets task cancelled from main");
-                }
-                _ = cancellation_token.task_token.cancelled() => {
+                _ = cancellation_token.cancelled() => {
                     warn!("Receive packets task cancelled");
                 }
                 result = ConnectionManager::receive_packets_worker(handle, target, command_transmitter) => { result.map_err(|e| {
@@ -231,10 +215,10 @@ impl ConnectionManager {
                     AppPacket::Command(command_packet) => match command_packet {
                         CommandPacket::ReconnectProbe(_) => {
                             command_transmitter.send(app_packet).await?
-                        },
+                        }
                         CommandPacket::ReconnectThisProbe => {
                             command_transmitter.send(app_packet).await?
-                        },
+                        }
                         _ => {}
                     },
                     AppPacket::Data(_) => {}
@@ -291,14 +275,11 @@ impl ConnectionManager {
         packet_receiver: mpsc::Receiver<AppPacket>,
         command_sender: mpsc::Sender<AppPacket>,
         interval: Duration,
-        cancellation_token: CancelToken,
+        cancellation_token: CancellationToken,
     ) -> Result<(), ProbeError> {
         join_set.spawn(async move {
             tokio::select! {
-                _ = cancellation_token.main_token.cancelled() => {
-                    warn!("Pinger task cancelled from main");
-                }
-                _ = cancellation_token.task_token.cancelled() => {
+                _ = cancellation_token.cancelled() => {
                     warn!("Pinger task cancelled");
                 }
                 result = ConnectionManager::pinger_worker(handle, packet_receiver, command_sender, interval) => {

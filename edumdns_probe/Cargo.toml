@@ -18,5 +18,8 @@ bytes = "1.10.1"
 tokio-util = { version = "0.7.14", features = ["codec"] }
 futures = "0.3.31"
 log = "0.4.27"
-uuid = "1.17.0"
+uuid = { version = "1.18.0", features = ["v7", "std"]}
 tokio-stream = "0.1.17"
+dotenvy = "0.15.7"
+tracing = { version = "0.1.41", features = ["async-await"]}
+tracing-subscriber = { version = "0.3.19", features = ["env-filter", "local-time", "time"] }

@@ -1,5 +1,3 @@
-use tokio_util::sync::WaitForCancellationFuture;
-
 #[macro_export]
 macro_rules! retry {
     ($f:expr, $count:expr, $interval:expr) => {{

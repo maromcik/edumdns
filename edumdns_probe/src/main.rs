@@ -6,65 +6,66 @@ use edumdns_core::bincode_types::{MacAddr, Uuid};
 use edumdns_core::connection::TcpConnectionMessage;
 use edumdns_core::metadata::ProbeMetadata;
 use log::{error, info, warn};
+use std::env;
+use std::fs::OpenOptions;
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::net::IpAddr;
 use std::time::Duration;
-use tokio::sync::{mpsc, oneshot};
-use tokio::time::sleep;
-use tokio_util::sync::{CancellationToken, WaitForCancellationFuture};
-use edumdns_core::utils::Cancellable;
+use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
+use tracing_subscriber::EnvFilter;
+use uuid::Timestamp;
 
 pub mod capture;
 pub mod connection;
 pub mod error;
 pub mod probe;
 
+#[tokio::main]
+async fn main() -> Result<(), ProbeError> {
+    dotenvy::dotenv().ok();
+    let env = EnvFilter::try_from_env("EDUMDNS_LOG_LEVEL").unwrap_or(EnvFilter::new("info"));
+    let timer = tracing_subscriber::fmt::time::LocalTime::rfc_3339();
+    tracing_subscriber::fmt()
+        .with_timer(timer)
+        .with_target(true)
+        .with_env_filter(env)
+        .init();
 
-#[derive(Clone)]
-pub struct CancelToken {
-    task_token: CancellationToken,
-    main_token: CancellationToken,
-}
+    let bind_ip = env::var("EDUMDNS_PROBE_BIND_IP")?;
+    let bind_port = env::var("EDUMDNS_PROBE_BIND_PORT")?;
+    let server_host = env::var("EDUMDNS_SERVER_HOST")?;
+    let server_port = env::var("EDUMDNS_SERVER_PORT")?;
+    let retry_interval = Duration::from_secs(
+        env::var("EDUMDNS_PROBE_RETRY_INTERVAL")
+            .unwrap_or("1".to_string())
+            .parse::<u64>()?,
+    );
+    let global_timeout = Duration::from_secs(
+        env::var("EDUMDNS_PROBE_GLOBAL_TIMOUT")
+            .unwrap_or("10".to_string())
+            .parse::<u64>()?,
+    );
+    let max_retries = env::var("EDUMDNS_PROBE_MAX_RETRIES")
+        .unwrap_or("5".to_string())
+        .parse::<usize>()?;
 
-impl Cancellable for CancelToken {
-    fn cancel(&mut self) {
-        self.task_token.cancel();
-        self.main_token.cancel();
-    }
+    let uuid = generate_uuid()?;
 
-    fn is_cancelled(&self) -> bool {
-        self.task_token.is_cancelled() || self.main_token.is_cancelled()
-    }
-}
-
-impl CancelToken {
-    pub fn new(main_token: CancellationToken) -> Self {
-        let task_token = CancellationToken::new();
-        Self {
-            task_token,
-            main_token,
-        }
-    }
-}
-
-pub async fn probe_init(main_cancellation_token: CancellationToken) -> Result<(), ProbeError> {
-    let uuid = Uuid(uuid::Uuid::from_u128(32));
-    let bind_ip = "127.0.0.1:0";
-    let server_addr_port = "127.0.0.1:5000";
+    info!("Starting probe with id: {}", uuid);
+    info!("Binding to IP: {}:{}", bind_ip, bind_port);
+    info!("Connecting to server: {}:{}", server_host, server_port);
 
     let probe_metadata = ProbeMetadata {
         id: uuid,
-        ip: "127.0.0.1".parse::<IpAddr>()?,
+        ip: bind_ip.parse::<IpAddr>()?,
         mac: MacAddr::from_octets([1, 0, 0, 0, 0, 0]),
     };
 
-    let retry_interval = Duration::from_secs(1);
-    let global_timeout = Duration::from_secs(10);
-    let max_retries = 5;
-
     let mut connection_manager = ConnectionManager::new(
         probe_metadata.clone(),
-        server_addr_port,
-        bind_ip,
+        format!("{}:{}", server_host, server_port).as_str(),
+        format!("{}:{}", bind_ip, bind_port).as_str(),
         max_retries,
         retry_interval,
         global_timeout,
@@ -73,12 +74,10 @@ pub async fn probe_init(main_cancellation_token: CancellationToken) -> Result<()
 
     let mut config = connection_manager.connection_init_probe().await?;
 
-
-
     loop {
         let handle = connection_manager.handle.clone();
         let handle_local = connection_manager.handle.clone();
-        let mut cancellation_token = CancelToken::new(main_cancellation_token.clone());
+        let cancellation_token = CancellationToken::new();
         let mut join_set = tokio::task::JoinSet::new();
 
         let (send_transmitter, send_receiver) = mpsc::channel(1000);
@@ -123,11 +122,6 @@ pub async fn probe_init(main_cancellation_token: CancellationToken) -> Result<()
         )
         .await?;
 
-        // tokio::spawn(async move {
-        //     sleep(Duration::from_secs(8)).await;
-        //     command_transmitter.send(AppPacket::Command(CommandPacket::ReconnectProbe)).await.unwrap();
-        // });
-
         tokio::select! {
 
             result = async {
@@ -149,10 +143,39 @@ pub async fn probe_init(main_cancellation_token: CancellationToken) -> Result<()
             },
             Some(AppPacket::Command(CommandPacket::ReconnectThisProbe)) = command_receiver.recv() => {
                 warn!("Reconnect signal received. Canceling tasks.");
-                cancellation_token.task_token.cancel();
+                cancellation_token.cancel();
                 info!("Reconnecting...");
                 config = connection_manager.reconnect().await?;
             },
+        }
+    }
+}
+
+fn generate_uuid() -> Result<Uuid, ProbeError> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .read(true)
+        .create(true)
+        .truncate(false)
+        .open("uuid")?;
+    let mut uuid = String::new();
+    file.read_to_string(&mut uuid)?;
+    match uuid::Uuid::parse_str(uuid.trim()) {
+        Ok(uuid) => {
+            info!("UUID found");
+            Ok(Uuid(uuid))
+        }
+        Err(e) => {
+            warn!("UUID file is invalid: {}", e);
+            info!("Generating new UUID");
+            let ts = Timestamp::now(uuid::NoContext);
+            let uuid = Uuid(uuid::Uuid::new_v7(ts));
+            file.set_len(0)?;
+            file.seek(SeekFrom::Start(0))?;
+            file.write_all(uuid.to_string().as_bytes())?;
+            file.flush()?;
+
+            Ok(uuid)
         }
     }
 }

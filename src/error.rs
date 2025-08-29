@@ -1,5 +1,4 @@
 use edumdns_db::error::DbError;
-use edumdns_probe::error::ProbeError;
 use edumdns_server::error::ServerError;
 use edumdns_web::error::WebError;
 use std::fmt::{Debug, Display, Formatter};
@@ -9,8 +8,6 @@ use thiserror::Error;
 pub enum AppErrorKind {
     #[error("{0}")]
     DbError(#[from] DbError),
-    #[error("{0}")]
-    ProbeError(#[from] ProbeError),
     #[error("{0}")]
     ServerError(#[from] ServerError),
     #[error("{0}")]
@@ -29,7 +26,6 @@ impl Debug for AppError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.error_kind {
             AppErrorKind::DbError(e) => write!(f, "AppError -> {}", e),
-            AppErrorKind::ProbeError(e) => write!(f, "AppError -> {}", e),
             AppErrorKind::ServerError(e) => write!(f, "AppError -> {}", e),
             _ => write!(f, "AppError: {}: {}", self.error_kind, self.message),
         }
@@ -39,7 +35,7 @@ impl Debug for AppError {
 impl Display for AppError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.error_kind {
-            AppErrorKind::ProbeError(e) => write!(f, "AppError -> {}", e),
+            AppErrorKind::DbError(e) => write!(f, "AppError -> {}", e),
             AppErrorKind::ServerError(e) => write!(f, "AppError -> {}", e),
             _ => write!(f, "AppError: {}: {}", self.error_kind, self.message),
         }
@@ -61,11 +57,6 @@ impl From<DbError> for AppError {
     }
 }
 
-impl From<ProbeError> for AppError {
-    fn from(value: ProbeError) -> Self {
-        Self::new(AppErrorKind::ProbeError(value), "")
-    }
-}
 
 impl From<ServerError> for AppError {
     fn from(value: ServerError) -> Self {

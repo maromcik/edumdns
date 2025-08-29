@@ -1,20 +1,18 @@
 use crate::bincode_types::{IpNetwork, MacAddr};
 use crate::error::{CoreError, CoreErrorKind};
-use crate::metadata::{
-    DataLinkMetadata, IpMetadata, MacMetadata, PacketMetadata, PortMetadata, VlanMetadata,
+use crate::metadata::{IpMetadata, MacMetadata, PortMetadata, VlanMetadata,
 };
 use crate::rewrite::{
-    DataLinkRewrite, IpRewrite, PortRewrite, rewrite_ipv4, rewrite_ipv6, rewrite_mac, rewrite_tcp,
-    rewrite_udp, rewrite_vlan,
+    rewrite_ipv4, rewrite_ipv6, rewrite_mac, rewrite_tcp, rewrite_udp, rewrite_vlan, DataLinkRewrite,
+    IpRewrite, PortRewrite,
 };
-use bincode::{Decode, Encode};
 use dns_parser::Packet as DnsPacket;
 use dns_parser::RData;
 use log::info;
 use pnet::packet::ethernet::{EtherType, EtherTypes, EthernetPacket, MutableEthernetPacket};
 use pnet::packet::icmp::MutableIcmpPacket;
 use pnet::packet::ip::{IpNextHeaderProtocol, IpNextHeaderProtocols};
-use pnet::packet::ipv4::{MutableIpv4Packet, checksum};
+use pnet::packet::ipv4::{checksum, MutableIpv4Packet};
 use pnet::packet::ipv6::MutableIpv6Packet;
 use pnet::packet::tcp::MutableTcpPacket;
 use pnet::packet::tcp::{ipv4_checksum as ipv4_checksum_tcp, ipv6_checksum as ipv6_checksum_tcp};
@@ -22,7 +20,6 @@ use pnet::packet::udp::MutableUdpPacket;
 use pnet::packet::udp::{ipv4_checksum as ipv4_checksum_udp, ipv6_checksum as ipv6_checksum_udp};
 use pnet::packet::vlan::MutableVlanPacket;
 use pnet::packet::{MutablePacket, Packet};
-use std::hash::{Hash, Hasher};
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 pub trait FixablePacket {
@@ -160,7 +157,7 @@ impl NetworkPacket for DataLinkPacket<'_> {
     }
 }
 
-fn get_ip_packet(ether_type: EtherType, payload: &mut [u8]) -> Option<IpPacket> {
+fn get_ip_packet(ether_type: EtherType, payload: &'_ mut [u8]) -> Option<IpPacket<'_>> {
     match ether_type {
         EtherTypes::Ipv4 => {
             let ipv4_packet = MutableIpv4Packet::new(payload)?;
@@ -218,7 +215,7 @@ impl<'a> DataLinkPacket<'a> {
         self
     }
 
-    pub fn unpack_vlan(&mut self) -> Option<DataLinkPacket> {
+    pub fn unpack_vlan(&'_ mut self) -> Option<DataLinkPacket<'_>> {
         match self {
             DataLinkPacket::EthPacket(packet) => {
                 if packet.get_ethertype() == EtherTypes::Vlan {
@@ -623,7 +620,7 @@ impl<'a> ApplicationPacket<'a> {
 }
 
 impl ApplicationPacketType<'_> {
-    pub fn rewrite(&mut self) -> Option<(Vec<u8>)> {
+    pub fn rewrite(&mut self) -> Option<Vec<u8>> {
         match self {
             ApplicationPacketType::DnsPacket(dns_packet) => {
                 for q in &dns_packet.questions {

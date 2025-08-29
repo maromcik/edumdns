@@ -1,4 +1,3 @@
-use std::thread::sleep;
 use crate::error::ProbeError;
 use edumdns_core::app_packet::{AppPacket, ProbeConfigElement, ProbePacket};
 use edumdns_core::capture::PacketCapture;
@@ -7,15 +6,15 @@ use edumdns_core::metadata::ProbeMetadata;
 use edumdns_core::network_packet::DataLinkPacket;
 use log::{debug, info, warn};
 use pcap::{Activated, Error, State};
+use std::thread::sleep;
 use tokio::sync::mpsc::Sender;
-use edumdns_core::utils::Cancellable;
-use crate::CancelToken;
+use tokio_util::sync::CancellationToken;
 
 pub fn capture_and_transmit<T>(
     mut capture: impl PacketCapture<T>,
     probe_metadata: ProbeMetadata,
     tx: Sender<AppPacket>,
-    cancellation_token: CancelToken,
+    cancellation_token: CancellationToken,
     config_element: ProbeConfigElement,
 ) -> Result<(), ProbeError>
 where

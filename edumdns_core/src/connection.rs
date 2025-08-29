@@ -1,19 +1,15 @@
-use crate::app_packet::{AppPacket, StatusPacket};
+use crate::app_packet::{AppPacket};
 use crate::error::{CoreError, CoreErrorKind};
 use bincode::{Decode, Encode};
 use bytes::{Bytes, BytesMut};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
-use log::{debug, error, warn};
-use std::fmt::Debug;
-use std::io::Error;
-use std::net::SocketAddr;
+use log::{debug, error};
 use std::time::Duration;
 use tokio::net::UdpSocket;
 use tokio::net::{TcpSocket, TcpStream};
 use tokio::sync::{mpsc, oneshot};
-use tokio::time::error::Elapsed;
-use tokio::time::{sleep, timeout};
+use tokio::time::{timeout};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 async fn run_tcp_connection_receive_loop(

@@ -1,11 +1,9 @@
 use bincode::enc::Encoder;
 use bincode::error::EncodeError;
-use std::error::Error;
+use serde::de::Visitor;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{Display, Formatter};
 use std::hash::Hash;
-use pnet::datalink::ParseMacAddrErr;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde::de::Visitor;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MacAddr(pub pnet::datalink::MacAddr);

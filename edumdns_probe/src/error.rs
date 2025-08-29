@@ -8,7 +8,7 @@ pub enum ProbeErrorKind {
     CoreError(#[from] CoreError),
     #[error("Invalid arguments")]
     ArgumentError,
-    #[error("I/O error from Tokio")]
+    #[error("I/O error")]
     IoError,
     #[error("Encode/Decode error")]
     EncodeDecodeError,
@@ -24,15 +24,28 @@ pub enum ProbeErrorKind {
     TokioOneshotChannelError,
     #[error("Tokio mpsc channel error")]
     TokioMpscChannelError,
+    #[error("environment variable error")]
+    EnvError,
+    #[error("parse error")]
+    ParseError,
 }
 
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Clone)]
 pub struct ProbeError {
     pub error_kind: ProbeErrorKind,
     pub message: String,
 }
 
 impl Display for ProbeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.error_kind {
+            ProbeErrorKind::CoreError(e) => write!(f, "ProbeError -> {}", e),
+            _ => write!(f, "ProbeError: {}: {}", self.error_kind, self.message),
+        }
+    }
+}
+
+impl Debug for ProbeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.error_kind {
             ProbeErrorKind::CoreError(e) => write!(f, "ProbeError -> {}", e),
@@ -98,5 +111,23 @@ impl<T> From<tokio::sync::mpsc::error::SendError<T>> for ProbeError {
             ProbeErrorKind::TokioMpscChannelError,
             value.to_string().as_str(),
         )
+    }
+}
+
+impl From<std::env::VarError> for ProbeError {
+    fn from(value: std::env::VarError) -> Self {
+        Self::new(ProbeErrorKind::EnvError, value.to_string().as_str())
+    }
+}
+
+impl From<uuid::Error> for ProbeError {
+    fn from(value: uuid::Error) -> Self {
+        Self::new(ProbeErrorKind::ParseError, value.to_string().as_str())
+    }
+}
+
+impl From<std::num::ParseIntError> for ProbeError {
+    fn from(value: std::num::ParseIntError) -> Self {
+        Self::new(ProbeErrorKind::ParseError, value.to_string().as_str())
     }
 }

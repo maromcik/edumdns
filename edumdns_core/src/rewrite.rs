@@ -176,8 +176,8 @@ pub fn rewrite_packet<'a>(packet: DataLinkPacket<'a>, rewrite: &'a PacketRewrite
         .get_next_layer()?
         .rewrite(&rewrite.transport_rewrite);
 
-    let mut dns_packet = ApplicationPacket::new(&transport_packet)?;
-    let _ = dns_packet.application_packet_type.rewrite()?;
+    let _ = ApplicationPacket::new(&transport_packet)?;
+    // let _ = dns_packet.application_packet_type.rewrite()?;
     // transport_packet.set_payload(new_dns_packet.as_slice());
     // let payload = transport_packet.get_packet().to_vec();
     // ip_packet.set_payload(payload.as_slice());

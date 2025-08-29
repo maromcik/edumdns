@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use crate::bincode_types::{IpNetwork, MacAddr};
 use crate::error::{CoreError, CoreErrorKind};
 use crate::metadata::{IpMetadata, MacMetadata, PortMetadata, VlanMetadata,
@@ -6,9 +7,6 @@ use crate::rewrite::{
     rewrite_ipv4, rewrite_ipv6, rewrite_mac, rewrite_tcp, rewrite_udp, rewrite_vlan, DataLinkRewrite,
     IpRewrite, PortRewrite,
 };
-use dns_parser::Packet as DnsPacket;
-use dns_parser::RData;
-use log::info;
 use pnet::packet::ethernet::{EtherType, EtherTypes, EthernetPacket, MutableEthernetPacket};
 use pnet::packet::icmp::MutableIcmpPacket;
 use pnet::packet::ip::{IpNextHeaderProtocol, IpNextHeaderProtocols};
@@ -21,6 +19,9 @@ use pnet::packet::udp::{ipv4_checksum as ipv4_checksum_udp, ipv6_checksum as ipv
 use pnet::packet::vlan::MutableVlanPacket;
 use pnet::packet::{MutablePacket, Packet};
 use std::net::{Ipv4Addr, Ipv6Addr};
+use dns_parser::RData;
+use hickory_proto::op::Message;
+use hickory_proto::serialize::binary::{BinDecodable, BinEncodable};
 
 pub trait FixablePacket {
     fn fix(&mut self, payload_len: Option<usize>);
@@ -88,8 +89,8 @@ impl TransportPacketIpv6Addresses {
     }
 }
 
-pub enum ApplicationPacketType<'a> {
-    DnsPacket(DnsPacket<'a>),
+pub enum ApplicationPacketType {
+    DnsPacket(Message),
 }
 
 impl<'a> From<MutableEthernetPacket<'a>> for DataLinkPacket<'a> {
@@ -580,97 +581,39 @@ impl FixablePacket for TransportPacket<'_> {
     }
 }
 
-pub struct ApplicationPacket<'a> {
-    pub application_packet_type: ApplicationPacketType<'a>,
+pub struct ApplicationPacket {
+    pub application_packet_type: ApplicationPacketType,
 }
 
-impl<'a> ApplicationPacket<'a> {
-    pub fn new(transport: &'a TransportPacket<'a>) -> Option<ApplicationPacket<'a>> {
+impl ApplicationPacket {
+    pub fn new<'a>(transport: &'a TransportPacket<'a>) -> Option<ApplicationPacket> {
         match transport {
             TransportPacket::Udp(packet, _) => {
-                let dns_packet =
-                    DnsPacket::parse(packet.payload()).expect("Failed to parse DNS packet");
+                let msg = Message::from_bytes(packet.payload()).ok()?;
                 Some(ApplicationPacket {
-                    application_packet_type: ApplicationPacketType::DnsPacket(dns_packet),
+                    application_packet_type: ApplicationPacketType::DnsPacket(msg),
                 })
             }
             _ => None,
         }
     }
-    pub fn from_bytes(bytes: &'a [u8]) -> Result<ApplicationPacket<'a>, CoreError> {
-        let dns_packet = DnsPacket::parse(bytes).map_err(|e| CoreError::new(CoreErrorKind::PacketConstructionError, format!("Could not build a DNS packet: {e}").as_str()))?;
-
+    pub fn from_bytes(bytes: &[u8]) -> Result<ApplicationPacket, CoreError> {
         Ok(ApplicationPacket {
-            application_packet_type: ApplicationPacketType::DnsPacket(dns_packet),
+            application_packet_type: ApplicationPacketType::DnsPacket(Message::from_bytes(bytes)?),
         })
     }
 
-    pub fn read_content(&self) -> Vec<String> {
-        let mut lines: Vec<String> = Vec::default();
-        match &self.application_packet_type {
-            ApplicationPacketType::DnsPacket(packet) => {
-                let q = packet.questions.iter().map(|q| q.qname.to_string()).collect::<Vec<String>>();
-                let r = packet.answers.iter().map(|r| r.name.to_string()).collect::<Vec<String>>();
-                lines.extend(q);
-                lines.extend(r);
-            },
+    pub fn get_owned_payload(&self) -> Result<Vec<u8>, CoreError> {
+        match self.application_packet_type {
+            ApplicationPacketType::DnsPacket(ref packet) => Ok(packet.to_bytes()?),
         }
-        lines
     }
-}
 
-impl ApplicationPacketType<'_> {
-    pub fn rewrite(&mut self) -> Option<Vec<u8>> {
-        match self {
-            ApplicationPacketType::DnsPacket(dns_packet) => {
-                for q in &dns_packet.questions {
-                    info!("Q: {}", q.qname);
-                }
-
-                for r in &mut dns_packet.answers {
-                    info!("R: {}", r.name);
-                    match &mut r.data {
-                        RData::A(a) => {
-                            info!("BEFORE: {}", a.0);
-
-                            a.0 = Ipv4Addr::from([192, 168, 1, 1]);
-                            info!("AFTER: {}", a.0)
-                        }
-                        RData::AAAA(aaaa) => {
-                            info!("AAAA: {}", aaaa.0)
-                        }
-                        RData::CNAME(cname) => {
-                            info!("CNAME: {}", cname.0)
-                        }
-                        RData::MX(_) => {}
-                        RData::NS(_) => {}
-                        RData::PTR(ptr) => {
-                            info!("PTR: {}", ptr.0)
-                        }
-                        RData::SOA(_) => {}
-                        RData::SRV(_) => {}
-                        RData::TXT(txt) => {
-                            for record in txt.iter() {
-                                info!(
-                                    "TXT: {:?}",
-                                    String::from_utf8(Vec::from(record))
-                                        .expect("Cannot parse TXT records")
-                                );
-                            }
-                        }
-                        RData::Unknown(_) => {}
-                    }
-                }
-                let mut new_dns = dns_parser::Builder::new_query(1, false);
-                new_dns.add_question(
-                    "pes.sk",
-                    false,
-                    dns_parser::QueryType::A,
-                    dns_parser::QueryClass::IN,
-                );
-
-                Some(new_dns.build().expect("Failed to build DNS"))
-            }
+    pub fn read_content(&mut self) -> String {
+        match self.application_packet_type {
+            ApplicationPacketType::DnsPacket(ref mut packet) => {
+                packet.to_string()
+            },
         }
     }
 }

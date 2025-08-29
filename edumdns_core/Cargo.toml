@@ -19,3 +19,4 @@ ipnetwork = { version = "0.21.1"}
 uuid = "1.17.0"
 tokio = { version = "1.44.2", features = ["net", "bytes", "time"] }
 tokio-util = { version = "0.7.14", features = ["codec"] }
+hickory-proto = "0.25.2"

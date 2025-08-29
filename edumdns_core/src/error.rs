@@ -43,6 +43,8 @@ pub enum CoreErrorKind {
     TokioOneshotChannelError,
     #[error("Tokio mpsc channel error")]
     TokioMpscChannelError,
+    #[error("dns packet manipulation error")]
+    DnsPacketManipulationError,
 }
 
 #[derive(Debug, Clone)]
@@ -155,5 +157,11 @@ impl<T> From<tokio::sync::mpsc::error::SendError<T>> for CoreError {
 impl From<ipnetwork::IpNetworkError> for CoreError {
     fn from(value: ipnetwork::IpNetworkError) -> Self {
         Self::new(CoreErrorKind::ParseAddrError, value.to_string().as_str())
+    }
+}
+
+impl From<hickory_proto::ProtoError> for CoreError {
+    fn from(value: hickory_proto::ProtoError) -> Self {
+        Self::new(CoreErrorKind::DnsPacketManipulationError, value.to_string().as_str())
     }
 }

@@ -114,12 +114,12 @@ pub struct PacketDisplay {
     pub dst_addr: IpNetwork,
     pub src_port: i32,
     pub dst_port: i32,
-    pub payload: Vec<String>,
+    pub payload: String,
 }
 
 impl PacketDisplay {
     pub fn from(value: Packet) -> Result<PacketDisplay, CoreError> {
-        let payload = ApplicationPacket::from_bytes(&value.payload)?;
+        let mut payload = ApplicationPacket::from_bytes(&value.payload)?;
 
         Ok(Self {
             id: value.id,

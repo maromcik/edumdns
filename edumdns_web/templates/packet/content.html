@@ -14,7 +14,6 @@
           <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-sat-l text-muted-foreground">Destination MAC</th>
           <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-sat-l text-muted-foreground">Source</th>
           <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-sat-l text-muted-foreground">Destination</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-sat-l text-muted-foreground">Payload</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-base">
@@ -38,15 +37,6 @@
           </td>
           <td class="px-4 py-3 text-sm text-sat-l">
             <span class="font-mono">{{ packet.dst_addr }}</span><span class="text-muted-foreground">:</span><span class="font-mono">{{ packet.dst_port }}</span>
-          </td>
-          <td class="px-4 py-3 text-sm text-sat-l">
-            {% if packet.payload and packet.payload|length > 0 %}
-              <div class="max-w-[32rem] truncate text-muted-foreground">
-                {{ packet.payload|join(" ") }}
-              </div>
-            {% else %}
-              <span class="text-muted-foreground">—</span>
-            {% endif %}
           </td>
         </tr>
         {% endfor %}

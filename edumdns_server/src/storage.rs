@@ -2,7 +2,7 @@ use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequest, ProbePacket};
+use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequestPacket, ProbePacket};
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::error::CoreError;
@@ -23,10 +23,8 @@ use tokio::sync::{Mutex, RwLock};
 pub struct PacketStorage {
     pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
     pub packet_receiver: Receiver<AppPacket>,
-    pub transmitter_tasks: Arc<Mutex<HashMap<PacketTransmitRequest, PacketTransmitterTask>>>,
-    pub handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
-    pub db_pool: Pool<AsyncPgConnection>,
-    pub pg_probe_repository: PgProbeRepository,
+    pub transmitter_tasks: Arc<Mutex<HashMap<PacketTransmitRequestPacket, PacketTransmitterTask>>>,
+    pub probe_handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
     pub pg_device_repository: PgDeviceRepository,
     pub pg_packet_repository: PgPacketRepository,
 }
@@ -41,11 +39,9 @@ impl PacketStorage {
             packets: HashMap::new(),
             packet_receiver: receiver,
             transmitter_tasks: Arc::new(Mutex::new(HashMap::new())),
-            handles,
-            pg_probe_repository: PgProbeRepository::new(db_pool.clone()),
+            probe_handles: handles,
             pg_device_repository: PgDeviceRepository::new(db_pool.clone()),
             pg_packet_repository: PgPacketRepository::new(db_pool.clone()),
-            db_pool,
         }
     }
 
@@ -115,7 +111,7 @@ impl PacketStorage {
     }
 
     pub async fn send_reconnect(&self, id: Uuid) {
-        if let Some(handle) = self.handles.read().await.get(&id) {
+        if let Some(handle) = self.probe_handles.read().await.get(&id) {
             let res = handle
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
@@ -217,7 +213,7 @@ impl PacketStorage {
         });
     }
 
-    pub fn transmit_device_packets(&mut self, transmit_request: PacketTransmitRequest) {
+    pub fn transmit_device_packets(&mut self, transmit_request: PacketTransmitRequestPacket) {
         let packet_repo = self.pg_packet_repository.clone();
         let device_repo = self.pg_device_repository.clone();
 
@@ -244,9 +240,9 @@ impl PacketStorage {
             let packets = match packet_repo
                 .read_many(&SelectManyPackets::new(
                     Some(probe_id),
+                    Some(device.mac),
                     None,
-                    None,
-                    None,
+                    Some(device.ip),
                     None,
                     None,
                     None,

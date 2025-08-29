@@ -121,17 +121,17 @@ CREATE TABLE IF NOT EXISTS "packet"
     dst_port       int          NOT NULL,
     payload        bytea        NOT NULL,
 
-    UNIQUE (probe_id, src_mac, src_addr, dst_addr, payload)
+    UNIQUE (probe_id, src_mac, src_addr, dst_addr, payload),
+    FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS "packet_transmit_request"
 (
-    probe_id       uuid         NOT NULL,
-    device_mac     macaddr      NOT NULL,
-    device_ip      cidr         NOT NULL,
+    device_id      bigserial         NOT NULL,
     target_ip      cidr         NOT NULL,
     target_port    int          NOT NULL,
-    PRIMARY KEY (probe_id, device_mac, device_ip, target_ip, target_port)
+    PRIMARY KEY (device_id, target_ip, target_port),
+    FOREIGN KEY (device_id) REFERENCES "device" (id) ON DELETE CASCADE
 );
 
 

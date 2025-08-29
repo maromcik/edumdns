@@ -6,7 +6,7 @@ use edumdns_db::repositories::probe::models::ProbeDisplay;
 #[derive(Serialize)]
 pub struct ProbeTemplate {
     pub logged_in: bool,
-    pub probes: Vec<(Option<Location>, Option<User>, ProbeDisplay)>
+    pub probes: Vec<(Option<Location>, ProbeDisplay)>
 }
 
 #[derive(Serialize)]

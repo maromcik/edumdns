@@ -4,7 +4,7 @@ use crate::error::{ServerError, ServerErrorKind};
 use crate::storage::PacketStorage;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequest};
+use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequestPacket};
 use edumdns_core::bincode_types::{IpNetwork, MacAddr as MyMacAddr, Uuid};
 use edumdns_core::connection::{TcpConnection, TcpConnectionHandle};
 use edumdns_core::error::CoreError;
@@ -42,13 +42,7 @@ pub async fn listen(pool: Pool<AsyncPgConnection>, (tx, rx): (Sender<AppPacket>,
     });
     info!("Packet storage initialized");
 
-    let packet_target = PacketTransmitRequest::new(
-        Uuid(uuid::Uuid::from_u128(32)),
-        MyMacAddr("42:ba:e5:56:9a:66".parse::<MacAddr>().unwrap()),
-        IpNetwork("100.66.2.58".parse::<ipnetwork::IpNetwork>().unwrap()),
-        "127.0.0.1".to_string(),
-        7654,
-    );
+
     loop {
         let (socket, addr) = listener.accept().await?;
         info!("Connection from {addr}");

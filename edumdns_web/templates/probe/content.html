@@ -13,23 +13,22 @@
                     <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">IP</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Adopted</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Location</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Owner</th>
                     <th scope="col" class="px-4 py-3 text-right text-xs text-sat-l  font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-base">
                 {% for probe in probes %}
                 <tr class="hover:bg-muted/5 transition-colors">
-                    <!-- probe[2] is Probe -->
+                    <!-- probe[1] is Probe -->
                     <td class="px-4 py-3 font-mono text-sm text-sat-l">
-                        <a href="/probe/{{ probe[2].id }}" class="text-primary hover:underline">
-                            {{ probe[2].id }}
+                        <a href="/probe/{{ probe[1].id }}" class="text-primary hover:underline">
+                            {{ probe[1].id }}
                         </a>
                     </td>
-                    <td class="px-4 py-3 text-sm text-sat-l">{{ probe[2].mac }}</td>
-                    <td class="px-4 py-3 text-sm text-sat-l">{{ probe[2].ip }}</td>
+                    <td class="px-4 py-3 text-sm text-sat-l">{{ probe[1].mac }}</td>
+                    <td class="px-4 py-3 text-sm text-sat-l">{{ probe[1].ip }}</td>
                     <td class="px-4 py-3 text-sm">
-                        {% if probe[2].adopted %}
+                        {% if probe[1].adopted %}
                             <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
                         {% else %}
                             <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
@@ -45,22 +44,14 @@
                         {% endif %}
                     </td>
 
-                    <!-- probe[1] is Option<User> -->
-                    <td class="px-4 py-3 text-sm text-sat-l">
-                        {% if probe[1] %}
-                            {{ probe[1].name }} {{ probe[1].surname }}
-                        {% else %}
-                            <span class="text-muted-foreground">—</span>
-                        {% endif %}
-                    </td>
 
                     <td class="px-4 py-3 text-right">
-                        {% if probe[2].adopted %}
-                        <a href="/probe/{{ probe[2].id }}/forget" class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
+                        {% if probe[1].adopted %}
+                        <a href="/probe/{{ probe[1].id }}/forget" class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
                             Forget
                         </a>
                         {% else %}
-                        <a href="/probe/{{ probe[2].id }}/adopt" class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
+                        <a href="/probe/{{ probe[1].id }}/adopt" class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
                             Adopt
                         </a>
                         {% endif %}

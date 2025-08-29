@@ -63,10 +63,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    packet_transmit_request (probe_id, device_mac, device_ip, target_ip, target_port) {
-        probe_id -> Uuid,
-        device_mac -> Macaddr,
-        device_ip -> Cidr,
+    packet_transmit_request (device_id, target_ip, target_port) {
+        device_id -> Int8,
         target_ip -> Cidr,
         target_port -> Int4,
     }
@@ -120,6 +118,8 @@ diesel::joinable!(group_probe_permission -> permission (permission_id));
 diesel::joinable!(group_probe_permission -> probe (probe_id));
 diesel::joinable!(group_user -> group (group_id));
 diesel::joinable!(group_user -> user (user_id));
+diesel::joinable!(packet -> probe (probe_id));
+diesel::joinable!(packet_transmit_request -> device (device_id));
 diesel::joinable!(probe -> location (location_id));
 diesel::joinable!(probe -> user (owner_id));
 diesel::joinable!(probe_config -> probe (probe_id));

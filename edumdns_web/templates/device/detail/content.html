@@ -73,8 +73,59 @@
     </div>
   </div>
 
+  <!-- Request Packet Transmission -->
+  <div class="rounded-lg border border-base bg-cards p-6 mb-6">
+    <h3 class="text-2xl font-medium mb-4 text-sat-l">Request Packet Transmission</h3>
+
+    <form class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Target IP -->
+      <div class="flex flex-col">
+        <label for="target_ip" class="text-xs uppercase tracking-wide text-sat-m">Target IP</label>
+        <input
+                id="target_ip"
+                name="target_ip"
+                type="text"
+                inputmode="numeric"
+                placeholder="e.g., 8.8.8.8"
+                required
+                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+        />
+        <p class="text-xs text-sat-m mt-1">Destination IPv4/IPv6 address.</p>
+      </div>
+
+      <!-- Target Port -->
+      <div class="flex flex-col">
+        <label for="target_port" class="text-xs uppercase tracking-wide text-sat-m">Target Port</label>
+        <input
+                id="target_port"
+                name="target_port"
+                type="number"
+                min="1"
+                max="65535"
+                placeholder="e.g., 53"
+                required
+                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+        />
+        <p class="text-xs text-sat-m mt-1">Destination TCP/UDP port (1–65535).</p>
+      </div>
+
+      <!-- Actions -->
+      <div class="md:col-span-2 flex items-center gap-2">
+        <button
+                type="button"
+                class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                hx-post="/device/{{ device.id }}/transmit"
+                hx-swap="none"
+        >
+          transmit
+        </button>
+      </div>
+    </form>
+  </div>
+
+
   <!-- Packets Table -->
-  <div class="overflow-x-auto rounded-lg border border-base bg-cards">
+  <div class="overflow-x-auto rounded-lg border border-base bg-cards p-6">
     <div class="flex flex-col justify-center items-center py-4">
       <h2 class="text-3xl font-medium text-sat-xl">Packets</h2>
     </div>

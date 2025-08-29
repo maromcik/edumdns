@@ -11,8 +11,8 @@ use edumdns_db::repositories::location::repository::PgLocationRepository;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
-use crate::handlers::device::{get_devices, get_device};
-use crate::handlers::group::get_groups;
+use crate::handlers::device::{get_devices, get_device, device_request_packet_transmit};
+use crate::handlers::group::{get_groups, get_group};
 use crate::handlers::packet::{get_packet, get_packets};
 use crate::handlers::probe::{adopt, forget, get_probe, get_probes, restart};
 use crate::handlers::user::{login, login_user, logout_user};
@@ -30,7 +30,8 @@ pub fn configure_webapp(
 
     let group_scope = web::scope("group")
         .app_data(web::Data::new(group_repo))
-        .service(get_groups);
+        .service(get_groups)
+        .service(get_group);
 
 
     let user_scope = web::scope("user")
@@ -51,7 +52,8 @@ pub fn configure_webapp(
         .app_data(web::Data::new(device_repo))
         .app_data(web::Data::new(packet_repo.clone()))
         .service(get_devices)
-        .service(get_device);
+        .service(get_device)
+        .service(device_request_packet_transmit);
 
     let packet_scope = web::scope("packet")
         .app_data(web::Data::new(packet_repo))

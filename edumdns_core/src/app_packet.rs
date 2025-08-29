@@ -15,7 +15,7 @@ pub enum AppPacket {
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub enum CommandPacket {
-    TransmitDevicePackets(PacketTransmitRequest),
+    TransmitDevicePackets(PacketTransmitRequestPacket),
     ReconnectThisProbe,
     ReconnectProbe(Uuid),
 }
@@ -122,7 +122,7 @@ impl PartialEq for ProbePacket {
 impl Eq for ProbePacket {}
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq, Hash)]
-pub struct PacketTransmitRequest {
+pub struct PacketTransmitRequestPacket {
     pub probe_uuid: Uuid,
     pub device_mac: MacAddr,
     pub device_ip: IpNetwork,
@@ -143,25 +143,25 @@ pub struct PacketTransmitTarget {
 //     pub ip: IpNetwork,
 // }
 //
-impl PacketTransmitRequest {
+impl PacketTransmitRequestPacket {
     pub fn new(
-        probe_uuid: Uuid,
-        device_mac: MacAddr,
-        device_ip: IpNetwork,
-        target_ip: String,
+        probe_uuid: uuid::Uuid,
+        device_mac: [u8; 6],
+        device_ip: ipnetwork::IpNetwork,
+        target_ip: &str,
         target_port: u16,
     ) -> Self {
         Self {
-            probe_uuid,
-            device_mac,
-            device_ip,
-            target_ip,
+            probe_uuid: Uuid(probe_uuid),
+            device_mac: MacAddr::from_octets(device_mac),
+            device_ip: IpNetwork(device_ip),
+            target_ip: target_ip.to_string(),
             target_port,
         }
     }
 }
 
-impl Display for PacketTransmitRequest {
+impl Display for PacketTransmitRequestPacket {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,

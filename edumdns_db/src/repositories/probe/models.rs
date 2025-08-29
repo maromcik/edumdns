@@ -9,6 +9,7 @@ use crate::models::Probe;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyProbes {
+    pub user_id: Id,
     pub owner_id: Option<Id>,
     pub location_id: Option<Id>,
     pub adopted: Option<bool>,
@@ -19,6 +20,7 @@ pub struct SelectManyProbes {
 
 impl SelectManyProbes {
     pub fn new(
+        user_id: Id,
         owner_id: Option<Id>,
         location_id: Option<Id>,
         adopted: Option<bool>,
@@ -27,6 +29,7 @@ impl SelectManyProbes {
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
+            user_id,
             owner_id,
             location_id,
             adopted,

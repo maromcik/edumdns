@@ -1,6 +1,7 @@
+use std::convert::identity;
 use crate::error::WebError;
 use crate::forms::probe::ProbeQuery;
-use crate::handlers::helpers::get_template_name;
+use crate::handlers::helpers::{get_template_name, parse_user_id};
 use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
@@ -14,6 +15,7 @@ use edumdns_db::repositories::device::models::DeviceDisplay;
 use edumdns_db::repositories::probe::models::{ProbeDisplay, SelectManyProbes};
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use uuid::Uuid;
+use crate::authorized;
 
 #[get("")]
 pub async fn get_probes(
@@ -23,8 +25,11 @@ pub async fn get_probes(
     state: web::Data<AppState>,
     query: web::Query<ProbeQuery>
 ) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request.path());
+
     let probes = probe_repo
         .read_many(&SelectManyProbes::new(
+            parse_user_id(&i)?,
             query.owner_id,
             query.location_id,
             query.adopted,
@@ -33,14 +38,14 @@ pub async fn get_probes(
             Some(Pagination::default_pagination(query.page))))
         .await?
         .into_iter()
-        .map(|(l, u, p)| (l, u, ProbeDisplay::from(p)))
+        .map(|(l, p)| (l, ProbeDisplay::from(p)))
         .collect();
 
     let template_name = get_template_name(&request, "probe");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(ProbeTemplate {
-        logged_in: identity.is_some(),
+        logged_in: true,
         probes,
     })?;
 

@@ -1,5 +1,5 @@
 use crate::error::{ServerError, ServerErrorKind};
-use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequest, ProbePacket};
+use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequestPacket, ProbePacket};
 use edumdns_core::connection::UdpConnection;
 use log::{debug, error};
 use std::collections::HashSet;
@@ -27,7 +27,7 @@ impl PacketTransmitterTask {
 
 pub struct PacketTransmitter {
     pub payloads: HashSet<Vec<u8>>,
-    pub transmit_request: PacketTransmitRequest,
+    pub transmit_request: PacketTransmitRequestPacket,
     pub udp_connection: UdpConnection,
     pub duration: Duration,
     pub interval: Duration,
@@ -37,7 +37,7 @@ pub struct PacketTransmitter {
 impl PacketTransmitter {
     pub async fn new(
         payloads: HashSet<Vec<u8>>,
-        target: PacketTransmitRequest,
+        target: PacketTransmitRequestPacket,
         duration: Duration,
         interval: Duration,
         global_timeout: Duration,

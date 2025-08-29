@@ -131,3 +131,9 @@ impl From<std::num::ParseIntError> for ProbeError {
         Self::new(ProbeErrorKind::ParseError, value.to_string().as_str())
     }
 }
+
+impl From<pnet::ipnetwork::IpNetworkError> for ProbeError {
+    fn from(value: pnet::ipnetwork::IpNetworkError) -> Self {
+        Self::new(ProbeErrorKind::ParseError, value.to_string().as_str())
+    }
+}

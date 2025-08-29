@@ -1,5 +1,5 @@
 use crate::connection::{ConnectionManager, ReceivePacketTargets};
-use crate::error::ProbeError;
+use crate::error::{ProbeError, ProbeErrorKind};
 use crate::probe::ProbeCapture;
 use edumdns_core::app_packet::{AppPacket, CommandPacket, StatusPacket};
 use edumdns_core::bincode_types::{MacAddr, Uuid};
@@ -11,6 +11,7 @@ use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::net::IpAddr;
 use std::time::Duration;
+use pnet::ipnetwork::IpNetwork;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::EnvFilter;
@@ -33,7 +34,7 @@ async fn main() -> Result<(), ProbeError> {
         .init();
 
     let bind_ip = env::var("EDUMDNS_PROBE_BIND_IP")?;
-    let bind_port = env::var("EDUMDNS_PROBE_BIND_PORT")?;
+    let bind_port = env::var("EDUMDNS_PROBE_BIND_PORT").unwrap_or("0".to_string());
     let server_host = env::var("EDUMDNS_SERVER_HOST")?;
     let server_port = env::var("EDUMDNS_SERVER_PORT")?;
     let retry_interval = Duration::from_secs(
@@ -59,7 +60,7 @@ async fn main() -> Result<(), ProbeError> {
     let probe_metadata = ProbeMetadata {
         id: uuid,
         ip: bind_ip.parse::<IpAddr>()?,
-        mac: MacAddr::from_octets([1, 0, 0, 0, 0, 0]),
+        mac: determine_mac(&bind_ip)?,
     };
 
     let mut connection_manager = ConnectionManager::new(
@@ -178,4 +179,19 @@ fn generate_uuid() -> Result<Uuid, ProbeError> {
             Ok(uuid)
         }
     }
+}
+
+fn determine_mac(bind_ip: &str) -> Result<MacAddr, ProbeError> {
+    let probe_ip = bind_ip.parse::<IpNetwork>()?;
+    let interfaces = pnet::datalink::interfaces();
+    let Some(interface) = interfaces
+        .iter()
+        .find(|i| i.is_up() && i.ips.iter().any(|ip| ip.ip() == probe_ip.ip())) else {
+        return Err(ProbeError::new(ProbeErrorKind::ArgumentError, format!("No interface found for IP: {} or interface is not up", bind_ip).as_str()))
+    };
+    let Some(mac) = interface.mac else {
+        return Err(ProbeError::new(ProbeErrorKind::ArgumentError, format!("No MAC address found for interface with IP: {}", bind_ip).as_str()))
+    };
+
+    Ok(MacAddr(mac))
 }

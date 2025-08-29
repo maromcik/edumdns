@@ -1,12 +1,8 @@
 use crate::error::DbError;
-use crate::models::{
-    Device, Group, GroupProbePermission, Location, Permission, Probe, ProbeConfig, User,
-};
-use crate::repositories::common::{
-    DbCreate, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultSingle,
-};
+use crate::models::{Device, Group, GroupProbePermission, Location, Permission, Probe, ProbeConfig, User};
+use crate::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultSingle, Id};
 use crate::repositories::probe::models::{CreateProbe, SelectManyProbes};
-use crate::schema::group_probe_permission;
+use crate::schema::{group_probe_permission};
 use crate::schema::group_user;
 use crate::schema::permission;
 use crate::schema::probe;
@@ -131,6 +127,17 @@ impl DbCreate<CreateProbe, Probe> for PgProbeRepository {
             .do_update()
             .set((probe::mac.eq(data.mac), probe::ip.eq(data.ip)))
             .get_result(&mut conn)
+            .await
+            .map_err(DbError::from)
+    }
+}
+
+impl DbDelete<Uuid, Probe> for PgProbeRepository {
+    async fn delete(&self, params: &Uuid) -> DbResultMultiple<Probe> {
+        let mut conn = self.pg_pool.get().await?;
+        diesel::delete(probe::table
+            .find(params))
+            .get_results(&mut conn)
             .await
             .map_err(DbError::from)
     }

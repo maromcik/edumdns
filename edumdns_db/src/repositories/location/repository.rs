@@ -4,13 +4,11 @@ use crate::repositories::common::{
     DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, Id,
 };
 use crate::repositories::location::models::{CreateLocation, SelectManyFilter};
-use crate::schema;
-use crate::schema::location::name;
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
-use schema::location::dsl::*;
+use crate::schema::location;
 
 #[derive(Clone)]
 pub struct PgLocationRepository {
@@ -26,7 +24,7 @@ impl PgLocationRepository {
 impl DbReadOne<Id, Location> for PgLocationRepository {
     async fn read_one(&self, params: &Id) -> DbResultSingle<Location> {
         let mut conn = self.pg_pool.get().await?;
-        location
+        location::table
             .find(params)
             .select(Location::as_select())
             .first(&mut conn)
@@ -37,10 +35,10 @@ impl DbReadOne<Id, Location> for PgLocationRepository {
 
 impl DbReadMany<SelectManyFilter, Location> for PgLocationRepository {
     async fn read_many(&self, params: &SelectManyFilter) -> DbResultMultiple<Location> {
-        let mut query = location.into_boxed();
+        let mut query = location::table.into_boxed();
 
         if let Some(n) = &params.name {
-            query = query.filter(name.eq(n));
+            query = query.filter(location::name.eq(n));
         }
 
         if let Some(pagination) = &params.pagination {
@@ -59,7 +57,7 @@ impl DbCreate<CreateLocation, Location> for PgLocationRepository {
     async fn create(&self, data: &CreateLocation) -> DbResultSingle<Location> {
         let mut conn = self.pg_pool.get().await?;
 
-        diesel::insert_into(schema::location::table)
+        diesel::insert_into(location::table)
             .values(data)
             .returning(Location::as_returning())
             .get_result(&mut conn)
@@ -71,7 +69,8 @@ impl DbCreate<CreateLocation, Location> for PgLocationRepository {
 impl DbDelete<Id, Location> for PgLocationRepository {
     async fn delete(&self, params: &Id) -> DbResultMultiple<Location> {
         let mut conn = self.pg_pool.get().await?;
-        diesel::delete(location.find(params))
+        diesel::delete(location::table
+            .find(params))
             .get_results(&mut conn)
             .await
             .map_err(DbError::from)

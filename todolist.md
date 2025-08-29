@@ -1,18 +1,7 @@
 ## Backend
-- probe config - just a file with uuid?
-- config probe - server
-  - say hello
-  - check if adopted
-  - if yes, start sending and accepting packets
-  - if no, display for adoption and ignore packets on the server side
-  - store configuration on server
-  - pull configuration
-  - allow stopping the probe and pulling config again
-- pinger on both sides
 - encryption - rustls https://www.slingacademy.com/article/implementing-tls-ssl-in-rust-with-native-tls-or-rustls/, https://github.com/rustls/tokio-rustls
   - config
   - data
-- transmit cancellation
 ## Web
 - access control (modules - allow loading auth function - traits)
   - 3 nullable fields any of them should suffice

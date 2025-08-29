@@ -1,25 +1,20 @@
-use crate::error::DbError;
-use crate::models::{Device, Group, GroupProbePermission, Location, Permission, Probe, ProbeConfig, User};
-use crate::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultSingle, Id};
-use crate::repositories::probe::models::{CreateProbe, SelectManyProbes};
-use crate::schema::{group_probe_permission};
+use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
+use crate::models::{Device, GroupUser, Location, Probe, ProbeConfig, User};
+use crate::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultSingle, PermissionType};
+use crate::repositories::probe::models::{CreateProbe, SelectSingleProbe, SelectManyProbes};
+use crate::schema::group_probe_permission;
 use crate::schema::group_user;
 use crate::schema::permission;
 use crate::schema::probe;
 use crate::schema::user;
 use crate::schema::{location, probe_config};
-use diesel::associations::HasTable;
-use diesel::{
-    BelongingToDsl, ExpressionMethods, JoinOnDsl, QueryDsl, Queryable, Selectable, SelectableHelper,
-};
-use diesel::expression::array_comparison::AsInExpression;
-use diesel::expression::AsExpression;
-use diesel::internal::derives::multiconnection::BoxedQueryHelper;
-use diesel::query_builder::AsQuery;
+use diesel::{BelongingToDsl, ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
+use diesel::serialize::ToSql;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use uuid::Uuid;
+use crate::repositories::utilities::validate_permissions;
 
 #[derive(Clone)]
 pub struct PgProbeRepository {
@@ -32,15 +27,21 @@ impl PgProbeRepository {
     }
 }
 
-impl DbReadOne<Uuid, Probe> for PgProbeRepository {
-    async fn read_one(&self, params: &Uuid) -> DbResultSingle<Probe> {
+impl DbReadOne<SelectSingleProbe, (Probe, Vec<Device>)> for PgProbeRepository {
+    async fn read_one(&self, params: &SelectSingleProbe) -> DbResultSingle<(Probe, Vec<Device>)> {
         let mut conn = self.pg_pool.get().await?;
-        probe::table
-            .find(params)
+        validate_permissions(&self.pg_pool, params, PermissionType::Read).await?;
+        let probe_data = probe::table
+            .find(params.id)
             .select(Probe::as_select())
             .first(&mut conn)
-            .await
-            .map_err(DbError::from)
+            .await?;
+
+        let devices = Device::belonging_to(&probe_data)
+            .select(Device::as_select())
+            .load(&mut conn)
+            .await?;
+        Ok((probe_data, devices))
     }
 }
 
@@ -87,31 +88,27 @@ impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeReposito
         if user_entry.admin {
             return Ok(query
                 .left_outer_join(location::table)
-                .left_outer_join(user::table)
-                .select((
-                    Option::<Location>::as_select(),
-                    Probe::as_select(),
-                ))
+                .select((Option::<Location>::as_select(), Probe::as_select()))
                 .load::<(Option<Location>, Probe)>(&mut conn)
                 .await?);
         }
 
         let probes = query
-            .inner_join(group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)))
-            .inner_join(group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)))
+            .inner_join(
+                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
+            )
+            .inner_join(
+                group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
+            )
             .filter(group_user::user_id.eq(params.user_id))
-            .inner_join(permission::table.on(permission::id.eq(group_probe_permission::permission_id)))
-            .filter(permission::name.eq("read"))
+            .inner_join(
+                permission::table.on(permission::id.eq(group_probe_permission::permission_id)),
+            )
+            .filter(permission::name.eq(PermissionType::Read.to_string()))
             .left_outer_join(location::table)
-            .left_outer_join(user::table)
-            .select((
-                Option::<Location>::as_select(),
-                Probe::as_select(),
-            ))
+            .select((Option::<Location>::as_select(), Probe::as_select()))
             .load::<(Option<Location>, Probe)>(&mut conn)
             .await?;
-
-
 
         Ok(probes)
     }
@@ -132,11 +129,11 @@ impl DbCreate<CreateProbe, Probe> for PgProbeRepository {
     }
 }
 
-impl DbDelete<Uuid, Probe> for PgProbeRepository {
-    async fn delete(&self, params: &Uuid) -> DbResultMultiple<Probe> {
+impl DbDelete<SelectSingleProbe, Probe> for PgProbeRepository {
+    async fn delete(&self, params: &SelectSingleProbe) -> DbResultMultiple<Probe> {
         let mut conn = self.pg_pool.get().await?;
-        diesel::delete(probe::table
-            .find(params))
+        validate_permissions(&self.pg_pool, params, PermissionType::Delete).await?;
+        diesel::delete(probe::table.find(params.id))
             .get_results(&mut conn)
             .await
             .map_err(DbError::from)
@@ -144,36 +141,20 @@ impl DbDelete<Uuid, Probe> for PgProbeRepository {
 }
 
 impl PgProbeRepository {
-    pub async fn forget(&self, params: &Uuid) -> DbResult<()> {
+    pub async fn forget(&self, params: &SelectSingleProbe) -> DbResult<()> {
         let mut conn = self.pg_pool.get().await?;
-        diesel::update(probe::table.find(params))
+        validate_permissions(&self.pg_pool, params, PermissionType::Forget).await?;
+        diesel::update(probe::table.find(params.id))
             .set(probe::adopted.eq(false))
             .execute(&mut conn)
             .await?;
         Ok(())
     }
 
-    pub async fn read_probe_and_devices(
-        &self,
-        params: &Uuid,
-    ) -> DbResultSingle<(Probe, Vec<Device>)> {
+    pub async fn adopt(&self, params: &SelectSingleProbe) -> DbResult<()> {
         let mut conn = self.pg_pool.get().await?;
-        let p = probe::table
-            .find(params)
-            .select(Probe::as_select())
-            .get_result(&mut conn)
-            .await?;
-
-        let devices = Device::belonging_to(&p)
-            .select(Device::as_select())
-            .load(&mut conn)
-            .await?;
-        Ok((p, devices))
-    }
-
-    pub async fn adopt(&self, params: &Uuid) -> DbResult<()> {
-        let mut conn = self.pg_pool.get().await?;
-        diesel::update(probe::table.find(params))
+        validate_permissions(&self.pg_pool, params, PermissionType::Adopt).await?;
+        diesel::update(probe::table.find(params.id))
             .set(probe::adopted.eq(true))
             .execute(&mut conn)
             .await?;
@@ -189,5 +170,10 @@ impl PgProbeRepository {
             .load(&mut conn)
             .await
             .map_err(DbError::from)
+    }
+    
+    pub async fn check_permissions_for_restart(&self, params: &SelectSingleProbe) -> DbResult<()> {
+        validate_permissions(&self.pg_pool, params, PermissionType::Restart).await?;
+        Ok(())
     }
 }

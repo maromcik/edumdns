@@ -1,4 +1,4 @@
-use crate::repositories::common::{Id, Pagination};
+use crate::repositories::common::{EntityWithId, Id, Pagination};
 use diesel::{AsChangeset, Insertable, Queryable, Selectable};
 use diesel::pg::Pg;
 use ipnetwork::IpNetwork;
@@ -82,5 +82,29 @@ impl From<Probe> for ProbeDisplay {
             mac: MacAddr::from_octets(value.mac),
             ip: value.ip,
         }
+    }
+}
+
+pub struct SelectSingleProbe {
+    pub user_id: Id,
+    pub id: Uuid,
+}
+
+impl SelectSingleProbe {
+    pub fn new(user_id: Id, id: Uuid) -> Self {
+        Self { user_id, id }
+    }
+}
+
+impl EntityWithId for SelectSingleProbe {
+    type EntityId = Uuid;
+    type UserId = Id;
+
+    fn get_id(&self) -> Self::EntityId {
+        self.id
+    }
+
+    fn get_user_id(&self) -> Self::UserId {
+        self.user_id
     }
 }

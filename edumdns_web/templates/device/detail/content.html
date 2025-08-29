@@ -51,11 +51,7 @@
       <div class="flex flex-col">
         <span class="text-xs uppercase tracking-wide text-sat-m">Duration</span>
         <span class="font-mono text-code">
-          {% if device.duration is not none %}
             <code>{{ device.duration }}</code>
-          {% else %}
-            <span class="text-muted-foreground">—</span>
-          {% endif %}
         </span>
       </div>
 
@@ -63,11 +59,7 @@
       <div class="flex flex-col">
         <span class="text-xs uppercase tracking-wide text-sat-m">Interval</span>
         <span class="font-mono text-code">
-          {% if device.interval is not none %}
             <code>{{ device.interval }}</code>
-          {% else %}
-            <span class="text-muted-foreground">—</span>
-          {% endif %}
         </span>
       </div>
     </div>
@@ -109,18 +101,76 @@
         <p class="text-xs text-sat-m mt-1">Destination TCP/UDP port (1–65535).</p>
       </div>
 
+
+      <div class="md:col-span-2 flex items-center gap-2">
+        <input
+                id="permanent"
+                name="permanent"
+                type="checkbox"
+                value="true"
+                class="h-4 w-4 rounded border-base bg-panes text-acc focus:ring-2 focus:ring-acc"
+        />
+        <label for="permanent" class="text-sm text-sat-l">Permanent</label>
+      </div>
+
       <!-- Actions -->
       <div class="md:col-span-2 flex items-center gap-2">
         <button
                 type="button"
                 class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
                 hx-post="/device/{{ device.id }}/transmit"
-                hx-swap="none"
+                hx-target="#content-area"
         >
-          transmit
+          Transmit
         </button>
       </div>
     </form>
+  </div>
+
+  <div class="rounded-lg border border-base bg-cards p-6 mb-6">
+    <h3 class="text-2xl font-medium mb-4 text-sat-l">Packet Transmissions in progress</h3>
+
+    <div class="overflow-x-auto rounded-md border border-base">
+      <table class="min-w-full divide-y divide-base">
+        <thead class="bg-panes">
+        <tr>
+          <th class="px-4 py-2 text-left text-xs font-medium text-sat-m uppercase tracking-wide">Target IP</th>
+          <th class="px-4 py-2 text-left text-xs font-medium text-sat-m uppercase tracking-wide">Target Port</th>
+          <th class="px-4 py-2 text-right text-xs font-medium text-sat-m uppercase tracking-wide">Actions</th>
+        </tr>
+        </thead>
+        <tbody class="divide-y divide-base bg-bg">
+        {% if packet_transmit_requests and packet_transmit_requests | length > 0 %}
+        {% for r in packet_transmit_requests %}
+        <tr>
+          <td class="px-4 py-2 text-sat-l">{{ r.target_ip }}</td>
+          <td class="px-4 py-2 text-sat-l">{{ r.target_port }}</td>
+          <td class="px-4 py-2">
+            <div class="flex justify-end">
+              <button
+                      type="button"
+                      class="inline-flex items-center gap-2 rounded-md border border-danger/20 bg-danger/10 px-3 py-1.5 text-sm text-danger hover:bg-danger/20 transition-colors"
+                      title="Delete"
+                      hx-delete="/device/{{ device.id }}/transmit/{{ r.id }}"
+                      hx-vals='{"target_ip":"{{ r.target_ip }}","target_port":"{{ r.target_port }}"}'
+                      hx-target="#content-area"
+              >
+                <i class="fa fa-trash"></i>
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="3" class="px-4 py-6 text-center text-sat-m">No packet transmissions.</td>
+        </tr>
+        {% endif %}
+        </tbody>
+      </table>
+    </div>
+
   </div>
 
 

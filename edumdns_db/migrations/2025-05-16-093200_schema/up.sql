@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS "group_probe_permission"
     probe_id        uuid        NOT NULL,
     permission_id   bigint      NOT NULL,
 
-    PRIMARY KEY (group_id, probe_id),
+    PRIMARY KEY (group_id, probe_id, permission_id),
     FOREIGN KEY (group_id) REFERENCES "group" (id) ON DELETE CASCADE,
     FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE,
     FOREIGN KEY (permission_id) REFERENCES "permission" (id) ON DELETE CASCADE
@@ -101,8 +101,8 @@ CREATE TABLE IF NOT EXISTS "device"
     mac            macaddr      NOT NULL,
     ip             cidr         NOT NULL,
     port           int          NOT NULL,
-    duration       bigint,
-    interval       bigint,
+    duration       bigint       NOT NULL DEFAULT 3600,
+    interval       bigint       NOT NULL DEFAULT 1000,
 
     UNIQUE (probe_id, mac, ip),
     FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE
@@ -127,10 +127,11 @@ CREATE TABLE IF NOT EXISTS "packet"
 
 CREATE TABLE IF NOT EXISTS "packet_transmit_request"
 (
-    device_id      bigserial         NOT NULL,
+    id             bigserial    PRIMARY KEY,
+    device_id      bigserial    NOT NULL,
     target_ip      cidr         NOT NULL,
     target_port    int          NOT NULL,
-    PRIMARY KEY (device_id, target_ip, target_port),
+    permanent      bool         NOT NULL DEFAULT FALSE,
     FOREIGN KEY (device_id) REFERENCES "device" (id) ON DELETE CASCADE
 );
 

@@ -7,8 +7,8 @@ diesel::table! {
         mac -> Macaddr,
         ip -> Cidr,
         port -> Int4,
-        duration -> Nullable<Int8>,
-        interval -> Nullable<Int8>,
+        duration -> Int8,
+        interval -> Int8,
     }
 }
 
@@ -21,7 +21,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    group_probe_permission (group_id, probe_id) {
+    group_probe_permission (group_id, probe_id, permission_id) {
         group_id -> Int8,
         probe_id -> Uuid,
         permission_id -> Int8,
@@ -63,10 +63,12 @@ diesel::table! {
 }
 
 diesel::table! {
-    packet_transmit_request (device_id, target_ip, target_port) {
+    packet_transmit_request (id) {
+        id -> Int8,
         device_id -> Int8,
         target_ip -> Cidr,
         target_port -> Int4,
+        permanent -> Bool,
     }
 }
 

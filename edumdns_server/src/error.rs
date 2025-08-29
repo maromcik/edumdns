@@ -17,6 +17,8 @@ pub enum ServerErrorKind {
     InvalidConnectionInitiation,
     #[error("probe not adopted error")]
     ProbeNotAdopted,
+    #[error("parse error")]
+    ParseError,
 }
 
 #[derive(Error, Debug, Clone)]
@@ -59,5 +61,11 @@ impl From<std::io::Error> for ServerError {
 impl From<DbError> for ServerError {
     fn from(value: DbError) -> Self {
         Self::new(ServerErrorKind::DbError(value), "")
+    }
+}
+
+impl From<std::num::ParseIntError> for ServerError {
+    fn from(value: std::num::ParseIntError) -> Self {
+        Self::new(ServerErrorKind::ParseError, value.to_string().as_str())
     }
 }

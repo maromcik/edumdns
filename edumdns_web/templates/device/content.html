@@ -43,18 +43,10 @@
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].ip }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].port }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">
-                    {% if device[1].duration is not none %}
                     {{ device[1].duration }}
-                    {% else %}
-                    <span class="text-muted-foreground">—</span>
-                    {% endif %}
                 </td>
                 <td class="px-4 py-3 text-sm text-sat-l">
-                    {% if device[1].interval is not none %}
                     {{ device[1].interval }}
-                    {% else %}
-                    <span class="text-muted-foreground">—</span>
-                    {% endif %}
                 </td>
 
                 <td class="px-4 py-3 text-right">

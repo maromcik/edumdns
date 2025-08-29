@@ -124,6 +124,8 @@ pub enum BackendErrorKind {
     UserPasswordDoesNotMatch,
     #[error("password verification failed")]
     UserPasswordVerificationFailed,
+    #[error("permission denied")]
+    PermissionDenied,
 }
 
 #[derive(Clone, Debug, Error)]

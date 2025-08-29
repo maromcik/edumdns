@@ -8,6 +8,7 @@ use crate::models::Device;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyDevices {
+    pub user_id: Id,
     pub probe_id: Option<Uuid>,
     pub mac: Option<[u8; 6]>,
     pub ip: Option<IpNetwork>,
@@ -17,6 +18,7 @@ pub struct SelectManyDevices {
 
 impl SelectManyDevices {
     pub fn new(
+        user_id: Id,
         probe_id: Option<Uuid>,
         mac: Option<[u8; 6]>,
         ip: Option<IpNetwork>,
@@ -24,6 +26,7 @@ impl SelectManyDevices {
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
+            user_id,
             probe_id,
             mac,
             ip,
@@ -34,13 +37,14 @@ impl SelectManyDevices {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct SelectSingleFilter {
+pub struct SelectSingleDevice {
+    pub user_id: Option<Id>,
     pub probe_id: Uuid,
     pub mac: [u8; 6],
     pub ip: IpNetwork,
 }
 
-impl SelectSingleFilter {
+impl SelectSingleDevice {
     pub fn new(
         probe_id: Uuid,
         mac: [u8; 6],
@@ -48,6 +52,16 @@ impl SelectSingleFilter {
 
     ) -> Self {
         Self {
+            user_id: None,
+            probe_id,
+            mac,
+            ip,
+        }
+    }
+    
+    pub fn new_with_user_id(user_id: Id, probe_id: Uuid, mac: [u8; 6], ip: IpNetwork) -> Self {
+        Self {
+            user_id: Some(user_id),
             probe_id,
             mac,
             ip,
@@ -76,7 +90,6 @@ impl CreateDevice {
 }
 
 
-
 #[derive(Serialize)]
 pub struct DeviceDisplay {
     pub id: Id,
@@ -84,8 +97,8 @@ pub struct DeviceDisplay {
     pub mac: MacAddr,
     pub ip: IpNetwork,
     pub port: i32,
-    pub duration: Option<i64>,
-    pub interval: Option<i64>,
+    pub duration: i64,
+    pub interval: i64,
 }
 
 impl From<Device> for DeviceDisplay {
@@ -100,4 +113,13 @@ impl From<Device> for DeviceDisplay {
             interval: value.interval,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, AsChangeset, Insertable, Debug)]
+#[diesel(table_name = crate::schema::packet_transmit_request)]
+pub struct CreatePacketTransmitRequest {
+    pub device_id: Id,
+    pub target_ip: IpNetwork,
+    pub target_port: i32,
+    pub permanent: bool,
 }

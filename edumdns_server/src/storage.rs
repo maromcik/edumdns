@@ -6,7 +6,7 @@ use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequestPa
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_db::repositories::common::{DbCreate, DbReadMany, DbReadOne};
-use edumdns_db::repositories::device::models::{CreateDevice, SelectSingleFilter};
+use edumdns_db::repositories::device::models::{CreateDevice, SelectSingleDevice};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
@@ -25,6 +25,7 @@ pub struct PacketStorage {
     pub probe_handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
     pub pg_device_repository: PgDeviceRepository,
     pub pg_packet_repository: PgPacketRepository,
+    pub global_timeout: Duration,
 }
 
 impl PacketStorage {
@@ -32,6 +33,7 @@ impl PacketStorage {
         receiver: Receiver<AppPacket>,
         db_pool: Pool<AsyncPgConnection>,
         handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
+        global_timeout: Duration,
     ) -> Self {
         Self {
             packets: HashMap::new(),
@@ -40,6 +42,7 @@ impl PacketStorage {
             probe_handles: handles,
             pg_device_repository: PgDeviceRepository::new(db_pool.clone()),
             pg_packet_repository: PgPacketRepository::new(db_pool.clone()),
+            global_timeout,
         }
     }
 
@@ -48,6 +51,12 @@ impl PacketStorage {
             match packet {
                 AppPacket::Command(command) => match command {
                     CommandPacket::TransmitDevicePackets(target) => self.transmit_device_packets(target),
+                    CommandPacket::StopTransmitDevicePackets(target) => {
+                        if let Some(t) = self.transmitter_tasks.lock().await.get(&target) {
+                            t.transmitter_task.abort();
+                        }
+                        self.transmitter_tasks.lock().await.remove(&target);
+                    },
                     CommandPacket::ReconnectProbe(id) => self.send_reconnect(id).await,
                     _ => {}
                 },
@@ -216,14 +225,14 @@ impl PacketStorage {
         let device_repo = self.pg_device_repository.clone();
 
         let probe_id = transmit_request.probe_uuid.0;
-        let device_lookup = SelectSingleFilter::new(
+        let device_lookup = SelectSingleDevice::new(
             probe_id,
             transmit_request.device_mac.to_octets(),
             transmit_request.device_ip.0,
         );
 
         let transmitter_tasks = self.transmitter_tasks.clone();
-
+        let global_timeout = self.global_timeout;
         tokio::task::spawn(async move {
             let device = match device_repo.read_one(&device_lookup).await {
                 Ok(d) => d,
@@ -264,9 +273,9 @@ impl PacketStorage {
             let transmitter = PacketTransmitter::new(
                 payloads,
                 transmit_request.clone(),
-                Duration::from_secs(device.duration.unwrap_or(60) as u64),
-                Duration::from_millis(device.interval.unwrap_or(1000) as u64),
-                Duration::from_secs(1),
+                Duration::from_secs(device.duration as u64),
+                Duration::from_millis(device.interval as u64),
+                global_timeout,
             )
             .await;
 

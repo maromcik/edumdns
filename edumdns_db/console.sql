@@ -9,3 +9,5 @@ from
     "permission" as p on p.id = gpp.permission_id
 
 where p.name = 'read' and gu.user_id = 1;
+
+select count(*) from packet;

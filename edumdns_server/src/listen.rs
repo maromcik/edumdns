@@ -29,7 +29,7 @@ async fn handle_connection(
     Ok(())
 }
 
-pub async fn listen(pool: Pool<AsyncPgConnection>, (tx, rx): (Sender<AppPacket>, Receiver<AppPacket>)) -> Result<(), ServerError> {
+pub async fn listen(pool: Pool<AsyncPgConnection>, (tx, rx): (Sender<AppPacket>, Receiver<AppPacket>), global_timeout: Duration) -> Result<(), ServerError> {
     let listener = TcpListener::bind("127.0.0.1:5000").await?;
     info!("Listening on {}", listener.local_addr()?);
 
@@ -37,7 +37,7 @@ pub async fn listen(pool: Pool<AsyncPgConnection>, (tx, rx): (Sender<AppPacket>,
     let probe_handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>> = Arc::new(RwLock::new(HashMap::new()));
     let probe_handles_local = probe_handles.clone();
     let _packet_storage_task = tokio::task::spawn(async move {
-        let mut packet_storage = PacketStorage::new(rx, pool_local, probe_handles_local);
+        let mut packet_storage = PacketStorage::new(rx, pool_local, probe_handles_local, global_timeout);
         packet_storage.handle_packets().await
     });
     info!("Packet storage initialized");
@@ -46,7 +46,7 @@ pub async fn listen(pool: Pool<AsyncPgConnection>, (tx, rx): (Sender<AppPacket>,
     loop {
         let (socket, addr) = listener.accept().await?;
         info!("Connection from {addr}");
-        let connection_manager = ConnectionManager::new(socket, pool.clone(), tx.clone(), probe_handles.clone(), Duration::from_secs(10))?;
+        let connection_manager = ConnectionManager::new(socket, pool.clone(), tx.clone(), probe_handles.clone(), global_timeout)?;
         tokio::spawn(async move {
             if let Err(e) = handle_connection(connection_manager).await {
                 if let ServerErrorKind::ProbeNotAdopted = e.error_kind {

@@ -1,8 +1,8 @@
-use actix_identity::Identity;
-use actix_web::{web, HttpRequest, HttpResponse};
-use edumdns_db::repositories::common::Id;
 use crate::error::WebError;
 use crate::handlers::utilities::is_htmx;
+use actix_identity::Identity;
+use actix_web::HttpRequest;
+use edumdns_db::repositories::common::Id;
 
 pub fn get_template_name(request: &HttpRequest, path: &str) -> String {
     if is_htmx(request) {
@@ -15,4 +15,3 @@ pub fn get_template_name(request: &HttpRequest, path: &str) -> String {
 pub fn parse_user_id(identity: &Identity) -> Result<Id, WebError> {
     Ok(identity.id()?.parse::<i64>()?)
 }
-

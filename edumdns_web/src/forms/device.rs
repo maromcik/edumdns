@@ -15,5 +15,7 @@ pub struct DeviceQuery {
 pub struct DevicePacketTransmitRequest {
     pub target_ip: String,
     pub target_port: u16,
+    #[serde(default)]
+    pub permanent: bool,
 }
 

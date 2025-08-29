@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use time::OffsetDateTime;
 use uuid::Uuid;
-use edumdns_core::app_packet::PacketTransmitRequestPacket;
 
 #[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable)]
 #[diesel(table_name = crate::schema::group)]
@@ -14,6 +13,17 @@ pub struct Group {
     pub name: String,
     pub description: Option<String>,
 }
+
+#[derive(Serialize, Deserialize, Queryable, Selectable, Associations)]
+#[diesel(table_name = crate::schema::group_user)]
+#[diesel(belongs_to(Group))]
+#[diesel(belongs_to(User))]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct GroupUser {
+    pub group_id: Id,
+    pub user_id: Id,
+}
+
 
 #[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable)]
 #[diesel(table_name = crate::schema::location)]
@@ -82,8 +92,8 @@ pub struct Device {
     pub mac: [u8; 6],
     pub ip: ipnetwork::IpNetwork,
     pub port: i32,
-    pub duration: Option<i64>,
-    pub interval: Option<i64>,
+    pub duration: i64,
+    pub interval: i64,
 }
 
 #[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable, Associations)]
@@ -102,14 +112,16 @@ pub struct Packet {
     pub payload: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Queryable, Selectable, Associations)]
+#[derive(Serialize, Deserialize, Queryable, Selectable, Associations, AsChangeset, Insertable, Debug)]
 #[diesel(table_name = crate::schema::packet_transmit_request)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(belongs_to(Device))]
 pub struct PacketTransmitRequest {
+    pub id: Id,
     pub device_id: Id,
     pub target_ip: ipnetwork::IpNetwork,
     pub target_port: i32,
+    pub permanent: bool,
 }
 
 #[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable)]

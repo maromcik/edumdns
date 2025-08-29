@@ -1,13 +1,15 @@
 use crate::error::DbError;
 use crate::models::{Packet};
-use crate::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, Id};
-use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSingleFilter};
+use crate::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, SelectSingleById, Id, PermissionType};
+use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSinglePacket};
 use crate::schema;
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use schema::packet;
+use crate::repositories::probe::models::SelectSingleProbe;
+use crate::repositories::utilities::validate_permissions;
 
 #[derive(Clone)]
 pub struct PgPacketRepository {
@@ -20,8 +22,8 @@ impl PgPacketRepository {
     }
 }
 
-impl DbReadOne<SelectSingleFilter, Packet> for PgPacketRepository {
-    async fn read_one(&self, params: &SelectSingleFilter) -> DbResultSingle<Packet> {
+impl DbReadOne<SelectSinglePacket, Packet> for PgPacketRepository {
+    async fn read_one(&self, params: &SelectSinglePacket) -> DbResultSingle<Packet> {
         let mut conn = self.pg_pool.get().await?;
         packet::table
             .filter(packet::probe_id.eq(params.probe_id))
@@ -34,15 +36,17 @@ impl DbReadOne<SelectSingleFilter, Packet> for PgPacketRepository {
     }
 }
 
-impl DbReadOne<Id, Packet> for PgPacketRepository {
-    async fn read_one(&self, params: &Id) -> DbResultSingle<Packet> {
+impl DbReadOne<SelectSingleById, Packet> for PgPacketRepository {
+    async fn read_one(&self, params: &SelectSingleById) -> DbResultSingle<Packet> {
         let mut conn = self.pg_pool.get().await?;
-        packet::table
-            .find(params)
+        let p = packet::table
+            .find(params.id)
             .select(Packet::as_select())
             .first(&mut conn)
-            .await
-            .map_err(DbError::from)
+            .await?;
+        validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, p.probe_id), PermissionType::Read).await?;
+        Ok(p)
+        
     }
 }
 
@@ -96,7 +100,7 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
 impl DbCreate<CreatePacket, Packet> for PgPacketRepository {
     async fn create(&self, data: &CreatePacket) -> DbResultSingle<Packet> {
         let mut conn = self.pg_pool.get().await?;
-        diesel::insert_into(schema::packet::table)
+        diesel::insert_into(packet::table)
             .values(data)
             .returning(Packet::as_returning())
             .on_conflict((packet::probe_id, packet::src_mac, packet::src_addr, packet::dst_addr, packet::payload,))
@@ -108,11 +112,13 @@ impl DbCreate<CreatePacket, Packet> for PgPacketRepository {
     }
 }
 
-impl DbDelete<Id, Packet> for PgPacketRepository {
-    async fn delete(&self, params: &Id) -> DbResultMultiple<Packet> {
+impl DbDelete<SelectSingleById, Packet> for PgPacketRepository {
+    async fn delete(&self, params: &SelectSingleById) -> DbResultMultiple<Packet> {
         let mut conn = self.pg_pool.get().await?;
+        let p = self.read_one(params).await?;
+        validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, p.probe_id), PermissionType::Delete).await?;
         diesel::delete(packet::table
-            .find(params))
+            .find(params.id))
             .get_results(&mut conn)
             .await
             .map_err(DbError::from)

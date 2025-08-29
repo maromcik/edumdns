@@ -1,13 +1,14 @@
 use crate::error::DbError;
-use crate::models::{Device,  Probe};
-use crate::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, Id};
-use crate::repositories::device::models::{CreateDevice, SelectManyDevices, SelectSingleFilter};
+use crate::models::{Device, PacketTransmitRequest, Probe};
+use crate::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, SelectSingleById, Id, PermissionType};
+use crate::repositories::device::models::{CreateDevice, CreatePacketTransmitRequest, SelectManyDevices, SelectSingleDevice};
+use crate::schema::{device, packet_transmit_request, probe};
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
-use crate::schema::device;
-use crate::schema::probe::dsl::probe;
+use crate::repositories::probe::models::SelectSingleProbe;
+use crate::repositories::utilities::validate_permissions;
 
 #[derive(Clone)]
 pub struct PgDeviceRepository {
@@ -18,23 +19,52 @@ impl PgDeviceRepository {
     pub fn new(pg_pool: Pool<AsyncPgConnection>) -> Self {
         Self { pg_pool }
     }
-}
 
-impl DbReadOne<Id, Device> for PgDeviceRepository {
-    async fn read_one(&self, params: &Id) -> DbResultSingle<Device> {
+    pub async fn read_packet_transmit_requests(
+        &self,
+        device_id: &Id,
+    ) -> DbResultMultiple<PacketTransmitRequest> {
         let mut conn = self.pg_pool.get().await?;
-        device::table
-            .find(params)
-            .select(Device::as_select())
-            .first(&mut conn)
+        packet_transmit_request::table
+            .filter(packet_transmit_request::device_id.eq(device_id))
+            .load::<PacketTransmitRequest>(&mut conn)
+            .await
+            .map_err(DbError::from)
+    }
+
+    pub async fn delete_packet_transmit_request(
+        &self,
+        params: &Id,
+    ) -> DbResultMultiple<PacketTransmitRequest> {
+        let mut conn = self.pg_pool.get().await?;
+        diesel::delete(packet_transmit_request::table.find(&params))
+            .get_results(&mut conn)
             .await
             .map_err(DbError::from)
     }
 }
 
-impl DbReadOne<SelectSingleFilter, Device> for PgDeviceRepository {
-    async fn read_one(&self, params: &SelectSingleFilter) -> DbResultSingle<Device> {
+impl DbReadOne<SelectSingleById, Device> for PgDeviceRepository {
+    async fn read_one(&self, params: &SelectSingleById) -> DbResultSingle<Device> {
         let mut conn = self.pg_pool.get().await?;
+        let d = device::table
+            .find(params.id)
+            .select(Device::as_select())
+            .first(&mut conn)
+            .await?;
+        validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, d.probe_id), PermissionType::Read).await?;
+        Ok(d)
+    }
+}
+
+
+
+impl DbReadOne<SelectSingleDevice, Device> for PgDeviceRepository {
+    async fn read_one(&self, params: &SelectSingleDevice) -> DbResultSingle<Device> {
+        let mut conn = self.pg_pool.get().await?;
+        if let Some(user_id) = params.user_id {
+            validate_permissions(&self.pg_pool, &SelectSingleProbe::new(user_id, params.probe_id), PermissionType::Read).await?;
+        }
         device::table
             .filter(device::probe_id.eq(params.probe_id))
             .filter(device::mac.eq(params.mac))
@@ -46,8 +76,11 @@ impl DbReadOne<SelectSingleFilter, Device> for PgDeviceRepository {
     }
 }
 
-impl DbReadMany<SelectManyDevices, (Option<Probe>, Device)> for PgDeviceRepository {
-    async fn read_many(&self, params: &SelectManyDevices) -> DbResultMultiple<(Option<Probe>, Device)> {
+impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
+    async fn read_many(
+        &self,
+        params: &SelectManyDevices,
+    ) -> DbResultMultiple<(Probe, Device)> {
         let mut query = device::table.into_boxed();
 
         if let Some(q) = &params.probe_id {
@@ -73,9 +106,9 @@ impl DbReadMany<SelectManyDevices, (Option<Probe>, Device)> for PgDeviceReposito
 
         let mut conn = self.pg_pool.get().await?;
         let devices = query
-            .left_outer_join(probe)
-            .select((Option::<Probe>::as_select(), Device::as_select()))
-            .load::<(Option<Probe>, Device)>(&mut conn)
+            .inner_join(probe::table)
+            .select((Probe::as_select(), Device::as_select()))
+            .load::<(Probe, Device)>(&mut conn)
             .await?;
 
         Ok(devices)
@@ -97,12 +130,25 @@ impl DbCreate<CreateDevice, Device> for PgDeviceRepository {
     }
 }
 
-impl DbDelete<Id, Device> for PgDeviceRepository {
-    async fn delete(&self, params: &Id) -> DbResultMultiple<Device> {
+impl DbDelete<SelectSingleById, Device> for PgDeviceRepository {
+    async fn delete(&self, params: &SelectSingleById) -> DbResultMultiple<Device> {
         let mut conn = self.pg_pool.get().await?;
-        diesel::delete(device::table
-            .find(params))
+        let d = self.read_one(params).await?;
+        validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, d.probe_id), PermissionType::Delete).await?;
+        diesel::delete(device::table.find(params.id))
             .get_results(&mut conn)
+            .await
+            .map_err(DbError::from)
+    }
+}
+
+impl DbCreate<CreatePacketTransmitRequest, PacketTransmitRequest> for PgDeviceRepository {
+    async fn create(&self, data: &CreatePacketTransmitRequest) -> DbResultSingle<PacketTransmitRequest> {
+        let mut conn = self.pg_pool.get().await?;
+        diesel::insert_into(packet_transmit_request::table)
+            .values(data)
+            .returning(PacketTransmitRequest::as_returning())
+            .get_result(&mut conn)
             .await
             .map_err(DbError::from)
     }

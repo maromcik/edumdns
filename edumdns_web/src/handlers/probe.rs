@@ -6,13 +6,13 @@ use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{get, web, HttpRequest, HttpResponse};
+use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use log::error;
 use edumdns_core::app_packet::{AppPacket, CommandPacket};
 use edumdns_core::error::CoreError;
-use edumdns_db::repositories::common::{DbReadMany, Pagination};
+use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Pagination};
 use edumdns_db::repositories::device::models::DeviceDisplay;
-use edumdns_db::repositories::probe::models::{ProbeDisplay, SelectManyProbes};
+use edumdns_db::repositories::probe::models::{SelectSingleProbe, ProbeDisplay, SelectManyProbes};
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use uuid::Uuid;
 use crate::authorized;
@@ -60,15 +60,17 @@ pub async fn get_probe(
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request.path());
+
     let (probe, devices) = probe_repo
-        .read_probe_and_devices(&path.into_inner().0)
+        .read_one(&SelectSingleProbe::new(parse_user_id(&i)?, path.0))
         .await?;
 
     let template_name = get_template_name(&request, "probe/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(ProbeDetailTemplate {
-        logged_in: identity.is_some(),
+        logged_in: true,
         probe: ProbeDisplay::from(probe),
         devices: devices.into_iter().map(DeviceDisplay::from).collect(),
     })?;
@@ -84,7 +86,16 @@ pub async fn adopt(
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
-    probe_repo.adopt(&path.0).await?;
+    let i = authorized!(identity, request.path());
+    let params = SelectSingleProbe::new(parse_user_id(&i)?, path.0);
+    probe_repo.adopt(&params).await?;
+    state
+        .command_channel
+        .send(AppPacket::Command(CommandPacket::ReconnectProbe(
+            edumdns_core::bincode_types::Uuid(path.0),
+        )))
+        .await
+        .map_err(CoreError::from)?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, "/probe"))
         .finish())
@@ -98,7 +109,9 @@ pub async fn forget(
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
-    probe_repo.forget(&path.0).await?;
+    let i = authorized!(identity, request.path());
+    let params = SelectSingleProbe::new(parse_user_id(&i)?, path.0);
+    probe_repo.forget(&params).await?;
     state
         .command_channel
         .send(AppPacket::Command(CommandPacket::ReconnectProbe(
@@ -114,6 +127,30 @@ pub async fn forget(
 
 #[get("{id}/restart")]
 pub async fn restart(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    probe_repo: web::Data<PgProbeRepository>,
+    state: web::Data<AppState>,
+    path: web::Path<(Uuid,)>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request.path());
+    let params = SelectSingleProbe::new(parse_user_id(&i)?, path.0);
+    probe_repo.check_permissions_for_restart(&params).await?;
+    state
+        .command_channel
+        .send(AppPacket::Command(CommandPacket::ReconnectProbe(
+            edumdns_core::bincode_types::Uuid(path.0),
+        )))
+        .await
+        .map_err(CoreError::from)?;
+
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/probe/{}", path.0)))
+        .finish())
+}
+
+#[post("{id}/save")]
+pub async fn save_configs(
     request: HttpRequest,
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,

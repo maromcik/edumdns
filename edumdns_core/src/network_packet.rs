@@ -1,4 +1,3 @@
-use std::fmt::Write;
 use crate::bincode_types::{IpNetwork, MacAddr};
 use crate::error::{CoreError, CoreErrorKind};
 use crate::metadata::{IpMetadata, MacMetadata, PortMetadata, VlanMetadata,
@@ -7,6 +6,8 @@ use crate::rewrite::{
     rewrite_ipv4, rewrite_ipv6, rewrite_mac, rewrite_tcp, rewrite_udp, rewrite_vlan, DataLinkRewrite,
     IpRewrite, PortRewrite,
 };
+use hickory_proto::op::Message;
+use hickory_proto::serialize::binary::{BinDecodable, BinEncodable};
 use pnet::packet::ethernet::{EtherType, EtherTypes, EthernetPacket, MutableEthernetPacket};
 use pnet::packet::icmp::MutableIcmpPacket;
 use pnet::packet::ip::{IpNextHeaderProtocol, IpNextHeaderProtocols};
@@ -19,9 +20,6 @@ use pnet::packet::udp::{ipv4_checksum as ipv4_checksum_udp, ipv6_checksum as ipv
 use pnet::packet::vlan::MutableVlanPacket;
 use pnet::packet::{MutablePacket, Packet};
 use std::net::{Ipv4Addr, Ipv6Addr};
-use dns_parser::RData;
-use hickory_proto::op::Message;
-use hickory_proto::serialize::binary::{BinDecodable, BinEncodable};
 
 pub trait FixablePacket {
     fn fix(&mut self, payload_len: Option<usize>);

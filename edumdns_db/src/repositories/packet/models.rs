@@ -45,13 +45,13 @@ impl SelectManyPackets {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct SelectSingleFilter {
+pub struct SelectSinglePacket {
     pub probe_id: Uuid,
     pub src_mac: [u8; 6],
     pub src_addr: IpNetwork,
 }
 
-impl SelectSingleFilter {
+impl SelectSinglePacket {
     pub fn new(
         probe_id: Uuid,
         src_mac: [u8; 6],

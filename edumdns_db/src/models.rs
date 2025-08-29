@@ -1,4 +1,4 @@
-use crate::repositories::common::Id;
+use crate::repositories::common::{Id, Permission};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -39,25 +39,16 @@ pub struct Location {
     pub description: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable)]
-#[diesel(table_name = crate::schema::permission)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct Permission {
-    pub id: Id,
-    pub name: String,
-    pub description: Option<String>,
-}
 
 #[derive(Queryable, Selectable, Associations, Serialize, Deserialize)]
 #[diesel(table_name = crate::schema::group_probe_permission)]
 #[diesel(belongs_to(Probe))]
 #[diesel(belongs_to(Group))]
-#[diesel(belongs_to(Permission))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct GroupProbePermission {
     pub group_id: Id,
     pub probe_id: Uuid,
-    pub permission_id: Id,
+    pub permission: Permission,
 }
 
 #[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable)]

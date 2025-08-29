@@ -21,10 +21,10 @@ diesel::table! {
 }
 
 diesel::table! {
-    group_probe_permission (group_id, probe_id, permission_id) {
+    group_probe_permission (group_id, probe_id, permission) {
         group_id -> Int8,
         probe_id -> Uuid,
-        permission_id -> Int8,
+        permission -> Int2,
     }
 }
 
@@ -73,14 +73,6 @@ diesel::table! {
 }
 
 diesel::table! {
-    permission (id) {
-        id -> Int8,
-        name -> Text,
-        description -> Nullable<Text>,
-    }
-}
-
-diesel::table! {
     probe (id) {
         id -> Uuid,
         owner_id -> Nullable<Int8>,
@@ -116,7 +108,6 @@ diesel::table! {
 
 diesel::joinable!(device -> probe (probe_id));
 diesel::joinable!(group_probe_permission -> group (group_id));
-diesel::joinable!(group_probe_permission -> permission (permission_id));
 diesel::joinable!(group_probe_permission -> probe (probe_id));
 diesel::joinable!(group_user -> group (group_id));
 diesel::joinable!(group_user -> user (user_id));
@@ -134,7 +125,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     location,
     packet,
     packet_transmit_request,
-    permission,
     probe,
     probe_config,
     user,

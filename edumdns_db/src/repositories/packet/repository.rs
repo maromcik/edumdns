@@ -1,6 +1,6 @@
 use crate::error::DbError;
 use crate::models::{Packet};
-use crate::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, SelectSingleById, Id, PermissionType};
+use crate::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, SelectSingleById, Id, Permission};
 use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSinglePacket};
 use crate::schema;
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
@@ -44,7 +44,7 @@ impl DbReadOne<SelectSingleById, Packet> for PgPacketRepository {
             .select(Packet::as_select())
             .first(&mut conn)
             .await?;
-        validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, p.probe_id), PermissionType::Read).await?;
+        validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, p.probe_id), Permission::Read).await?;
         Ok(p)
 
     }
@@ -116,7 +116,7 @@ impl DbDelete<SelectSingleById, Packet> for PgPacketRepository {
     async fn delete(&self, params: &SelectSingleById) -> DbResultMultiple<Packet> {
         let mut conn = self.pg_pool.get().await?;
         let p = self.read_one(params).await?;
-        validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, p.probe_id), PermissionType::Delete).await?;
+        validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, p.probe_id), Permission::Delete).await?;
         diesel::delete(packet::table
             .find(params.id))
             .get_results(&mut conn)

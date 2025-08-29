@@ -153,65 +153,69 @@ impl EntityWithId for SelectSingleById {
 }
 
 #[repr(i16)]
-#[derive(AsExpression, Debug, Clone, Copy, Serialize, Deserialize, FromSqlRow)]
+#[derive(AsExpression, Debug, Clone, PartialEq, Eq, Copy, Serialize, Deserialize, FromSqlRow)]
 #[diesel(sql_type = SmallInt)]
-pub enum PermissionType {
+pub enum Permission {
     Read,
     Adopt,
     Forget,
     Restart,
     ModifyConfig,
     Delete,
-    Update
+    Update,
+    Full,
 }
 
-impl Display for PermissionType {
+impl Display for Permission {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            PermissionType::Read => write!(f, "read"),
-            PermissionType::Adopt => write!(f, "adopt"),
-            PermissionType::Forget => write!(f, "forget"),
-            PermissionType::Restart => write!(f, "restart"),
-            PermissionType::ModifyConfig => write!(f, "modify_config"),
-            PermissionType::Delete => write!(f, "delete"),
-            PermissionType::Update => write!(f, "update"),
+            Permission::Read => write!(f, "read"),
+            Permission::Adopt => write!(f, "adopt"),
+            Permission::Forget => write!(f, "forget"),
+            Permission::Restart => write!(f, "restart"),
+            Permission::ModifyConfig => write!(f, "modify_config"),
+            Permission::Delete => write!(f, "delete"),
+            Permission::Update => write!(f, "update"),
+            Permission::Full => write!(f, "full"),
         }
     }
 }
 
-impl<DB> FromSql<SmallInt, DB> for PermissionType
+impl<DB> FromSql<SmallInt, DB> for Permission
 where
     DB: Backend,
     i16: FromSql<SmallInt, DB>,
 {
     fn from_sql(bytes: DB::RawValue<'_>) -> deserialize::Result<Self> {
         match i16::from_sql(bytes)? {
-            0 => Ok(PermissionType::Read),
-            1 => Ok(PermissionType::Adopt),
-            2 => Ok(PermissionType::Forget),
-            3 => Ok(PermissionType::Restart),
-            4 => Ok(PermissionType::ModifyConfig),
-            5 => Ok(PermissionType::Delete),
-            6 => Ok(PermissionType::Update),
+            0 => Ok(Permission::Read),
+            1 => Ok(Permission::Adopt),
+            2 => Ok(Permission::Forget),
+            3 => Ok(Permission::Restart),
+            4 => Ok(Permission::ModifyConfig),
+            5 => Ok(Permission::Delete),
+            6 => Ok(Permission::Update),
+            7 => Ok(Permission::Full),
             x => Err(format!("Unrecognized variant {}", x).into())
         }
     }
 }
 
-impl<DB> ToSql<SmallInt, DB> for PermissionType
+impl<DB> ToSql<SmallInt, DB> for Permission
 where
     DB: Backend,
     i16: ToSql<SmallInt, DB>,
 {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> serialize::Result {
         match *self {
-            PermissionType::Read => 0_i16.to_sql(out),
-            PermissionType::Adopt => 1_i16.to_sql(out),
-            PermissionType::Forget => 2_i16.to_sql(out),
-            PermissionType::Restart => 3_i16.to_sql(out),
-            PermissionType::ModifyConfig => 4_i16.to_sql(out),
-            PermissionType::Delete => 5_i16.to_sql(out),
-            PermissionType::Update => 6_i16.to_sql(out),
+            Permission::Read => 0_i16.to_sql(out),
+            Permission::Adopt => 1_i16.to_sql(out),
+            Permission::Forget => 2_i16.to_sql(out),
+            Permission::Restart => 3_i16.to_sql(out),
+            Permission::ModifyConfig => 4_i16.to_sql(out),
+            Permission::Delete => 5_i16.to_sql(out),
+            Permission::Update => 6_i16.to_sql(out),
+            Permission::Full => 7_i16.to_sql(out),
         }
     }
 }

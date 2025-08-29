@@ -20,13 +20,6 @@ CREATE TABLE IF NOT EXISTS "group"
     description   text
 );
 
-CREATE TABLE IF NOT EXISTS "permission"
-(
-    id            bigserial     PRIMARY KEY,
-    ---------------------------------------------
-    name          text          NOT NULL,
-    description   text
-);
 
 CREATE TABLE IF NOT EXISTS "user"
 (
@@ -84,13 +77,11 @@ CREATE TABLE IF NOT EXISTS "group_probe_permission"
 (
     group_id        bigint      NOT NULL,
     probe_id        uuid        NOT NULL,
-    permission_id   bigint      NOT NULL,
+    permission      smallint    NOT NULL,
 
-    PRIMARY KEY (group_id, probe_id, permission_id),
+    PRIMARY KEY (group_id, probe_id, permission),
     FOREIGN KEY (group_id) REFERENCES "group" (id) ON DELETE CASCADE,
-    FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE,
-    FOREIGN KEY (permission_id) REFERENCES "permission" (id) ON DELETE CASCADE
-
+    FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE
 );
 
 
@@ -136,9 +127,7 @@ CREATE TABLE IF NOT EXISTS "packet_transmit_request"
 );
 
 
-
 CREATE INDEX IF NOT EXISTS "Probe_owner_id" ON "probe" (owner_id);
 CREATE INDEX IF NOT EXISTS "Probe_location_id" ON "probe" (location_id);
 CREATE INDEX IF NOT EXISTS "ProbeConfig_probe_id" ON "probe_config" (probe_id);
-CREATE INDEX IF NOT EXISTS "GroupProbePermission_group_id_probe_id" ON "group_probe_permission" (group_id, probe_id);
 CREATE INDEX IF NOT EXISTS "Device_probe_id_mac" ON "device" (probe_id, mac, ip);

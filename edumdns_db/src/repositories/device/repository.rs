@@ -1,6 +1,6 @@
 use crate::error::DbError;
 use crate::models::{Device, PacketTransmitRequest, Probe};
-use crate::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, SelectSingleById, Id, PermissionType};
+use crate::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, SelectSingleById, Id, Permission};
 use crate::repositories::device::models::{CreateDevice, CreatePacketTransmitRequest, SelectManyDevices, SelectSingleDevice};
 use crate::schema::{device, packet_transmit_request, probe};
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
@@ -52,7 +52,7 @@ impl DbReadOne<SelectSingleById, Device> for PgDeviceRepository {
             .select(Device::as_select())
             .first(&mut conn)
             .await?;
-        validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, d.probe_id), PermissionType::Read).await?;
+        validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, d.probe_id), Permission::Read).await?;
         Ok(d)
     }
 }
@@ -63,7 +63,7 @@ impl DbReadOne<SelectSingleDevice, Device> for PgDeviceRepository {
     async fn read_one(&self, params: &SelectSingleDevice) -> DbResultSingle<Device> {
         let mut conn = self.pg_pool.get().await?;
         if let Some(user_id) = params.user_id {
-            validate_permissions(&self.pg_pool, &SelectSingleProbe::new(user_id, params.probe_id), PermissionType::Read).await?;
+            validate_permissions(&self.pg_pool, &SelectSingleProbe::new(user_id, params.probe_id), Permission::Read).await?;
         }
         device::table
             .filter(device::probe_id.eq(params.probe_id))
@@ -134,7 +134,7 @@ impl DbDelete<SelectSingleById, Device> for PgDeviceRepository {
     async fn delete(&self, params: &SelectSingleById) -> DbResultMultiple<Device> {
         let mut conn = self.pg_pool.get().await?;
         let d = self.read_one(params).await?;
-        validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, d.probe_id), PermissionType::Delete).await?;
+        validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, d.probe_id), Permission::Delete).await?;
         diesel::delete(device::table.find(params.id))
             .get_results(&mut conn)
             .await

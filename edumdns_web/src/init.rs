@@ -49,7 +49,7 @@ pub fn configure_webapp(
         .service(restart);
 
     let device_scope = web::scope("device")
-        .app_data(web::Data::new(device_repo))
+        .app_data(web::Data::new(device_repo.clone()))
         .app_data(web::Data::new(packet_repo.clone()))
         .service(get_devices)
         .service(get_device)
@@ -58,6 +58,7 @@ pub fn configure_webapp(
 
     let packet_scope = web::scope("packet")
         .app_data(web::Data::new(packet_repo))
+        .app_data(web::Data::new(device_repo.clone()))
         .service(get_packets)
         .service(get_packet);
 

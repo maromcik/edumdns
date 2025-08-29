@@ -46,7 +46,7 @@ impl DbReadOne<SelectSingleById, Packet> for PgPacketRepository {
             .await?;
         validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, p.probe_id), PermissionType::Read).await?;
         Ok(p)
-        
+
     }
 }
 

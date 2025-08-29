@@ -128,14 +128,14 @@ pub trait EntityWithId {
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct SelectSingleById {
-    pub id: Id,
     pub user_id: Id,
+    pub id: Id,
 }
 
 impl SelectSingleById {
-    pub fn new(id: Id, user_id: Id) -> Self {
-        Self { id, user_id}
-    
+    pub fn new(user_id: Id, id: Id) -> Self {
+        Self { user_id, id}
+
     }
 }
 

@@ -45,7 +45,7 @@ pub async fn validate_permissions(
                     DbErrorKind::BackendError(BackendError::new(
                         BackendErrorKind::PermissionDenied,
                         format!(
-                            "User {} does not have {} permissions for this probe",
+                            "User `{}` does not have `{}` permissions for this entity",
                             user_entry.email,
                             permission_type
                         )

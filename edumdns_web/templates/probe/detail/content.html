@@ -31,7 +31,7 @@
                 Forget
             </button>
             {% endif %}
-            {% if not probe.adopted and permissions|has_perm("Forget") %}
+            {% if not probe.adopted and permissions|has_perm("Adopt") %}
             <button
                     class="ml-2 bg-green-400 hover:bg-green-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
                     hx-get="/probe/{{ probe.id }}/adopt"
@@ -147,6 +147,7 @@
                           hx-target-error="#content-area"
                           hx-push-url="/probe/{{ probe.id }}"
                           class="inline-flex">
+                        {% if permissions|has_perm("ModifyConfig") %}
                         <button
                                 type="submit"
                                 class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-green-700 bg-green-50 hover:bg-green-200 text-primary hover:bg-muted/10 transition-colors"
@@ -166,11 +167,13 @@
                         >
                             <i class="fa-solid fa-trash mr-1.5"></i>
                         </button>
+                        {% endif %}
                     </form>
                 </td>
             </tr>
             {% endfor %}
             <!-- Add Config Row -->
+            {% if permissions | has_perm("ModifyConfig") %}
             <tr class="hover:bg-muted/5 transition-colors">
                 <td class="px-4 py-3 text-sm text-code">
                     <input
@@ -182,6 +185,7 @@
                             required
                     />
                 </td>
+
                 <td class="px-4 py-3 text-sm text-code">
                     <input
                             type="text"
@@ -192,6 +196,7 @@
                     />
                 </td>
                 <td class="px-4 py-3 text-right">
+
                     <form id="cfg-create-form"
                           hx-post="/probe/{{ probe.id }}/config"
                           hx-target="#content-area"
@@ -208,6 +213,7 @@
                             Add config
                         </button>
                     </form>
+                    {% endif %}
                 </td>
             </tr>
             </tbody>

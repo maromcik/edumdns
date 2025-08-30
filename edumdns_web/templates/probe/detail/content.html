@@ -7,7 +7,7 @@
                class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
                 ←
             </a>
-            {% if logged_in %}
+            {% if permissions|has_perm("Restart") %}
             <button
                     class="ml-2 bg-acc-l rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
                     hx-get="/probe/{{ probe.id }}/restart"
@@ -18,7 +18,8 @@
             >
                 Restart
             </button>
-            {% if probe.adopted %}
+            {% endif %}
+            {% if probe.adopted and permissions|has_perm("Forget") %}
             <button
                     class="ml-2 bg-red-400 hover:bg-red-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
                     hx-get="/probe/{{ probe.id }}/forget"
@@ -29,7 +30,8 @@
             >
                 Forget
             </button>
-            {% else %}
+            {% endif %}
+            {% if not probe.adopted and permissions|has_perm("Forget") %}
             <button
                     class="ml-2 bg-green-400 hover:bg-green-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
                     hx-get="/probe/{{ probe.id }}/adopt"
@@ -39,7 +41,6 @@
             >
                 Adopt
             </button>
-            {% endif %}
             {% endif %}
         </div>
     </div>

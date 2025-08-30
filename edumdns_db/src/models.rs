@@ -24,7 +24,6 @@ pub struct GroupUser {
     pub user_id: Id,
 }
 
-
 #[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable)]
 #[diesel(table_name = crate::schema::location)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -38,7 +37,6 @@ pub struct Location {
     pub city: Option<String>,
     pub description: Option<String>,
 }
-
 
 #[derive(Queryable, Selectable, Associations, Serialize, Deserialize)]
 #[diesel(table_name = crate::schema::group_probe_permission)]
@@ -104,7 +102,9 @@ pub struct Packet {
     pub payload: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Queryable, Selectable, Associations, AsChangeset, Insertable, Debug)]
+#[derive(
+    Serialize, Deserialize, Queryable, Selectable, Associations, AsChangeset, Insertable, Debug,
+)]
 #[diesel(table_name = crate::schema::packet_transmit_request)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(belongs_to(Device))]

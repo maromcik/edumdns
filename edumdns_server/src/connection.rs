@@ -1,10 +1,12 @@
-use std::collections::HashMap;
-use std::sync::Arc;
 use crate::error::{ServerError, ServerErrorKind};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbeConfigElement, ProbeConfigPacket, StatusPacket};
+use edumdns_core::app_packet::{
+    AppPacket, CommandPacket, ProbeConfigElement, ProbeConfigPacket, StatusPacket,
+};
+use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
+use edumdns_core::error::CoreError;
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_db::models::Probe;
 use edumdns_db::repositories::common::DbCreate;
@@ -12,12 +14,12 @@ use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use ipnetwork::IpNetwork;
 use log::error;
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpStream;
-use tokio::sync::mpsc::Sender;
 use tokio::sync::RwLock;
-use edumdns_core::bincode_types::Uuid;
-use edumdns_core::error::CoreError;
+use tokio::sync::mpsc::Sender;
 
 pub struct ConnectionManager {
     handle: TcpConnectionHandle,
@@ -99,9 +101,12 @@ impl ConnectionManager {
                 )
             })
             .await??;
-        
-        self.handles.write().await.insert(config_metadata.id, self.handle.clone());
-        
+
+        self.handles
+            .write()
+            .await
+            .insert(config_metadata.id, self.handle.clone());
+
         Ok(())
     }
 

@@ -6,7 +6,7 @@ use crate::header::LOCATION;
 use crate::templates::packet::{PacketDetailTemplate, PacketTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
-use actix_web::{get, web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, get, web};
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination, SelectSingleById};
 use edumdns_db::repositories::device::models::SelectSingleDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
@@ -21,8 +21,10 @@ pub async fn get_packets(
     state: web::Data<AppState>,
     query: web::Query<PacketQuery>,
 ) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request.path());
     let packets = packet_repo
-        .read_many(&SelectManyPackets::new(
+        .read_many_auth(&SelectManyPackets::new_with_user_id(
+            parse_user_id(&i)?,
             query.probe_id,
             query.src_mac.map(|addr| addr.to_octets()),
             query.dst_mac.map(|addr| addr.to_octets()),
@@ -30,8 +32,11 @@ pub async fn get_packets(
             query.dst_addr,
             query.src_port,
             query.dst_port,
-            Some(Pagination::default_pagination(query.page))))
-        .await?
+            Some(Pagination::default_pagination(query.page)),
+        ))
+        .await?;
+    let packets_parsed = packets
+        .data
         .into_iter()
         .map(PacketDisplay::from)
         .filter_map(Result::ok)
@@ -41,8 +46,9 @@ pub async fn get_packets(
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(PacketTemplate {
-        logged_in: identity.is_some(),
-        packets: &packets,
+        logged_in: true,
+        permissions: packets.permissions,
+        packets: &packets_parsed,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -60,16 +66,23 @@ pub async fn get_packet(
     let i = authorized!(identity, request.path());
     let user_id = parse_user_id(&i)?;
     let params = SelectSingleById::new(user_id, path.0);
-    let packet = packet_repo.read_one(&params).await?;
+    let packet = packet_repo.read_one_auth(&params).await?;
 
-    let params = SelectSingleDevice::new_with_user_id(user_id, packet.probe_id, packet.src_mac, packet.src_addr);
-    let device = device_repo.read_one(&params).await?;
+    let params = SelectSingleDevice::new_with_user_id(
+        user_id,
+        packet.data.probe_id,
+        packet.data.src_mac,
+        packet.data.src_addr,
+    );
+    let device = device_repo.read_one_auth(&params).await?;
     let template_name = get_template_name(&request, "packet/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(PacketDetailTemplate {
         logged_in: true,
-        packet: &PacketDisplay::from(packet)?,
+        permissions: packet.permissions,
+        packet: &PacketDisplay::from(packet.data)?,
+        device_id: device.data.id,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

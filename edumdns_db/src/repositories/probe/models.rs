@@ -1,15 +1,15 @@
+use crate::models::Probe;
 use crate::repositories::common::{EntityWithId, Id, Pagination};
-use diesel::{AsChangeset, Insertable, Queryable, Selectable};
 use diesel::pg::Pg;
+use diesel::{AsChangeset, Insertable, Queryable, Selectable};
+use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use edumdns_core::bincode_types::MacAddr;
-use crate::models::Probe;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyProbes {
-    pub user_id: Id,
+    pub user_id: Option<Id>,
     pub owner_id: Option<Id>,
     pub location_id: Option<Id>,
     pub adopted: Option<bool>,
@@ -20,6 +20,25 @@ pub struct SelectManyProbes {
 
 impl SelectManyProbes {
     pub fn new(
+        owner_id: Option<Id>,
+        location_id: Option<Id>,
+        adopted: Option<bool>,
+        mac: Option<[u8; 6]>,
+        ip: Option<IpNetwork>,
+        pagination: Option<Pagination>,
+    ) -> Self {
+        Self {
+            user_id: None,
+            owner_id,
+            location_id,
+            adopted,
+            mac,
+            ip,
+            pagination,
+        }
+    }
+
+    pub fn new_with_user_id(
         user_id: Id,
         owner_id: Option<Id>,
         location_id: Option<Id>,
@@ -29,7 +48,7 @@ impl SelectManyProbes {
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
-            user_id,
+            user_id: Some(user_id),
             owner_id,
             location_id,
             adopted,

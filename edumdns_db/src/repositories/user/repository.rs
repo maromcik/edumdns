@@ -1,18 +1,21 @@
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
-use crate::models::{User};
-use crate::repositories::common::{DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, Id};
+use crate::models::User;
+use crate::repositories::common::{
+    DbDataPerm, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm, DbResultSingle,
+    DbResultSinglePerm, Id,
+};
 
 use crate::error::BackendErrorKind::UserPasswordDoesNotMatch;
 use crate::repositories::user::models::{SelectManyFilter, UserLogin};
 use crate::schema::user::dsl::user;
 use crate::schema::user::{admin, deleted_at, email, name, surname};
 use diesel::{ExpressionMethods, QueryDsl};
-use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use diesel_async::pooled_connection::deadpool::Pool;
+use pbkdf2::Pbkdf2;
 use pbkdf2::password_hash::rand_core::OsRng;
 use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
-use pbkdf2::Pbkdf2;
 
 fn generate_salt() -> SaltString {
     SaltString::generate(&mut OsRng)
@@ -32,7 +35,6 @@ fn verify_password_hash(
     Ok(Pbkdf2.verify_password(&bytes, &parsed_hash).is_ok())
 }
 
-
 #[derive(Clone)]
 pub struct PgUserRepository {
     pg_pool: Pool<AsyncPgConnection>,
@@ -49,36 +51,46 @@ impl PgUserRepository {
                 if ret {
                     return Ok(u);
                 }
-                Err(DbError::from(BackendError::new(UserPasswordDoesNotMatch, "")))
+                Err(DbError::from(BackendError::new(
+                    UserPasswordDoesNotMatch,
+                    "",
+                )))
             }
             Err(e) => Err(e),
         }
     }
-
 }
 
 impl DbReadOne<Id, User> for PgUserRepository {
     async fn read_one(&self, params: &Id) -> DbResultSingle<User> {
         let mut conn = self.pg_pool.get().await?;
-        let u = user.find(&params)
-            .first::<User>(&mut conn)
-            .await?;
+        let u = user.find(&params).first::<User>(&mut conn).await?;
         Ok(u)
+    }
+
+    async fn read_one_auth(&self, params: &Id) -> DbResultSinglePerm<User> {
+        let u = self.read_one(params).await?;
+        Ok(DbDataPerm::new(u, vec![]))
     }
 }
 
-
-impl DbReadOne<UserLogin, User> for PgUserRepository {
-    async fn read_one(&self, params: &UserLogin) -> DbResultSingle<User> {
+impl PgUserRepository {
+    pub async fn login(&self, params: &UserLogin) -> DbResultSingle<User> {
         let mut conn = self.pg_pool.get().await?;
-        let u = user.filter(email.eq(&params.email))
+        let u = user
+            .filter(email.eq(&params.email))
             .first::<User>(&mut conn)
             .await?;
         if u.deleted_at.is_some() {
-            return Err(DbError::new(DbErrorKind::BackendError(BackendError::new(BackendErrorKind::Deleted, "User has been deleted")), ""))
+            return Err(DbError::new(
+                DbErrorKind::BackendError(BackendError::new(
+                    BackendErrorKind::Deleted,
+                    "User has been deleted",
+                )),
+                "",
+            ));
         }
         PgUserRepository::verify_password(u, &params.password)
-
     }
 }
 
@@ -105,11 +117,9 @@ impl DbReadMany<SelectManyFilter, User> for PgUserRepository {
         if let Some(d) = &params.deleted {
             if *d {
                 query = query.filter(deleted_at.is_not_null());
-            }
-            else {
+            } else {
                 query = query.filter(deleted_at.is_null());
             }
-
         }
 
         if let Some(pagination) = params.pagination {
@@ -122,5 +132,9 @@ impl DbReadMany<SelectManyFilter, User> for PgUserRepository {
 
         Ok(users)
     }
-}
 
+    async fn read_many_auth(&self, params: &SelectManyFilter) -> DbResultMultiplePerm<User> {
+        let users = self.read_many(params).await?;
+        Ok(DbDataPerm::new(users, vec![]))
+    }
+}

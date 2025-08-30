@@ -57,7 +57,6 @@ impl From<DbError> for AppError {
     }
 }
 
-
 impl From<ServerError> for AppError {
     fn from(value: ServerError) -> Self {
         Self::new(AppErrorKind::ServerError(value), "")

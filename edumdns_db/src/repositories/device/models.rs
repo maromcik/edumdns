@@ -1,14 +1,14 @@
+use crate::models::Device;
 use crate::repositories::common::{Id, Pagination};
 use diesel::{AsChangeset, Insertable};
+use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use edumdns_core::bincode_types::MacAddr;
-use crate::models::Device;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyDevices {
-    pub user_id: Id,
+    pub user_id: Option<Id>,
     pub probe_id: Option<Uuid>,
     pub mac: Option<[u8; 6]>,
     pub ip: Option<IpNetwork>,
@@ -18,6 +18,23 @@ pub struct SelectManyDevices {
 
 impl SelectManyDevices {
     pub fn new(
+        probe_id: Option<Uuid>,
+        mac: Option<[u8; 6]>,
+        ip: Option<IpNetwork>,
+        port: Option<i32>,
+        pagination: Option<Pagination>,
+    ) -> Self {
+        Self {
+            user_id: None,
+            probe_id,
+            mac,
+            ip,
+            port,
+            pagination,
+        }
+    }
+
+    pub fn new_with_user_id(
         user_id: Id,
         probe_id: Option<Uuid>,
         mac: Option<[u8; 6]>,
@@ -26,7 +43,7 @@ impl SelectManyDevices {
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
-            user_id,
+            user_id: Some(user_id),
             probe_id,
             mac,
             ip,
@@ -45,12 +62,7 @@ pub struct SelectSingleDevice {
 }
 
 impl SelectSingleDevice {
-    pub fn new(
-        probe_id: Uuid,
-        mac: [u8; 6],
-        ip: IpNetwork,
-
-    ) -> Self {
+    pub fn new(probe_id: Uuid, mac: [u8; 6], ip: IpNetwork) -> Self {
         Self {
             user_id: None,
             probe_id,
@@ -58,7 +70,7 @@ impl SelectSingleDevice {
             ip,
         }
     }
-    
+
     pub fn new_with_user_id(user_id: Id, probe_id: Uuid, mac: [u8; 6], ip: IpNetwork) -> Self {
         Self {
             user_id: Some(user_id),
@@ -88,7 +100,6 @@ impl CreateDevice {
         }
     }
 }
-
 
 #[derive(Serialize)]
 pub struct DeviceDisplay {

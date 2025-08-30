@@ -1,6 +1,6 @@
+use crate::repositories::common::Pagination;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
-use crate::repositories::common::Pagination;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyFilter {

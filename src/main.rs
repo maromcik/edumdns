@@ -6,7 +6,6 @@ use tracing_subscriber::EnvFilter;
 
 mod error;
 
-
 #[actix_web::main]
 async fn main() -> Result<(), AppError> {
     dotenvy::dotenv().ok();

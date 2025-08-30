@@ -1,17 +1,16 @@
 use crate::bincode_types::{IpNetwork, MacAddr};
 use crate::error::{CoreError, CoreErrorKind};
-use crate::metadata::{IpMetadata, MacMetadata, PortMetadata, VlanMetadata,
-};
+use crate::metadata::{IpMetadata, MacMetadata, PortMetadata, VlanMetadata};
 use crate::rewrite::{
-    rewrite_ipv4, rewrite_ipv6, rewrite_mac, rewrite_tcp, rewrite_udp, rewrite_vlan, DataLinkRewrite,
-    IpRewrite, PortRewrite,
+    DataLinkRewrite, IpRewrite, PortRewrite, rewrite_ipv4, rewrite_ipv6, rewrite_mac, rewrite_tcp,
+    rewrite_udp, rewrite_vlan,
 };
 use hickory_proto::op::Message;
 use hickory_proto::serialize::binary::{BinDecodable, BinEncodable};
 use pnet::packet::ethernet::{EtherType, EtherTypes, EthernetPacket, MutableEthernetPacket};
 use pnet::packet::icmp::MutableIcmpPacket;
 use pnet::packet::ip::{IpNextHeaderProtocol, IpNextHeaderProtocols};
-use pnet::packet::ipv4::{checksum, MutableIpv4Packet};
+use pnet::packet::ipv4::{MutableIpv4Packet, checksum};
 use pnet::packet::ipv6::MutableIpv6Packet;
 use pnet::packet::tcp::MutableTcpPacket;
 use pnet::packet::tcp::{ipv4_checksum as ipv4_checksum_tcp, ipv6_checksum as ipv6_checksum_tcp};
@@ -598,14 +597,15 @@ impl ApplicationPacket {
     pub fn from_bytes(port: i32, bytes: &[u8]) -> Result<ApplicationPacket, CoreError> {
         match port {
             53 | 5353 => Ok(ApplicationPacket {
-                application_packet_type: ApplicationPacketType::DnsPacket(Message::from_bytes(bytes)?),
+                application_packet_type: ApplicationPacketType::DnsPacket(Message::from_bytes(
+                    bytes,
+                )?),
             }),
             _ => Err(CoreError::new(
                 CoreErrorKind::PacketConstructionError,
                 "Unsupported application packet type",
             )),
         }
-
     }
 
     pub fn get_owned_payload(&self) -> Result<Vec<u8>, CoreError> {
@@ -616,9 +616,7 @@ impl ApplicationPacket {
 
     pub fn read_content(&mut self) -> String {
         match self.application_packet_type {
-            ApplicationPacketType::DnsPacket(ref mut packet) => {
-                packet.to_string()
-            },
+            ApplicationPacketType::DnsPacket(ref mut packet) => packet.to_string(),
         }
     }
 }

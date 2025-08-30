@@ -1,6 +1,15 @@
-use actix_files::Files;
+use crate::handlers::device::{
+    delete_request_packet_transmit, get_device, get_devices, request_packet_transmit,
+};
+use crate::handlers::group::{get_group, get_groups};
+use crate::handlers::index::index;
+use crate::handlers::packet::{get_packet, get_packets};
+use crate::handlers::probe::{
+    adopt, create_config, delete_config, forget, get_probe, get_probes, restart, save_config,
+};
+use crate::handlers::user::{login, login_user, logout_user};
 use crate::utils::AppState;
-use crate::handlers::index::{index};
+use actix_files::Files;
 use actix_web::web;
 use actix_web::web::ServiceConfig;
 use diesel_async::AsyncPgConnection;
@@ -11,11 +20,6 @@ use edumdns_db::repositories::location::repository::PgLocationRepository;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
-use crate::handlers::device::{get_devices, get_device, request_packet_transmit, delete_request_packet_transmit};
-use crate::handlers::group::{get_groups, get_group};
-use crate::handlers::packet::{get_packet, get_packets};
-use crate::handlers::probe::{adopt, create_config, delete_config, forget, get_probe, get_probes, restart, save_config};
-use crate::handlers::user::{login, login_user, logout_user};
 
 pub fn configure_webapp(
     pool: &Pool<AsyncPgConnection>,
@@ -32,7 +36,6 @@ pub fn configure_webapp(
         .app_data(web::Data::new(group_repo))
         .service(get_groups)
         .service(get_group);
-
 
     let user_scope = web::scope("user")
         .app_data(web::Data::new(user_repo))

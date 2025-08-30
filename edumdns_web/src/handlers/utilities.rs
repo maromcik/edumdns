@@ -1,7 +1,6 @@
 use crate::MIN_PASS_LEN;
 use actix_web::HttpRequest;
 
-
 #[macro_export]
 macro_rules! authorized {
     ($e:expr, $p:expr) => {{
@@ -23,34 +22,10 @@ pub fn validate_password(password: &str) -> bool {
             .chars()
             .fold((false, false, false, false), |(l, u, n, s), c| {
                 (
-                    {
-                        if c.is_lowercase() {
-                            true
-                        } else {
-                            l
-                        }
-                    },
-                    {
-                        if c.is_uppercase() {
-                            true
-                        } else {
-                            u
-                        }
-                    },
-                    {
-                        if c.is_numeric() {
-                            true
-                        } else {
-                            n
-                        }
-                    },
-                    {
-                        if !c.is_alphanumeric() {
-                            true
-                        } else {
-                            s
-                        }
-                    },
+                    { if c.is_lowercase() { true } else { l } },
+                    { if c.is_uppercase() { true } else { u } },
+                    { if c.is_numeric() { true } else { n } },
+                    { if !c.is_alphanumeric() { true } else { s } },
                 )
             });
     lower && upper && numeric && special && password.len() >= MIN_PASS_LEN

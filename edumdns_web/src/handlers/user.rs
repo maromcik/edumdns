@@ -1,12 +1,12 @@
+use crate::AppState;
 use crate::error::WebError;
 use crate::forms::user::{UserLoginForm, UserLoginReturnURL};
 use crate::templates::user::LoginTemplate;
-use crate::AppState;
 use actix_identity::Identity;
-use actix_web::http::header::LOCATION;
 use actix_web::http::StatusCode;
+use actix_web::http::header::LOCATION;
 use actix_web::web::Redirect;
-use actix_web::{get, post, web, HttpMessage, HttpRequest, HttpResponse, Responder};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, get, post, web};
 use edumdns_db::error::DbErrorKind::BackendError;
 use edumdns_db::repositories::common::DbReadOne;
 use edumdns_db::repositories::user::models::UserLogin;
@@ -49,7 +49,7 @@ pub async fn login_user(
     state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
     match user_repo
-        .read_one(&UserLogin::new(&form.email, &form.password))
+        .login(&UserLogin::new(&form.email, &form.password))
         .await
     {
         Ok(user) => {
@@ -59,8 +59,6 @@ pub async fn login_user(
                 .finish())
         }
         Err(db_error) => {
-            
-            
             if let BackendError(err) = db_error.error_kind {
                 let template_name = "user/login.html";
                 let env = state.jinja.acquire_env()?;
@@ -97,7 +95,7 @@ pub async fn logout_user(identity: Option<Identity>) -> Result<impl Responder, W
 //     let user = user_repo
 //         .read_one(&GetById::new(parse_user_id(&u)?))
 //         .await?;
-// 
+//
 //     let template_name = get_template_name(&request, "user/manage/profile");
 //     let env = state.jinja.acquire_env()?;
 //     let template = env.get_template(&template_name)?;
@@ -107,10 +105,10 @@ pub async fn logout_user(identity: Option<Identity>) -> Result<impl Responder, W
 //         success: true,
 //         logged_in: true,
 //     })?;
-// 
+//
 //     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 // }
-// 
+//
 // #[get("/manage/password")]
 // pub async fn user_manage_password_form(
 //     request: HttpRequest,
@@ -118,7 +116,7 @@ pub async fn logout_user(identity: Option<Identity>) -> Result<impl Responder, W
 //     state: web::Data<AppState>,
 // ) -> Result<impl Responder, WebError> {
 //     authorized!(identity, request.path());
-// 
+//
 //     let template_name = "user/manage/password/content.html";
 //     let env = state.jinja.acquire_env()?;
 //     let template = env.get_template(&template_name)?;
@@ -127,10 +125,10 @@ pub async fn logout_user(identity: Option<Identity>) -> Result<impl Responder, W
 //         success: true,
 //         logged_in: true,
 //     })?;
-// 
+//
 //     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 // }
-// 
+//
 // #[get("/manage/profile")]
 // pub async fn user_manage_profile_form(
 //     request: HttpRequest,
@@ -142,7 +140,7 @@ pub async fn logout_user(identity: Option<Identity>) -> Result<impl Responder, W
 //     let user = user_repo
 //         .read_one(&GetById::new(parse_user_id(&u)?))
 //         .await?;
-// 
+//
 //     let template_name = get_template_name(&request, "user/manage/profile");
 //     let env = state.jinja.acquire_env()?;
 //     let template = env.get_template(&template_name)?;
@@ -152,7 +150,7 @@ pub async fn logout_user(identity: Option<Identity>) -> Result<impl Responder, W
 //         success: true,
 //         logged_in: true,
 //     })?;
-// 
+//
 //     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 // }
 
@@ -174,13 +172,13 @@ pub async fn logout_user(identity: Option<Identity>) -> Result<impl Responder, W
 //         None,
 //     );
 //     let user = user_repo.update(&user_update).await?;
-// 
+//
 //     let Some(user_valid) = user.into_iter().next() else {
 //         return Err(WebError::from(BackendError::new(
 //             BackendErrorKind::UserUpdateParametersEmpty,
 //         )));
 //     };
-// 
+//
 //     let template_name = get_template_name(&request, "user/manage/profile");
 //     let env = state.jinja.acquire_env()?;
 //     let template = env.get_template(&template_name)?;
@@ -190,7 +188,7 @@ pub async fn logout_user(identity: Option<Identity>) -> Result<impl Responder, W
 //         success: true,
 //         logged_in: true,
 //     })?;
-// 
+//
 //     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 // }
 
@@ -203,29 +201,29 @@ pub async fn logout_user(identity: Option<Identity>) -> Result<impl Responder, W
 //     state: web::Data<AppState>,
 // ) -> Result<impl Responder, WebError> {
 //     let u = authorized!(identity, request.path());
-// 
+//
 //     let template_name = "user/manage/password/content.html";
 //     let env = state.jinja.acquire_env()?;
 //     let template = env.get_template(template_name)?;
-// 
+//
 //     if form.new_password != form.confirm_password {
 //         let context = UserManagePasswordTemplate {
 //             message: "Passwords do not match".to_string(),
 //             success: false,
 //             logged_in: true,
 //         };
-// 
+//
 //         let body = template.render(context)?;
-// 
+//
 //         return Ok(HttpResponse::Ok().content_type("text/html").body(body));
 //     }
-// 
+//
 //     if !validate_password(&form.new_password) {
 //         let context = UserManagePasswordTemplate::weak_password();
 //         let body = template.render(context)?;
 //         return Ok(HttpResponse::Ok().content_type("text/html").body(body));
 //     }
-// 
+//
 //     let update_status = user_repo
 //         .update_password(&UserUpdatePassword::new(
 //             &parse_user_id(&u)?,
@@ -233,7 +231,7 @@ pub async fn logout_user(identity: Option<Identity>) -> Result<impl Responder, W
 //             &form.new_password,
 //         ))
 //         .await;
-// 
+//
 //     if update_status.is_err() {
 //         let context = UserManagePasswordTemplate {
 //             message: "Old password incorrect".to_string(),
@@ -243,7 +241,7 @@ pub async fn logout_user(identity: Option<Identity>) -> Result<impl Responder, W
 //         let body = template.render(context)?;
 //         return Ok(HttpResponse::Ok().content_type("text/html").body(body));
 //     }
-// 
+//
 //     let context = UserManagePasswordTemplate {
 //         message: "Password successfully updated".to_string(),
 //         success: true,

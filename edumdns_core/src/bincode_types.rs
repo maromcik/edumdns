@@ -79,7 +79,7 @@ impl MacAddr {
 impl Serialize for MacAddr {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer
+        S: Serializer,
     {
         serializer.serialize_str(self.to_string().to_uppercase().as_str())
     }
@@ -98,7 +98,9 @@ impl<'de> Visitor<'de> for MacAddrVisitor {
     where
         E: serde::de::Error,
     {
-        let pnet_mac = v.parse::<pnet::datalink::MacAddr>().map_err(|e| serde::de::Error::custom(e.to_string()))?;
+        let pnet_mac = v
+            .parse::<pnet::datalink::MacAddr>()
+            .map_err(|e| serde::de::Error::custom(e.to_string()))?;
         Ok(MacAddr(pnet_mac))
     }
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
@@ -112,7 +114,7 @@ impl<'de> Visitor<'de> for MacAddrVisitor {
 impl<'de> Deserialize<'de> for MacAddr {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>
+        D: Deserializer<'de>,
     {
         deserializer.deserialize_string(MacAddrVisitor)
     }

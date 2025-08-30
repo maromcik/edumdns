@@ -12,19 +12,19 @@ use actix_web::web::{FormConfig, PayloadConfig};
 use actix_web::{App, HttpServer, cookie::Key};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
+use edumdns_core::app_packet::AppPacket;
 use log::{info, warn};
 use std::env;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
-use edumdns_core::app_packet::AppPacket;
 
 pub mod error;
 
+mod forms;
+mod handlers;
 mod init;
 mod templates;
 mod utils;
-mod handlers;
-mod forms;
 
 const DEFAULT_HOSTNAME: &str = "localhost";
 const DEFAULT_PORT: &str = "8000";
@@ -34,7 +34,10 @@ const PAYLOAD_LIMIT: usize = 16 * 1024 * 1024 * 1024; // 16GiB
 const FORM_LIMIT: usize = 16 * 1024 * 1024; // 16MiB
 const MIN_PASS_LEN: usize = 6;
 
-pub async fn web_init(pool: Pool<AsyncPgConnection>, command_channel: Sender<AppPacket>) ->  Result<(), WebError> {
+pub async fn web_init(
+    pool: Pool<AsyncPgConnection>,
+    command_channel: Sender<AppPacket>,
+) -> Result<(), WebError> {
     let _dir = env::temp_dir();
 
     let host = parse_host();
@@ -93,9 +96,9 @@ pub async fn web_init(pool: Pool<AsyncPgConnection>, command_channel: Sender<App
             .wrap(Logger::default())
             .configure(configure_webapp(&pool, app_state.clone()))
     })
-        .bind(host2)?
-        .run()
-        .await;
+    .bind(host2)?
+    .run()
+    .await;
     Ok(())
 }
 

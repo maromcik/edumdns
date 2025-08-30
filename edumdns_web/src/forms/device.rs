@@ -18,4 +18,3 @@ pub struct DevicePacketTransmitRequest {
     #[serde(default)]
     pub permanent: bool,
 }
-

@@ -162,6 +162,9 @@ impl From<ipnetwork::IpNetworkError> for CoreError {
 
 impl From<hickory_proto::ProtoError> for CoreError {
     fn from(value: hickory_proto::ProtoError) -> Self {
-        Self::new(CoreErrorKind::DnsPacketManipulationError, value.to_string().as_str())
+        Self::new(
+            CoreErrorKind::DnsPacketManipulationError,
+            value.to_string().as_str(),
+        )
     }
 }

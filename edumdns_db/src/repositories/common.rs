@@ -3,11 +3,9 @@ use diesel::backend::Backend;
 use diesel::deserialize::FromSql;
 use diesel::serialize::{Output, ToSql};
 use diesel::sql_types::SmallInt;
-use diesel::{deserialize, serialize, AsExpression, FromSqlRow};
+use diesel::{AsExpression, FromSqlRow, deserialize, serialize};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
-use uuid::Uuid;
-use crate::repositories::probe::models::SelectSingleProbe;
 
 const PAGINATION_ELEMENTS_PER_PAGE: i64 = 20;
 
@@ -16,10 +14,28 @@ pub type Permissions = Vec<Permission>;
 
 pub type DbResult<T> = Result<T, DbError>;
 
+pub type DbResultPerm<T> = Result<DbDataPerm<T>, DbError>;
+
 /// Syntax sugar type denoting a singular result from the database
 pub type DbResultSingle<T> = DbResult<T>;
 /// Syntax sugar type denoting multiple results from the database
 pub type DbResultMultiple<T> = DbResult<Vec<T>>;
+
+/// Syntax sugar type denoting a singular result from the database with permissions
+pub type DbResultSinglePerm<T> = DbResultPerm<T>;
+/// Syntax sugar type denoting multiple results from the database with permissions
+pub type DbResultMultiplePerm<T> = DbResultPerm<Vec<T>>;
+
+pub struct DbDataPerm<T> {
+    pub data: T,
+    pub permissions: Permissions,
+}
+
+impl<T> DbDataPerm<T> {
+    pub fn new(data: T, permissions: Permissions) -> Self {
+        Self { data, permissions }
+    }
+}
 
 pub trait DbCreate<Create, Data> {
     /// Generic call which creates a record in the database
@@ -52,6 +68,10 @@ pub trait DbReadOne<ReadOne, Data> {
     ///                          from the database)
     /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn read_one(&self, params: &ReadOne) -> impl Future<Output = DbResultSingle<Data>> + Send;
+    fn read_one_auth(
+        &self,
+        params: &ReadOne,
+    ) -> impl Future<Output = DbResultSinglePerm<Data>> + Send;
 }
 
 pub trait DbReadMany<ReadMany, Data> {
@@ -68,6 +88,10 @@ pub trait DbReadMany<ReadMany, Data> {
     ///                               database)
     /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn read_many(&self, params: &ReadMany) -> impl Future<Output = DbResultMultiple<Data>> + Send;
+    fn read_many_auth(
+        &self,
+        params: &ReadMany,
+    ) -> impl Future<Output = DbResultMultiplePerm<Data>> + Send;
 }
 
 pub trait DbUpdate<Update, Data> {
@@ -136,8 +160,7 @@ pub struct SelectSingleById {
 
 impl SelectSingleById {
     pub fn new(user_id: Id, id: Id) -> Self {
-        Self { user_id, id}
-
+        Self { user_id, id }
     }
 }
 
@@ -198,7 +221,7 @@ where
             5 => Ok(Permission::Delete),
             6 => Ok(Permission::Update),
             7 => Ok(Permission::Full),
-            x => Err(format!("Unrecognized variant {}", x).into())
+            x => Err(format!("Unrecognized variant {}", x).into()),
         }
     }
 }
@@ -221,4 +244,3 @@ where
         }
     }
 }
-

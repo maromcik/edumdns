@@ -1,14 +1,15 @@
 use crate::error::DbError;
 use crate::models::Location;
 use crate::repositories::common::{
-    DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultSingle, Id,
+    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
+    DbResultSingle, DbResultSinglePerm, Id,
 };
 use crate::repositories::location::models::{CreateLocation, SelectManyFilter};
+use crate::schema::location;
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
-use crate::schema::location;
 
 #[derive(Clone)]
 pub struct PgLocationRepository {
@@ -24,12 +25,17 @@ impl PgLocationRepository {
 impl DbReadOne<Id, Location> for PgLocationRepository {
     async fn read_one(&self, params: &Id) -> DbResultSingle<Location> {
         let mut conn = self.pg_pool.get().await?;
-        location::table
+        let l = location::table
             .find(params)
             .select(Location::as_select())
             .first(&mut conn)
-            .await
-            .map_err(DbError::from)
+            .await?;
+        Ok(l)
+    }
+
+    async fn read_one_auth(&self, params: &Id) -> DbResultSinglePerm<Location> {
+        let l = self.read_one(params).await?;
+        Ok(DbDataPerm::new(l, vec![]))
     }
 }
 
@@ -51,6 +57,10 @@ impl DbReadMany<SelectManyFilter, Location> for PgLocationRepository {
 
         Ok(locations)
     }
+    async fn read_many_auth(&self, params: &SelectManyFilter) -> DbResultMultiplePerm<Location> {
+        let locations = self.read_many(params).await?;
+        Ok(DbDataPerm::new(locations, vec![]))
+    }
 }
 
 impl DbCreate<CreateLocation, Location> for PgLocationRepository {
@@ -69,8 +79,7 @@ impl DbCreate<CreateLocation, Location> for PgLocationRepository {
 impl DbDelete<Id, Location> for PgLocationRepository {
     async fn delete(&self, params: &Id) -> DbResultMultiple<Location> {
         let mut conn = self.pg_pool.get().await?;
-        diesel::delete(location::table
-            .find(params))
+        diesel::delete(location::table.find(params))
             .get_results(&mut conn)
             .await
             .map_err(DbError::from)

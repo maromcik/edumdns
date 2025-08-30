@@ -6,12 +6,12 @@ use edumdns_core::bincode_types::{MacAddr, Uuid};
 use edumdns_core::connection::TcpConnectionMessage;
 use edumdns_core::metadata::ProbeMetadata;
 use log::{error, info, warn};
+use pnet::ipnetwork::IpNetwork;
 use std::env;
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::net::IpAddr;
 use std::time::Duration;
-use pnet::ipnetwork::IpNetwork;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::EnvFilter;
@@ -186,11 +186,22 @@ fn determine_mac(bind_ip: &str) -> Result<MacAddr, ProbeError> {
     let interfaces = pnet::datalink::interfaces();
     let Some(interface) = interfaces
         .iter()
-        .find(|i| i.is_up() && i.ips.iter().any(|ip| ip.ip() == probe_ip.ip())) else {
-        return Err(ProbeError::new(ProbeErrorKind::ArgumentError, format!("No interface found for IP: {} or interface is not up", bind_ip).as_str()))
+        .find(|i| i.is_up() && i.ips.iter().any(|ip| ip.ip() == probe_ip.ip()))
+    else {
+        return Err(ProbeError::new(
+            ProbeErrorKind::ArgumentError,
+            format!(
+                "No interface found for IP: {} or interface is not up",
+                bind_ip
+            )
+            .as_str(),
+        ));
     };
     let Some(mac) = interface.mac else {
-        return Err(ProbeError::new(ProbeErrorKind::ArgumentError, format!("No MAC address found for interface with IP: {}", bind_ip).as_str()))
+        return Err(ProbeError::new(
+            ProbeErrorKind::ArgumentError,
+            format!("No MAC address found for interface with IP: {}", bind_ip).as_str(),
+        ));
     };
 
     Ok(MacAddr(mac))

@@ -2,7 +2,9 @@ use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequestPacket, ProbePacket};
+use edumdns_core::app_packet::{
+    AppPacket, CommandPacket, PacketTransmitRequestPacket, ProbePacket,
+};
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_db::repositories::common::{DbCreate, DbReadMany, DbReadOne};
@@ -50,13 +52,15 @@ impl PacketStorage {
         while let Some(packet) = self.packet_receiver.recv().await {
             match packet {
                 AppPacket::Command(command) => match command {
-                    CommandPacket::TransmitDevicePackets(target) => self.transmit_device_packets(target),
+                    CommandPacket::TransmitDevicePackets(target) => {
+                        self.transmit_device_packets(target)
+                    }
                     CommandPacket::StopTransmitDevicePackets(target) => {
                         if let Some(t) = self.transmitter_tasks.lock().await.get(&target) {
                             t.transmitter_task.abort();
                         }
                         self.transmitter_tasks.lock().await.remove(&target);
-                    },
+                    }
                     CommandPacket::ReconnectProbe(id) => self.send_reconnect(id).await,
                     _ => {}
                 },

@@ -1,7 +1,7 @@
-use ipnetwork::IpNetwork;
-use serde::{Deserialize, Serialize};
 use edumdns_core::bincode_types::MacAddr;
 use edumdns_db::repositories::common::{Id, Pagination};
+use ipnetwork::IpNetwork;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProbeQuery {

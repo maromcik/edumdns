@@ -1,5 +1,5 @@
-use serde::Deserialize;
 use edumdns_db::repositories::common::Id;
+use serde::Deserialize;
 
 #[derive(Deserialize, Debug, Clone)]
 #[allow(dead_code)]

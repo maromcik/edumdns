@@ -49,10 +49,7 @@ impl From<diesel::result::Error> for DbError {
     fn from(error: diesel::result::Error) -> Self {
         match error {
             diesel::result::Error::NotFound => DbError::new(
-                DbErrorKind::BackendError(BackendError::new(
-                    BackendErrorKind::DoesNotExist,
-                    "",
-                )),
+                DbErrorKind::BackendError(BackendError::new(BackendErrorKind::DoesNotExist, "")),
                 error.to_string().as_str(),
             ),
             diesel::result::Error::DatabaseError(err, err_info) => match err {
@@ -99,8 +96,11 @@ impl From<diesel_async::pooled_connection::deadpool::PoolError> for DbError {
 impl From<pbkdf2::password_hash::Error> for DbError {
     fn from(value: pbkdf2::password_hash::Error) -> Self {
         Self::new(
-            DbErrorKind::BackendError(BackendError::new(BackendErrorKind::UserPasswordVerificationFailed, value.to_string().as_str())),
-            ""
+            DbErrorKind::BackendError(BackendError::new(
+                BackendErrorKind::UserPasswordVerificationFailed,
+                value.to_string().as_str(),
+            )),
+            "",
         )
     }
 }
@@ -143,14 +143,12 @@ impl BackendError {
     }
 }
 
-impl Display for BackendError{
+impl Display for BackendError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if self.message.is_empty() {
             write!(f, "Backend Error: {}", self.error_kind)
-        }
-        else {
+        } else {
             write!(f, "Backend Error: {}: {}", self.error_kind, self.message)
         }
-
     }
 }

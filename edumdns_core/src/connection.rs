@@ -1,4 +1,4 @@
-use crate::app_packet::{AppPacket};
+use crate::app_packet::AppPacket;
 use crate::error::{CoreError, CoreErrorKind};
 use bincode::{Decode, Encode};
 use bytes::{Bytes, BytesMut};
@@ -9,7 +9,7 @@ use std::time::Duration;
 use tokio::net::UdpSocket;
 use tokio::net::{TcpSocket, TcpStream};
 use tokio::sync::{mpsc, oneshot};
-use tokio::time::{timeout};
+use tokio::time::timeout;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 async fn run_tcp_connection_receive_loop(

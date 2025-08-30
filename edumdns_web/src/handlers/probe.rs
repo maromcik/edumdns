@@ -1,4 +1,4 @@
-use std::convert::identity;
+use crate::authorized;
 use crate::error::WebError;
 use crate::forms::probe::{ProbeConfigForm, ProbeQuery};
 use crate::handlers::helpers::{get_template_name, parse_user_id};
@@ -6,17 +6,19 @@ use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{delete, get, post, put, web, HttpRequest, HttpResponse};
-use log::error;
+use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, web};
 use edumdns_core::app_packet::{AppPacket, CommandPacket};
 use edumdns_core::error::CoreError;
+use edumdns_db::models::ProbeConfig;
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
 use edumdns_db::repositories::device::models::DeviceDisplay;
-use edumdns_db::repositories::probe::models::{SelectSingleProbe, ProbeDisplay, SelectManyProbes, SelectSingleProbeConfig, CreateProbeConfig};
+use edumdns_db::repositories::probe::models::{
+    CreateProbeConfig, ProbeDisplay, SelectManyProbes, SelectSingleProbe, SelectSingleProbeConfig,
+};
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
+use log::error;
+use std::convert::identity;
 use uuid::Uuid;
-use edumdns_db::models::ProbeConfig;
-use crate::authorized;
 
 #[get("")]
 pub async fn get_probes(
@@ -24,20 +26,23 @@ pub async fn get_probes(
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
-    query: web::Query<ProbeQuery>
+    query: web::Query<ProbeQuery>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
 
     let probes = probe_repo
-        .read_many(&SelectManyProbes::new(
+        .read_many_auth(&SelectManyProbes::new_with_user_id(
             parse_user_id(&i)?,
             query.owner_id,
             query.location_id,
             query.adopted,
             query.mac.map(|addr| addr.to_octets()),
             query.ip,
-            Some(Pagination::default_pagination(query.page))))
-        .await?
+            Some(Pagination::default_pagination(query.page)),
+        ))
+        .await?;
+    let probes_parsed = probes
+        .data
         .into_iter()
         .map(|(l, p)| (l, ProbeDisplay::from(p)))
         .collect();
@@ -47,7 +52,8 @@ pub async fn get_probes(
     let template = env.get_template(&template_name)?;
     let body = template.render(ProbeTemplate {
         logged_in: true,
-        probes,
+        permissions: probes.permissions,
+        probes: probes_parsed,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -63,8 +69,8 @@ pub async fn get_probe(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
 
-    let (probe, devices, configs) = probe_repo
-        .read_one(&SelectSingleProbe::new(parse_user_id(&i)?, path.0))
+    let probe = probe_repo
+        .read_one_auth(&SelectSingleProbe::new(parse_user_id(&i)?, path.0))
         .await?;
 
     let template_name = get_template_name(&request, "probe/detail");
@@ -72,9 +78,10 @@ pub async fn get_probe(
     let template = env.get_template(&template_name)?;
     let body = template.render(ProbeDetailTemplate {
         logged_in: true,
-        probe: ProbeDisplay::from(probe),
-        devices: devices.into_iter().map(DeviceDisplay::from).collect(),
-        configs
+        permissions: probe.permissions,
+        probe: ProbeDisplay::from(probe.data.0),
+        devices: probe.data.1.into_iter().map(DeviceDisplay::from).collect(),
+        configs: probe.data.2,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -158,12 +165,17 @@ pub async fn create_config(
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
     form: web::Form<ProbeConfigForm>,
-    path: web::Path<(Uuid, )>,
+    path: web::Path<(Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
     let probe_id = path.0;
     let i = authorized!(identity, request.path());
     let user_id = parse_user_id(&i)?;
-    probe_repo.create_probe_config(&CreateProbeConfig::new(probe_id, form.interface.clone(), form.filter.clone()), user_id).await?;
+    probe_repo
+        .create_probe_config(
+            &CreateProbeConfig::new(probe_id, form.interface.clone(), form.filter.clone()),
+            user_id,
+        )
+        .await?;
 
     state
         .command_channel
@@ -191,8 +203,15 @@ pub async fn save_config(
     let config_id = path.1;
     let i = authorized!(identity, request.path());
     let user_id = parse_user_id(&i)?;
-    probe_repo.delete_probe_config(&SelectSingleProbeConfig::new(user_id, config_id, probe_id)).await?;
-    probe_repo.create_probe_config(&CreateProbeConfig::new(probe_id, form.interface.clone(), form.filter.clone()), user_id).await?;
+    probe_repo
+        .delete_probe_config(&SelectSingleProbeConfig::new(user_id, config_id, probe_id))
+        .await?;
+    probe_repo
+        .create_probe_config(
+            &CreateProbeConfig::new(probe_id, form.interface.clone(), form.filter.clone()),
+            user_id,
+        )
+        .await?;
 
     state
         .command_channel
@@ -213,12 +232,18 @@ pub async fn delete_config(
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
-    path: web::Path<(Uuid,Id,)>,
+    path: web::Path<(Uuid, Id)>,
 ) -> Result<HttpResponse, WebError> {
     let probe_id = path.0;
     let config_id = path.1;
     let i = authorized!(identity, request.path());
-    probe_repo.delete_probe_config(&SelectSingleProbeConfig::new(parse_user_id(&i)?, config_id, probe_id)).await?;
+    probe_repo
+        .delete_probe_config(&SelectSingleProbeConfig::new(
+            parse_user_id(&i)?,
+            config_id,
+            probe_id,
+        ))
+        .await?;
 
     state
         .command_channel

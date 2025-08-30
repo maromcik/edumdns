@@ -1,3 +1,4 @@
+use crate::authorized;
 use crate::error::WebError;
 use crate::forms::device::{DevicePacketTransmitRequest, DeviceQuery};
 use crate::forms::packet::PacketQuery;
@@ -6,19 +7,22 @@ use crate::templates::device::{DeviceDetailTemplate, DeviceTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, get, post, web, delete};
+use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
 use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequestPacket};
 use edumdns_core::error::CoreError;
 use edumdns_db::models::PacketTransmitRequest;
-use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, SelectSingleById, Id, Pagination};
-use edumdns_db::repositories::device::models::{CreatePacketTransmitRequest, DeviceDisplay, SelectManyDevices};
+use edumdns_db::repositories::common::{
+    DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, Id, Pagination, SelectSingleById,
+};
+use edumdns_db::repositories::device::models::{
+    CreatePacketTransmitRequest, DeviceDisplay, SelectManyDevices,
+};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
+use edumdns_db::repositories::probe::models::SelectSingleProbe;
 use ipnetwork::IpNetwork;
 use log::{error, warn};
-use edumdns_db::repositories::probe::models::SelectSingleProbe;
-use crate::authorized;
 
 #[get("")]
 pub async fn get_devices(
@@ -30,7 +34,7 @@ pub async fn get_devices(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let devices = device_repo
-        .read_many(&SelectManyDevices::new(
+        .read_many_auth(&SelectManyDevices::new_with_user_id(
             parse_user_id(&i)?,
             query.probe_id,
             query.mac,
@@ -38,7 +42,9 @@ pub async fn get_devices(
             query.port,
             Some(Pagination::default_pagination(query.page)),
         ))
-        .await?
+        .await?;
+    let devices_parsed = devices
+        .data
         .into_iter()
         .map(|(p, d)| (p, DeviceDisplay::from(d)))
         .collect();
@@ -48,7 +54,8 @@ pub async fn get_devices(
     let template = env.get_template(&template_name)?;
     let body = template.render(DeviceTemplate {
         logged_in: true,
-        devices,
+        permissions: devices.permissions,
+        devices: devices_parsed,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -66,14 +73,14 @@ pub async fn get_device(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let params = SelectSingleById::new(parse_user_id(&i)?, path.0);
-    let device = device_repo.read_one(&params).await?;
+    let device = device_repo.read_one_auth(&params).await?;
 
     let packets = packet_repo
         .read_many(&SelectManyPackets::new(
-            Some(device.probe_id),
-            Some(device.mac),
+            Some(device.data.probe_id),
+            Some(device.data.mac),
             None,
-            Some(device.ip),
+            Some(device.data.ip),
             None,
             None,
             None,
@@ -85,14 +92,17 @@ pub async fn get_device(
         .filter_map(Result::ok)
         .collect();
 
-    let packet_transmit_requests = device_repo.read_packet_transmit_requests(&device.id).await?;
+    let packet_transmit_requests = device_repo
+        .read_packet_transmit_requests(&device.data.id)
+        .await?;
 
     let template_name = get_template_name(&request, "device/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(DeviceDetailTemplate {
         logged_in: true,
-        device: DeviceDisplay::from(device),
+        permissions: device.permissions,
+        device: DeviceDisplay::from(device.data),
         packets,
         packet_transmit_requests,
     })?;
@@ -111,18 +121,18 @@ pub async fn request_packet_transmit(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let params = SelectSingleById::new(parse_user_id(&i)?, path.0);
-    let device = device_repo.read_one(&params).await?;
+    let device = device_repo.read_one_auth(&params).await?;
 
     let packet = PacketTransmitRequestPacket::new(
-        device.probe_id,
-        device.mac,
-        device.ip,
+        device.data.probe_id,
+        device.data.mac,
+        device.data.ip,
         &form.target_ip,
         form.target_port,
     );
 
     let request = CreatePacketTransmitRequest {
-        device_id: device.id,
+        device_id: device.data.id,
         target_ip: form
             .target_ip
             .parse::<IpNetwork>()
@@ -134,11 +144,11 @@ pub async fn request_packet_transmit(
     let packet_transmit_request = device_repo.create(&request).await?;
     if !form.permanent {
         tokio::spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_secs(
-                device.duration as u64,
-            ))
-                .await;
-            if let Err(e) = device_repo.delete_packet_transmit_request(&packet_transmit_request.id).await {
+            tokio::time::sleep(std::time::Duration::from_secs(device.data.duration as u64)).await;
+            if let Err(e) = device_repo
+                .delete_packet_transmit_request(&packet_transmit_request.id)
+                .await
+            {
                 warn!(
                     "Could not delete packet transmit request {:?}: {}",
                     request,
@@ -157,47 +167,47 @@ pub async fn request_packet_transmit(
         .map_err(CoreError::from)?;
 
     Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}", device.id)))
+        .insert_header((LOCATION, format!("/device/{}", device.data.id)))
         .finish())
 }
-
 
 #[delete("{device_id}/transmit/{request_id}")]
 pub async fn delete_request_packet_transmit(
     request: HttpRequest,
     identity: Option<Identity>,
     device_repo: web::Data<PgDeviceRepository>,
-    path: web::Path<(Id,Id)>,
+    path: web::Path<(Id, Id)>,
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
     let device_id = path.0;
     let request_id = path.1;
     let i = authorized!(identity, request.path());
     let params = SelectSingleById::new(parse_user_id(&i)?, path.0);
-    let device = device_repo.read_one(&params).await?;
+    let device = device_repo.read_one_auth(&params).await?;
 
-
-    let request = device_repo.delete_packet_transmit_request(&request_id).await?;
+    let request = device_repo
+        .delete_packet_transmit_request(&request_id)
+        .await?;
 
     let Some(r) = request.first() else {
         return Ok(HttpResponse::SeeOther()
             .insert_header((LOCATION, format!("/device/{}", device_id)))
-            .finish())
+            .finish());
     };
 
     let packet = PacketTransmitRequestPacket::new(
-        device.probe_id,
-        device.mac,
-        device.ip,
+        device.data.probe_id,
+        device.data.mac,
+        device.data.ip,
         &r.target_ip.ip().to_string(),
         r.target_port as u16,
     );
 
     state
         .command_channel
-        .send(AppPacket::Command(CommandPacket::StopTransmitDevicePackets(
-            packet,
-        )))
+        .send(AppPacket::Command(
+            CommandPacket::StopTransmitDevicePackets(packet),
+        ))
         .await
         .map_err(CoreError::from)?;
 
@@ -205,7 +215,6 @@ pub async fn delete_request_packet_transmit(
         .insert_header((LOCATION, format!("/device/{}", device_id)))
         .finish())
 }
-
 
 // #[get("{id}/transmit")]
 // pub async fn device_request_packet_transmit_auto(

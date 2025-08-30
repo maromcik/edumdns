@@ -1,16 +1,17 @@
+use crate::models::Packet;
 use crate::repositories::common::{Id, Pagination};
 use diesel::{AsChangeset, Insertable};
+use edumdns_core::bincode_types::MacAddr;
+use edumdns_core::error::CoreError;
+use edumdns_core::network_packet::ApplicationPacket;
 use ipnetwork::IpNetwork;
 use log::warn;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use edumdns_core::bincode_types::MacAddr;
-use edumdns_core::error::CoreError;
-use edumdns_core::network_packet::ApplicationPacket;
-use crate::models::Packet;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyPackets {
+    pub user_id: Option<Id>,
     pub probe_id: Option<Uuid>,
     pub src_mac: Option<[u8; 6]>,
     pub dst_mac: Option<[u8; 6]>,
@@ -33,6 +34,31 @@ impl SelectManyPackets {
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
+            user_id: None,
+            probe_id,
+            src_mac,
+            dst_mac,
+            src_addr,
+            dst_addr,
+            src_port,
+            dst_port,
+            pagination,
+        }
+    }
+
+    pub fn new_with_user_id(
+        user_id: Id,
+        probe_id: Option<Uuid>,
+        src_mac: Option<[u8; 6]>,
+        dst_mac: Option<[u8; 6]>,
+        src_addr: Option<IpNetwork>,
+        dst_addr: Option<IpNetwork>,
+        src_port: Option<i32>,
+        dst_port: Option<i32>,
+        pagination: Option<Pagination>,
+    ) -> Self {
+        Self {
+            user_id: Some(user_id),
             probe_id,
             src_mac,
             dst_mac,
@@ -47,19 +73,30 @@ impl SelectManyPackets {
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectSinglePacket {
+    pub user_id: Option<Id>,
     pub probe_id: Uuid,
     pub src_mac: [u8; 6],
     pub src_addr: IpNetwork,
 }
 
 impl SelectSinglePacket {
-    pub fn new(
+    pub fn new(probe_id: Uuid, src_mac: [u8; 6], src_addr: IpNetwork) -> Self {
+        Self {
+            user_id: None,
+            probe_id,
+            src_mac,
+            src_addr,
+        }
+    }
+
+    pub fn new_with_user_id(
+        user_id: Id,
         probe_id: Uuid,
         src_mac: [u8; 6],
         src_addr: IpNetwork,
-
     ) -> Self {
         Self {
+            user_id: Some(user_id),
             probe_id,
             src_mac,
             src_addr,
@@ -104,7 +141,6 @@ impl CreatePacket {
     }
 }
 
-
 #[derive(Serialize)]
 pub struct PacketDisplay {
     pub id: Id,
@@ -124,8 +160,8 @@ impl PacketDisplay {
             Ok(p) => p,
             Err(e) => {
                 warn!("Unable to parse packet payload: {}", e);
-                return Err(e)
-            },
+                return Err(e);
+            }
         };
         Ok(Self {
             id: value.id,

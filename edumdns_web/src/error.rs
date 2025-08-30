@@ -3,6 +3,8 @@ use crate::templates::error::GenericError;
 use actix_web::http::StatusCode;
 use actix_web::http::header::ContentType;
 use actix_web::{HttpResponse, ResponseError};
+use edumdns_core::error::CoreError;
+use edumdns_db::error::{BackendErrorKind, DbError, DbErrorKind};
 use image::ImageError;
 use minijinja::{Environment, path_loader};
 use rexiv2::Rexiv2Error;
@@ -13,8 +15,6 @@ use std::num::ParseIntError;
 use std::str::ParseBoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
-use edumdns_core::error::CoreError;
-use edumdns_db::error::{BackendErrorKind, DbError, DbErrorKind};
 
 /// User facing error type
 #[derive(Error, Debug, Clone)]
@@ -177,7 +177,6 @@ impl From<ParseIntError> for WebError {
     }
 }
 
-
 impl ResponseError for WebError {
     fn status_code(&self) -> StatusCode {
         match self.error_kind {
@@ -186,20 +185,18 @@ impl ResponseError for WebError {
             WebErrorKind::Conflict => StatusCode::CONFLICT,
             WebErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
             WebErrorKind::CoreError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            | WebErrorKind::DbError(ref db_e) => match &db_e.error_kind {
-                DbErrorKind::BackendError(be_e) => {
-                    match &be_e.error_kind {
-                        BackendErrorKind::DoesNotExist => StatusCode::NOT_FOUND,
-                        BackendErrorKind::Deleted => StatusCode::BAD_REQUEST,
-                        BackendErrorKind::UpdateParametersEmpty => StatusCode::BAD_REQUEST,
-                        BackendErrorKind::UserPasswordDoesNotMatch => StatusCode::UNAUTHORIZED,
-                        BackendErrorKind::UserPasswordVerificationFailed => StatusCode::UNAUTHORIZED,
-                        BackendErrorKind::PermissionDenied => StatusCode::UNAUTHORIZED,
-                    }
-                }
+            WebErrorKind::DbError(ref db_e) => match &db_e.error_kind {
+                DbErrorKind::BackendError(be_e) => match &be_e.error_kind {
+                    BackendErrorKind::DoesNotExist => StatusCode::NOT_FOUND,
+                    BackendErrorKind::Deleted => StatusCode::BAD_REQUEST,
+                    BackendErrorKind::UpdateParametersEmpty => StatusCode::BAD_REQUEST,
+                    BackendErrorKind::UserPasswordDoesNotMatch => StatusCode::UNAUTHORIZED,
+                    BackendErrorKind::UserPasswordVerificationFailed => StatusCode::UNAUTHORIZED,
+                    BackendErrorKind::PermissionDenied => StatusCode::UNAUTHORIZED,
+                },
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
-            }
-            | WebErrorKind::TemplatingError
+            },
+            WebErrorKind::TemplatingError
             | WebErrorKind::InternalServerError
             | WebErrorKind::IdentityError
             | WebErrorKind::SessionError
@@ -220,7 +217,6 @@ impl From<ParseBoolError> for WebError {
         Self::new(WebErrorKind::ParseError, value.to_string().as_str())
     }
 }
-
 
 fn render_generic(error: &WebError) -> HttpResponse {
     let mut env = Environment::new();

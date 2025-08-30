@@ -12,6 +12,8 @@ use crate::repositories::probe::models::SelectSingleProbe;
 const PAGINATION_ELEMENTS_PER_PAGE: i64 = 20;
 
 pub type Id = i64;
+pub type Permissions = Vec<Permission>;
+
 pub type DbResult<T> = Result<T, DbError>;
 
 /// Syntax sugar type denoting a singular result from the database

@@ -7,18 +7,6 @@
                class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
                 ←
             </a>
-            {% if probe.location_id %}
-            <a href="/location/{{ probe.location_id }}"
-               class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
-                View location
-            </a>
-            {% endif %}
-            {% if probe.owner_id %}
-            <a href="/user/{{ probe.owner_id }}"
-               class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
-                View owner
-            </a>
-            {% endif %}
             {% if logged_in %}
             <button
                     class="ml-2 bg-acc-l rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
@@ -65,6 +53,18 @@
                 <span class="font-mono text-code"><code>{{ probe.id }}</code></span>
             </div>
 
+            <!-- Adopted -->
+            <div class="flex flex-col">
+                <span class="text-xs uppercase tracking-wide text-sat-m">Adopted</span>
+                <span class="font-mono text-sat-xl">
+          {% if probe.adopted %}
+            <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
+          {% else %}
+            <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
+          {% endif %}
+        </span>
+            </div>
+
             <!-- MAC -->
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">MAC</span>
@@ -75,19 +75,6 @@
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">IP</span>
                 <span class="font-mono text-code"><code>{{ probe.ip }}</code></span>
-            </div>
-
-            <!-- Owner ID -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Owner</span>
-                <span class="font-mono text-sat-xl">
-          {% if probe.owner_id is not none %}
-            <a class="underline text-acc hover:text-acc-xl"
-               href="/user/{{ probe.owner_id }}"><code>{{ probe.owner_id }}</code></a>
-          {% else %}
-            <span class="text-muted-foreground">—</span>
-          {% endif %}
-        </span>
             </div>
 
             <!-- Location ID -->
@@ -102,17 +89,7 @@
         </span>
             </div>
 
-            <!-- Adopted -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Adopted</span>
-                <span class="font-mono text-sat-xl">
-          {% if probe.adopted %}
-            <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
-          {% else %}
-            <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
-          {% endif %}
-        </span>
-            </div>
+
         </div>
     </div>
 
@@ -169,25 +146,25 @@
                           hx-target-error="#content-area"
                           hx-push-url="/probe/{{ probe.id }}"
                           class="inline-flex">
-                    <button
-                            type="submit"
-                            class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-green-700 bg-green-50 hover:bg-green-200 text-primary hover:bg-muted/10 transition-colors"
-                            aria-label="Save config"
-                            title="Save"
-                    >
-                        <i class="fa-solid fa-floppy-disk mr-1.5"></i>
-                    </button>
-                    <button
-                            class="ml-2 inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-red-700 bg-red-50 hover:bg-red-200 transition-colors"
-                            type="button"
-                            hx-delete="/probe/{{ probe.id }}/config/{{ cfg.id }}"
-                            hx-target-error="#content-area"
-                            hx-push-url="/probe/{{ probe.id }}"
-                            aria-label="Delete config"
-                            title="Delete"
-                    >
-                        <i class="fa-solid fa-trash mr-1.5"></i>
-                    </button>
+                        <button
+                                type="submit"
+                                class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-green-700 bg-green-50 hover:bg-green-200 text-primary hover:bg-muted/10 transition-colors"
+                                aria-label="Save config"
+                                title="Save"
+                        >
+                            <i class="fa-solid fa-floppy-disk mr-1.5"></i>
+                        </button>
+                        <button
+                                class="ml-2 inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-red-700 bg-red-50 hover:bg-red-200 transition-colors"
+                                type="button"
+                                hx-delete="/probe/{{ probe.id }}/config/{{ cfg.id }}"
+                                hx-target-error="#content-area"
+                                hx-push-url="/probe/{{ probe.id }}"
+                                aria-label="Delete config"
+                                title="Delete"
+                        >
+                            <i class="fa-solid fa-trash mr-1.5"></i>
+                        </button>
                     </form>
                 </td>
             </tr>

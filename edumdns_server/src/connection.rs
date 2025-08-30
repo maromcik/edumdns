@@ -185,7 +185,7 @@ impl ConnectionManager {
     ) -> Result<ProbeConfigPacket, ServerError> {
         let config: Vec<ProbeConfigElement> = self
             .pg_probe_repository
-            .get_probe_config(&probe_metadata.id.0)
+            .get_probe_configs_no_auth(&probe_metadata.id.0)
             .await?
             .into_iter()
             .map(|c| ProbeConfigElement::new(c.interface, c.filter))

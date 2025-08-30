@@ -12,3 +12,11 @@ pub struct ProbeQuery {
     pub mac: Option<MacAddr>,
     pub ip: Option<IpNetwork>,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ProbeConfigForm {
+    pub interface: String,
+    // Option is easiest to handle blank filters (treat empty as None)
+    #[serde(default)]
+    pub filter: Option<String>,
+}

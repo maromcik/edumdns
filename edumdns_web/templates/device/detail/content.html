@@ -4,10 +4,7 @@
     <h1 class="text-4xl font-semibold text-sat-xl">Device {{ device.id }}</h1>
     <div class="flex items-center gap-2">
       <a href="/device" class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
-        ← Back to devices
-      </a>
-      <a href="/probe/{{ device.probe_id }}" class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
-        View probe
+        ←
       </a>
     </div>
   </div>
@@ -120,6 +117,7 @@
                 class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
                 hx-post="/device/{{ device.id }}/transmit"
                 hx-target="#content-area"
+                hx-error-target="#content-area"
         >
           Transmit
         </button>
@@ -154,9 +152,9 @@
                       hx-delete="/device/{{ device.id }}/transmit/{{ r.id }}"
                       hx-vals='{"target_ip":"{{ r.target_ip }}","target_port":"{{ r.target_port }}"}'
                       hx-target="#content-area"
+                      hx-error-target="#content-area"
               >
-                <i class="fa fa-trash"></i>
-                Delete
+                <i class="fa fa-trash text-sat-l"></i>
               </button>
             </div>
           </td>
@@ -190,7 +188,6 @@
           <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Dst Addr</th>
           <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Src Port</th>
           <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Dst Port</th>
-          <th scope="col" class="px-4 py-3 text-right text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-base">
@@ -207,11 +204,6 @@
           <td class="px-4 py-3 text-sm text-sat-l">{{ packet.dst_addr }}</td>
           <td class="px-4 py-3 text-sm text-sat-l">{{ packet.src_port }}</td>
           <td class="px-4 py-3 text-sm text-sat-l">{{ packet.dst_port }}</td>
-          <td class="px-4 py-3 text-right">
-            <a href="/packet/{{ packet.id }}" class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
-              View
-            </a>
-          </td>
         </tr>
         {% endfor %}
       </tbody>

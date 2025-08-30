@@ -5,3 +5,8 @@ DROP INDEX IF EXISTS "ProbeConfig_probe_id";
 DROP INDEX IF EXISTS "GroupProbePermission_group_id_probe_id";
 DROP INDEX IF EXISTS "Device_probe_id_mac";
 DROP INDEX IF EXISTS "Packet_device_id";
+DROP INDEX IF EXISTS "Probe_owner_id";
+DROP INDEX IF EXISTS "Probe_location_id";
+DROP INDEX IF EXISTS "ProbeConfig_probe_id_if_filter";
+DROP INDEX IF EXISTS "Device_probe_id_mac_ip";
+DROP INDEX IF EXISTS "Packet_probe_id_mac_ip";

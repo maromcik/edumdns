@@ -15,7 +15,6 @@
                 <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Port</th>
                 <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Duration</th>
                 <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Interval</th>
-                <th scope="col" class="px-4 py-3 text-right text-xs text-sat-l  font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
             </tr>
             </thead>
             <tbody class="divide-y divide-base">
@@ -47,17 +46,6 @@
                 </td>
                 <td class="px-4 py-3 text-sm text-sat-l">
                     {{ device[1].interval }}
-                </td>
-
-                <td class="px-4 py-3 text-right">
-                    <a href="/device/{{ device[1].id }}" class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
-                        View
-                    </a>
-                    {% if device[0] %}
-                    <a href="/probe/{{ device[0].id }}" class="ml-2 inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
-                        Probe
-                    </a>
-                    {% endif %}
                 </td>
             </tr>
             {% endfor %}

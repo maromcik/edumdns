@@ -35,7 +35,7 @@ pub async fn validate_permissions(
             .load::<GroupProbePermission>(&mut conn)
             .await
             .map_err(|_| no_permission_error(&user_entry.email, permission))?;
-        if permissions.iter().any(|p| p.permission == permission) {
+        if permissions.iter().any(|p| p.permission == permission || p.permission == Permission::Full) {
             return Ok(permissions.into_iter().map(|p| p.permission).collect());
         }
         return Err(no_permission_error(&user_entry.email, permission));

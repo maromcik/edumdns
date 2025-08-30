@@ -595,10 +595,17 @@ impl ApplicationPacket {
             _ => None,
         }
     }
-    pub fn from_bytes(bytes: &[u8]) -> Result<ApplicationPacket, CoreError> {
-        Ok(ApplicationPacket {
-            application_packet_type: ApplicationPacketType::DnsPacket(Message::from_bytes(bytes)?),
-        })
+    pub fn from_bytes(port: i32, bytes: &[u8]) -> Result<ApplicationPacket, CoreError> {
+        match port {
+            53 | 5353 => Ok(ApplicationPacket {
+                application_packet_type: ApplicationPacketType::DnsPacket(Message::from_bytes(bytes)?),
+            }),
+            _ => Err(CoreError::new(
+                CoreErrorKind::PacketConstructionError,
+                "Unsupported application packet type",
+            )),
+        }
+
     }
 
     pub fn get_owned_payload(&self) -> Result<Vec<u8>, CoreError> {

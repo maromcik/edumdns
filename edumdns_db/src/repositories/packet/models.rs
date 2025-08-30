@@ -1,6 +1,7 @@
 use crate::repositories::common::{Id, Pagination};
 use diesel::{AsChangeset, Insertable};
 use ipnetwork::IpNetwork;
+use log::warn;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use edumdns_core::bincode_types::MacAddr;
@@ -119,8 +120,13 @@ pub struct PacketDisplay {
 
 impl PacketDisplay {
     pub fn from(value: Packet) -> Result<PacketDisplay, CoreError> {
-        let mut payload = ApplicationPacket::from_bytes(&value.payload)?;
-
+        let mut payload = match ApplicationPacket::from_bytes(value.dst_port, &value.payload) {
+            Ok(p) => p,
+            Err(e) => {
+                warn!("Unable to parse packet payload: {}", e);
+                return Err(e)
+            },
+        };
         Ok(Self {
             id: value.id,
             probe_id: value.probe_id,

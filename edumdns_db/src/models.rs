@@ -68,6 +68,7 @@ pub struct Probe {
 #[diesel(table_name = crate::schema::probe_config)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ProbeConfig {
+    pub id: Id,
     pub probe_id: Uuid,
     pub interface: String,
     pub filter: Option<String>,
@@ -87,7 +88,7 @@ pub struct Device {
     pub interval: i64,
 }
 
-#[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable, Associations)]
+#[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable, Associations, Debug)]
 #[diesel(table_name = crate::schema::packet)]
 #[diesel(belongs_to(Probe))]
 #[diesel(check_for_backend(diesel::pg::Pg))]

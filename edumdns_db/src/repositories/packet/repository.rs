@@ -92,7 +92,7 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
             .select(Packet::as_select())
             .load::<Packet>(&mut conn)
             .await?;
-
+        println!("LEN {}", packets.len());
         Ok(packets)
     }
 }

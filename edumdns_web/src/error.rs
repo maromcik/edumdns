@@ -14,7 +14,7 @@ use std::str::ParseBoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
 use edumdns_core::error::CoreError;
-use edumdns_db::error::DbError;
+use edumdns_db::error::{BackendErrorKind, DbError, DbErrorKind};
 
 /// User facing error type
 #[derive(Error, Debug, Clone)]
@@ -185,8 +185,20 @@ impl ResponseError for WebError {
             WebErrorKind::NotFound => StatusCode::NOT_FOUND,
             WebErrorKind::Conflict => StatusCode::CONFLICT,
             WebErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
-            WebErrorKind::CoreError(_)
-            | WebErrorKind::DbError(_)
+            WebErrorKind::CoreError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            | WebErrorKind::DbError(ref db_e) => match &db_e.error_kind {
+                DbErrorKind::BackendError(be_e) => {
+                    match &be_e.error_kind {
+                        BackendErrorKind::DoesNotExist => StatusCode::NOT_FOUND,
+                        BackendErrorKind::Deleted => StatusCode::BAD_REQUEST,
+                        BackendErrorKind::UpdateParametersEmpty => StatusCode::BAD_REQUEST,
+                        BackendErrorKind::UserPasswordDoesNotMatch => StatusCode::UNAUTHORIZED,
+                        BackendErrorKind::UserPasswordVerificationFailed => StatusCode::UNAUTHORIZED,
+                        BackendErrorKind::PermissionDenied => StatusCode::UNAUTHORIZED,
+                    }
+                }
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }
             | WebErrorKind::TemplatingError
             | WebErrorKind::InternalServerError
             | WebErrorKind::IdentityError

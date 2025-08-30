@@ -84,7 +84,8 @@ diesel::table! {
 }
 
 diesel::table! {
-    probe_config (probe_id, interface) {
+    probe_config (id) {
+        id -> Int8,
         probe_id -> Uuid,
         interface -> Text,
         filter -> Nullable<Text>,

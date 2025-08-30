@@ -108,3 +108,37 @@ impl EntityWithId for SelectSingleProbe {
         self.user_id
     }
 }
+
+pub struct SelectSingleProbeConfig {
+    pub user_id: Id,
+    pub id: Id,
+    pub probe_id: Uuid,
+}
+
+impl SelectSingleProbeConfig {
+    pub fn new(user_id: Id, id: Id, probe_id: Uuid) -> Self {
+        Self {
+            user_id,
+            id,
+            probe_id,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, AsChangeset, Insertable)]
+#[diesel(table_name = crate::schema::probe_config)]
+pub struct CreateProbeConfig {
+    pub probe_id: Uuid,
+    pub interface: String,
+    pub filter: Option<String>,
+}
+
+impl CreateProbeConfig {
+    pub fn new(probe_id: Uuid, interface: String, filter: Option<String>) -> Self {
+        Self {
+            probe_id,
+            interface,
+            filter,
+        }
+    }
+}

@@ -101,7 +101,7 @@ pub async fn get_device(
 }
 
 #[post("{id}/transmit")]
-pub async fn device_request_packet_transmit(
+pub async fn request_packet_transmit(
     request: HttpRequest,
     identity: Option<Identity>,
     device_repo: web::Data<PgDeviceRepository>,
@@ -163,7 +163,7 @@ pub async fn device_request_packet_transmit(
 
 
 #[delete("{device_id}/transmit/{request_id}")]
-pub async fn delete_device_request_packet_transmit(
+pub async fn delete_request_packet_transmit(
     request: HttpRequest,
     identity: Option<Identity>,
     device_repo: web::Data<PgDeviceRepository>,

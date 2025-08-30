@@ -1,179 +1,319 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-6">
-  <!-- Header -->
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-4xl font-semibold text-sat-xl">Probe {{ probe.id }}</h1>
-    <div class="flex items-center gap-2">
-      <a href="/probe" class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
-        ← Back to probes
-      </a>
-      {% if probe.location_id %}
-      <a href="/location/{{ probe.location_id }}" class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
-        View location
-      </a>
-      {% endif %}
-      {% if probe.owner_id %}
-      <a href="/user/{{ probe.owner_id }}" class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
-        View owner
-      </a>
-      {% endif %}
-        {% if logged_in %}
-        <button
-                class="ml-2 bg-acc-l rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
-                hx-get="/probe/{{ probe.id }}/restart"
-                hx-confirm="Restart this probe now?"
-                hx-target="#content-area"
-                hx-target-error="#content-area"
-                hx-push-url="/probe/{{ probe.id }}"
-        >
-            Restart
-        </button>
-        {% if probe.adopted %}
-        <button
-                class="ml-2 bg-red-400 hover:bg-red-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
-                hx-get="/probe/{{ probe.id }}/forget"
-                hx-confirm="Forget this probe? Devices will remain, but the probe will be marked as not adopted."
-                hx-target="#content-area"
-                hx-target-error="#content-area"
-                hx-push-url="/probe/{{ probe.id }}"
-        >
-            Forget
-        </button>
-        {% else %}
-        <button
-                class="ml-2 bg-acc bg-acc:hover rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
-                hx-get="/probe/{{ probe.id }}/adopt"
-                hx-target="#content-area"
-                hx-target-error="#content-area"
-                hx-push-url="/probe/{{ probe.id }}"
-        >
-            Adopt
-        </button>
-        {% endif %}
-        {% endif %}
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-4xl font-semibold text-sat-xl">Probe {{ probe.id[:13] }}...</h1>
+        <div class="flex items-center gap-2">
+            <a href="/probe"
+               class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
+                ←
+            </a>
+            {% if probe.location_id %}
+            <a href="/location/{{ probe.location_id }}"
+               class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
+                View location
+            </a>
+            {% endif %}
+            {% if probe.owner_id %}
+            <a href="/user/{{ probe.owner_id }}"
+               class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
+                View owner
+            </a>
+            {% endif %}
+            {% if logged_in %}
+            <button
+                    class="ml-2 bg-acc-l rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                    hx-get="/probe/{{ probe.id }}/restart"
+                    hx-confirm="Restart this probe now?"
+                    hx-target="#content-area"
+                    hx-target-error="#content-area"
+                    hx-push-url="/probe/{{ probe.id }}"
+            >
+                Restart
+            </button>
+            {% if probe.adopted %}
+            <button
+                    class="ml-2 bg-red-400 hover:bg-red-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                    hx-get="/probe/{{ probe.id }}/forget"
+                    hx-confirm="Forget this probe? Devices will remain, but the probe will be marked as not adopted."
+                    hx-target="#content-area"
+                    hx-target-error="#content-area"
+                    hx-push-url="/probe/{{ probe.id }}"
+            >
+                Forget
+            </button>
+            {% else %}
+            <button
+                    class="ml-2 bg-green-400 hover:bg-green-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                    hx-get="/probe/{{ probe.id }}/adopt"
+                    hx-target="#content-area"
+                    hx-target-error="#content-area"
+                    hx-push-url="/probe/{{ probe.id }}"
+            >
+                Adopt
+            </button>
+            {% endif %}
+            {% endif %}
+        </div>
     </div>
-  </div>
 
-  <!-- Probe Card -->
-  <div class="rounded-lg border border-base bg-cards p-6 mb-8">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- ID -->
-      <div class="flex flex-col">
-        <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
-        <span class="font-mono text-code"><code>{{ probe.id }}</code></span>
-      </div>
+    <!-- Probe Card -->
+    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- ID -->
+            <div class="flex flex-col">
+                <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
+                <span class="font-mono text-code"><code>{{ probe.id }}</code></span>
+            </div>
 
-      <!-- MAC -->
-      <div class="flex flex-col">
-        <span class="text-xs uppercase tracking-wide text-sat-m">MAC</span>
-        <span class="font-mono text-code"><code>{{ probe.mac }}</code></span>
-      </div>
+            <!-- MAC -->
+            <div class="flex flex-col">
+                <span class="text-xs uppercase tracking-wide text-sat-m">MAC</span>
+                <span class="font-mono text-code"><code>{{ probe.mac }}</code></span>
+            </div>
 
-      <!-- IP -->
-      <div class="flex flex-col">
-        <span class="text-xs uppercase tracking-wide text-sat-m">IP</span>
-        <span class="font-mono text-code"><code>{{ probe.ip }}</code></span>
-      </div>
+            <!-- IP -->
+            <div class="flex flex-col">
+                <span class="text-xs uppercase tracking-wide text-sat-m">IP</span>
+                <span class="font-mono text-code"><code>{{ probe.ip }}</code></span>
+            </div>
 
-      <!-- Owner ID -->
-      <div class="flex flex-col">
-        <span class="text-xs uppercase tracking-wide text-sat-m">Owner</span>
-        <span class="font-mono text-sat-xl">
+            <!-- Owner ID -->
+            <div class="flex flex-col">
+                <span class="text-xs uppercase tracking-wide text-sat-m">Owner</span>
+                <span class="font-mono text-sat-xl">
           {% if probe.owner_id is not none %}
-            <a class="underline text-acc hover:text-acc-xl" href="/user/{{ probe.owner_id }}"><code>{{ probe.owner_id }}</code></a>
+            <a class="underline text-acc hover:text-acc-xl"
+               href="/user/{{ probe.owner_id }}"><code>{{ probe.owner_id }}</code></a>
           {% else %}
             <span class="text-muted-foreground">—</span>
           {% endif %}
         </span>
-      </div>
+            </div>
 
-      <!-- Location ID -->
-      <div class="flex flex-col">
-        <span class="text-xs uppercase tracking-wide text-sat-m">Location</span>
-        <span class="font-mono text-sat-xl">
+            <!-- Location ID -->
+            <div class="flex flex-col">
+                <span class="text-xs uppercase tracking-wide text-sat-m">Location</span>
+                <span class="font-mono text-sat-xl">
           {% if probe.location_id is not none %}
             <a class="underline text-acc hover:text-acc-xl" href="/location/{{ probe.location_id }}"><code>{{ probe.location_id }}</code></a>
           {% else %}
             <span class="text-muted-foreground">—</span>
           {% endif %}
         </span>
-      </div>
+            </div>
 
-      <!-- Adopted -->
-      <div class="flex flex-col">
-        <span class="text-xs uppercase tracking-wide text-sat-m">Adopted</span>
-        <span class="font-mono text-sat-xl">
+            <!-- Adopted -->
+            <div class="flex flex-col">
+                <span class="text-xs uppercase tracking-wide text-sat-m">Adopted</span>
+                <span class="font-mono text-sat-xl">
           {% if probe.adopted %}
             <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
           {% else %}
             <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
           {% endif %}
         </span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Devices Table -->
-  <div class="overflow-x-auto rounded-lg border border-base bg-cards">
-    <div class="flex flex-col justify-center items-center py-4">
-      <h2 class="text-3xl font-medium text-sat-xl">Devices</h2>
+            </div>
+        </div>
     </div>
 
-    <table class="min-w-full divide-y divide-base">
-      <thead class="bg-muted/10">
-        <tr>
-          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">ID</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">MAC</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">IP</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Port</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Duration</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Interval</th>
-          <th scope="col" class="px-4 py-3 text-right text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-base">
-        {% for device in devices %}
-        <tr class="hover:bg-muted/5 transition-colors">
-          <td class="px-4 py-3 font-mono text-sm text-sat-l">
-            <a href="/device/{{ device.id }}" class="text-primary hover:underline">
-              {{ device.id }}
-            </a>
-          </td>
+    <!-- Probe Configs Table -->
+    <div class="overflow-x-auto rounded-lg border border-base bg-cards mt-8 mb-8">
+        <div class="flex flex-col justify-center items-center py-4">
+            <h2 class="text-3xl font-medium text-sat-xl">Capture Configs</h2>
+        </div>
 
-          <td class="px-4 py-3 text-sm text-sat-l">{{ device.mac }}</td>
-          <td class="px-4 py-3 text-sm text-sat-l">{{ device.ip }}</td>
-          <td class="px-4 py-3 text-sm text-sat-l">{{ device.port }}</td>
-          <td class="px-4 py-3 text-sm text-sat-l">
-            {% if device.duration is not none %}
-              {{ device.duration }}
-            {% else %}
-              <span class="text-muted-foreground">—</span>
-            {% endif %}
-          </td>
-          <td class="px-4 py-3 text-sm text-sat-l">
-            {% if device.interval is not none %}
-              {{ device.interval }}
-            {% else %}
-              <span class="text-muted-foreground">—</span>
-            {% endif %}
-          </td>
+        <table class="min-w-full divide-y divide-base">
+            <thead class="bg-muted/10">
+            <tr>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Interface
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Filter
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-right text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Actions
+                </th>
+            </tr>
+            </thead>
+            <tbody class="divide-y divide-base">
+            {% for cfg in configs %}
+            <tr class="hover:bg-muted/5 transition-colors">
+                <td class="px-4 py-3 text-sm text-code">
+                    <input
+                            type="text"
+                            name="interface"
+                            value="{{ cfg.interface }}"
+                            class="w-full rounded-md border border-base bg-background px-2 py-1 font-mono text-sm"
+                            form="cfg-form-{{ loop.index0 }}"
+                            required
+                    />
+                </td>
+                <td class="px-4 py-3 text-sm text-code">
+                    <input
+                            type="text"
+                            name="filter"
+                            value="{% if cfg.filter is not none %}{{ cfg.filter }}{% endif %}"
+                            class="w-full rounded-md border border-base bg-background px-2 py-1 font-mono text-sm"
+                            form="cfg-form-{{ loop.index0 }}"
+                            placeholder="optional"
+                    />
+                </td>
+                <td class="px-4 py-3 text-right">
+                    <form id="cfg-form-{{ loop.index0 }}"
+                          hx-put="/probe/{{ probe.id }}/config/{{ cfg.id }}"
+                          hx-target="#content-area"
+                          hx-target-error="#content-area"
+                          hx-push-url="/probe/{{ probe.id }}"
+                          class="inline-flex">
+                    <button
+                            type="submit"
+                            class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-green-700 bg-green-50 hover:bg-green-200 text-primary hover:bg-muted/10 transition-colors"
+                            aria-label="Save config"
+                            title="Save"
+                    >
+                        <i class="fa-solid fa-floppy-disk mr-1.5"></i>
+                    </button>
+                    <button
+                            class="ml-2 inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-red-700 bg-red-50 hover:bg-red-200 transition-colors"
+                            type="button"
+                            hx-delete="/probe/{{ probe.id }}/config/{{ cfg.id }}"
+                            hx-target-error="#content-area"
+                            hx-push-url="/probe/{{ probe.id }}"
+                            aria-label="Delete config"
+                            title="Delete"
+                    >
+                        <i class="fa-solid fa-trash mr-1.5"></i>
+                    </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            <!-- Add Config Row -->
+            <tr class="hover:bg-muted/5 transition-colors">
+                <td class="px-4 py-3 text-sm text-code">
+                    <input
+                            type="text"
+                            name="interface"
+                            class="w-full rounded-md border border-base bg-background px-2 py-1 font-mono text-sm"
+                            form="cfg-create-form"
+                            placeholder="e.g. eth0"
+                            required
+                    />
+                </td>
+                <td class="px-4 py-3 text-sm text-code">
+                    <input
+                            type="text"
+                            name="filter"
+                            class="w-full rounded-md border border-base bg-background px-2 py-1 font-mono text-sm"
+                            form="cfg-create-form"
+                            placeholder="optional, e.g. port 53"
+                    />
+                </td>
+                <td class="px-4 py-3 text-right">
+                    <form id="cfg-create-form"
+                          hx-post="/probe/{{ probe.id }}/config"
+                          hx-target="#content-area"
+                          hx-target-error="#content-area"
+                          hx-push-url="/probe/{{ probe.id }}"
+                          class="inline-flex">
+                        <button
+                                type="submit"
+                                class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-acc hover:bg-muted/10 transition-colors"
+                                aria-label="Add config"
+                                title="Add config"
+                        >
+                            <i class="fa-solid fa-plus mr-1.5"></i>
+                            Add config
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
 
-          <td class="px-4 py-3 text-right">
-            <a href="/device/{{ device.id }}" class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
-              View
-            </a>
-            <a href="/probe/{{ probe.id }}" class="ml-2 inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-muted/10 transition-colors">
-              Probe
-            </a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
 
-    {% if devices|length == 0 %}
-    <div class="p-6 text-center text-muted-foreground">
-      No devices found for this probe.
+        {% if configs|length == 0 %}
+        <div class="p-6 text-center text-muted-foreground">
+            No probe configs found for this probe.
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
-  </div>
+
+    <!-- Devices Table -->
+    <div class="overflow-x-auto rounded-lg border border-base bg-cards mt-8">
+        <div class="flex flex-col justify-center items-center py-4">
+            <h2 class="text-3xl font-medium text-sat-xl">Devices</h2>
+        </div>
+
+        <table class="min-w-full divide-y divide-base">
+            <thead class="bg-muted/10">
+            <tr>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    ID
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    MAC
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    IP
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Port
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Duration
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Interval
+                </th>
+            </tr>
+            </thead>
+            <tbody class="divide-y divide-base">
+            {% for device in devices %}
+            <tr class="hover:bg-muted/5 transition-colors">
+                <td class="px-4 py-3 font-mono text-sm text-sat-l">
+                    <a href="/device/{{ device.id }}" class="text-primary hover:underline">
+                        {{ device.id }}
+                    </a>
+                </td>
+
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device.mac }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device.ip }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device.port }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">
+                    {% if device.duration is not none %}
+                    {{ device.duration }}
+                    {% else %}
+                    <span class="text-muted-foreground">—</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-sm text-sat-l">
+                    {% if device.interval is not none %}
+                    {{ device.interval }}
+                    {% else %}
+                    <span class="text-muted-foreground">—</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+
+        {% if devices|length == 0 %}
+        <div class="p-6 text-center text-muted-foreground">
+            No devices found for this probe.
+        </div>
+        {% endif %}
+    </div>
 </div>

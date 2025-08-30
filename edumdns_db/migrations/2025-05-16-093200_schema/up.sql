@@ -52,11 +52,11 @@ CREATE TABLE IF NOT EXISTS "probe"
 
 CREATE TABLE IF NOT EXISTS "probe_config"
 (
+    id             bigserial    PRIMARY KEY,
     probe_id       uuid         NOT NULL,
     interface      text         NOT NULL,
     filter         text,
 
-    PRIMARY KEY (probe_id, interface),
     UNIQUE (probe_id, interface, filter),
     FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE
 );
@@ -129,5 +129,6 @@ CREATE TABLE IF NOT EXISTS "packet_transmit_request"
 
 CREATE INDEX IF NOT EXISTS "Probe_owner_id" ON "probe" (owner_id);
 CREATE INDEX IF NOT EXISTS "Probe_location_id" ON "probe" (location_id);
-CREATE INDEX IF NOT EXISTS "ProbeConfig_probe_id" ON "probe_config" (probe_id);
-CREATE INDEX IF NOT EXISTS "Device_probe_id_mac" ON "device" (probe_id, mac, ip);
+CREATE INDEX IF NOT EXISTS "ProbeConfig_probe_id_if_filter" ON "probe_config" (probe_id, interface, filter);
+CREATE INDEX IF NOT EXISTS "Device_probe_id_mac_ip" ON "device" (probe_id, mac, ip);
+CREATE INDEX IF NOT EXISTS "Packet_probe_id_mac_ip" ON "packet" (probe_id, src_mac, src_addr);

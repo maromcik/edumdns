@@ -227,6 +227,89 @@
         {% endif %}
     </div>
 
+    <!-- Permissions Table -->
+    {% if admin %}
+    <div class="overflow-x-auto rounded-lg border border-base bg-cards mt-8 mb-8">
+        <div class="flex flex-col justify-center items-center py-4">
+            <h2 class="text-3xl font-medium text-sat-xl">Permissions</h2>
+        </div>
+        <table class="min-w-full divide-y divide-base">
+            <thead class="bg-muted/10">
+            <tr>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Group
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Read
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Adopt
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Forget
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Restart
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    ModifyConfig
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Delete
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Update
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Full
+                </th>
+            </tr>
+            </thead>
+            <tbody class="divide-y divide-base">
+            {% for permissions, group in permission_matrix %}
+            <tr class="hover:bg-muted/5 transition-colors">
+                <td class="px-4 py-3 text-sm text-sat-l">
+                    {{ group.name }}
+                </td>
+                {% for perm, checked in permissions %}
+                <td class="px-4 py-3 text-sm text-sat-l text-center">
+                    <form
+                            hx-post="/probe/{{ probe.id }}/permission/toggle"
+                            hx-target="#content-area"
+                            hx-target-error="#content-area"
+                    >
+                        <input
+                                type="checkbox"
+                                class="h-4 w-4 rounded border-base text-acc focus:ring-acc"
+                                {% if checked %}checked{% endif %}
+                                name="value"
+                                value="{% if checked %}true{% else %}false{% endif %}"
+                                onchange="
+                this.value = this.checked ? 'true' : 'false';
+                this.form.requestSubmit();
+            "
+                                aria-label="Toggle permission"
+                        />
+                        <input type="hidden" name="permission" value="{{ perm }}">
+                        <input type="hidden" name="group_id" value="{{ group.id }}">
+                    </form>
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
     <!-- Devices Table -->
     <div class="overflow-x-auto rounded-lg border border-base bg-cards mt-8">
         <div class="flex flex-col justify-center items-center py-4">

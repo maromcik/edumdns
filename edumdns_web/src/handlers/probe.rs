@@ -1,6 +1,9 @@
+use std::collections::HashSet;
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 use crate::authorized;
 use crate::error::WebError;
-use crate::forms::probe::{ProbeConfigForm, ProbeQuery};
+use crate::forms::probe::{ProbeConfigForm, ProbePermissionForm, ProbeQuery};
 use crate::handlers::helpers::{get_template_name, parse_user_id};
 use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
@@ -9,16 +12,16 @@ use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, web};
 use edumdns_core::app_packet::{AppPacket, CommandPacket};
 use edumdns_core::error::CoreError;
-use edumdns_db::models::ProbeConfig;
-use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
+use edumdns_db::models::{Group, ProbeConfig};
+use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination, Permission};
 use edumdns_db::repositories::device::models::DeviceDisplay;
-use edumdns_db::repositories::probe::models::{
-    CreateProbeConfig, ProbeDisplay, SelectManyProbes, SelectSingleProbe, SelectSingleProbeConfig,
-};
+use edumdns_db::repositories::probe::models::{AlterProbePermission, CreateProbeConfig, ProbeDisplay, SelectManyProbes, SelectSingleProbe, SelectSingleProbeConfig};
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use log::error;
 use std::convert::identity;
 use uuid::Uuid;
+use edumdns_db::repositories::group::models::SelectManyGroups;
+use edumdns_db::repositories::group::repository::PgGroupRepository;
 
 #[get("")]
 pub async fn get_probes(
@@ -64,14 +67,30 @@ pub async fn get_probe(
     request: HttpRequest,
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
+    group_repo: web::Data<PgGroupRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
-
+    let params = SelectSingleProbe::new(parse_user_id(&i)?, path.0);
     let probe = probe_repo
-        .read_one_auth(&SelectSingleProbe::new(parse_user_id(&i)?, path.0))
+        .read_one_auth(&params)
         .await?;
+
+    let granted: HashSet<(Id, Permission)> = probe_repo.get_permissions(&params.id)
+        .await?
+        .iter()
+        .map(|x| (x.group_id, x.permission))
+        .collect();
+
+    let matrix = group_repo.read_many(&SelectManyGroups::new(None, None)).await?
+        .into_iter()
+        .map(|g| ( {
+            Permission::iter().map(|p| {
+                (p, granted.contains(&(g.id, p)))
+            })
+                .collect::<Vec<(Permission, bool)>>()
+        }, g)).collect::<Vec<(Vec<(Permission, bool)>, Group)>>();
 
     let template_name = get_template_name(&request, "probe/detail");
     let env = state.jinja.acquire_env()?;
@@ -79,9 +98,11 @@ pub async fn get_probe(
     let body = template.render(ProbeDetailTemplate {
         logged_in: true,
         permissions: probe.permissions,
+        permission_matrix: matrix,
         probe: ProbeDisplay::from(probe.data.0),
         devices: probe.data.1.into_iter().map(DeviceDisplay::from).collect(),
         configs: probe.data.2,
+        admin: probe.admin,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -252,6 +273,30 @@ pub async fn delete_config(
         )))
         .await
         .map_err(CoreError::from)?;
+
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/probe/{}", path.0)))
+        .finish())
+}
+
+#[post("{probe_id}/permission/toggle")]
+pub async fn change_probe_permission(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    probe_repo: web::Data<PgProbeRepository>,
+    form: web::Form<ProbePermissionForm>,
+    path: web::Path<(Uuid, )>,
+) -> Result<HttpResponse, WebError> {
+    let probe_id = path.0;
+    let i = authorized!(identity, request.path());
+
+    probe_repo.alter_permission(AlterProbePermission::new(
+        parse_user_id(&i)?,
+        probe_id,
+        form.group_id,
+        form.permission,
+        form.value
+    )).await?;
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))

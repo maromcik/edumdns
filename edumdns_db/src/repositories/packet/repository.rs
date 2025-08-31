@@ -1,5 +1,5 @@
 use crate::error::{BackendError, BackendErrorKind, DbError};
-use crate::models::{Device, Packet, Probe, User};
+use crate::models::{Device, GroupProbePermission, Packet, Probe, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
     DbResultSingle, DbResultSinglePerm, Permission, SelectSingleById,
@@ -87,7 +87,7 @@ impl DbReadOne<SelectSinglePacket, Packet> for PgPacketRepository {
             )
             .await?
         } else {
-            vec![]
+            (false, vec![])
         };
         let p = self.read_one(params).await?;
         Ok(DbDataPerm::new(p, permissions))
@@ -106,7 +106,8 @@ impl DbReadOne<SelectSingleById, Packet> for PgPacketRepository {
     }
     async fn read_one_auth(&self, params: &SelectSingleById) -> DbResultSinglePerm<Packet> {
         let p = self.read_one(params).await?;
-        Ok(DbDataPerm::new(p, vec![]))
+        validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, p.probe_id), Permission::Read).await?;
+        Ok(DbDataPerm::new(p, (false, vec![])))
     }
 }
 
@@ -137,7 +138,7 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
             .await?;
         if user_entry.admin {
             let packets = self.read_many(params).await?;
-            return Ok(DbDataPerm::new(packets, vec![Permission::Full]));
+            return Ok(DbDataPerm::new(packets, (true, vec![GroupProbePermission::full()])));
         }
         let packets = query
             .inner_join(probe::table)
@@ -153,7 +154,7 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
             .load::<Packet>(&mut conn)
             .await?;
 
-        Ok(DbDataPerm::new(packets, vec![]))
+        Ok(DbDataPerm::new(packets, (false, vec![])))
     }
 }
 

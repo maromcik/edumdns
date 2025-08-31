@@ -14,7 +14,7 @@ pub async fn validate_permissions(
     pool: &Pool<AsyncPgConnection>,
     params: &SelectSingleProbe,
     permission: Permission,
-) -> Result<Vec<Permission>, DbError> {
+) -> Result<(bool, Vec<GroupProbePermission>), DbError> {
     let mut conn = pool.get().await?;
 
     let user_entry = user::table
@@ -23,28 +23,28 @@ pub async fn validate_permissions(
         .first(&mut conn)
         .await?;
 
-    if !user_entry.admin {
-        let permissions = group_user::table
-            .filter(group_user::user_id.eq(params.user_id))
-            .inner_join(
-                group_probe_permission::table
-                    .on(group_probe_permission::group_id.eq(group_user::group_id)),
-            )
-            .filter(group_probe_permission::probe_id.eq(params.id))
-            .select(GroupProbePermission::as_select())
-            .load::<GroupProbePermission>(&mut conn)
-            .await
-            .map_err(|_| no_permission_error(&user_entry.email, permission))?;
-        if permissions
-            .iter()
-            .any(|p| p.permission == permission || p.permission == Permission::Full)
-        {
-            return Ok(permissions.into_iter().map(|p| p.permission).collect());
-        }
-        return Err(no_permission_error(&user_entry.email, permission));
+    if user_entry.admin {
+        return Ok((true, vec![GroupProbePermission::full()]))
     }
 
-    Ok(vec![Permission::Full])
+    let permissions = group_user::table
+        .filter(group_user::user_id.eq(params.user_id))
+        .inner_join(
+            group_probe_permission::table
+                .on(group_probe_permission::group_id.eq(group_user::group_id)),
+        )
+        .filter(group_probe_permission::probe_id.eq(params.id))
+        .select(GroupProbePermission::as_select())
+        .load::<GroupProbePermission>(&mut conn)
+        .await?;
+    if permissions
+        .iter()
+        .any(|p| p.permission == permission || p.permission == Permission::Full)
+    {
+        return Ok((false, permissions));
+    }
+    Err(no_permission_error(&user_entry.email, permission))
+
 }
 
 pub fn no_permission_error(email: &str, permission: Permission) -> DbError {

@@ -1,9 +1,11 @@
 use edumdns_core::app_packet::AppPacket;
 use edumdns_db::repositories::common::Permission;
-use minijinja::{Environment, path_loader};
+use minijinja::{Environment, path_loader, Value};
 use minijinja_autoreload::AutoReloader;
 use std::sync::Arc;
+use serde::Deserialize;
 use tokio::sync::mpsc::Sender;
+use edumdns_db::models::GroupProbePermission;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -31,9 +33,13 @@ pub fn create_reloader(template_path: String) -> AutoReloader {
     })
 }
 
-fn has_perm(perms: Vec<String>, name: String) -> bool {
-    perms.iter().any(|p| {
-        p.eq_ignore_ascii_case(&name)
-            || p.eq_ignore_ascii_case(Permission::Full.to_string().as_str())
-    })
+fn has_perm(perms_values: Vec<Value>, query: Value) -> Result<bool, minijinja::Error> {
+    let query_perm = Permission::deserialize(query)?;
+    for perm in perms_values {
+        let perm = GroupProbePermission::deserialize(perm)?;
+        if perm.permission == query_perm || perm.permission == Permission::Full{
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }

@@ -49,6 +49,16 @@ pub struct GroupProbePermission {
     pub permission: Permission,
 }
 
+impl GroupProbePermission {
+    pub fn full() -> Self {
+        Self {
+            group_id: 0,
+            probe_id: Uuid::nil(),
+            permission: Permission::Full,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable)]
 #[diesel(table_name = crate::schema::probe)]
 #[diesel(check_for_backend(diesel::pg::Pg))]

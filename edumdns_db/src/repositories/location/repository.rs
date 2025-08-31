@@ -35,7 +35,7 @@ impl DbReadOne<Id, Location> for PgLocationRepository {
 
     async fn read_one_auth(&self, params: &Id) -> DbResultSinglePerm<Location> {
         let l = self.read_one(params).await?;
-        Ok(DbDataPerm::new(l, vec![]))
+        Ok(DbDataPerm::new(l, (false, vec![])))
     }
 }
 
@@ -59,7 +59,7 @@ impl DbReadMany<SelectManyFilter, Location> for PgLocationRepository {
     }
     async fn read_many_auth(&self, params: &SelectManyFilter) -> DbResultMultiplePerm<Location> {
         let locations = self.read_many(params).await?;
-        Ok(DbDataPerm::new(locations, vec![]))
+        Ok(DbDataPerm::new(locations, (false, vec![])))
     }
 }
 

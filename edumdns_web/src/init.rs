@@ -4,9 +4,7 @@ use crate::handlers::device::{
 use crate::handlers::group::{get_group, get_groups};
 use crate::handlers::index::index;
 use crate::handlers::packet::{get_packet, get_packets};
-use crate::handlers::probe::{
-    adopt, create_config, delete_config, forget, get_probe, get_probes, restart, save_config,
-};
+use crate::handlers::probe::{adopt, change_probe_permission, create_config, delete_config, forget, get_probe, get_probes, restart, save_config};
 use crate::handlers::user::{login, login_user, logout_user};
 use crate::utils::AppState;
 use actix_files::Files;
@@ -33,18 +31,19 @@ pub fn configure_webapp(
     let packet_repo = PgPacketRepository::new(pool.clone());
 
     let group_scope = web::scope("group")
-        .app_data(web::Data::new(group_repo))
+        .app_data(web::Data::new(group_repo.clone()))
         .service(get_groups)
         .service(get_group);
 
     let user_scope = web::scope("user")
-        .app_data(web::Data::new(user_repo))
+        .app_data(web::Data::new(user_repo.clone()))
         .service(login)
         .service(login_user)
         .service(logout_user);
 
     let probe_scope = web::scope("probe")
-        .app_data(web::Data::new(probe_repo))
+        .app_data(web::Data::new(probe_repo.clone()))
+        .app_data(web::Data::new(group_repo.clone()))
         .service(get_probes)
         .service(get_probe)
         .service(forget)
@@ -52,7 +51,8 @@ pub fn configure_webapp(
         .service(restart)
         .service(save_config)
         .service(delete_config)
-        .service(create_config);
+        .service(create_config)
+        .service(change_probe_permission);
 
     let device_scope = web::scope("device")
         .app_data(web::Data::new(device_repo.clone()))

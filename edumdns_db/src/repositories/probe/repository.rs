@@ -1,25 +1,22 @@
 use crate::error::{BackendError, BackendErrorKind, DbError};
-use crate::models::{Device, Location, Probe, ProbeConfig, User};
+use crate::models::{Device, GroupProbePermission, Location, Probe, ProbeConfig, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
-    DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, Id, Permission, SelectSingleById,
+    DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, Id, Permission,
 };
-use crate::repositories::probe::models::{
-    CreateProbe, CreateProbeConfig, SelectManyProbes, SelectSingleProbe, SelectSingleProbeConfig,
-};
-use crate::repositories::utilities::{no_permission_error, validate_permissions};
-use crate::schema::group_probe_permission;
+use crate::repositories::probe::models::{AlterProbePermission, CreateProbe, CreateProbeConfig, SelectManyProbes, SelectSingleProbe, SelectSingleProbeConfig};
+use crate::repositories::utilities::validate_permissions;
 use crate::schema::group_user;
 use crate::schema::probe;
 use crate::schema::probe::BoxedQuery;
 use crate::schema::user;
+use crate::schema::group_probe_permission;
 use crate::schema::{location, probe_config};
 use diesel::pg::Pg;
-use diesel::query_builder::BoxedSelectStatement;
 use diesel::{BelongingToDsl, ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
+use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
-use diesel_async::pooled_connection::deadpool::Pool;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -130,7 +127,7 @@ impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeReposito
 
         if user_entry.admin {
             let probes = self.read_many(params).await?;
-            return Ok(DbDataPerm::new(probes, vec![Permission::Full]));
+            return Ok(DbDataPerm::new(probes, (true, vec![GroupProbePermission::full()])));
         }
 
         let probes = query
@@ -146,7 +143,7 @@ impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeReposito
             .select((Option::<Location>::as_select(), Probe::as_select()))
             .load::<(Option<Location>, Probe)>(&mut conn)
             .await?;
-        Ok(DbDataPerm::new(probes, vec![]))
+        Ok(DbDataPerm::new(probes, (false, vec![])))
     }
 }
 
@@ -236,6 +233,7 @@ impl PgProbeRepository {
         params: &CreateProbeConfig,
         user_id: Id,
     ) -> DbResult<()> {
+        let mut conn = self.pg_pool.get().await?;
         validate_permissions(
             &self.pg_pool,
             &SelectSingleProbe::new(user_id, params.probe_id),
@@ -244,7 +242,7 @@ impl PgProbeRepository {
         .await?;
         diesel::insert_into(probe_config::table)
             .values(params)
-            .execute(&mut self.pg_pool.get().await?)
+            .execute(&mut conn)
             .await?;
         Ok(())
     }
@@ -252,5 +250,51 @@ impl PgProbeRepository {
     pub async fn check_permissions_for_restart(&self, params: &SelectSingleProbe) -> DbResult<()> {
         validate_permissions(&self.pg_pool, params, Permission::Restart).await?;
         Ok(())
+    }
+
+    pub async fn alter_permission(&self, params: AlterProbePermission) -> DbResult<()> {
+        let mut conn = self.pg_pool.get().await?;
+        let user_entry = user::table
+            .find(params.user_id)
+            .select(User::as_select())
+            .first(&mut conn)
+            .await?;
+
+        if ! user_entry.admin {
+            return Err(DbError::from(BackendError::new(
+                BackendErrorKind::PermissionDenied,
+                "User is not admin",
+            )));
+        }
+
+        if params.state {
+            let _ = diesel::insert_into(group_probe_permission::table)
+                .values((group_probe_permission::group_id.eq(params.group_id),
+                        group_probe_permission::probe_id.eq(params.probe_id),
+                        group_probe_permission::permission.eq(params.permission)))
+                .execute(&mut conn)
+                .await?;
+        }
+        else {
+            let _ = diesel::delete(
+                group_probe_permission::table
+                    .filter(group_probe_permission::probe_id.eq(params.probe_id))
+                    .filter(group_probe_permission::group_id.eq(params.group_id))
+                    .filter(group_probe_permission::permission.eq(params.permission)),
+            )
+                .execute(&mut conn)
+                .await?;
+        }
+        Ok(())
+    }
+
+    pub async fn get_permissions(&self, params: &Uuid) -> DbResultMultiple<GroupProbePermission> {
+        let mut conn = self.pg_pool.get().await?;
+        let permissions = group_probe_permission::table
+            .filter(group_probe_permission::probe_id.eq(params))
+            .select(GroupProbePermission::as_select())
+            .load::<GroupProbePermission>(&mut conn)
+            .await?;
+        Ok(permissions)
     }
 }

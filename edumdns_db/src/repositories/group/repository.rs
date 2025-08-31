@@ -1,13 +1,10 @@
-use crate::error::DbError;
-use crate::models::Group;
-use crate::repositories::common::{
-    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
-    DbResultSingle, DbResultSinglePerm, Id,
-};
+use crate::error::{BackendError, BackendErrorKind, DbError};
+use crate::models::{Group, User};
+use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, Id, Permission};
 use crate::repositories::group::models::{CreateGroup, SelectManyGroups};
 use std::ops::DerefMut;
 
-use crate::schema::{group, group_user};
+use crate::schema::{group, group_user, user};
 use diesel::result::Error;
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper, TextExpressionMethods};
 use diesel_async::AsyncPgConnection;
@@ -38,7 +35,7 @@ impl DbReadOne<Id, Group> for PgGroupRepository {
     }
     async fn read_one_auth(&self, params: &Id) -> DbResultSinglePerm<Group> {
         let g = self.read_one(params).await?;
-        Ok(DbDataPerm::new(g, vec![]))
+        Ok(DbDataPerm::new(g, (false, vec![])))
     }
 }
 
@@ -62,21 +59,8 @@ impl DbReadMany<SelectManyGroups, Group> for PgGroupRepository {
     }
 
     async fn read_many_auth(&self, params: &SelectManyGroups) -> DbResultMultiplePerm<Group> {
-        let mut query = group::table.into_boxed();
-
-        if let Some(n) = &params.name {
-            query = query.filter(group::name.like(format!("%{n}%")));
-        }
-
-        if let Some(pagination) = params.pagination {
-            query = query.limit(pagination.limit.unwrap_or(i64::MAX));
-            query = query.offset(pagination.offset.unwrap_or(0));
-        }
-
-        let mut conn = self.pg_pool.get().await?;
-        let groups = query.load::<Group>(&mut conn).await?;
-
-        Ok(DbDataPerm::new(groups, vec![]))
+        let groups = self.read_many(params).await?;
+        Ok(DbDataPerm::new(groups, (false, vec![])))
     }
 }
 
@@ -111,7 +95,7 @@ impl DbDelete<Id, Group> for PgGroupRepository {
 }
 
 impl PgGroupRepository {
-    async fn add_user(&self, user_id: &Id, group_id: &Id) -> Result<(), DbError> {
+    async fn add_user(&self, user_id: &Id, group_id: &Id) -> DbResult<()> {
         let mut conn = self.pg_pool.get().await?;
         diesel::insert_into(group_user::table)
             .values((

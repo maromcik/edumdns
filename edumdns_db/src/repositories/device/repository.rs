@@ -1,5 +1,5 @@
 use crate::error::{BackendError, BackendErrorKind, DbError};
-use crate::models::{Device, PacketTransmitRequest, Probe, User};
+use crate::models::{Device, GroupProbePermission, PacketTransmitRequest, Probe, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
     DbResultSingle, DbResultSinglePerm, Id, Permission, SelectSingleById,
@@ -126,7 +126,7 @@ impl DbReadOne<SelectSingleDevice, Device> for PgDeviceRepository {
                 )
                 .await?
             }
-            None => vec![],
+            None => (false, vec![])
         };
         let d = self.read_one(params).await?;
         Ok(DbDataPerm::new(d, permissions))
@@ -165,7 +165,7 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
             .await?;
         if user_entry.admin {
             let devices = self.read_many(params).await?;
-            return Ok(DbDataPerm::new(devices, vec![Permission::Full]));
+            return Ok(DbDataPerm::new(devices, (true, vec![GroupProbePermission::full()])));
         }
 
         let devices = query
@@ -182,7 +182,7 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
             .load::<(Probe, Device)>(&mut conn)
             .await?;
 
-        Ok(DbDataPerm::new(devices, vec![]))
+        Ok(DbDataPerm::new(devices, (false, vec![])))
     }
 }
 

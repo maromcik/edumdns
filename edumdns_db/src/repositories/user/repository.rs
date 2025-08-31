@@ -70,7 +70,7 @@ impl DbReadOne<Id, User> for PgUserRepository {
 
     async fn read_one_auth(&self, params: &Id) -> DbResultSinglePerm<User> {
         let u = self.read_one(params).await?;
-        Ok(DbDataPerm::new(u, vec![]))
+        Ok(DbDataPerm::new(u, (false, vec![])))
     }
 }
 
@@ -135,6 +135,6 @@ impl DbReadMany<SelectManyFilter, User> for PgUserRepository {
 
     async fn read_many_auth(&self, params: &SelectManyFilter) -> DbResultMultiplePerm<User> {
         let users = self.read_many(params).await?;
-        Ok(DbDataPerm::new(users, vec![]))
+        Ok(DbDataPerm::new(users, (false, vec![])))
     }
 }

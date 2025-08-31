@@ -1241,6 +1241,8 @@ dependencies = [
  "pbkdf2",
  "rand_core 0.6.4",
  "serde",
+ "strum",
+ "strum_macros",
  "thiserror 2.0.12",
  "time",
  "tokio",
@@ -1329,6 +1331,8 @@ dependencies = [
  "rayon",
  "rexiv2",
  "serde",
+ "strum",
+ "strum_macros",
  "thiserror 2.0.12",
  "tokio",
  "uuid",
@@ -2428,9 +2432,9 @@ dependencies = [
 
 [[package]]
 name = "minijinja"
-version = "2.10.2"
+version = "2.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd72e8b4e42274540edabec853f607c015c73436159b06c39c7af85a20433155"
+checksum = "a9f264d75233323f4b7d2f03aefe8a990690cdebfbfe26ea86bcbaec5e9ac990"
 dependencies = [
  "memo-map",
  "self_cell",
@@ -2439,9 +2443,9 @@ dependencies = [
 
 [[package]]
 name = "minijinja-autoreload"
-version = "2.10.2"
+version = "2.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46630543a4c8dce957338cba44df75d06e6e6e38df7646b3a458320fb4522909"
+checksum = "f506e21a0304f72e4dcd6c0b5fb04d500eb09484cd1880954479cca34ec937f3"
 dependencies = [
  "minijinja",
  "notify",
@@ -3651,6 +3655,24 @@ name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
+
+[[package]]
+name = "strum"
+version = "0.27.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af23d6f6c1a224baef9d3f61e287d2761385a5b88fdab4eb4c6f11aeb54c4bcf"
+
+[[package]]
+name = "strum_macros"
+version = "0.27.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7695ce3845ea4b33927c055a39dc438a45b059f7c1b3d91d38d10355fb8cbca7"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.101",
+]
 
 [[package]]
 name = "subtle"

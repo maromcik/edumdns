@@ -1,7 +1,8 @@
 use edumdns_core::bincode_types::MacAddr;
-use edumdns_db::repositories::common::{Id, Pagination};
+use edumdns_db::repositories::common::{Id, Pagination, Permission};
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProbeQuery {
@@ -19,4 +20,12 @@ pub struct ProbeConfigForm {
     // Option is easiest to handle blank filters (treat empty as None)
     #[serde(default)]
     pub filter: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ProbePermissionForm {
+    pub group_id: Id,
+    pub permission: Permission,
+    #[serde(default)]
+    pub value: bool,
 }

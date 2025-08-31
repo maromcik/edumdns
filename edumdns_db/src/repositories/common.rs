@@ -6,11 +6,13 @@ use diesel::sql_types::SmallInt;
 use diesel::{AsExpression, FromSqlRow, deserialize, serialize};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
+use strum_macros::EnumIter;
+use crate::models::GroupProbePermission;
 
 const PAGINATION_ELEMENTS_PER_PAGE: i64 = 20;
 
 pub type Id = i64;
-pub type Permissions = Vec<Permission>;
+pub type Permissions = Vec<GroupProbePermission>;
 
 pub type DbResult<T> = Result<T, DbError>;
 
@@ -28,12 +30,14 @@ pub type DbResultMultiplePerm<T> = DbResultPerm<Vec<T>>;
 
 pub struct DbDataPerm<T> {
     pub data: T,
+    pub admin: bool,
     pub permissions: Permissions,
+    
 }
 
 impl<T> DbDataPerm<T> {
-    pub fn new(data: T, permissions: Permissions) -> Self {
-        Self { data, permissions }
+    pub fn new(data: T, (admin, permissions): (bool, Permissions)) -> Self {
+        Self { data, admin, permissions, }
     }
 }
 
@@ -178,7 +182,7 @@ impl EntityWithId for SelectSingleById {
 }
 
 #[repr(i16)]
-#[derive(AsExpression, Debug, Clone, PartialEq, Eq, Copy, Serialize, Deserialize, FromSqlRow)]
+#[derive(AsExpression, Debug, Clone, PartialEq, Eq, Copy, Serialize, Deserialize, FromSqlRow, EnumIter, Hash)]
 #[diesel(sql_type = SmallInt)]
 pub enum Permission {
     Read,
@@ -194,14 +198,14 @@ pub enum Permission {
 impl Display for Permission {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Permission::Read => write!(f, "read"),
-            Permission::Adopt => write!(f, "adopt"),
-            Permission::Forget => write!(f, "forget"),
-            Permission::Restart => write!(f, "restart"),
-            Permission::ModifyConfig => write!(f, "modify_config"),
-            Permission::Delete => write!(f, "delete"),
-            Permission::Update => write!(f, "update"),
-            Permission::Full => write!(f, "full"),
+            Permission::Read => write!(f, "Read"),
+            Permission::Adopt => write!(f, "Adopt"),
+            Permission::Forget => write!(f, "Forget"),
+            Permission::Restart => write!(f, "Restart"),
+            Permission::ModifyConfig => write!(f, "ModifyConfig"),
+            Permission::Delete => write!(f, "Delete"),
+            Permission::Update => write!(f, "Update"),
+            Permission::Full => write!(f, "Full"),
         }
     }
 }
@@ -213,14 +217,14 @@ where
 {
     fn from_sql(bytes: DB::RawValue<'_>) -> deserialize::Result<Self> {
         match i16::from_sql(bytes)? {
-            0 => Ok(Permission::Read),
-            1 => Ok(Permission::Adopt),
-            2 => Ok(Permission::Forget),
-            3 => Ok(Permission::Restart),
-            4 => Ok(Permission::ModifyConfig),
-            5 => Ok(Permission::Delete),
-            6 => Ok(Permission::Update),
-            7 => Ok(Permission::Full),
+            0 => Ok(Permission::Full),
+            1 => Ok(Permission::Read),
+            2 => Ok(Permission::Adopt),
+            3 => Ok(Permission::Forget),
+            4 => Ok(Permission::Restart),
+            5 => Ok(Permission::ModifyConfig),
+            6 => Ok(Permission::Delete),
+            7 => Ok(Permission::Update),
             x => Err(format!("Unrecognized variant {}", x).into()),
         }
     }
@@ -233,14 +237,14 @@ where
 {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, DB>) -> serialize::Result {
         match *self {
-            Permission::Read => 0_i16.to_sql(out),
-            Permission::Adopt => 1_i16.to_sql(out),
-            Permission::Forget => 2_i16.to_sql(out),
-            Permission::Restart => 3_i16.to_sql(out),
-            Permission::ModifyConfig => 4_i16.to_sql(out),
-            Permission::Delete => 5_i16.to_sql(out),
-            Permission::Update => 6_i16.to_sql(out),
-            Permission::Full => 7_i16.to_sql(out),
+            Permission::Full => 0_i16.to_sql(out),
+            Permission::Read => 1_i16.to_sql(out),
+            Permission::Adopt => 2_i16.to_sql(out),
+            Permission::Forget => 3_i16.to_sql(out),
+            Permission::Restart => 4_i16.to_sql(out),
+            Permission::ModifyConfig => 5_i16.to_sql(out),
+            Permission::Delete => 6_i16.to_sql(out),
+            Permission::Update => 7_i16.to_sql(out),
         }
     }
 }

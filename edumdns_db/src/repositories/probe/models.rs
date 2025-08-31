@@ -1,5 +1,5 @@
 use crate::models::Probe;
-use crate::repositories::common::{EntityWithId, Id, Pagination};
+use crate::repositories::common::{EntityWithId, Id, Pagination, Permission};
 use diesel::pg::Pg;
 use diesel::{AsChangeset, Insertable, Queryable, Selectable};
 use edumdns_core::bincode_types::MacAddr;
@@ -158,6 +158,54 @@ impl CreateProbeConfig {
             probe_id,
             interface,
             filter,
+        }
+    }
+}
+
+pub struct AlterProbePermission {
+    pub user_id: Id,
+    pub probe_id: Uuid,
+    pub group_id: Id,
+    pub permission: Permission,
+    pub state: bool,
+}
+
+impl AlterProbePermission {
+    pub fn new(user_id: Id, probe_id: Uuid, group_id: Id, permission: Permission, state: bool) -> Self {
+        Self {
+            user_id,
+            probe_id,
+            group_id,
+            permission,
+            state,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, AsChangeset, Insertable)]
+#[diesel(table_name = crate::schema::group_probe_permission)]
+pub struct CreateGroupProbePermission {
+    pub probe_id: Uuid,
+    pub group_id: Id,
+    pub permission: Permission,
+}
+
+impl CreateGroupProbePermission {
+    pub fn new(probe_id: Uuid, group_id: Id, permission: Permission) -> Self {
+        Self {
+            probe_id,
+            group_id,
+            permission,
+        }
+    }
+}
+
+impl From<AlterProbePermission> for CreateGroupProbePermission {
+    fn from(value: AlterProbePermission) -> Self {
+        Self {
+            probe_id: value.probe_id,
+            group_id: value.group_id,
+            permission: value.permission,
         }
     }
 }

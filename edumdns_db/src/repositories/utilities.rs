@@ -1,7 +1,6 @@
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::{GroupProbePermission, User};
-use crate::repositories::common::Permission;
-use crate::repositories::probe::models::SelectSingleProbe;
+use crate::repositories::common::{Id, Permission};
 use crate::schema::group_probe_permission;
 use crate::schema::group_user;
 use crate::schema::user;
@@ -9,31 +8,33 @@ use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
+use uuid::Uuid;
 
 pub async fn validate_permissions(
     pool: &Pool<AsyncPgConnection>,
-    params: &SelectSingleProbe,
+    user_id: &Id,
+    probe_id: &Uuid,
     permission: Permission,
 ) -> Result<(bool, Vec<GroupProbePermission>), DbError> {
     let mut conn = pool.get().await?;
 
     let user_entry = user::table
-        .find(params.user_id)
+        .find(user_id)
         .select(User::as_select())
         .first(&mut conn)
         .await?;
 
     if user_entry.admin {
-        return Ok((true, vec![GroupProbePermission::full()]))
+        return Ok((true, vec![GroupProbePermission::full()]));
     }
 
     let permissions = group_user::table
-        .filter(group_user::user_id.eq(params.user_id))
+        .filter(group_user::user_id.eq(user_id))
         .inner_join(
             group_probe_permission::table
                 .on(group_probe_permission::group_id.eq(group_user::group_id)),
         )
-        .filter(group_probe_permission::probe_id.eq(params.id))
+        .filter(group_probe_permission::probe_id.eq(probe_id))
         .select(GroupProbePermission::as_select())
         .load::<GroupProbePermission>(&mut conn)
         .await?;
@@ -44,7 +45,6 @@ pub async fn validate_permissions(
         return Ok((false, permissions));
     }
     Err(no_permission_error(&user_entry.email, permission))
-
 }
 
 pub fn no_permission_error(email: &str, permission: Permission) -> DbError {

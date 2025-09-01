@@ -13,5 +13,5 @@ pub struct PacketDetailTemplate<'a> {
     pub logged_in: bool,
     pub permissions: Permissions,
     pub packet: &'a PacketDisplay,
-    pub device_id: Id
+    pub device_id: Id,
 }

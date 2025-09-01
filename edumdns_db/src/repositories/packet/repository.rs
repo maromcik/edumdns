@@ -1,11 +1,11 @@
-use crate::error::{BackendError, BackendErrorKind, DbError};
-use crate::models::{Device, GroupProbePermission, Packet, Probe, User};
+use crate::error::DbError;
+use crate::models::{GroupProbePermission, Packet, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
-    DbResultSingle, DbResultSinglePerm, Permission, SelectSingleById,
+    DbResultSingle, DbResultSinglePerm, Id, Permission,
 };
 use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSinglePacket};
-use crate::repositories::probe::models::SelectSingleProbe;
+
 use crate::repositories::utilities::validate_permissions;
 use crate::schema;
 use crate::schema::packet::BoxedQuery;
@@ -78,36 +78,34 @@ impl DbReadOne<SelectSinglePacket, Packet> for PgPacketRepository {
             .await?;
         Ok(p)
     }
-    async fn read_one_auth(&self, params: &SelectSinglePacket) -> DbResultSinglePerm<Packet> {
-        let permissions = if let Some(user_id) = params.user_id {
-            validate_permissions(
-                &self.pg_pool,
-                &SelectSingleProbe::new(user_id, params.probe_id),
-                Permission::Read,
-            )
-            .await?
-        } else {
-            (false, vec![])
-        };
+    async fn read_one_auth(
+        &self,
+        params: &SelectSinglePacket,
+        user_id: &Id,
+    ) -> DbResultSinglePerm<Packet> {
+        let permissions =
+            validate_permissions(&self.pg_pool, user_id, &params.probe_id, Permission::Read)
+                .await?;
         let p = self.read_one(params).await?;
         Ok(DbDataPerm::new(p, permissions))
     }
 }
 
-impl DbReadOne<SelectSingleById, Packet> for PgPacketRepository {
-    async fn read_one(&self, params: &SelectSingleById) -> DbResultSingle<Packet> {
+impl DbReadOne<Id, Packet> for PgPacketRepository {
+    async fn read_one(&self, params: &Id) -> DbResultSingle<Packet> {
         let mut conn = self.pg_pool.get().await?;
         let p = packet::table
-            .find(params.id)
+            .find(params)
             .select(Packet::as_select())
             .first(&mut conn)
             .await?;
         Ok(p)
     }
-    async fn read_one_auth(&self, params: &SelectSingleById) -> DbResultSinglePerm<Packet> {
+    async fn read_one_auth(&self, params: &Id, user_id: &Id) -> DbResultSinglePerm<Packet> {
         let p = self.read_one(params).await?;
-        validate_permissions(&self.pg_pool, &SelectSingleProbe::new(params.user_id, p.probe_id), Permission::Read).await?;
-        Ok(DbDataPerm::new(p, (false, vec![])))
+        let permissions =
+            validate_permissions(&self.pg_pool, user_id, &p.probe_id, Permission::Read).await?;
+        Ok(DbDataPerm::new(p, permissions))
     }
 }
 
@@ -122,15 +120,14 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
         Ok(packets)
     }
 
-    async fn read_many_auth(&self, params: &SelectManyPackets) -> DbResultMultiplePerm<Packet> {
+    async fn read_many_auth(
+        &self,
+        params: &SelectManyPackets,
+        user_id: &Id,
+    ) -> DbResultMultiplePerm<Packet> {
         let mut conn = self.pg_pool.get().await?;
         let query = PgPacketRepository::build_select_many_query(params);
-        let Some(user_id) = params.user_id else {
-            return Err(DbError::from(BackendError::new(
-                BackendErrorKind::PermissionDenied,
-                "No user identity provided",
-            )));
-        };
+
         let user_entry = user::table
             .find(user_id)
             .select(User::as_select())
@@ -138,7 +135,10 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
             .await?;
         if user_entry.admin {
             let packets = self.read_many(params).await?;
-            return Ok(DbDataPerm::new(packets, (true, vec![GroupProbePermission::full()])));
+            return Ok(DbDataPerm::new(
+                packets,
+                (true, vec![GroupProbePermission::full()]),
+            ));
         }
         let packets = query
             .inner_join(probe::table)
@@ -183,19 +183,18 @@ impl DbCreate<CreatePacket, Packet> for PgPacketRepository {
     }
 }
 
-impl DbDelete<SelectSingleById, Packet> for PgPacketRepository {
-    async fn delete(&self, params: &SelectSingleById) -> DbResultMultiple<Packet> {
+impl DbDelete<Id, Packet> for PgPacketRepository {
+    async fn delete(&self, params: &Id) -> DbResultMultiple<Packet> {
         let mut conn = self.pg_pool.get().await?;
-        let p = self.read_one_auth(params).await?;
-        validate_permissions(
-            &self.pg_pool,
-            &SelectSingleProbe::new(params.user_id, p.data.probe_id),
-            Permission::Delete,
-        )
-        .await?;
-        diesel::delete(packet::table.find(params.id))
+        diesel::delete(packet::table.find(params))
             .get_results(&mut conn)
             .await
             .map_err(DbError::from)
+    }
+
+    async fn delete_auth(&self, params: &Id, user_id: &Id) -> DbResultMultiple<Packet> {
+        let p = self.read_one(params).await?;
+        validate_permissions(&self.pg_pool, user_id, &p.probe_id, Permission::Delete).await?;
+        self.delete(params).await
     }
 }

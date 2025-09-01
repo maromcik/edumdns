@@ -18,3 +18,9 @@ pub struct DeviceDetailTemplate {
     pub packets: Vec<PacketDisplay>,
     pub packet_transmit_requests: Vec<PacketTransmitRequest>,
 }
+
+#[derive(Serialize)]
+pub struct DeviceTransmitTemplate {
+    pub logged_in: bool,
+    pub device: DeviceDisplay,
+}

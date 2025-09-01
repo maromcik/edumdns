@@ -53,7 +53,11 @@ impl PacketStorage {
             match packet {
                 AppPacket::Command(command) => match command {
                     CommandPacket::TransmitDevicePackets(target) => {
-                        self.transmit_device_packets(target)
+                        if self.transmitter_tasks.lock().await.contains_key(&target) {
+                            warn!("Transmitter task already exists for target: {}", target);
+                        } else {
+                            self.transmit_device_packets(target)
+                        }
                     }
                     CommandPacket::StopTransmitDevicePackets(target) => {
                         if let Some(t) = self.transmitter_tasks.lock().await.get(&target) {

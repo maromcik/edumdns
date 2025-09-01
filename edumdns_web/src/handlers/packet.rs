@@ -7,7 +7,7 @@ use crate::templates::packet::{PacketDetailTemplate, PacketTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, get, web};
-use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination, SelectSingleById};
+use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
 use edumdns_db::repositories::device::models::SelectSingleDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
@@ -23,17 +23,19 @@ pub async fn get_packets(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let packets = packet_repo
-        .read_many_auth(&SelectManyPackets::new_with_user_id(
-            parse_user_id(&i)?,
-            query.probe_id,
-            query.src_mac.map(|addr| addr.to_octets()),
-            query.dst_mac.map(|addr| addr.to_octets()),
-            query.src_addr,
-            query.dst_addr,
-            query.src_port,
-            query.dst_port,
-            Some(Pagination::default_pagination(query.page)),
-        ))
+        .read_many_auth(
+            &SelectManyPackets::new(
+                query.probe_id,
+                query.src_mac.map(|addr| addr.to_octets()),
+                query.dst_mac.map(|addr| addr.to_octets()),
+                query.src_addr,
+                query.dst_addr,
+                query.src_port,
+                query.dst_port,
+                Some(Pagination::default_pagination(query.page)),
+            ),
+            &parse_user_id(&i)?,
+        )
         .await?;
     let packets_parsed = packets
         .data
@@ -65,16 +67,14 @@ pub async fn get_packet(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let user_id = parse_user_id(&i)?;
-    let params = SelectSingleById::new(user_id, path.0);
-    let packet = packet_repo.read_one_auth(&params).await?;
+    let packet = packet_repo.read_one_auth(&path.0, &user_id).await?;
 
-    let params = SelectSingleDevice::new_with_user_id(
-        user_id,
+    let params = SelectSingleDevice::new(
         packet.data.probe_id,
         packet.data.src_mac,
         packet.data.src_addr,
     );
-    let device = device_repo.read_one_auth(&params).await?;
+    let device = device_repo.read_one_auth(&params, &user_id).await?;
     let template_name = get_template_name(&request, "packet/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;

@@ -1,4 +1,5 @@
 use crate::error::DbError;
+use crate::models::GroupProbePermission;
 use diesel::backend::Backend;
 use diesel::deserialize::FromSql;
 use diesel::serialize::{Output, ToSql};
@@ -7,7 +8,7 @@ use diesel::{AsExpression, FromSqlRow, deserialize, serialize};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use strum_macros::EnumIter;
-use crate::models::GroupProbePermission;
+use uuid::Uuid;
 
 const PAGINATION_ELEMENTS_PER_PAGE: i64 = 20;
 
@@ -32,12 +33,15 @@ pub struct DbDataPerm<T> {
     pub data: T,
     pub admin: bool,
     pub permissions: Permissions,
-    
 }
 
 impl<T> DbDataPerm<T> {
     pub fn new(data: T, (admin, permissions): (bool, Permissions)) -> Self {
-        Self { data, admin, permissions, }
+        Self {
+            data,
+            admin,
+            permissions,
+        }
     }
 }
 
@@ -75,6 +79,7 @@ pub trait DbReadOne<ReadOne, Data> {
     fn read_one_auth(
         &self,
         params: &ReadOne,
+        user_id: &Id,
     ) -> impl Future<Output = DbResultSinglePerm<Data>> + Send;
 }
 
@@ -95,6 +100,7 @@ pub trait DbReadMany<ReadMany, Data> {
     fn read_many_auth(
         &self,
         params: &ReadMany,
+        user_id: &Id,
     ) -> impl Future<Output = DbResultMultiplePerm<Data>> + Send;
 }
 
@@ -128,6 +134,11 @@ pub trait DbDelete<Delete, Data> {
     ///                               database)
     /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn delete(&self, params: &Delete) -> impl Future<Output = DbResultMultiple<Data>> + Send;
+    fn delete_auth(
+        &self,
+        params: &Delete,
+        user_id: &Id,
+    ) -> impl Future<Output = DbResultMultiple<Data>> + Send;
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
@@ -156,33 +167,20 @@ pub trait EntityWithId {
     fn get_user_id(&self) -> Self::UserId;
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
-pub struct SelectSingleById {
-    pub user_id: Id,
-    pub id: Id,
-}
-
-impl SelectSingleById {
-    pub fn new(user_id: Id, id: Id) -> Self {
-        Self { user_id, id }
-    }
-}
-
-impl EntityWithId for SelectSingleById {
-    type EntityId = Id;
-    type UserId = Id;
-
-    fn get_id(&self) -> Self::EntityId {
-        self.id
-    }
-
-    fn get_user_id(&self) -> Self::UserId {
-        self.user_id
-    }
-}
-
 #[repr(i16)]
-#[derive(AsExpression, Debug, Clone, PartialEq, Eq, Copy, Serialize, Deserialize, FromSqlRow, EnumIter, Hash)]
+#[derive(
+    AsExpression,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Copy,
+    Serialize,
+    Deserialize,
+    FromSqlRow,
+    EnumIter,
+    Hash,
+)]
 #[diesel(sql_type = SmallInt)]
 pub enum Permission {
     Read,

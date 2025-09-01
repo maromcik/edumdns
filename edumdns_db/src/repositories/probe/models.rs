@@ -9,7 +9,6 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyProbes {
-    pub user_id: Option<Id>,
     pub owner_id: Option<Id>,
     pub location_id: Option<Id>,
     pub adopted: Option<bool>,
@@ -28,27 +27,6 @@ impl SelectManyProbes {
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
-            user_id: None,
-            owner_id,
-            location_id,
-            adopted,
-            mac,
-            ip,
-            pagination,
-        }
-    }
-
-    pub fn new_with_user_id(
-        user_id: Id,
-        owner_id: Option<Id>,
-        location_id: Option<Id>,
-        adopted: Option<bool>,
-        mac: Option<[u8; 6]>,
-        ip: Option<IpNetwork>,
-        pagination: Option<Pagination>,
-    ) -> Self {
-        Self {
-            user_id: Some(user_id),
             owner_id,
             location_id,
             adopted,
@@ -104,30 +82,6 @@ impl From<Probe> for ProbeDisplay {
     }
 }
 
-pub struct SelectSingleProbe {
-    pub user_id: Id,
-    pub id: Uuid,
-}
-
-impl SelectSingleProbe {
-    pub fn new(user_id: Id, id: Uuid) -> Self {
-        Self { user_id, id }
-    }
-}
-
-impl EntityWithId for SelectSingleProbe {
-    type EntityId = Uuid;
-    type UserId = Id;
-
-    fn get_id(&self) -> Self::EntityId {
-        self.id
-    }
-
-    fn get_user_id(&self) -> Self::UserId {
-        self.user_id
-    }
-}
-
 pub struct SelectSingleProbeConfig {
     pub user_id: Id,
     pub id: Id,
@@ -171,7 +125,13 @@ pub struct AlterProbePermission {
 }
 
 impl AlterProbePermission {
-    pub fn new(user_id: Id, probe_id: Uuid, group_id: Id, permission: Permission, state: bool) -> Self {
+    pub fn new(
+        user_id: Id,
+        probe_id: Uuid,
+        group_id: Id,
+        permission: Permission,
+        state: bool,
+    ) -> Self {
         Self {
             user_id,
             probe_id,

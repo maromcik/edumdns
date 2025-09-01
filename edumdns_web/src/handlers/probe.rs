@@ -1,6 +1,3 @@
-use std::collections::HashSet;
-use strum::IntoEnumIterator;
-use strum_macros::EnumIter;
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::probe::{ProbeConfigForm, ProbePermissionForm, ProbeQuery};
@@ -12,16 +9,19 @@ use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, web};
 use edumdns_core::app_packet::{AppPacket, CommandPacket};
 use edumdns_core::error::CoreError;
-use edumdns_db::models::{Group, ProbeConfig};
+use edumdns_db::models::Group;
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination, Permission};
 use edumdns_db::repositories::device::models::DeviceDisplay;
-use edumdns_db::repositories::probe::models::{AlterProbePermission, CreateProbeConfig, ProbeDisplay, SelectManyProbes, SelectSingleProbe, SelectSingleProbeConfig};
-use edumdns_db::repositories::probe::repository::PgProbeRepository;
-use log::error;
-use std::convert::identity;
-use uuid::Uuid;
 use edumdns_db::repositories::group::models::SelectManyGroups;
 use edumdns_db::repositories::group::repository::PgGroupRepository;
+use edumdns_db::repositories::probe::models::{
+    AlterProbePermission, CreateProbeConfig, ProbeDisplay, SelectManyProbes,
+    SelectSingleProbeConfig,
+};
+use edumdns_db::repositories::probe::repository::PgProbeRepository;
+use std::collections::HashSet;
+use strum::IntoEnumIterator;
+use uuid::Uuid;
 
 #[get("")]
 pub async fn get_probes(
@@ -34,15 +34,17 @@ pub async fn get_probes(
     let i = authorized!(identity, request.path());
 
     let probes = probe_repo
-        .read_many_auth(&SelectManyProbes::new_with_user_id(
-            parse_user_id(&i)?,
-            query.owner_id,
-            query.location_id,
-            query.adopted,
-            query.mac.map(|addr| addr.to_octets()),
-            query.ip,
-            Some(Pagination::default_pagination(query.page)),
-        ))
+        .read_many_auth(
+            &SelectManyProbes::new(
+                query.owner_id,
+                query.location_id,
+                query.adopted,
+                query.mac.map(|addr| addr.to_octets()),
+                query.ip,
+                Some(Pagination::default_pagination(query.page)),
+            ),
+            &parse_user_id(&i)?,
+        )
         .await?;
     let probes_parsed = probes
         .data
@@ -72,25 +74,32 @@ pub async fn get_probe(
     path: web::Path<(Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
-    let params = SelectSingleProbe::new(parse_user_id(&i)?, path.0);
     let probe = probe_repo
-        .read_one_auth(&params)
+        .read_one_auth(&path.0, &parse_user_id(&i)?)
         .await?;
 
-    let granted: HashSet<(Id, Permission)> = probe_repo.get_permissions(&params.id)
+    let granted: HashSet<(Id, Permission)> = probe_repo
+        .get_permissions(&path.0)
         .await?
         .iter()
         .map(|x| (x.group_id, x.permission))
         .collect();
 
-    let matrix = group_repo.read_many(&SelectManyGroups::new(None, None)).await?
+    let matrix = group_repo
+        .read_many(&SelectManyGroups::new(None, None))
+        .await?
         .into_iter()
-        .map(|g| ( {
-            Permission::iter().map(|p| {
-                (p, granted.contains(&(g.id, p)))
-            })
-                .collect::<Vec<(Permission, bool)>>()
-        }, g)).collect::<Vec<(Vec<(Permission, bool)>, Group)>>();
+        .map(|g| {
+            (
+                {
+                    Permission::iter()
+                        .map(|p| (p, granted.contains(&(g.id, p))))
+                        .collect::<Vec<(Permission, bool)>>()
+                },
+                g,
+            )
+        })
+        .collect::<Vec<(Vec<(Permission, bool)>, Group)>>();
 
     let template_name = get_template_name(&request, "probe/detail");
     let env = state.jinja.acquire_env()?;
@@ -117,8 +126,7 @@ pub async fn adopt(
     path: web::Path<(Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
-    let params = SelectSingleProbe::new(parse_user_id(&i)?, path.0);
-    probe_repo.adopt(&params).await?;
+    probe_repo.adopt(&path.0, &parse_user_id(&i)?).await?;
     state
         .command_channel
         .send(AppPacket::Command(CommandPacket::ReconnectProbe(
@@ -140,8 +148,7 @@ pub async fn forget(
     path: web::Path<(Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
-    let params = SelectSingleProbe::new(parse_user_id(&i)?, path.0);
-    probe_repo.forget(&params).await?;
+    probe_repo.forget(&path.0, &parse_user_id(&i)?).await?;
     state
         .command_channel
         .send(AppPacket::Command(CommandPacket::ReconnectProbe(
@@ -164,8 +171,9 @@ pub async fn restart(
     path: web::Path<(Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
-    let params = SelectSingleProbe::new(parse_user_id(&i)?, path.0);
-    probe_repo.check_permissions_for_restart(&params).await?;
+    probe_repo
+        .check_permissions_for_restart(&path.0, &parse_user_id(&i)?)
+        .await?;
     state
         .command_channel
         .send(AppPacket::Command(CommandPacket::ReconnectProbe(
@@ -194,7 +202,7 @@ pub async fn create_config(
     probe_repo
         .create_probe_config(
             &CreateProbeConfig::new(probe_id, form.interface.clone(), form.filter.clone()),
-            user_id,
+            &user_id,
         )
         .await?;
 
@@ -230,7 +238,7 @@ pub async fn save_config(
     probe_repo
         .create_probe_config(
             &CreateProbeConfig::new(probe_id, form.interface.clone(), form.filter.clone()),
-            user_id,
+            &user_id,
         )
         .await?;
 
@@ -285,18 +293,20 @@ pub async fn change_probe_permission(
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
     form: web::Form<ProbePermissionForm>,
-    path: web::Path<(Uuid, )>,
+    path: web::Path<(Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
     let probe_id = path.0;
     let i = authorized!(identity, request.path());
 
-    probe_repo.alter_permission(AlterProbePermission::new(
-        parse_user_id(&i)?,
-        probe_id,
-        form.group_id,
-        form.permission,
-        form.value
-    )).await?;
+    probe_repo
+        .alter_permission(AlterProbePermission::new(
+            parse_user_id(&i)?,
+            probe_id,
+            form.group_id,
+            form.permission,
+            form.value,
+        ))
+        .await?;
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))

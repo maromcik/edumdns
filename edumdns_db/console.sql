@@ -11,3 +11,5 @@ from
 where p.name = 'read' and gu.user_id = 1;
 
 select count(*) from packet;
+
+alter table packet_transmit_request add constraint "PacketTransmitRequestUnique" UNIQUE (device_id, target_ip, target_port);

@@ -1,13 +1,12 @@
-use crate::error::{BackendError, BackendErrorKind, DbError};
+use crate::error::DbError;
 use crate::models::{Device, GroupProbePermission, PacketTransmitRequest, Probe, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
-    DbResultSingle, DbResultSinglePerm, Id, Permission, SelectSingleById,
+    DbResultSingle, DbResultSinglePerm, Id, Permission,
 };
 use crate::repositories::device::models::{
     CreateDevice, CreatePacketTransmitRequest, SelectManyDevices, SelectSingleDevice,
 };
-use crate::repositories::probe::models::SelectSingleProbe;
 use crate::repositories::utilities::validate_permissions;
 use crate::schema::device::BoxedQuery;
 use crate::schema::{
@@ -80,25 +79,21 @@ impl PgDeviceRepository {
     }
 }
 
-impl DbReadOne<SelectSingleById, Device> for PgDeviceRepository {
-    async fn read_one(&self, params: &SelectSingleById) -> DbResultSingle<Device> {
+impl DbReadOne<Id, Device> for PgDeviceRepository {
+    async fn read_one(&self, params: &Id) -> DbResultSingle<Device> {
         let mut conn = self.pg_pool.get().await?;
         let d = device::table
-            .find(params.id)
+            .find(params)
             .select(Device::as_select())
             .first(&mut conn)
             .await?;
         Ok(d)
     }
 
-    async fn read_one_auth(&self, params: &SelectSingleById) -> DbResultSinglePerm<Device> {
+    async fn read_one_auth(&self, params: &Id, user_id: &Id) -> DbResultSinglePerm<Device> {
         let d = self.read_one(params).await?;
-        let permissions = validate_permissions(
-            &self.pg_pool,
-            &SelectSingleProbe::new(params.user_id, d.probe_id),
-            Permission::Read,
-        )
-        .await?;
+        let permissions =
+            validate_permissions(&self.pg_pool, user_id, &d.probe_id, Permission::Read).await?;
         Ok(DbDataPerm::new(d, permissions))
     }
 }
@@ -116,18 +111,14 @@ impl DbReadOne<SelectSingleDevice, Device> for PgDeviceRepository {
         Ok(d)
     }
 
-    async fn read_one_auth(&self, params: &SelectSingleDevice) -> DbResultSinglePerm<Device> {
-        let permissions = match params.user_id {
-            Some(user_id) => {
-                validate_permissions(
-                    &self.pg_pool,
-                    &SelectSingleProbe::new(user_id, params.probe_id),
-                    Permission::Read,
-                )
-                .await?
-            }
-            None => (false, vec![])
-        };
+    async fn read_one_auth(
+        &self,
+        params: &SelectSingleDevice,
+        user_id: &Id,
+    ) -> DbResultSinglePerm<Device> {
+        let permissions =
+            validate_permissions(&self.pg_pool, user_id, &params.probe_id, Permission::Read)
+                .await?;
         let d = self.read_one(params).await?;
         Ok(DbDataPerm::new(d, permissions))
     }
@@ -149,14 +140,9 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
     async fn read_many_auth(
         &self,
         params: &SelectManyDevices,
+        user_id: &Id,
     ) -> DbResultMultiplePerm<(Probe, Device)> {
         let mut conn = self.pg_pool.get().await?;
-        let Some(user_id) = params.user_id else {
-            return Err(DbError::from(BackendError::new(
-                BackendErrorKind::PermissionDenied,
-                "No user identity provided",
-            )));
-        };
         let query = PgDeviceRepository::build_select_many_query(params);
         let user_entry = user::table
             .find(user_id)
@@ -165,7 +151,10 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
             .await?;
         if user_entry.admin {
             let devices = self.read_many(params).await?;
-            return Ok(DbDataPerm::new(devices, (true, vec![GroupProbePermission::full()])));
+            return Ok(DbDataPerm::new(
+                devices,
+                (true, vec![GroupProbePermission::full()]),
+            ));
         }
 
         let devices = query
@@ -201,20 +190,19 @@ impl DbCreate<CreateDevice, Device> for PgDeviceRepository {
     }
 }
 
-impl DbDelete<SelectSingleById, Device> for PgDeviceRepository {
-    async fn delete(&self, params: &SelectSingleById) -> DbResultMultiple<Device> {
+impl DbDelete<Id, Device> for PgDeviceRepository {
+    async fn delete(&self, params: &Id) -> DbResultMultiple<Device> {
         let mut conn = self.pg_pool.get().await?;
-        let d = self.read_one_auth(params).await?;
-        validate_permissions(
-            &self.pg_pool,
-            &SelectSingleProbe::new(params.user_id, d.data.probe_id),
-            Permission::Delete,
-        )
-        .await?;
-        diesel::delete(device::table.find(params.id))
+        diesel::delete(device::table.find(params))
             .get_results(&mut conn)
             .await
             .map_err(DbError::from)
+    }
+
+    async fn delete_auth(&self, params: &Id, user_id: &Id) -> DbResultMultiple<Device> {
+        let d = self.read_one(params).await?;
+        validate_permissions(&self.pg_pool, user_id, &d.probe_id, Permission::Delete).await?;
+        self.delete(params).await
     }
 }
 

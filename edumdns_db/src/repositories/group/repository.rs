@@ -1,6 +1,9 @@
 use crate::error::{BackendError, BackendErrorKind, DbError};
 use crate::models::{Group, User};
-use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, Id, Permission};
+use crate::repositories::common::{
+    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
+    DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, Id, Permission,
+};
 use crate::repositories::group::models::{CreateGroup, SelectManyGroups};
 use std::ops::DerefMut;
 
@@ -33,7 +36,7 @@ impl DbReadOne<Id, Group> for PgGroupRepository {
             .await?;
         Ok(g)
     }
-    async fn read_one_auth(&self, params: &Id) -> DbResultSinglePerm<Group> {
+    async fn read_one_auth(&self, params: &Id, user_id: &Id) -> DbResultSinglePerm<Group> {
         let g = self.read_one(params).await?;
         Ok(DbDataPerm::new(g, (false, vec![])))
     }
@@ -58,7 +61,11 @@ impl DbReadMany<SelectManyGroups, Group> for PgGroupRepository {
         Ok(groups)
     }
 
-    async fn read_many_auth(&self, params: &SelectManyGroups) -> DbResultMultiplePerm<Group> {
+    async fn read_many_auth(
+        &self,
+        params: &SelectManyGroups,
+        user_id: &Id,
+    ) -> DbResultMultiplePerm<Group> {
         let groups = self.read_many(params).await?;
         Ok(DbDataPerm::new(groups, (false, vec![])))
     }
@@ -91,6 +98,10 @@ impl DbDelete<Id, Group> for PgGroupRepository {
             .get_results(&mut conn)
             .await
             .map_err(DbError::from)
+    }
+
+    async fn delete_auth(&self, params: &Id, user_id: &Id) -> DbResultMultiple<Group> {
+        self.delete(params).await
     }
 }
 

@@ -4,7 +4,10 @@ use crate::handlers::device::{
 use crate::handlers::group::{get_group, get_groups};
 use crate::handlers::index::index;
 use crate::handlers::packet::{get_packet, get_packets};
-use crate::handlers::probe::{adopt, change_probe_permission, create_config, delete_config, forget, get_probe, get_probes, restart, save_config};
+use crate::handlers::probe::{
+    adopt, change_probe_permission, create_config, delete_config, forget, get_probe, get_probes,
+    restart, save_config,
+};
 use crate::handlers::user::{login, login_user, logout_user};
 use crate::utils::AppState;
 use actix_files::Files;

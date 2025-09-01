@@ -8,7 +8,6 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyDevices {
-    pub user_id: Option<Id>,
     pub probe_id: Option<Uuid>,
     pub mac: Option<[u8; 6]>,
     pub ip: Option<IpNetwork>,
@@ -25,25 +24,6 @@ impl SelectManyDevices {
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
-            user_id: None,
-            probe_id,
-            mac,
-            ip,
-            port,
-            pagination,
-        }
-    }
-
-    pub fn new_with_user_id(
-        user_id: Id,
-        probe_id: Option<Uuid>,
-        mac: Option<[u8; 6]>,
-        ip: Option<IpNetwork>,
-        port: Option<i32>,
-        pagination: Option<Pagination>,
-    ) -> Self {
-        Self {
-            user_id: Some(user_id),
             probe_id,
             mac,
             ip,
@@ -55,7 +35,6 @@ impl SelectManyDevices {
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectSingleDevice {
-    pub user_id: Option<Id>,
     pub probe_id: Uuid,
     pub mac: [u8; 6],
     pub ip: IpNetwork,
@@ -63,21 +42,7 @@ pub struct SelectSingleDevice {
 
 impl SelectSingleDevice {
     pub fn new(probe_id: Uuid, mac: [u8; 6], ip: IpNetwork) -> Self {
-        Self {
-            user_id: None,
-            probe_id,
-            mac,
-            ip,
-        }
-    }
-
-    pub fn new_with_user_id(user_id: Id, probe_id: Uuid, mac: [u8; 6], ip: IpNetwork) -> Self {
-        Self {
-            user_id: Some(user_id),
-            probe_id,
-            mac,
-            ip,
-        }
+        Self { probe_id, mac, ip }
     }
 }
 

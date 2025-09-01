@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS "packet_transmit_request"
     target_ip      cidr         NOT NULL,
     target_port    int          NOT NULL,
     permanent      bool         NOT NULL DEFAULT FALSE,
+    UNIQUE (device_id, target_ip, target_port),
     FOREIGN KEY (device_id) REFERENCES "device" (id) ON DELETE CASCADE
 );
 

@@ -1,9 +1,11 @@
+use crate::authorized;
 use crate::error::WebError;
 use crate::forms::group::GroupQuery;
-use crate::handlers::helpers::get_template_name;
+use crate::handlers::helpers::{get_template_name, parse_user_id};
 use crate::templates::group::{GroupDetailTemplate, GroupTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
+use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, get, web};
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
 use edumdns_db::repositories::group::models::SelectManyGroups;
@@ -17,11 +19,15 @@ pub async fn get_groups(
     state: web::Data<AppState>,
     query: web::Query<GroupQuery>,
 ) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request.path());
     let groups = group_repo
-        .read_many_auth(&SelectManyGroups::new(
-            query.name.clone(),
-            Some(Pagination::default_pagination(query.page)),
-        ))
+        .read_many_auth(
+            &SelectManyGroups::new(
+                query.name.clone(),
+                Some(Pagination::default_pagination(query.page)),
+            ),
+            &parse_user_id(&i)?,
+        )
         .await?;
 
     let template_name = get_template_name(&request, "group");
@@ -44,7 +50,10 @@ pub async fn get_group(
     state: web::Data<AppState>,
     path: web::Path<(Id,)>,
 ) -> Result<HttpResponse, WebError> {
-    let group = group_repo.read_one_auth(&path.0).await?;
+    let i = authorized!(identity, request.path());
+    let group = group_repo
+        .read_one_auth(&path.0, &parse_user_id(&i)?)
+        .await?;
 
     let template_name = get_template_name(&request, "group/detail");
     let env = state.jinja.acquire_env()?;

@@ -12,6 +12,7 @@ pub struct SelectManyDevices {
     pub mac: Option<[u8; 6]>,
     pub ip: Option<IpNetwork>,
     pub port: Option<i32>,
+    pub name: Option<String>,
     pub pagination: Option<Pagination>,
 }
 
@@ -21,6 +22,7 @@ impl SelectManyDevices {
         mac: Option<[u8; 6]>,
         ip: Option<IpNetwork>,
         port: Option<i32>,
+        name: Option<String>,
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
@@ -28,6 +30,7 @@ impl SelectManyDevices {
             mac,
             ip,
             port,
+            name,
             pagination,
         }
     }

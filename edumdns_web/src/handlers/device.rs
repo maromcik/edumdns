@@ -39,6 +39,7 @@ pub async fn get_devices(
                 query.mac.map(|addr| addr.to_octets()),
                 query.ip,
                 query.port,
+                None,
                 Some(Pagination::default_pagination(query.page)),
             ),
             &parse_user_id(&i)?,

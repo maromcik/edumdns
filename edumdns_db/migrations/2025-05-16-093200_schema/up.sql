@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS "probe"
     adopted        bool         NOT NULL DEFAULT FALSE,
     mac            macaddr      NOT NULL,
     ip             cidr         NOT NULL,
+    name           text,
 
     FOREIGN KEY (owner_id) REFERENCES "user" (id) ON DELETE SET NULL,
     FOREIGN KEY (location_id) REFERENCES "location" (id) ON DELETE SET NULL
@@ -92,6 +93,7 @@ CREATE TABLE IF NOT EXISTS "device"
     mac            macaddr      NOT NULL,
     ip             cidr         NOT NULL,
     port           int          NOT NULL,
+    name           text,
     duration       bigint       NOT NULL DEFAULT 3600,
     interval       bigint       NOT NULL DEFAULT 1000,
 

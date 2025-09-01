@@ -7,6 +7,7 @@ diesel::table! {
         mac -> Macaddr,
         ip -> Cidr,
         port -> Int4,
+        name -> Nullable<Text>,
         duration -> Int8,
         interval -> Int8,
     }
@@ -80,6 +81,7 @@ diesel::table! {
         adopted -> Bool,
         mac -> Macaddr,
         ip -> Cidr,
+        name -> Nullable<Text>,
     }
 }
 

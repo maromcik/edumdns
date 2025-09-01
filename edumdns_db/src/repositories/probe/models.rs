@@ -14,6 +14,7 @@ pub struct SelectManyProbes {
     pub adopted: Option<bool>,
     pub mac: Option<[u8; 6]>,
     pub ip: Option<IpNetwork>,
+    pub name: Option<String>,
     pub pagination: Option<Pagination>,
 }
 
@@ -24,6 +25,7 @@ impl SelectManyProbes {
         adopted: Option<bool>,
         mac: Option<[u8; 6]>,
         ip: Option<IpNetwork>,
+        name: Option<String>,
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
@@ -32,6 +34,7 @@ impl SelectManyProbes {
             adopted,
             mac,
             ip,
+            name,
             pagination,
         }
     }

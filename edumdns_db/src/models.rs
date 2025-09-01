@@ -69,6 +69,7 @@ pub struct Probe {
     pub adopted: bool,
     pub mac: [u8; 6],
     pub ip: ipnetwork::IpNetwork,
+    pub name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Queryable, Selectable, Associations)]
@@ -92,6 +93,7 @@ pub struct Device {
     pub mac: [u8; 6],
     pub ip: ipnetwork::IpNetwork,
     pub port: i32,
+    pub name: Option<String>,
     pub duration: i64,
     pub interval: i64,
 }

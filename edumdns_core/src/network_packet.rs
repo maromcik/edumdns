@@ -86,8 +86,9 @@ impl TransportPacketIpv6Addresses {
     }
 }
 
-pub enum ApplicationPacketType {
+pub enum ApplicationPacketType<'a> {
     DnsPacket(Message),
+    Other(&'a [u8]),
 }
 
 impl<'a> From<MutableEthernetPacket<'a>> for DataLinkPacket<'a> {
@@ -578,12 +579,12 @@ impl FixablePacket for TransportPacket<'_> {
     }
 }
 
-pub struct ApplicationPacket {
-    pub application_packet_type: ApplicationPacketType,
+pub struct ApplicationPacket<'a> {
+    pub application_packet_type: ApplicationPacketType<'a>,
 }
 
-impl ApplicationPacket {
-    pub fn new<'a>(transport: &'a TransportPacket<'a>) -> Option<ApplicationPacket> {
+impl<'a> ApplicationPacket<'a> {
+    pub fn new(transport: &'a TransportPacket<'a>) -> Option<ApplicationPacket<'a>> {
         match transport {
             TransportPacket::Udp(packet, _) => {
                 let msg = Message::from_bytes(packet.payload()).ok()?;
@@ -601,22 +602,23 @@ impl ApplicationPacket {
                     bytes,
                 )?),
             }),
-            _ => Err(CoreError::new(
-                CoreErrorKind::PacketConstructionError,
-                "Unsupported application packet type",
-            )),
+            _ => Ok(ApplicationPacket {
+                application_packet_type: ApplicationPacketType::Other(bytes)
+            }),
         }
     }
 
     pub fn get_owned_payload(&self) -> Result<Vec<u8>, CoreError> {
         match self.application_packet_type {
             ApplicationPacketType::DnsPacket(ref packet) => Ok(packet.to_bytes()?),
+            ApplicationPacketType::Other(packet) => Ok(packet.to_owned()),
         }
     }
 
     pub fn read_content(&mut self) -> String {
         match self.application_packet_type {
             ApplicationPacketType::DnsPacket(ref mut packet) => packet.to_string(),
+            ApplicationPacketType::Other(packet) => String::from_utf8_lossy(packet).to_string(),
         }
     }
 }

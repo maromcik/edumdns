@@ -167,6 +167,7 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
             )
             .filter(group_user::user_id.eq(user_id))
             .filter(group_probe_permission::permission.eq(Permission::Read).or(group_probe_permission::permission.eq(Permission::Full)))
+            .distinct()
             .select((Probe::as_select(), Device::as_select()))
             .load::<(Probe, Device)>(&mut conn)
             .await?;

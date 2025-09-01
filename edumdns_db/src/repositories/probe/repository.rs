@@ -141,6 +141,7 @@ impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeReposito
             )
             .filter(group_user::user_id.eq(user_id))
             .filter(group_probe_permission::permission.eq(Permission::Read).or(group_probe_permission::permission.eq(Permission::Full)))
+            .distinct()
             .left_outer_join(location::table)
             .select((Option::<Location>::as_select(), Probe::as_select()))
             .load::<(Option<Location>, Probe)>(&mut conn)
@@ -192,7 +193,7 @@ impl PgProbeRepository {
 
     pub async fn adopt(&self, params: &Uuid, user_id: &Id) -> DbResult<()> {
         let mut conn = self.pg_pool.get().await?;
-        validate_permissions(&self.pg_pool, user_id, params, Permission::Forget).await?;
+        validate_permissions(&self.pg_pool, user_id, params, Permission::Adopt).await?;
         diesel::update(probe::table.find(params))
             .set(probe::adopted.eq(true))
             .execute(&mut conn)

@@ -170,6 +170,8 @@ pub async fn request_packet_transmit(
     };
 
     let packet_transmit_request = device_repo.create(&request).await?;
+    let command_channel_local = state.command_channel.clone();
+    let packet_local = packet.clone();
     if !form.permanent {
         tokio::spawn(async move {
             tokio::time::sleep(std::time::Duration::from_secs(device.data.duration as u64)).await;
@@ -183,6 +185,12 @@ pub async fn request_packet_transmit(
                     WebError::from(e)
                 );
             }
+
+                command_channel_local
+                .send(AppPacket::Command(
+                    CommandPacket::StopTransmitDevicePackets(packet_local),
+                ))
+                .await
         });
     }
 

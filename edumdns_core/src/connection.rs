@@ -335,7 +335,6 @@ impl UdpConnection {
                     format!("Sending UDP packets to {target} timed out").as_str(),
                 )
             })??;
-        debug!("Packet to {target} successfully sent");
         Ok(())
     }
 }

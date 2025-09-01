@@ -19,6 +19,7 @@ use tokio::sync::RwLock;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::sleep;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
+use crate::parse_host;
 
 async fn handle_connection(mut connection_manager: ConnectionManager) -> Result<(), ServerError> {
     connection_manager.connection_init_server().await?;
@@ -32,7 +33,9 @@ pub async fn listen(
     (tx, rx): (Sender<AppPacket>, Receiver<AppPacket>),
     global_timeout: Duration,
 ) -> Result<(), ServerError> {
-    let listener = TcpListener::bind("127.0.0.1:5000").await?;
+    let host = parse_host();
+    info!("Starting on {host}");
+    let listener = TcpListener::bind(host).await?;
     info!("Listening on {}", listener.local_addr()?);
 
     let pool_local = pool.clone();

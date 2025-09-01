@@ -15,7 +15,8 @@ pub mod listen;
 pub mod storage;
 mod transmitter;
 
-pub struct ServerConfig {}
+const DEFAULT_HOSTNAME: &str = "localhost";
+const DEFAULT_PORT: &str = "5000";
 
 pub async fn server_init(
     pool: Pool<AsyncPgConnection>,
@@ -29,4 +30,10 @@ pub async fn server_init(
 
     listen(pool, command_channel, global_timeout).await?;
     Ok(())
+}
+
+pub fn parse_host() -> String {
+    let hostname = env::var("EDUMDNS_SERVER_HOSTNAME").unwrap_or(DEFAULT_HOSTNAME.to_string());
+    let port = env::var("EDUMDNS_SERVER_PORT").unwrap_or(DEFAULT_PORT.to_string());
+    format!("{hostname}:{port}")
 }

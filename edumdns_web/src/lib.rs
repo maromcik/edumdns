@@ -103,7 +103,7 @@ pub async fn web_init(
 }
 
 fn parse_host() -> String {
-    let hostname = env::var("HOSTNAME").unwrap_or(DEFAULT_HOSTNAME.to_string());
-    let port = env::var("PORT").unwrap_or(DEFAULT_PORT.to_string());
+    let hostname = env::var("EDUMDNS_WEB_HOSTNAME").unwrap_or(DEFAULT_HOSTNAME.to_string());
+    let port = env::var("EDUMDNS_WEB_PORT").unwrap_or(DEFAULT_PORT.to_string());
     format!("{hostname}:{port}")
 }

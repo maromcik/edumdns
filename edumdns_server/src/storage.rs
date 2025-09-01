@@ -281,7 +281,6 @@ impl PacketStorage {
             let transmitter = PacketTransmitter::new(
                 payloads,
                 transmit_request.clone(),
-                Duration::from_secs(device.duration as u64),
                 Duration::from_millis(device.interval as u64),
                 global_timeout,
             )

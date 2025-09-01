@@ -151,6 +151,7 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
             .filter(group_user::user_id.eq(user_id))
             .filter(group_probe_permission::permission.eq(Permission::Read).or(group_probe_permission::permission.eq(Permission::Full)))
             .distinct()
+            .order(packet::id.asc())
             .select(Packet::as_select())
             .load::<Packet>(&mut conn)
             .await?;

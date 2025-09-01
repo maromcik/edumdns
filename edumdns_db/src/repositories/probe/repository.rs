@@ -15,7 +15,7 @@ use crate::schema::probe::BoxedQuery;
 use crate::schema::user;
 use crate::schema::{location, probe_config};
 use diesel::pg::Pg;
-use diesel::{BelongingToDsl, ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
+use diesel::{BelongingToDsl, BoolExpressionMethods, ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -140,7 +140,7 @@ impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeReposito
                 group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
             )
             .filter(group_user::user_id.eq(user_id))
-            .filter(group_probe_permission::permission.eq(Permission::Read))
+            .filter(group_probe_permission::permission.eq(Permission::Read).or(group_probe_permission::permission.eq(Permission::Full)))
             .left_outer_join(location::table)
             .select((Option::<Location>::as_select(), Probe::as_select()))
             .load::<(Option<Location>, Probe)>(&mut conn)

@@ -13,7 +13,7 @@ use crate::schema::{
     device, group_probe_permission, group_user, packet_transmit_request, probe, user,
 };
 use diesel::pg::Pg;
-use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
+use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -166,7 +166,7 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
                 group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
             )
             .filter(group_user::user_id.eq(user_id))
-            .filter(group_probe_permission::permission.eq(Permission::Read))
+            .filter(group_probe_permission::permission.eq(Permission::Read).or(group_probe_permission::permission.eq(Permission::Full)))
             .select((Probe::as_select(), Device::as_select()))
             .load::<(Probe, Device)>(&mut conn)
             .await?;

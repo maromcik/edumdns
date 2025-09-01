@@ -1,14 +1,15 @@
+use edumdns_db::repositories::common::DbCreate;
 use crate::authorized;
 use crate::error::WebError;
-use crate::forms::group::GroupQuery;
+use crate::forms::group::{CreateGroupForm, GroupQuery};
 use crate::handlers::helpers::{get_template_name, parse_user_id};
 use crate::templates::group::{GroupDetailTemplate, GroupTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, get, web};
+use actix_web::{HttpRequest, HttpResponse, get, web, post};
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
-use edumdns_db::repositories::group::models::SelectManyGroups;
+use edumdns_db::repositories::group::models::{CreateGroup, SelectManyGroups};
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 
 #[get("")]
@@ -65,4 +66,18 @@ pub async fn get_group(
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
+}
+
+#[post("create")]
+pub async fn create_group(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    group_repo: web::Data<PgGroupRepository>,
+    form: web::Form<CreateGroupForm>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request.path());
+    let _ = group_repo.create(&CreateGroup::new(parse_user_id(&i)?, &form.name, form.description.as_ref())).await?;
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, "/group"))
+        .finish())
 }

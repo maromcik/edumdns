@@ -14,8 +14,19 @@ impl SelectManyGroups {
     }
 }
 
-#[derive(Serialize, Deserialize, AsChangeset, Insertable)]
-#[diesel(table_name = crate::schema::group)]
+#[derive(Serialize, Deserialize)]
 pub struct CreateGroup {
+    pub user_id: Id,
     pub name: String,
+    pub description: Option<String>,
+}
+
+impl CreateGroup {
+    pub fn new(user_id: Id, name: &String, description: Option<&String>) -> Self {
+        Self {
+            user_id,
+            name: name.to_string(),
+            description: description.map(|s| s.to_string()),
+        }
+    }
 }

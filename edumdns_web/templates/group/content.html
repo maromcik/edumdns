@@ -4,6 +4,42 @@
     <h2 class="text-4xl font-bold text-sat-xl">Groups</h2>
   </div>
 
+  <!-- New Group -->
+  <div class="rounded-lg border border-base bg-cards p-6 mb-6">
+    <h3 class="text-2xl font-semibold text-sat-l mb-4">New Group</h3>
+    <form action="/group/create" method="post" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="flex flex-col">
+        <label for="name" class="text-xs uppercase tracking-wide text-sat-m">Name</label>
+        <input
+          id="name"
+          name="name"
+          type="text"
+          required
+          class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+          placeholder="Enter group name"
+        />
+      </div>
+      <div class="flex flex-col md:col-span-2">
+        <label for="description" class="text-xs uppercase tracking-wide text-sat-m">Description</label>
+        <textarea
+          id="description"
+          name="description"
+          rows="3"
+          class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+          placeholder="Optional description"
+        ></textarea>
+      </div>
+      <div class="md:col-span-2">
+        <button
+          type="submit"
+          class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-cards hover:bg-acc-xl transition-colors"
+        >
+          Create Group
+        </button>
+      </div>
+    </form>
+  </div>
+
   <div class="overflow-x-auto rounded-lg border border-base bg-cards">
     <table class="min-w-full divide-y divide-base">
       <thead class="bg-muted/10">

@@ -1,5 +1,5 @@
 use crate::error::{BackendError, BackendErrorKind, DbError};
-use crate::models::{Group, User};
+use crate::models::{Group, GroupProbePermission, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
     DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, Id, Permission,
@@ -76,13 +76,24 @@ impl DbCreate<CreateGroup, Group> for PgGroupRepository {
         let mut conn = self.pg_pool.get().await?;
         let g = conn
             .deref_mut()
-            .transaction::<_, Error, _>(|c| {
+            .transaction::<_, DbError, _>(|c| {
                 async move {
-                    diesel::insert_into(group::table)
-                        .values(data)
+                    let user_entry = user::table
+                        .find(data.user_id)
+                        .select(User::as_select())
+                        .first(c)
+                        .await?;
+
+                    if !user_entry.admin {
+                        return Err(DbError::from(BackendError::new(BackendErrorKind::PermissionDenied, "User is not admin")));
+                    }
+
+                    let g = diesel::insert_into(group::table)
+                        .values((group::name.eq(&data.name), group::description.eq(&data.description)))
                         .returning(Group::as_returning())
                         .get_result(c)
-                        .await
+                        .await?;
+                    Ok::<Group, DbError>(g)
                 }
                 .scope_boxed()
             })

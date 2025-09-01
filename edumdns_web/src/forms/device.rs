@@ -1,12 +1,13 @@
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use edumdns_core::bincode_types::MacAddr;
 
 #[derive(Serialize, Deserialize)]
 pub struct DeviceQuery {
     pub page: Option<i64>,
     pub probe_id: Option<Uuid>,
-    pub mac: Option<[u8; 6]>,
+    pub mac: Option<MacAddr>,
     pub ip: Option<IpNetwork>,
     pub port: Option<i32>,
 }

@@ -36,7 +36,7 @@ pub async fn get_devices(
         .read_many_auth(
             &SelectManyDevices::new(
                 query.probe_id,
-                query.mac,
+                query.mac.map(|addr| addr.to_octets()),
                 query.ip,
                 query.port,
                 Some(Pagination::default_pagination(query.page)),

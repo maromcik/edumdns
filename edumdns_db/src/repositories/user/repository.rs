@@ -175,4 +175,8 @@ impl DbUpdate<UserUpdate, User> for PgUserRepository {
             .await?;
         Ok(updated_users)
     }
+
+    async fn update_auth(&self, params: &UserUpdate, user_id: &Id) -> DbResultMultiple<User> {
+        self.update(params).await
+    }
 }

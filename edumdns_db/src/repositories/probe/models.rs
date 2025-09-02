@@ -1,7 +1,7 @@
 use crate::models::Probe;
 use crate::repositories::common::{EntityWithId, Id, Pagination, Permission};
 use diesel::pg::Pg;
-use diesel::{AsChangeset, Insertable, Queryable, Selectable};
+use diesel::{AsChangeset, Identifiable, Insertable, Queryable, Selectable};
 use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
@@ -69,7 +69,8 @@ pub struct ProbeDisplay {
     pub location_id: Option<Id>,
     pub adopted: bool,
     pub mac: MacAddr,
-    pub ip: ipnetwork::IpNetwork,
+    pub ip: IpNetwork,
+    pub name: Option<String>
 }
 
 impl From<Probe> for ProbeDisplay {
@@ -81,6 +82,7 @@ impl From<Probe> for ProbeDisplay {
             adopted: value.adopted,
             mac: MacAddr::from_octets(value.mac),
             ip: value.ip,
+            name: value.name
         }
     }
 }
@@ -171,4 +173,11 @@ impl From<AlterProbePermission> for CreateGroupProbePermission {
             permission: value.permission,
         }
     }
+}
+#[derive(Serialize, Deserialize, AsChangeset, Identifiable, Debug)]
+#[diesel(table_name = crate::schema::probe)]
+pub struct UpdateProbe {
+    pub id: Uuid,
+    pub name: Option<String>,
+    pub location_id: Option<Id>,
 }

@@ -9,10 +9,11 @@
             <thead class="bg-muted/10">
                 <tr>
                     <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">ID</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Name</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Location</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">MAC</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">IP</th>
                     <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Adopted</th>
-                    <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Location</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-base">
@@ -24,6 +25,15 @@
                             {{ probe[1].id }}
                         </a>
                     </td>
+                    <td class="px-4 py-3 text-sm text-sat-l">{% if probe[1].name is not none %}{{ probe[1].name }} {% else %} <span class="text-muted-foreground">—</span>{% endif %}</td>
+                    <!-- probe[0] is Option<Location> -->
+                    <td class="px-4 py-3 text-sm text-sat-l">
+                        {% if probe[0] %}
+                        {{ probe[0].name }}
+                        {% else %}
+                        <span class="text-muted-foreground">—</span>
+                        {% endif %}
+                    </td>
                     <td class="px-4 py-3 text-sm text-sat-l">{{ probe[1].mac }}</td>
                     <td class="px-4 py-3 text-sm text-sat-l">{{ probe[1].ip }}</td>
                     <td class="px-4 py-3 text-sm">
@@ -34,14 +44,7 @@
                         {% endif %}
                     </td>
 
-                    <!-- probe[0] is Option<Location> -->
-                    <td class="px-4 py-3 text-sm text-sat-l">
-                        {% if probe[0] %}
-                            {{ probe[0].name }}
-                        {% else %}
-                            <span class="text-muted-foreground">—</span>
-                        {% endif %}
-                    </td>
+
                 </tr>
                 {% endfor %}
             </tbody>

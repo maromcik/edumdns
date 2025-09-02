@@ -10,19 +10,17 @@ use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, web};
 use edumdns_core::app_packet::{AppPacket, CommandPacket};
 use edumdns_core::error::CoreError;
 use edumdns_db::models::Group;
-use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination, Permission};
-use edumdns_db::repositories::device::models::DeviceDisplay;
+use edumdns_db::repositories::common::{DbReadMany, DbReadOne, DbUpdate, Id, Pagination, Permission};
+use edumdns_db::repositories::device::models::{DeviceDisplay, UpdateDevice};
 use edumdns_db::repositories::group::models::SelectManyGroups;
 use edumdns_db::repositories::group::repository::PgGroupRepository;
-use edumdns_db::repositories::probe::models::{
-    AlterProbePermission, CreateProbeConfig, ProbeDisplay, SelectManyProbes,
-    SelectSingleProbeConfig,
-};
+use edumdns_db::repositories::probe::models::{AlterProbePermission, CreateProbeConfig, ProbeDisplay, SelectManyProbes, SelectSingleProbeConfig, UpdateProbe};
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use std::collections::HashSet;
 use actix_session::Session;
 use strum::IntoEnumIterator;
 use uuid::Uuid;
+use edumdns_db::repositories::device::repository::PgDeviceRepository;
 
 #[get("")]
 pub async fn get_probes(
@@ -306,5 +304,19 @@ pub async fn change_probe_permission(
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))
+        .finish())
+}
+
+#[post("update")]
+pub async fn update_probe(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    probe_repo: web::Data<PgProbeRepository>,
+    form: web::Form<UpdateProbe>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request.path());
+    probe_repo.update_auth(&form, &parse_user_id(&i)?).await?;
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/probe/{}", form.id)))
         .finish())
 }

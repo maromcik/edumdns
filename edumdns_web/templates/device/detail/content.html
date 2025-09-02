@@ -1,7 +1,7 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-6">
   <!-- Header -->
   <div class="flex items-center justify-between mb-6">
-    <h1 class="text-4xl font-semibold text-sat-xl">Device {{ device.id }}</h1>
+    <h1 class="text-4xl font-semibold text-sat-xl">Device {% if device.name is not none %} {{ device.name }} {% else %} {{ device.id }} {% endif %}</h1>
     <div class="flex items-center gap-2">
       <a href="/device" class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
         ←
@@ -38,29 +38,99 @@
         <span class="font-mono text-code"><code>{{ device.ip }}</code></span>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Editable Device Settings -->
+  <div class="rounded-lg border border-base bg-cards p-6 mb-8">
+    <h3 class="text-2xl font-medium mb-4 text-sat-l">Device Settings</h3>
+    <form
+            method="post"
+            hx-post="/device/update"
+            hx-target="#content-area"
+            hx-error-target="#content-area"
+            class="grid grid-cols-1 md:grid-cols-2 gap-4"
+    >
+      <input type="hidden" id="device_id" name="id" value="{{ device.id }}" />
+      <!-- Name -->
+      <div class="flex flex-col">
+        <label for="name" class="text-xs uppercase tracking-wide text-sat-m">Name</label>
+        <input
+                id="name"
+                name="name"
+                type="text"
+                value=""
+                placeholder="{{ device.name }}"
+                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+        />
+        <p class="text-xs text-sat-m mt-1">Optional friendly name for the device.</p>
+      </div>
+
       <!-- Port -->
       <div class="flex flex-col">
-        <span class="text-xs uppercase tracking-wide text-sat-m">Port</span>
-        <span class="font-mono text-code"><code>{{ device.port }}</code></span>
+        <label for="port" class="text-xs uppercase tracking-wide text-sat-m">Port</label>
+        <input
+                id="port"
+                name="port"
+                type="number"
+                min="1"
+                max="65535"
+                value="{{ device.port }}"
+                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                required
+        />
       </div>
 
       <!-- Duration -->
       <div class="flex flex-col">
-        <span class="text-xs uppercase tracking-wide text-sat-m">Duration</span>
-        <span class="font-mono text-code">
-            <code>{{ device.duration }}</code>
-        </span>
+        <label for="duration" class="text-xs uppercase tracking-wide text-sat-m">Duration</label>
+        <input
+                id="duration"
+                name="duration"
+                type="number"
+                min="0"
+                step="1"
+                value="{{ device.duration }}"
+                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                required
+        />
+        <p class="text-xs text-sat-m mt-1">Duration in seconds.</p>
       </div>
 
       <!-- Interval -->
       <div class="flex flex-col">
-        <span class="text-xs uppercase tracking-wide text-sat-m">Interval</span>
-        <span class="font-mono text-code">
-            <code>{{ device.interval }}</code>
-        </span>
+        <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">Interval</label>
+        <input
+                id="interval"
+                name="interval"
+                type="number"
+                min="0"
+                step="1"
+                value="{{ device.interval }}"
+                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                required
+        />
+        <p class="text-xs text-sat-m mt-1">Interval in milliseconds.</p>
       </div>
-    </div>
+
+      <!-- Actions -->
+      <div class="md:col-span-2 flex items-center gap-2 pt-2">
+        <button
+                type="submit"
+                class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+        >
+          Save
+        </button>
+        <button
+                type="reset"
+                class="inline-flex items-center rounded-md border border-base bg-cards px-4 py-2 text-sm font-medium text-sat-l hover:bg-panes transition-colors"
+        >
+          Reset
+        </button>
+      </div>
+    </form>
   </div>
+
 
   <!-- Request Packet Transmission -->
   <div class="rounded-lg border border-base bg-cards p-6 mb-6">

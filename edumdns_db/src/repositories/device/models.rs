@@ -1,6 +1,6 @@
 use crate::models::Device;
 use crate::repositories::common::{Id, Pagination};
-use diesel::{AsChangeset, Insertable};
+use diesel::{AsChangeset, Identifiable, Insertable};
 use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
@@ -76,6 +76,7 @@ pub struct DeviceDisplay {
     pub mac: MacAddr,
     pub ip: IpNetwork,
     pub port: i32,
+    pub name: Option<String>,
     pub duration: i64,
     pub interval: i64,
 }
@@ -88,6 +89,7 @@ impl From<Device> for DeviceDisplay {
             mac: MacAddr::from_octets(value.mac),
             ip: value.ip,
             port: value.port,
+            name: value.name,
             duration: value.duration,
             interval: value.interval,
         }
@@ -101,4 +103,15 @@ pub struct CreatePacketTransmitRequest {
     pub target_ip: IpNetwork,
     pub target_port: i32,
     pub permanent: bool,
+}
+
+
+#[derive(Serialize, Deserialize, AsChangeset, Identifiable, Debug)]
+#[diesel(table_name = crate::schema::device)]
+pub struct UpdateDevice {
+    pub id: Id,
+    pub name: Option<String>,
+    pub port: Option<i32>,
+    pub duration: Option<i64>,
+    pub interval: Option<i64>,
 }

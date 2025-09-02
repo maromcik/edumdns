@@ -8,16 +8,12 @@ use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
+use actix_web::{HttpRequest, HttpResponse, delete, get, post, web, put};
 use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequestPacket};
 use edumdns_core::error::CoreError;
 use edumdns_db::models::PacketTransmitRequest;
-use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, Id, Pagination,
-};
-use edumdns_db::repositories::device::models::{
-    CreatePacketTransmitRequest, DeviceDisplay, SelectManyDevices,
-};
+use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbUpdate, Id, Pagination};
+use edumdns_db::repositories::device::models::{CreatePacketTransmitRequest, DeviceDisplay, UpdateDevice, SelectManyDevices};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
@@ -247,5 +243,19 @@ pub async fn delete_request_packet_transmit(
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/device/{}", device_id)))
+        .finish())
+}
+
+#[post("update")]
+pub async fn update_device(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    device_repo: web::Data<PgDeviceRepository>,
+    form: web::Form<UpdateDevice>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request.path());
+    device_repo.update_auth(&form, &parse_user_id(&i)?).await?;
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/device/{}", form.id)))
         .finish())
 }

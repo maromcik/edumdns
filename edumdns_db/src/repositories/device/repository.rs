@@ -1,12 +1,7 @@
 use crate::error::DbError;
 use crate::models::{Device, GroupProbePermission, PacketTransmitRequest, Probe, User};
-use crate::repositories::common::{
-    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
-    DbResultSingle, DbResultSinglePerm, Id, Permission,
-};
-use crate::repositories::device::models::{
-    CreateDevice, CreatePacketTransmitRequest, SelectManyDevices, SelectSingleDevice,
-};
+use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission};
+use crate::repositories::device::models::{CreateDevice, CreatePacketTransmitRequest, UpdateDevice, SelectManyDevices, SelectSingleDevice};
 use crate::repositories::utilities::validate_permissions;
 use crate::schema::device::BoxedQuery;
 use crate::schema::{
@@ -188,6 +183,27 @@ impl DbCreate<CreateDevice, Device> for PgDeviceRepository {
             .get_result(&mut conn)
             .await
             .map_err(DbError::from)
+    }
+}
+
+impl DbUpdate<UpdateDevice, Device> for PgDeviceRepository {
+    async fn update(&self, params: &UpdateDevice) -> DbResultMultiple<Device> {
+        let mut conn = self.pg_pool.get().await?;
+
+        let devices = diesel::update(device::table
+            .find(&params.id))
+            .set(params)
+            .get_results(&mut conn)
+            .await?;
+        Ok(devices)
+    }
+
+    async fn update_auth(&self, params: &UpdateDevice, user_id: &Id) -> DbResultMultiple<Device> {
+        let mut conn = self.pg_pool.get().await?;
+        let d = device::table.find(&params.id).first::<Device>(&mut conn).await?;
+        validate_permissions(&self.pg_pool, user_id, &d.probe_id, Permission::Update).await?;
+        let devices = self.update(params).await?;
+        Ok(devices)
     }
 }
 

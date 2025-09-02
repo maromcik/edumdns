@@ -1,7 +1,7 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-6">
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
-        <h1 class="text-4xl font-semibold text-sat-xl">Probe {{ probe.id[:13] }}...</h1>
+        <h1 class="text-4xl font-semibold text-sat-xl">Probe {%if probe.name is none %}{{ probe.id[:13] }}...{% else %} {{ probe.name }} {% endif %}</h1>
         <div class="flex items-center gap-2">
             <a href="/probe"
                class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
@@ -78,22 +78,79 @@
                 <span class="font-mono text-code"><code>{{ probe.ip }}</code></span>
             </div>
 
-            <!-- Location ID -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Location</span>
-                <span class="font-mono text-sat-xl">
-          {% if probe.location_id is not none %}
-            <a class="underline text-acc hover:text-acc-xl" href="/location/{{ probe.location_id }}"><code>{{ probe.location_id }}</code></a>
-          {% else %}
-            <span class="text-muted-foreground">—</span>
-          {% endif %}
-        </span>
-            </div>
+
 
 
         </div>
     </div>
 
+    <!-- Make these fields editable -->
+    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
+        <h3 class="text-2xl font-medium mb-4 text-sat-l">Probe Settings</h3>
+        <form
+            method="post"
+            hx-post="/probe/update"
+            hx-target="#content-area"
+            hx-error-target="#content-area"
+            class="grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
+            <input type="hidden" id="probe_id" name="id" value="{{ probe.id }}" />
+
+            <!-- Name -->
+            <div class="flex flex-col">
+                <label for="name" class="text-xs uppercase tracking-wide text-sat-m">Name</label>
+                <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    placeholder="{{ probe.name }}"
+                    class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                />
+                <p class="text-xs text-sat-m mt-1">Optional friendly name for the probe.</p>
+            </div>
+
+<!--            &lt;!&ndash; Location &ndash;&gt;-->
+<!--            <div class="flex flex-col">-->
+<!--                <label for="location_id" class="text-xs uppercase tracking-wide text-sat-m">Location</label>-->
+<!--                <select-->
+<!--                    id="location_id"-->
+<!--                    name="location_id"-->
+<!--                    class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"-->
+<!--                    hx-get="/location/?selected={{ probe.location_id | default('', true) }}"-->
+<!--                    hx-trigger="load"-->
+<!--                    hx-target="#location_id"-->
+<!--                    hx-swap="innerHTML"-->
+<!--                >-->
+<!--                    <option value="">{{ '—' }}</option>-->
+<!--                </select>-->
+<!--                <p class="text-xs text-sat-m mt-1">Choose a location for this probe.</p>-->
+<!--            </div>-->
+
+            <!-- Actions -->
+            <div class="md:col-span-2 flex items-center gap-2 pt-2">
+                <button
+                    type="submit"
+                    class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                >
+                    Save
+                </button>
+                <button
+                    type="reset"
+                    class="inline-flex items-center rounded-md border border-base bg-cards px-4 py-2 text-sm font-medium text-sat-l hover:bg-panes transition-colors"
+                >
+                    Reset
+                </button>
+                <a
+                    class="inline-flex items-center rounded-md border border-base bg-cards px-4 py-2 text-sm font-medium text-sat-l hover:bg-panes transition-colors"
+                    hx-get="/probe/{{ probe.id }}"
+                    hx-target="#content-area"
+                    hx-error-target="#content-area"
+                >
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
     <!-- Probe Configs Table -->
     <div class="overflow-x-auto rounded-lg border border-base bg-cards mt-8 mb-8">
         <div class="flex flex-col justify-center items-center py-4">

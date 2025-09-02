@@ -1,13 +1,10 @@
 use crate::handlers::device::{
-    delete_request_packet_transmit, get_device, get_devices, request_packet_transmit,
+    delete_request_packet_transmit, get_device, get_devices, request_packet_transmit,update_device
 };
 use crate::handlers::group::{add_group_users, delete_group_user, create_group, delete_group, get_group, get_group_users, get_groups, search_group_users};
 use crate::handlers::index::index;
 use crate::handlers::packet::{get_packet, get_packets};
-use crate::handlers::probe::{
-    adopt, change_probe_permission, create_config, delete_config, forget, get_probe, get_probes,
-    restart, save_config,
-};
+use crate::handlers::probe::{adopt, change_probe_permission, create_config, delete_config, forget, get_probe, get_probes, restart, save_config, update_probe};
 use crate::handlers::user::{login, login_user, logout_user, user_manage, user_manage_form_page, user_manage_password, user_manage_password_form, user_manage_profile_form};
 use crate::utils::AppState;
 use actix_files::Files;
@@ -66,7 +63,8 @@ pub fn configure_webapp(
         .service(save_config)
         .service(delete_config)
         .service(create_config)
-        .service(change_probe_permission);
+        .service(change_probe_permission)
+        .service(update_probe);
 
     let device_scope = web::scope("device")
         .app_data(web::Data::new(device_repo.clone()))
@@ -74,7 +72,8 @@ pub fn configure_webapp(
         .service(get_devices)
         .service(get_device)
         .service(request_packet_transmit)
-        .service(delete_request_packet_transmit);
+        .service(delete_request_packet_transmit)
+        .service(update_device);
 
     let packet_scope = web::scope("packet")
         .app_data(web::Data::new(packet_repo))

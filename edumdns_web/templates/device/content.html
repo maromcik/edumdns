@@ -10,11 +10,10 @@
             <tr>
                 <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">ID</th>
                 <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Probe</th>
+                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Name</th>
                 <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">MAC</th>
                 <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">IP</th>
                 <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Port</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Duration</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Interval</th>
             </tr>
             </thead>
             <tbody class="divide-y divide-base">
@@ -37,16 +36,10 @@
                     <span class="text-muted-foreground">—</span>
                     {% endif %}
                 </td>
-
+                <td class="px-4 py-3 text-sm text-sat-l">{% if device[1].name is not none %}{{ device[1].name }} {% else %} <span class="text-muted-foreground">—</span>{% endif %}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].mac }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].ip }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].port }}</td>
-                <td class="px-4 py-3 text-sm text-sat-l">
-                    {{ device[1].duration }}
-                </td>
-                <td class="px-4 py-3 text-sm text-sat-l">
-                    {{ device[1].interval }}
-                </td>
             </tr>
             {% endfor %}
             </tbody>

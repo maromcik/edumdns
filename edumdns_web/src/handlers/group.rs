@@ -5,6 +5,7 @@ use crate::handlers::helpers::{get_template_name, parse_user_id};
 use crate::templates::group::{GroupDetailTemplate, GroupDetailUsersTemplate, GroupTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
+use actix_session::Session;
 use actix_web::http::header::LOCATION;
 use actix_web::{delete, get, post, web, HttpRequest, HttpResponse, Responder};
 use edumdns_db::repositories::common::{DbCreate, DbDelete};
@@ -19,6 +20,7 @@ pub async fn get_groups(
     group_repo: web::Data<PgGroupRepository>,
     state: web::Data<AppState>,
     query: web::Query<GroupQuery>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let groups = group_repo
@@ -38,6 +40,7 @@ pub async fn get_groups(
         logged_in: true,
         permissions: groups.permissions,
         groups: groups.data,
+        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -50,6 +53,7 @@ pub async fn get_group(
     group_repo: web::Data<PgGroupRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Id,)>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let group = group_repo
@@ -63,6 +67,7 @@ pub async fn get_group(
         logged_in: true,
         permissions: group.permissions,
         group: group.data,
+        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

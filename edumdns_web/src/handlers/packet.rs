@@ -6,6 +6,7 @@ use crate::header::LOCATION;
 use crate::templates::packet::{PacketDetailTemplate, PacketTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
+use actix_session::Session;
 use actix_web::{HttpRequest, HttpResponse, get, web};
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
 use edumdns_db::repositories::device::models::SelectSingleDevice;
@@ -20,6 +21,7 @@ pub async fn get_packets(
     packet_repo: web::Data<PgPacketRepository>,
     state: web::Data<AppState>,
     query: web::Query<PacketQuery>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let packets = packet_repo
@@ -42,6 +44,7 @@ pub async fn get_packets(
         logged_in: true,
         permissions: packets.permissions,
         packets: &packets_parsed,
+        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -55,6 +58,7 @@ pub async fn get_packet(
     device_repo: web::Data<PgDeviceRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Id,)>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let user_id = parse_user_id(&i)?;
@@ -74,6 +78,7 @@ pub async fn get_packet(
         permissions: packet.permissions,
         packet: &PacketDisplay::from(packet.data)?,
         device_id: device.data.id,
+        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

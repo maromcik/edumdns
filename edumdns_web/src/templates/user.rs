@@ -9,40 +9,36 @@ pub struct LoginTemplate {
     pub return_url: String,
 }
 
-// #[derive(Serialize)]
-// pub struct UserManagePasswordTemplate {
-//     pub message: String,
-//     pub success: bool,
-//     pub permissions: Permissions,
-// }
-//
-// impl UserManagePasswordTemplate {
-//     pub fn weak_password() -> Self {
-//         Self {
-//             success: false,
-//             message: WEAK_PASSWORD_MESSAGE.to_owned(),
-//             logged_in: false,
-//         }
-//     }
-// }
+#[derive(Serialize)]
+pub struct UserManagePasswordTemplate {
+    pub message: String,
+    pub success: bool,
+    pub logged_in: bool,
+}
 
-// #[derive(Serialize)]
-// pub struct UserManageProfileTemplate<'a> {
-//     pub user: &'a User,
-//     pub message: String,
-//     pub success: bool,
-//     pub permissions: Permissions,
-// }
-//
-// #[derive(Serialize)]
-// pub struct UserManageProfileUserFormTemplate<'a> {
-//     pub user: &'a User,
-//     pub message: String,
-//     pub success: bool,
-//     pub permissions: Permissions,
-// }
-//
-// #[derive(Serialize)]
-// pub struct ContactAdminTemplate {
-//     pub message: String,
-// }
+impl UserManagePasswordTemplate {
+    pub fn weak_password() -> Self {
+        Self {
+            success: false,
+            message: WEAK_PASSWORD_MESSAGE.to_owned(),
+            logged_in: false,
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct UserManageProfileTemplate<'a> {
+    pub user: &'a User,
+    pub message: String,
+    pub success: bool,
+    pub logged_in: bool,
+    pub is_admin: bool,
+}
+
+#[derive(Serialize)]
+pub struct UserManageProfileUserFormTemplate<'a> {
+    pub user: &'a User,
+    pub message: String,
+    pub success: bool,
+    pub logged_in: bool,
+}

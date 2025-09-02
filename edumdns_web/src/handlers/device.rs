@@ -6,6 +6,7 @@ use crate::handlers::helpers::{get_template_name, parse_user_id};
 use crate::templates::device::{DeviceDetailTemplate, DeviceTemplate, DeviceTransmitTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
+use actix_session::Session;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
 use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequestPacket};
@@ -30,6 +31,7 @@ pub async fn get_devices(
     device_repo: web::Data<PgDeviceRepository>,
     state: web::Data<AppState>,
     query: web::Query<DeviceQuery>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let devices = device_repo
@@ -50,6 +52,7 @@ pub async fn get_devices(
         logged_in: true,
         permissions: devices.permissions,
         devices: devices_parsed,
+        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -64,6 +67,7 @@ pub async fn get_device(
     path: web::Path<(Id,)>,
     state: web::Data<AppState>,
     query: web::Query<PacketQuery>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let device = device_repo
@@ -100,6 +104,7 @@ pub async fn get_device(
         device: DeviceDisplay::from(device.data),
         packets,
         packet_transmit_requests,
+        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

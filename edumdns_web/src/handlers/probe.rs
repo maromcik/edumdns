@@ -20,6 +20,7 @@ use edumdns_db::repositories::probe::models::{
 };
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use std::collections::HashSet;
+use actix_session::Session;
 use strum::IntoEnumIterator;
 use uuid::Uuid;
 
@@ -30,6 +31,7 @@ pub async fn get_probes(
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
     query: web::Query<ProbeQuery>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let probes = probe_repo
@@ -48,6 +50,7 @@ pub async fn get_probes(
     let template = env.get_template(&template_name)?;
     let body = template.render(ProbeTemplate {
         logged_in: true,
+        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
         permissions: probes.permissions,
         probes: probes_parsed,
     })?;
@@ -63,6 +66,7 @@ pub async fn get_probe(
     group_repo: web::Data<PgGroupRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let probe = probe_repo
@@ -97,6 +101,7 @@ pub async fn get_probe(
     let template = env.get_template(&template_name)?;
     let body = template.render(ProbeDetailTemplate {
         logged_in: true,
+        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
         permissions: probe.permissions,
         permission_matrix: matrix,
         probe: ProbeDisplay::from(probe.data.0),

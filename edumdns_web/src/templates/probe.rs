@@ -6,6 +6,7 @@ use serde::Serialize;
 #[derive(Serialize)]
 pub struct ProbeTemplate {
     pub logged_in: bool,
+    pub is_admin: bool,
     pub permissions: Permissions,
     pub probes: Vec<(Option<Location>, ProbeDisplay)>,
 }
@@ -13,6 +14,7 @@ pub struct ProbeTemplate {
 #[derive(Serialize)]
 pub struct ProbeDetailTemplate {
     pub logged_in: bool,
+    pub is_admin: bool,
     pub permissions: Permissions,
     pub permission_matrix: Vec<(Vec<(Permission, bool)>, Group)>,
     pub probe: ProbeDisplay,

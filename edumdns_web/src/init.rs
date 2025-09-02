@@ -8,7 +8,7 @@ use crate::handlers::probe::{
     adopt, change_probe_permission, create_config, delete_config, forget, get_probe, get_probes,
     restart, save_config,
 };
-use crate::handlers::user::{login, login_user, logout_user};
+use crate::handlers::user::{login, login_user, logout_user, user_manage, user_manage_form_page, user_manage_password, user_manage_password_form, user_manage_profile_form};
 use crate::utils::AppState;
 use actix_files::Files;
 use actix_web::web;
@@ -48,7 +48,12 @@ pub fn configure_webapp(
         .app_data(web::Data::new(user_repo.clone()))
         .service(login)
         .service(login_user)
-        .service(logout_user);
+        .service(logout_user)
+        .service(user_manage_form_page)
+        .service(user_manage_password_form)
+        .service(user_manage_profile_form)
+        .service(user_manage)
+        .service(user_manage_password);
 
     let probe_scope = web::scope("probe")
         .app_data(web::Data::new(probe_repo.clone()))

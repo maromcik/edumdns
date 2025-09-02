@@ -6,6 +6,7 @@ use serde::Serialize;
 #[derive(Serialize)]
 pub struct DeviceTemplate {
     pub logged_in: bool,
+    pub is_admin: bool,
     pub permissions: Permissions,
     pub devices: Vec<(Probe, DeviceDisplay)>,
 }
@@ -13,6 +14,7 @@ pub struct DeviceTemplate {
 #[derive(Serialize)]
 pub struct DeviceDetailTemplate {
     pub logged_in: bool,
+    pub is_admin: bool,
     pub permissions: Permissions,
     pub device: DeviceDisplay,
     pub packets: Vec<PacketDisplay>,

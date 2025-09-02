@@ -1,5 +1,5 @@
-use edumdns_db::models::Group;
-use edumdns_db::repositories::common::Permissions;
+use edumdns_db::models::{Group, User};
+use edumdns_db::repositories::common::{Id, Permissions};
 use serde::Serialize;
 #[derive(Serialize)]
 pub struct GroupTemplate {
@@ -13,4 +13,11 @@ pub struct GroupDetailTemplate {
     pub logged_in: bool,
     pub permissions: Permissions,
     pub group: Group,
+}
+
+
+#[derive(Serialize)]
+pub struct GroupDetailUsersTemplate {
+    pub users: Vec<User>,
+    pub group_id: Id,
 }

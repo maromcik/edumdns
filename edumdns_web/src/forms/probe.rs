@@ -1,8 +1,8 @@
 use edumdns_core::bincode_types::MacAddr;
 use edumdns_db::repositories::common::{Id, Pagination, Permission};
+use edumdns_db::repositories::probe::models::SelectManyProbes;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProbeQuery {
@@ -12,6 +12,21 @@ pub struct ProbeQuery {
     pub adopted: Option<bool>,
     pub mac: Option<MacAddr>,
     pub ip: Option<IpNetwork>,
+    pub name: Option<String>,
+}
+
+impl From<ProbeQuery> for SelectManyProbes {
+    fn from(value: ProbeQuery) -> Self {
+        Self::new(
+            value.owner_id,
+            value.location_id,
+            value.adopted,
+            value.mac.map(|addr| addr.to_octets()),
+            value.ip,
+            value.name,
+            Some(Pagination::default_pagination(value.page)),
+        )
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]

@@ -7,7 +7,7 @@ use crate::repositories::common::{
 use crate::repositories::probe::models::{
     AlterProbePermission, CreateProbe, CreateProbeConfig, SelectManyProbes, SelectSingleProbeConfig,
 };
-use crate::repositories::utilities::validate_permissions;
+use crate::repositories::utilities::{validate_admin, validate_permissions};
 use crate::schema::group_probe_permission;
 use crate::schema::group_user;
 use crate::schema::probe;
@@ -243,7 +243,7 @@ impl PgProbeRepository {
         let mut conn = self.pg_pool.get().await?;
         validate_permissions(
             &self.pg_pool,
-            &user_id,
+            user_id,
             &params.probe_id,
             Permission::ModifyConfig,
         )
@@ -262,19 +262,7 @@ impl PgProbeRepository {
 
     pub async fn alter_permission(&self, params: AlterProbePermission) -> DbResult<()> {
         let mut conn = self.pg_pool.get().await?;
-        let user_entry = user::table
-            .find(params.user_id)
-            .select(User::as_select())
-            .first(&mut conn)
-            .await?;
-
-        if !user_entry.admin {
-            return Err(DbError::from(BackendError::new(
-                BackendErrorKind::PermissionDenied,
-                "User is not admin",
-            )));
-        }
-
+        validate_admin(&self.pg_pool, &params.user_id).await?;
         if params.state {
             let _ = diesel::insert_into(group_probe_permission::table)
                 .values((

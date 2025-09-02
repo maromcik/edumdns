@@ -1,17 +1,27 @@
 <!-- Group Detail Content -->
 <div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-6">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-6">
-        <h1 class="text-4xl font-semibold text-sat-l">{{ group.name }}</h1>
-        <div class="flex items-center gap-2">
-            <a href="/group" class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
-                ←
-            </a>
-        </div>
-    </div>
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-3xl font-bold text-sat-xl">
+      {{ group.name }}
+    </h2>
+    <button
+      hx-delete="/group/{{ group.id }}"
+      hx-confirm="Are you sure you want to delete this group?"
+      class="inline-flex items-center gap-2 rounded-md border border-base px-3 py-2 text-sm text-sat-l font-medium text-red-400 hover:bg-muted/20 transition-colors"
+      title="Delete group"
+      aria-label="Delete group"
+      hx-target="#content-area"
+      hx-target-error="#content-area"
+      hx-push-url="/group"
+    >
+      <i class="fa-solid fa-trash"></i>
+      Delete
+    </button>
+  </div>
 
     <!-- Group Card -->
-    <div class="rounded-lg border border-base bg-cards p-6">
+    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- ID -->
             <div class="flex flex-col">
@@ -40,4 +50,77 @@
             </div>
         </div>
     </div>
+
+    <!-- Add Users to Group -->
+    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
+      <h3 class="text-2xl font-semibold text-sat-l mb-4">Add users to this group</h3>
+
+      <form
+        id="add-users-form"
+        hx-post="/group/{{ group.id }}/users/add"
+        hx-target="#group-users"
+        hx-swap="innerHTML"
+        hx-params="*"
+        class="space-y-4"
+      >
+        <!-- Search box -->
+        <div class="relative">
+          <label for="user-search" class="sr-only">Search users</label>
+          <input
+            id="user-search"
+            name="q"
+            type="text"
+            placeholder="Search users by name or email..."
+            class="w-full rounded-md border border-base bg-panes px-3 py-2 text-sat-l"
+            hx-get="/group/{{ group.id }}/search"
+            hx-trigger="keyup changed delay:300ms"
+            hx-target="#user-search-results"
+            hx-swap="innerHTML"
+            hx-params="q"
+          />
+          <p class="text-xs text-sat-m mt-1">Type to search. Select users below to add.</p>
+        </div>
+
+        <!-- Dropdown-like results list (populated by search_users) -->
+        <div class="relative">
+          <div
+            id="user-search-results"
+            class="max-h-64 overflow-auto rounded-md border border-base bg-panes"
+            aria-live="polite"
+          >
+            <div class="px-3 py-2 text-sat-m">Start typing to search for users…</div>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="flex justify-end gap-2">
+          <button
+            type="submit"
+            class="inline-flex items-center gap-2 rounded-md border border-base px-3 py-2 text-sm text-sat-l font-medium hover:bg-muted/20 transition-colors"
+            title="Add selected users"
+            aria-label="Add selected users"
+          >
+            <i class="fa-solid fa-user-plus"></i>
+            Add users
+          </button>
+        </div>
+      </form>
+    </div>
+
+  <div
+          id="group-users"
+          class="rounded-lg border border-base bg-cards p-6"
+          hx-get="/group/{{ group.id }}/users"
+          hx-trigger="load"
+          hx-swap="innerHTML"
+  >
+    <h3 class="text-2xl font-semibold text-sat-l mb-4">Users in this group</h3>
+
+    <!-- Loading placeholder shown until partial loads -->
+    <div class="space-y-2 text-sat-m">
+      <div class="h-4 w-40 bg-muted/20 rounded animate-pulse"></div>
+      <div class="h-28 w-full bg-muted/10 rounded animate-pulse"></div>
+    </div>
+  </div>
+
 </div>

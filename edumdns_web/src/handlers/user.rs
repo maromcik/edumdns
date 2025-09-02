@@ -1,14 +1,13 @@
-use crate::AppState;
 use crate::error::WebError;
 use crate::forms::user::{UserLoginForm, UserLoginReturnURL};
 use crate::templates::user::LoginTemplate;
+use crate::AppState;
 use actix_identity::Identity;
-use actix_web::http::StatusCode;
 use actix_web::http::header::LOCATION;
+use actix_web::http::StatusCode;
 use actix_web::web::Redirect;
-use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, get, post, web};
+use actix_web::{get, post, web, HttpMessage, HttpRequest, HttpResponse, Responder};
 use edumdns_db::error::DbErrorKind::BackendError;
-use edumdns_db::repositories::common::DbReadOne;
 use edumdns_db::repositories::user::models::UserLogin;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 
@@ -83,6 +82,7 @@ pub async fn logout_user(identity: Option<Identity>) -> Result<impl Responder, W
     }
     Ok(Redirect::to("/").using_status_code(StatusCode::FOUND))
 }
+
 
 // #[get("/manage")]
 // pub async fn user_manage_form_page(

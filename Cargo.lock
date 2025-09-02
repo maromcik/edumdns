@@ -36,9 +36,9 @@ dependencies = [
 
 [[package]]
 name = "actix-files"
-version = "0.6.6"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0773d59061dedb49a8aed04c67291b9d8cf2fe0b60130a381aab53c6dd86e9be"
+checksum = "22c8b5536deb14cd9c3e505bd0e3366e1a12383b659c92f2b4fa4d323d583599"
 dependencies = [
  "actix-http",
  "actix-service",
@@ -46,7 +46,7 @@ dependencies = [
  "actix-web",
  "bitflags 2.9.1",
  "bytes",
- "derive_more 0.99.20",
+ "derive_more 2.0.1",
  "futures-core",
  "http-range",
  "log",
@@ -1331,6 +1331,7 @@ dependencies = [
  "rayon",
  "rexiv2",
  "serde",
+ "serde_qs",
  "strum",
  "strum_macros",
  "thiserror 2.0.12",
@@ -3495,6 +3496,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ce1fc6db65a611022b23a0dec6975d63fb80a302cb3388835ff02c097258d50"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "serde_qs"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3faaf9e727533a19351a43cc5a8de957372163c7d35cc48c90b75cdda13c352"
+dependencies = [
+ "actix-web",
+ "percent-encoding",
+ "serde",
+ "thiserror 2.0.12",
 ]
 
 [[package]]

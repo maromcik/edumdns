@@ -7,7 +7,7 @@ use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SelectManyProbes {
     pub owner_id: Option<Id>,
     pub location_id: Option<Id>,

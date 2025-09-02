@@ -24,16 +24,7 @@ pub async fn get_packets(
     let i = authorized!(identity, request.path());
     let packets = packet_repo
         .read_many_auth(
-            &SelectManyPackets::new(
-                query.probe_id,
-                query.src_mac.map(|addr| addr.to_octets()),
-                query.dst_mac.map(|addr| addr.to_octets()),
-                query.src_addr,
-                query.dst_addr,
-                query.src_port,
-                query.dst_port,
-                Some(Pagination::default_pagination(query.page)),
-            ),
+            &SelectManyPackets::from(query.into_inner()),
             &parse_user_id(&i)?,
         )
         .await?;

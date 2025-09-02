@@ -94,8 +94,8 @@ CREATE TABLE IF NOT EXISTS "device"
     ip             cidr         NOT NULL,
     port           int          NOT NULL,
     name           text,
-    duration       bigint       NOT NULL DEFAULT 3600,
-    interval       bigint       NOT NULL DEFAULT 1000,
+    duration       bigint       NOT NULL DEFAULT 120,
+    interval       bigint       NOT NULL DEFAULT 100,
 
     UNIQUE (probe_id, mac, ip),
     FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE

@@ -34,16 +34,8 @@ pub async fn get_devices(
     let i = authorized!(identity, request.path());
     let devices = device_repo
         .read_many_auth(
-            &SelectManyDevices::new(
-                query.probe_id,
-                query.mac.map(|addr| addr.to_octets()),
-                query.ip,
-                query.port,
-                None,
-                Some(Pagination::default_pagination(query.page)),
-            ),
-            &parse_user_id(&i)?,
-        )
+            &SelectManyDevices::from(query.into_inner()),
+            &parse_user_id(&i)?)
         .await?;
     let devices_parsed = devices
         .data

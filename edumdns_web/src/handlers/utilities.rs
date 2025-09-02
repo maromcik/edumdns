@@ -37,3 +37,4 @@ pub fn is_htmx(request: &HttpRequest) -> bool {
         .get("HX-Request")
         .map_or(false, |v| v == "true")
 }
+

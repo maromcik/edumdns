@@ -32,20 +32,10 @@ pub async fn get_probes(
     query: web::Query<ProbeQuery>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
-
     let probes = probe_repo
         .read_many_auth(
-            &SelectManyProbes::new(
-                query.owner_id,
-                query.location_id,
-                query.adopted,
-                query.mac.map(|addr| addr.to_octets()),
-                query.ip,
-                None,
-                Some(Pagination::default_pagination(query.page)),
-            ),
-            &parse_user_id(&i)?,
-        )
+            &SelectManyProbes::from(query.into_inner()),
+            &parse_user_id(&i)?)
         .await?;
     let probes_parsed = probes
         .data

@@ -1,7 +1,7 @@
 use crate::handlers::device::{
     delete_request_packet_transmit, get_device, get_devices, request_packet_transmit,
 };
-use crate::handlers::group::{create_group, get_group, get_groups};
+use crate::handlers::group::{add_group_users, delete_group_user, create_group, delete_group, get_group, get_group_users, get_groups, search_group_users};
 use crate::handlers::index::index;
 use crate::handlers::packet::{get_packet, get_packets};
 use crate::handlers::probe::{
@@ -37,7 +37,12 @@ pub fn configure_webapp(
         .app_data(web::Data::new(group_repo.clone()))
         .service(get_groups)
         .service(get_group)
-        .service(create_group);
+        .service(create_group)
+        .service(delete_group)
+        .service(get_group_users)
+        .service(add_group_users)
+        .service(search_group_users)
+        .service(delete_group_user);
 
     let user_scope = web::scope("user")
         .app_data(web::Data::new(user_repo.clone()))

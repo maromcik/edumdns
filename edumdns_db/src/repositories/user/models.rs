@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 #[derive(Serialize, Deserialize)]
-pub struct SelectManyFilter {
+pub struct SelectManyUsers {
     pub email: Option<String>,
     pub name: Option<String>,
     pub surname: Option<String>,

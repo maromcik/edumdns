@@ -24,7 +24,7 @@ pub struct GroupUser {
     pub user_id: Id,
 }
 
-#[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable)]
+#[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable, Eq, PartialEq, Hash, Debug)]
 #[diesel(table_name = crate::schema::location)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Location {
@@ -59,7 +59,7 @@ impl GroupProbePermission {
     }
 }
 
-#[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable)]
+#[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable, Eq, PartialEq, Hash, Debug)]
 #[diesel(table_name = crate::schema::probe)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Probe {

@@ -1,3 +1,4 @@
+use itertools;
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::probe::{ProbeConfigForm, ProbePermissionForm, ProbeQuery};
@@ -5,23 +6,29 @@ use crate::handlers::helpers::{get_template_name, parse_user_id};
 use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
+use actix_session::Session;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, web};
 use edumdns_core::app_packet::{AppPacket, CommandPacket};
 use edumdns_core::error::CoreError;
-use edumdns_db::models::Group;
-use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination, Permission};
+use edumdns_db::models::{Group, Location, Probe};
+use edumdns_db::repositories::common::{
+    DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination, Permission,
+};
 use edumdns_db::repositories::device::models::{DeviceDisplay, UpdateDevice};
+use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::group::models::SelectManyGroups;
 use edumdns_db::repositories::group::repository::PgGroupRepository;
-use edumdns_db::repositories::probe::models::{AlterProbePermission, CreateProbeConfig, ProbeDisplay, SelectManyProbes, SelectSingleProbeConfig, UpdateProbe};
+use edumdns_db::repositories::packet::repository::PgPacketRepository;
+use edumdns_db::repositories::probe::models::{
+    AlterProbePermission, CreateProbeConfig, ProbeDisplay, SelectManyProbes,
+    SelectSingleProbeConfig, UpdateProbe,
+};
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use std::collections::{HashMap, HashSet};
-use actix_session::Session;
+use itertools::Itertools;
 use strum::IntoEnumIterator;
 use uuid::Uuid;
-use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use edumdns_db::repositories::packet::repository::PgPacketRepository;
 
 #[get("")]
 pub async fn get_probes(
@@ -33,13 +40,30 @@ pub async fn get_probes(
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
+
+    let not_adopted_probes = probe_repo.read_many(&SelectManyProbes::new(
+        query.owner_id,
+        query.location_id,
+        Some(false),
+        query.mac.map(|mac| mac.to_octets()),
+        query.ip,
+        query.name.clone(),
+        Some(Pagination::default_pagination(query.page)),
+    )).await?;
+
     let probes = probe_repo
         .read_many_auth(
             &SelectManyProbes::from(query.into_inner()),
-            &parse_user_id(&i)?)
+            &parse_user_id(&i)?,
+        )
         .await?;
-    let probes_parsed = probes
-        .data
+
+    let mut all_probes: HashSet<(Option<Location>, Probe)> = HashSet::from_iter(probes.data);
+    all_probes.extend(not_adopted_probes);
+
+    let all_probes = all_probes.into_iter().sorted_by_key(|(l, p)| (l.is_some(), p.id)).collect_vec();
+
+    let probes_parsed = all_probes
         .into_iter()
         .map(|(l, p)| (l, ProbeDisplay::from(p)))
         .collect();

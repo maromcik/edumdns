@@ -53,6 +53,7 @@
   </div>
 
   <!-- Editable Device Settings -->
+  {% if permissions|has_perm("Update") %}
   <div class="rounded-lg border border-base bg-cards p-6 mb-8">
     <h3 class="text-2xl font-medium mb-4 text-sat-l">Device Settings</h3>
     <form
@@ -141,7 +142,7 @@
       </div>
     </form>
   </div>
-
+  {% endif %}
 
   <!-- Request Packet Transmission -->
   <div class="rounded-lg border border-base bg-cards p-6 mb-6">

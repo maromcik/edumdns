@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::error::DbError;
 use crate::models::{GroupProbePermission, Packet, User};
 use crate::repositories::common::{
@@ -149,14 +150,21 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
                 group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
             )
             .filter(group_user::user_id.eq(user_id))
-            .filter(group_probe_permission::permission.eq(Permission::Read).or(group_probe_permission::permission.eq(Permission::Full)))
             .distinct()
             .order(packet::id.asc())
-            .select(Packet::as_select())
-            .load::<Packet>(&mut conn)
+            .select((Packet::as_select(), GroupProbePermission::as_select()))
+            .load::<(Packet, GroupProbePermission)>(&mut conn)
             .await?;
+        let mut packets_only = Vec::default();
+        let mut permissions: HashSet<GroupProbePermission> = HashSet::new();
+        for packet in packets {
+            if packet.1.permission == Permission::Full || packet.1.permission == Permission::Read {
+                packets_only.push(packet.0);
+            }
+            permissions.insert(packet.1);
 
-        Ok(DbDataPerm::new(packets, (false, vec![])))
+        }
+        Ok(DbDataPerm::new(packets_only, (false, Vec::from_iter(permissions))))
     }
 }
 

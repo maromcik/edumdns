@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::error::DbError;
 use crate::models::{Device, GroupProbePermission, PacketTransmitRequest, Probe, User};
 use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission};
@@ -160,13 +161,21 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
                 group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
             )
             .filter(group_user::user_id.eq(user_id))
-            .filter(group_probe_permission::permission.eq(Permission::Read).or(group_probe_permission::permission.eq(Permission::Full)))
             .distinct()
-            .select((Probe::as_select(), Device::as_select()))
-            .load::<(Probe, Device)>(&mut conn)
+            .select((Probe::as_select(), Device::as_select(), GroupProbePermission::as_select()))
+            .load::<(Probe, Device, GroupProbePermission)>(&mut conn)
             .await?;
+        let mut devices_only = Vec::default();
+        let mut permissions: HashSet<GroupProbePermission> = HashSet::new();
+        for device in devices {
+            if device.2.permission == Permission::Full || device.2.permission == Permission::Read {
+                devices_only.push((device.0, device.1));
+            }
 
-        Ok(DbDataPerm::new(devices, (false, vec![])))
+            permissions.insert(device.2);
+
+        }
+        Ok(DbDataPerm::new(devices_only, (false, Vec::from_iter(permissions))))
     }
 }
 

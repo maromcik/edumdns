@@ -21,7 +21,7 @@
             {% endif %}
             {% if probe.adopted and permissions|has_perm("Forget") %}
             <button
-                    class="ml-2 bg-red-400 hover:bg-red-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                    class="ml-2 bg-purple-400 hover:bg-purple-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
                     hx-get="/probe/{{ probe.id }}/forget"
                     hx-confirm="Forget this probe? Devices will remain, but the probe will be marked as not adopted."
                     hx-target="#content-area"
@@ -44,7 +44,7 @@
             {% endif %}
             {% if permissions|has_perm("Delete") %}
             <button
-                    class="ml-2 bg-acc-l rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                    class="ml-2 bg-red-600 hover:bg-red-700 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
                     hx-delete="/probe/{{ probe.id }}/delete"
                     hx-target="#content-area"
                     hx-target-error="#content-area"

@@ -38,7 +38,7 @@ pub struct Location {
     pub description: Option<String>,
 }
 
-#[derive(Queryable, Selectable, Associations, Serialize, Deserialize)]
+#[derive(Queryable, Selectable, Associations, Serialize, Deserialize, Eq, PartialEq, Hash, Debug)]
 #[diesel(table_name = crate::schema::group_probe_permission)]
 #[diesel(belongs_to(Probe))]
 #[diesel(belongs_to(Group))]

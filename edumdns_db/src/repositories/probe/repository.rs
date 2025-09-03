@@ -14,6 +14,7 @@ use diesel::{BelongingToDsl, BoolExpressionMethods, ExpressionMethods, JoinOnDsl
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use std::collections::HashSet;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -138,10 +139,17 @@ impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeReposito
             .filter(group_probe_permission::permission.eq(Permission::Read).or(group_probe_permission::permission.eq(Permission::Full)))
             .distinct()
             .left_outer_join(location::table)
-            .select((Option::<Location>::as_select(), Probe::as_select()))
-            .load::<(Option<Location>, Probe)>(&mut conn)
+            .select((Option::<Location>::as_select(), Probe::as_select(), GroupProbePermission::as_select()))
+            .load::<(Option<Location>, Probe, GroupProbePermission)>(&mut conn)
             .await?;
-        Ok(DbDataPerm::new(probes, (false, vec![])))
+        let mut probes_only = Vec::default();
+        let mut permissions: HashSet<GroupProbePermission> = HashSet::new();
+        for probe in probes {
+            probes_only.push((probe.0, probe.1));
+            permissions.insert(probe.2);
+
+        }
+        Ok(DbDataPerm::new(probes_only, (false, Vec::from_iter(permissions))))
     }
 }
 

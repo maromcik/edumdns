@@ -116,6 +116,7 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
         let mut conn = self.pg_pool.get().await?;
         let query = PgPacketRepository::build_select_many_query(params);
         let packets = query
+            .order_by(packet::id.asc())
             .select(Packet::as_select())
             .load::<Packet>(&mut conn)
             .await?;
@@ -151,6 +152,7 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
             .inner_join(group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)))
             .inner_join(group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)))
             .filter(group_user::user_id.eq(user_id))
+            .order_by(packet::id.asc())
             .select((Packet::as_select(), GroupProbePermission::as_select()))
             .load::<(Packet, GroupProbePermission)>(&mut conn)
             .await?;
@@ -179,13 +181,14 @@ impl DbCreate<CreatePacket, Packet> for PgPacketRepository {
                 packet::src_mac,
                 packet::src_addr,
                 packet::dst_addr,
-                packet::payload,
+                packet::dst_port,
+                packet::payload_hash,
             ))
             .do_update()
             .set((
                 packet::dst_mac.eq(data.dst_mac),
                 packet::src_port.eq(data.src_port),
-                packet::dst_port.eq(data.dst_port),
+                packet::payload.eq(&data.payload),
             ))
             .get_result(&mut conn)
             .await

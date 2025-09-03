@@ -113,8 +113,9 @@ CREATE TABLE IF NOT EXISTS "packet"
     src_port       int          NOT NULL,
     dst_port       int          NOT NULL,
     payload        bytea        NOT NULL,
+    payload_hash   text         NOT NULL,
 
-    UNIQUE (probe_id, src_mac, dst_mac, src_addr, dst_addr, dst_port),
+    UNIQUE (probe_id, src_mac, src_addr, dst_addr, dst_port, payload_hash),
     FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE
 );
 

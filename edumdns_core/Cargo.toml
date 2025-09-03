@@ -20,3 +20,5 @@ uuid = "1.17.0"
 tokio = { version = "1.44.2", features = ["net", "bytes", "time"] }
 tokio-util = { version = "0.7.14", features = ["codec"] }
 hickory-proto = "0.25.2"
+sha2 = "0.11.0-rc.2"
+hex = "0.4.3"

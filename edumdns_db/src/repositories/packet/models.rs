@@ -73,6 +73,7 @@ pub struct CreatePacket {
     pub src_port: i32,
     pub dst_port: i32,
     pub payload: Vec<u8>,
+    pub payload_hash: String,
 }
 
 impl CreatePacket {
@@ -85,6 +86,7 @@ impl CreatePacket {
         src_port: u16,
         dst_port: u16,
         payload: Vec<u8>,
+        payload_hash: String,
     ) -> Self {
         Self {
             probe_id,
@@ -95,6 +97,7 @@ impl CreatePacket {
             src_port: src_port as i32,
             dst_port: dst_port as i32,
             payload,
+            payload_hash,
         }
     }
 }

@@ -60,6 +60,7 @@ diesel::table! {
         src_port -> Int4,
         dst_port -> Int4,
         payload -> Bytea,
+        payload_hash -> Text,
     }
 }
 

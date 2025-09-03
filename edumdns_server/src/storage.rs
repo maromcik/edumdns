@@ -213,6 +213,7 @@ impl PacketStorage {
                     packet.packet_metadata.transport_metadata.src_port,
                     packet.packet_metadata.transport_metadata.dst_port,
                     packet.payload,
+                    packet.payload_hash
                 ))
                 .await;
             match packet {

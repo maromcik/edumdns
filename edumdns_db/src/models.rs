@@ -112,6 +112,7 @@ pub struct Packet {
     pub src_port: i32,
     pub dst_port: i32,
     pub payload: Vec<u8>,
+    pub payload_hash: String,
 }
 
 #[derive(

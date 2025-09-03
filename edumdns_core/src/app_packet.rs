@@ -3,6 +3,7 @@ use crate::bincode_types::{IpNetwork, MacAddr};
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};
 use crate::network_packet::{DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};
+use sha2::{Digest, Sha256};
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 
@@ -69,6 +70,7 @@ pub struct ProbePacket {
     pub probe_metadata: ProbeMetadata,
     pub packet_metadata: PacketMetadata,
     pub payload: Vec<u8>,
+    pub payload_hash: String
 }
 
 impl ProbePacket {
@@ -83,6 +85,8 @@ impl ProbePacket {
         let ip_metadata = ip_packet.get_ip_metadata().ok()?;
         let transport_packet = ip_packet.get_next_layer()?;
         let transport_metadata = transport_packet.get_transport_metadata()?;
+        let payload = transport_packet.get_payload();
+        let payload_hash = calculate_hash(payload);
         Some(Self {
             probe_metadata: probe_metadata.clone(),
             packet_metadata: PacketMetadata::new(
@@ -90,7 +94,8 @@ impl ProbePacket {
                 ip_metadata,
                 transport_metadata,
             ),
-            payload: transport_packet.get_payload().to_vec(),
+            payload: payload.to_vec(),
+            payload_hash
         })
     }
 }
@@ -102,11 +107,6 @@ impl Hash for ProbePacket {
             .datalink_metadata
             .mac_metadata
             .src_mac
-            .hash(state);
-        self.packet_metadata
-            .datalink_metadata
-            .mac_metadata
-            .dst_mac
             .hash(state);
         self.packet_metadata.ip_metadata.src_ip.hash(state);
         self.packet_metadata.ip_metadata.dst_ip.hash(state);
@@ -121,8 +121,6 @@ impl PartialEq for ProbePacket {
             && self.payload == other.payload
             && self.packet_metadata.datalink_metadata.mac_metadata.src_mac
                 == other.packet_metadata.datalink_metadata.mac_metadata.src_mac
-            && self.packet_metadata.datalink_metadata.mac_metadata.dst_mac
-                == other.packet_metadata.datalink_metadata.mac_metadata.dst_mac
             && self.packet_metadata.ip_metadata.src_ip == other.packet_metadata.ip_metadata.src_ip
             && self.packet_metadata.ip_metadata.dst_ip == other.packet_metadata.ip_metadata.dst_ip
             && self.packet_metadata.transport_metadata.dst_port
@@ -180,4 +178,8 @@ impl Display for PacketTransmitRequestPacket {
             self.probe_uuid, self.device_mac, self.device_ip, self.target_ip, self.target_port
         )
     }
+}
+
+pub fn calculate_hash(value: &[u8]) -> String {
+    hex::encode(Sha256::digest(value))
 }

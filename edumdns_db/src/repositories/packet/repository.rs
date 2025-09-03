@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use crate::error::DbError;
 use crate::models::{GroupProbePermission, Packet, User};
 use crate::repositories::common::{
@@ -6,17 +5,19 @@ use crate::repositories::common::{
     DbResultSingle, DbResultSinglePerm, Id, Permission,
 };
 use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSinglePacket};
+use std::collections::HashSet;
 
 use crate::repositories::utilities::validate_permissions;
 use crate::schema;
 use crate::schema::packet::BoxedQuery;
 use crate::schema::{group_probe_permission, group_user, probe, user};
 use diesel::pg::Pg;
-use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
+use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
+use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
-use diesel_async::pooled_connection::deadpool::Pool;
 use schema::packet;
+use tokio::time::Instant;
 
 #[derive(Clone)]
 pub struct PgPacketRepository {
@@ -127,8 +128,6 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
         user_id: &Id,
     ) -> DbResultMultiplePerm<Packet> {
         let mut conn = self.pg_pool.get().await?;
-        let query = PgPacketRepository::build_select_many_query(params);
-
         let user_entry = user::table
             .find(user_id)
             .select(User::as_select())
@@ -141,23 +140,24 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
                 (true, vec![GroupProbePermission::full()]),
             ));
         }
-        let packets = query
+
+        let packets = self.read_many(params).await?;
+
+        let ids: Vec<Id> = packets.iter().map(|p|p.id).collect();
+
+        let packets_with_perms = packet::table
+            .filter(packet::id.eq_any(&ids))
             .inner_join(probe::table)
-            .inner_join(
-                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
-            )
-            .inner_join(
-                group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
-            )
+            .inner_join(group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)))
+            .inner_join(group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)))
             .filter(group_user::user_id.eq(user_id))
-            .distinct()
-            .order(packet::id.asc())
             .select((Packet::as_select(), GroupProbePermission::as_select()))
             .load::<(Packet, GroupProbePermission)>(&mut conn)
             .await?;
+
         let mut packets_only = Vec::default();
         let mut permissions: HashSet<GroupProbePermission> = HashSet::new();
-        for packet in packets {
+        for packet in packets_with_perms {
             if packet.1.permission == Permission::Full || packet.1.permission == Permission::Read {
                 packets_only.push(packet.0);
             }

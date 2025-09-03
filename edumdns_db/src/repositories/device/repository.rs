@@ -1,17 +1,17 @@
-use std::collections::HashSet;
 use crate::error::DbError;
 use crate::models::{Device, GroupProbePermission, PacketTransmitRequest, Probe, User};
 use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission};
-use crate::repositories::device::models::{CreateDevice, CreatePacketTransmitRequest, UpdateDevice, SelectManyDevices, SelectSingleDevice};
+use crate::repositories::device::models::{CreateDevice, CreatePacketTransmitRequest, SelectManyDevices, SelectSingleDevice, UpdateDevice};
 use crate::repositories::utilities::validate_permissions;
 use crate::schema::device::BoxedQuery;
 use crate::schema::{device, group_probe_permission, group_user, packet, packet_transmit_request, probe, user};
 use diesel::pg::Pg;
-use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
-use diesel_async::{AsyncConnection, AsyncPgConnection};
-use diesel_async::RunQueryDsl;
+use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
+use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, AsyncPgConnection};
+use std::collections::HashSet;
 
 #[derive(Clone)]
 pub struct PgDeviceRepository {
@@ -138,7 +138,6 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
         user_id: &Id,
     ) -> DbResultMultiplePerm<(Probe, Device)> {
         let mut conn = self.pg_pool.get().await?;
-        let query = PgDeviceRepository::build_select_many_query(params);
         let user_entry = user::table
             .find(user_id)
             .select(User::as_select())
@@ -151,8 +150,15 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
                 (true, vec![GroupProbePermission::full()]),
             ));
         }
+        let query = PgDeviceRepository::build_select_many_query(params);
+        let ids = query
+            .inner_join(probe::table)
+            .select(device::id)
+            .load::<Id>(&mut conn)
+            .await?;
 
-        let devices = query
+        let devices = device::table
+            .filter(device::id.eq_any(&ids))
             .inner_join(probe::table)
             .inner_join(
                 group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),

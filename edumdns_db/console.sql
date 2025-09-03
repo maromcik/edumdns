@@ -13,3 +13,6 @@ WHERE (
         OR u.surname ILIKE '%o%')
     and gu.user_id is null
     ) ;
+
+select count (*) from packet;
+select count (*) from device;

@@ -1,8 +1,19 @@
+use edumdns_db::repositories::common::DbCreate;
 use crate::error::WebError;
 use crate::handlers::utilities::is_htmx;
 use actix_identity::Identity;
-use actix_web::HttpRequest;
+use actix_web::{web, HttpRequest};
+use ipnetwork::IpNetwork;
+use log::warn;
+use tokio::sync::mpsc::Sender;
+use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequestPacket};
+use edumdns_core::error::CoreError;
+use edumdns_db::models::Device;
 use edumdns_db::repositories::common::Id;
+use edumdns_db::repositories::device::models::CreatePacketTransmitRequest;
+use edumdns_db::repositories::device::repository::PgDeviceRepository;
+use crate::forms::device::DevicePacketTransmitRequest;
+use crate::utils::AppState;
 
 pub fn get_template_name(request: &HttpRequest, path: &str) -> String {
     if is_htmx(request) {
@@ -14,4 +25,63 @@ pub fn get_template_name(request: &HttpRequest, path: &str) -> String {
 
 pub fn parse_user_id(identity: &Identity) -> Result<Id, WebError> {
     Ok(identity.id()?.parse::<i64>()?)
+}
+
+pub async fn request_packet_transmit_helper(
+    device_repo: web::Data<PgDeviceRepository>,
+    device: &Device,
+    command_channel: Sender<AppPacket>,
+    form: &DevicePacketTransmitRequest,
+) -> Result<(), WebError>{
+    let packet = PacketTransmitRequestPacket::new(
+        device.probe_id,
+        device.mac,
+        device.ip,
+        &form.target_ip,
+        form.target_port,
+    );
+
+    let request = CreatePacketTransmitRequest {
+        device_id: device.id,
+        target_ip: form
+            .target_ip
+            .parse::<IpNetwork>()
+            .map_err(CoreError::from)?,
+        target_port: form.target_port as i32,
+        permanent: form.permanent,
+    };
+
+    let packet_transmit_request = device_repo.create(&request).await?;
+    let command_channel_local = command_channel.clone();
+    let packet_local = packet.clone();
+    let device_duration = device.duration as u64;
+    if !form.permanent {
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(device_duration)).await;
+            if let Err(e) = device_repo
+                .delete_packet_transmit_request(&packet_transmit_request.id)
+                .await
+            {
+                warn!(
+                    "Could not delete packet transmit request {:?}: {}",
+                    request,
+                    WebError::from(e)
+                );
+            }
+
+            command_channel_local
+                .send(AppPacket::Command(
+                    CommandPacket::StopTransmitDevicePackets(packet_local),
+                ))
+                .await
+        });
+    }
+
+    command_channel
+        .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
+            packet,
+        )))
+        .await
+        .map_err(CoreError::from)?;
+    Ok(())
 }

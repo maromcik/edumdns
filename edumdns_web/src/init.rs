@@ -1,6 +1,4 @@
-use crate::handlers::device::{
-    delete_request_packet_transmit, get_device, get_devices, request_packet_transmit,update_device, delete_device
-};
+use crate::handlers::device::{delete_request_packet_transmit, get_device, get_devices, request_custom_packet_transmit, update_device, delete_device, request_packet_transmit};
 use crate::handlers::group::{add_group_users, delete_group_user, create_group, delete_group, get_group, get_group_users, get_groups, search_group_users};
 use crate::handlers::index::index;
 use crate::handlers::packet::{delete_packet, get_packet, get_packets};
@@ -72,10 +70,11 @@ pub fn configure_webapp(
         .app_data(web::Data::new(packet_repo.clone()))
         .service(get_devices)
         .service(get_device)
-        .service(request_packet_transmit)
+        .service(request_custom_packet_transmit)
         .service(delete_request_packet_transmit)
         .service(update_device)
-        .service(delete_device);
+        .service(delete_device)
+        .service(request_packet_transmit);
 
     let packet_scope = web::scope("packet")
         .app_data(web::Data::new(packet_repo))

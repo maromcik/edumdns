@@ -53,7 +53,7 @@
   </div>
 
   <!-- Editable Device Settings -->
-  {% if permissions|has_perm("Update") %}
+
   <div class="rounded-lg border border-base bg-cards p-6 mb-8">
     <h3 class="text-2xl font-medium mb-4 text-sat-l">Device Settings</h3>
     <form
@@ -124,7 +124,7 @@
         />
         <p class="text-xs text-sat-m mt-1">Interval in milliseconds.</p>
       </div>
-
+      {% if permissions|has_perm("Update") %}
       <!-- Actions -->
       <div class="md:col-span-2 flex items-center gap-2 pt-2">
         <button
@@ -140,9 +140,10 @@
           Reset
         </button>
       </div>
+      {% endif %}
     </form>
   </div>
-  {% endif %}
+
 
   <!-- Request Packet Transmission -->
   <div class="rounded-lg border border-base bg-cards p-6 mb-6">

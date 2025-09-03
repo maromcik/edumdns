@@ -35,3 +35,13 @@ pub struct DevicePacketTransmitRequest {
     #[serde(default)]
     pub permanent: bool,
 }
+
+impl DevicePacketTransmitRequest {
+    pub fn new(target_ip: String, target_port: u16, permanent: bool) -> Self {
+        Self {
+            target_ip,
+            target_port,
+            permanent,
+        }
+    }
+}

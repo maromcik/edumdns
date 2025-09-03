@@ -103,8 +103,14 @@ impl Hash for ProbePacket {
             .mac_metadata
             .src_mac
             .hash(state);
+        self.packet_metadata
+            .datalink_metadata
+            .mac_metadata
+            .dst_mac
+            .hash(state);
         self.packet_metadata.ip_metadata.src_ip.hash(state);
         self.packet_metadata.ip_metadata.dst_ip.hash(state);
+        self.packet_metadata.transport_metadata.dst_port.hash(state);
         self.payload.hash(state);
     }
 }
@@ -115,8 +121,12 @@ impl PartialEq for ProbePacket {
             && self.payload == other.payload
             && self.packet_metadata.datalink_metadata.mac_metadata.src_mac
                 == other.packet_metadata.datalink_metadata.mac_metadata.src_mac
+            && self.packet_metadata.datalink_metadata.mac_metadata.dst_mac
+                == other.packet_metadata.datalink_metadata.mac_metadata.dst_mac
             && self.packet_metadata.ip_metadata.src_ip == other.packet_metadata.ip_metadata.src_ip
             && self.packet_metadata.ip_metadata.dst_ip == other.packet_metadata.ip_metadata.dst_ip
+            && self.packet_metadata.transport_metadata.dst_port
+                == other.packet_metadata.transport_metadata.dst_port
     }
 }
 

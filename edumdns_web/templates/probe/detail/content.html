@@ -140,14 +140,6 @@
                 >
                     Reset
                 </button>
-                <a
-                    class="inline-flex items-center rounded-md border border-base bg-cards px-4 py-2 text-sm font-medium text-sat-l hover:bg-panes transition-colors"
-                    hx-get="/probe/{{ probe.id }}"
-                    hx-target="#content-area"
-                    hx-error-target="#content-area"
-                >
-                    Cancel
-                </a>
             </div>
         </form>
     </div>
@@ -290,7 +282,7 @@
         <div class="flex flex-col justify-center items-center py-4">
             <h2 class="text-3xl font-medium text-sat-xl">Permissions</h2>
         </div>
-        <table class="min-w-full divide-y divide-base">
+        <table class="min-w-full divide-y divide-base" style="overflow: auto;table-layout: fixed;width: 100%;">
             <thead class="bg-muted/10">
             <tr>
                 <th scope="col"

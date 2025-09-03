@@ -32,6 +32,18 @@
                     <span class="font-mono text-code"><code>{{ device.ip }}</code></span>
                 </div>
 
+                <!-- MAC -->
+                <div class="flex flex-col">
+                    <span class="text-xs uppercase tracking-wide text-sat-m">Transmit duration</span>
+                    <span class="text-sat-l">{{ device.duration }} seconds</span>
+                </div>
+
+                <!-- IP -->
+                <div class="flex flex-col">
+                    <span class="text-xs uppercase tracking-wide text-sat-m">Transmit interval</span>
+                    <span class="text-sat-l">{{ device.interval }} milliseconds</span>
+                </div>
+
             </div>
         </div>
 
@@ -43,19 +55,6 @@
             </div>
 
             <!-- Transmit Section -->
-        <div class="rounded-lg border border-base bg-cards p-6 shadow-md mb-8">
-            <div class="mt-8">
-                <button
-                        type="button"
-                        class="inline-flex items-center rounded-md border border-base bg-acc px-6 py-3 text-lg font-medium text-acc-cta hover:bg-acc-xl transition-colors"
-                        hx-post="/device/{{ device.id }}/transmit"
-                        hx-target="#content-area">
-                    Transmit to your device
-                </button>
-                <div id="transmit-result" class="mt-4 text-sat-m"></div>
-            </div>
-        </div>
-
         <div class="rounded-lg border border-base bg-cards p-6 shadow-md mb-8">
             <table class="min-w-full divide-y divide-base">
                 <thead class="bg-panes">
@@ -79,6 +78,17 @@
                 {% endif %}
                 </tbody>
             </table>
+
+            <div class="mt-8">
+                <button
+                        type="button"
+                        class="inline-flex items-center rounded-md border border-base bg-acc px-6 py-3 text-lg font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                        hx-post="/device/{{ device.id }}/transmit"
+                        hx-target="#content-area">
+                    Transmit to your device
+                </button>
+                <div id="transmit-result" class="mt-4 text-sat-m"></div>
+            </div>
         </div>
 
     </section>

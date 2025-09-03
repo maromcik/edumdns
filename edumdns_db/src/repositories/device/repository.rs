@@ -4,14 +4,13 @@ use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, Db
 use crate::repositories::device::models::{CreateDevice, CreatePacketTransmitRequest, UpdateDevice, SelectManyDevices, SelectSingleDevice};
 use crate::repositories::utilities::validate_permissions;
 use crate::schema::device::BoxedQuery;
-use crate::schema::{
-    device, group_probe_permission, group_user, packet_transmit_request, probe, user,
-};
+use crate::schema::{device, group_probe_permission, group_user, packet, packet_transmit_request, probe, user};
 use diesel::pg::Pg;
 use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
-use diesel_async::AsyncPgConnection;
+use diesel_async::{AsyncConnection, AsyncPgConnection};
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
+use diesel_async::scoped_futures::ScopedFutureExt;
 
 #[derive(Clone)]
 pub struct PgDeviceRepository {
@@ -210,10 +209,25 @@ impl DbUpdate<UpdateDevice, Device> for PgDeviceRepository {
 impl DbDelete<Id, Device> for PgDeviceRepository {
     async fn delete(&self, params: &Id) -> DbResultMultiple<Device> {
         let mut conn = self.pg_pool.get().await?;
-        diesel::delete(device::table.find(params))
-            .get_results(&mut conn)
+        conn.transaction::<_, DbError, _>(|c|
+        async move {
+            let deleted_devices = diesel::delete(device::table.find(params))
+                .get_results::<Device>(c)
+                .await?;
+
+            for d in &deleted_devices {
+                diesel::delete(packet::table
+                                   .filter(packet::probe_id.eq(d.probe_id))
+                                   .filter(packet::src_mac.eq(d.mac))
+                                   .filter(packet::src_addr.eq(d.ip)))
+                    .execute(c).await?;
+            }
+
+            Ok::<Vec<Device>, DbError>(deleted_devices)
+        }
+            .scope_boxed()
+        )
             .await
-            .map_err(DbError::from)
     }
 
     async fn delete_auth(&self, params: &Id, user_id: &Id) -> DbResultMultiple<Device> {

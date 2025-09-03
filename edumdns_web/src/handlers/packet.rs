@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::packet::PacketQuery;
@@ -7,8 +8,8 @@ use crate::templates::packet::{PacketDetailTemplate, PacketTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
-use actix_web::{HttpRequest, HttpResponse, get, web};
-use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
+use actix_web::{HttpRequest, HttpResponse, get, web, delete};
+use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, Id, Pagination};
 use edumdns_db::repositories::device::models::SelectSingleDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
@@ -82,4 +83,26 @@ pub async fn get_packet(
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
+}
+
+#[delete("{id}/delete")]
+pub async fn delete_packet(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    packet_repo: web::Data<PgPacketRepository>,
+    path: web::Path<(Id,)>,
+    query: web::Query<HashMap<String, String>>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request.path());
+    let user_id = parse_user_id(&i)?;
+
+    let return_url = query
+        .get("return_url")
+        .map(String::as_str)
+        .unwrap_or("/packet");
+
+    packet_repo.delete_auth(&path.0, &user_id).await?;
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, return_url))
+        .finish())
 }

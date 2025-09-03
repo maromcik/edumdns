@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::device::{DevicePacketTransmitRequest, DeviceQuery};
@@ -9,6 +10,7 @@ use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, web, put};
+use actix_web::dev::ResourcePath;
 use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequestPacket};
 use edumdns_core::error::CoreError;
 use edumdns_db::models::PacketTransmitRequest;
@@ -257,5 +259,26 @@ pub async fn update_device(
     device_repo.update_auth(&form, &parse_user_id(&i)?).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/device/{}", form.id)))
+        .finish())
+}
+
+#[delete("{id}/delete")]
+pub async fn delete_device(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    device_repo: web::Data<PgDeviceRepository>,
+    path: web::Path<(Id,)>,
+    query: web::Query<HashMap<String, String>>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request.path());
+
+    let return_url = query
+        .get("return_url")
+        .map(String::as_str)
+        .unwrap_or("/device");
+
+    device_repo.delete_auth(&path.0, &parse_user_id(&i)?).await?;
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, return_url))
         .finish())
 }

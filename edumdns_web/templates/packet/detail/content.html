@@ -7,6 +7,17 @@
                class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
                 ←
             </a>
+            {% if permissions|has_perm("Delete") %}
+            <button
+                    class="ml-2 bg-acc-l rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                    hx-delete="/packet/{{ packet.id }}/delete"
+                    hx-target="#content-area"
+                    hx-target-error="#content-area"
+                    hx-push-url="/packet"
+            >
+                Delete
+            </button>
+            {% endif %}
         </div>
     </div>
 

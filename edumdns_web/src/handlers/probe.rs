@@ -10,17 +10,18 @@ use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, web};
 use edumdns_core::app_packet::{AppPacket, CommandPacket};
 use edumdns_core::error::CoreError;
 use edumdns_db::models::Group;
-use edumdns_db::repositories::common::{DbReadMany, DbReadOne, DbUpdate, Id, Pagination, Permission};
+use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination, Permission};
 use edumdns_db::repositories::device::models::{DeviceDisplay, UpdateDevice};
 use edumdns_db::repositories::group::models::SelectManyGroups;
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::probe::models::{AlterProbePermission, CreateProbeConfig, ProbeDisplay, SelectManyProbes, SelectSingleProbeConfig, UpdateProbe};
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use actix_session::Session;
 use strum::IntoEnumIterator;
 use uuid::Uuid;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
+use edumdns_db::repositories::packet::repository::PgPacketRepository;
 
 #[get("")]
 pub async fn get_probes(
@@ -318,5 +319,27 @@ pub async fn update_probe(
     probe_repo.update_auth(&form, &parse_user_id(&i)?).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", form.id)))
+        .finish())
+}
+
+#[delete("{id}/delete")]
+pub async fn delete_probe(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    probe_repo: web::Data<PgProbeRepository>,
+    path: web::Path<(Uuid,)>,
+    query: web::Query<HashMap<String, String>>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request.path());
+    let user_id = parse_user_id(&i)?;
+
+    let return_url = query
+        .get("return_url")
+        .map(String::as_str)
+        .unwrap_or("/probe");
+
+    probe_repo.delete_auth(&path.0, &user_id).await?;
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, return_url))
         .finish())
 }

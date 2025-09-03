@@ -1,5 +1,5 @@
-use edumdns_db::repositories::common::DbCreate;
-use crate::error::WebError;
+use edumdns_db::repositories::common::{DbCreate, DbResultSingle};
+use crate::error::{WebError, WebErrorKind};
 use crate::handlers::utilities::is_htmx;
 use actix_identity::Identity;
 use actix_web::{web, HttpRequest};
@@ -51,7 +51,10 @@ pub async fn request_packet_transmit_helper(
         permanent: form.permanent,
     };
 
-    let packet_transmit_request = device_repo.create(&request).await?;
+    let packet_transmit_request = match device_repo.create(&request).await {
+        Ok(p) => p,
+        Err(_) => return Err(WebError::new(WebErrorKind::BadRequest, "Transmission already in progress to a different client, please try again later.")),
+    };
     let command_channel_local = command_channel.clone();
     let packet_local = packet.clone();
     let device_duration = device.duration as u64;

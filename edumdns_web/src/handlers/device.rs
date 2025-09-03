@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use crate::authorized;
 use crate::error::{WebError, WebErrorKind};
 use crate::forms::device::{DevicePacketTransmitRequest, DeviceQuery};
@@ -9,17 +8,15 @@ use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
+use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
 use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequestPacket};
 use edumdns_core::error::CoreError;
-use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination};
-use edumdns_db::repositories::device::models::{CreatePacketTransmitRequest, DeviceDisplay, UpdateDevice, SelectManyDevices};
+use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination};
+use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices, UpdateDevice};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
-use ipnetwork::IpNetwork;
-use log::warn;
-use edumdns_db::models::Device;
+use std::collections::HashMap;
 
 #[get("")]
 pub async fn get_devices(
@@ -155,14 +152,14 @@ pub async fn request_custom_packet_transmit(
     let device = device_repo
         .read_one_auth(&path.0, &parse_user_id(&i)?)
         .await?;
-    
+
     request_packet_transmit_helper(
         device_repo.clone(),
         &device.data,
         state.command_channel.clone(),
         &form,
     ).await?;
-    
+
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/device/{}", device.data.id)))
         .finish())
@@ -215,7 +212,7 @@ pub async fn delete_request_packet_transmit(
 }
 
 
-#[get("{id}/transmit")]
+#[post("{id}/transmit")]
 pub async fn request_packet_transmit(
     request: HttpRequest,
     identity: Option<Identity>,
@@ -242,9 +239,42 @@ pub async fn request_packet_transmit(
         state.command_channel.clone(),
         &form,
     ).await?;
-    
+
     Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}", device.id)))
+        .insert_header((LOCATION, format!("/device/{}/transmit", device.id)))
         .finish())
 }
 
+#[get("{id}/transmit")]
+pub async fn get_device_for_transmit(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    device_repo: web::Data<PgDeviceRepository>,
+    path: web::Path<(Id,)>,
+    state: web::Data<AppState>,
+) -> Result<HttpResponse, WebError> {
+    let _ = authorized!(identity, request.path());
+    let device = device_repo
+        .read_one(&path.0)
+        .await?;
+    let target_ip = request
+        .connection_info()
+        .realip_remote_addr()
+        .map(|a| a.to_string());
+    let target_ip = target_ip
+        .ok_or(WebError::new(WebErrorKind::InternalServerError, "Could not determine target ip"))?;
+
+    let packet_transmit_requests = device_repo.read_packet_transmit_requests(&device.id).await?;
+
+    let template_name = get_template_name(&request, "device/public");
+    let env = state.jinja.acquire_env()?;
+    let template = env.get_template(&template_name)?;
+    let body = template.render(DeviceTransmitTemplate {
+        logged_in: true,
+        device: DeviceDisplay::from(device),
+        client_ip: target_ip,
+        packet_transmit_requests
+    })?;
+
+    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+}

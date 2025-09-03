@@ -25,4 +25,6 @@ pub struct DeviceDetailTemplate {
 pub struct DeviceTransmitTemplate {
     pub logged_in: bool,
     pub device: DeviceDisplay,
+    pub client_ip: String,
+    pub packet_transmit_requests: Vec<PacketTransmitRequest>,
 }

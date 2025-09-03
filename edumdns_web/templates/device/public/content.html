@@ -1,61 +1,85 @@
-<a href="/model" class="absolute top-0 left-0 mt-20 ml-5 sm:ml-10 sm:mt-24 bg-acc  text-button py-2 px-4 font-bold rounded flex items-center">
-    <i class="fas fa-arrow-left text-button" style="a {
-        @apply text-button hover:text-button transition-colors;
-    }"></i>
-</a>
+<div class="max-w-7xl mx-auto px-4 sm:px-8 mb-8">
+    <section class="text-center py-12 mb-3">
 
-<div class="max-w-7xl mx-auto px-4 sm:px-8 py-10">
-    <!-- Top Section: Thumbnail and Basic Details -->
-    <div class="text-center md:text-left grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <!-- Brand Details -->
-        <div class="flex flex-col space-y-6">
-            <h1 class="text-3xl md:text-5xl font-bold text-sat-xl mb-0">{{ model.name }}</h1>
-            {% if logged_in %}
-            <!-- Action Buttons Next to Brand -->
-            <div class="flex space-x-4 justify-center md:justify-start ">
-                <button hx-get="/model/{{ model.id }}/edit" hx-target-error="#content-area"
-                        hx-push-url="/model/{{ model.id }}/edit" hx-target="#content-area"
-                        class="bg-acc  rounded-md p-3 text-button text-lg shadow-md w-12">
-                    <i class="fa-solid fa-pencil"></i>
-                </button>
-                <button hx-delete="/model/{{ model.id }}/delete" hx-target-error="#content-area" hx-target="#content-area"
-                        hx-push-url="/model"
-                        class="bg-red-800 hover:bg-red-900 rounded-md p-3 text-button text-lg shadow-md w-12">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
+        <h1 class="text-3xl md:text-5xl font-extrabold text-sat-xl mb-8">eduMDNS</h1>
+        <h2 class="text-2xl md:text-3xl font-extrabold text-sat-xl mb-8">Connecting discoverable devices</h2>
+
+        <!-- Card -->
+        <div class="rounded-lg border border-base bg-cards p-6 shadow-md mb-8">
+            <h3 class="text-2xl font-medium mb-4 text-sat-l">Device Info</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- ID -->
+                <div class="flex flex-col">
+                    <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
+                    <span class="font-mono text-code"><code>{{ device.id }}</code></span>
+                </div>
+
+                <!-- MAC -->
+                <div class="flex flex-col">
+                    <span class="text-xs uppercase tracking-wide text-sat-m">Name</span>
+                    <span class="font-mono text-code"><code>{{ device.name }}</code></span>
+                </div>
+
+                <!-- MAC -->
+                <div class="flex flex-col">
+                    <span class="text-xs uppercase tracking-wide text-sat-m">Device MAC</span>
+                    <span class="font-mono text-code"><code>{{ device.mac }}</code></span>
+                </div>
+
+                <!-- IP -->
+                <div class="flex flex-col">
+                    <span class="text-xs uppercase tracking-wide text-sat-m">Device IP</span>
+                    <span class="font-mono text-code"><code>{{ device.ip }}</code></span>
+                </div>
+
             </div>
-            {% endif %}
+        </div>
 
-            <div class="flex items-center space-x-40 justify-center md:justify-start ">
-                <div>
-                    <h2 class="text-2xl font-semibold text-sat-xl">Brand</h2>
-                    <a class=" bg-panes text-sat-xl hover:text-white font-medium text-lg rounded-md px-4 py-2 shadow-md cursor-pointer"
-                       href="/brand/{{ model.brand_id }}">
-                        {{ model.brand_name }}
-                    </a>
+            <div class="rounded-lg border border-base bg-cards p-6 shadow-md mb-8">
+                <div class="flex flex-col items-center space-y-2">
+                    <span class="text-xs uppercase tracking-wide text-sat-m">Your IP</span>
+                    <span class="font-mono text-code"><code>{{ client_ip }}</code></span>
                 </div>
             </div>
+
+            <!-- Transmit Section -->
+        <div class="rounded-lg border border-base bg-cards p-6 shadow-md mb-8">
+            <div class="mt-8">
+                <button
+                        type="button"
+                        class="inline-flex items-center rounded-md border border-base bg-acc px-6 py-3 text-lg font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                        hx-post="/device/{{ device.id }}/transmit"
+                        hx-target="#content-area">
+                    Transmit to your device
+                </button>
+                <div id="transmit-result" class="mt-4 text-sat-m"></div>
+            </div>
         </div>
 
-    </div>
-
-    <!-- Description Section -->
-    <div class="mt-10 text-center md:text-left">
-        <h2 class="text-2xl text-sat-xl font-bold mb-4">Description</h2>
-        <div class="bg-panes p-5 rounded-lg shadow-md text-sat-l">
-            {{ model.description | safe }}
+        <div class="rounded-lg border border-base bg-cards p-6 shadow-md mb-8">
+            <table class="min-w-full divide-y divide-base">
+                <thead class="bg-panes">
+                <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-sat-m uppercase tracking-wide">Target IP</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-sat-m uppercase tracking-wide">Target Port</th>
+                </tr>
+                </thead>
+                <tbody class="divide-y divide-base bg-bg">
+                {% if packet_transmit_requests and packet_transmit_requests | length > 0 %}
+                {% for r in packet_transmit_requests %}
+                <tr>
+                    <td class="px-4 py-2 text-sat-l">{{ r.target_ip }}</td>
+                    <td class="px-4 py-2 text-sat-l">{{ r.target_port }}</td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="3" class="px-4 py-6 text-center text-sat-m">No packet transmissions in progress.</td>
+                </tr>
+                {% endif %}
+                </tbody>
+            </table>
         </div>
-    </div>
-</div>
 
-<!-- Bikes Section -->
-<div class="max-w-7xl mx-auto px-4 sm:px-8 mt-10 text-center md:text-left mb-10 md:mb-5 ">
-    <h2 class="text-3xl font-bold text-sat-xl mb-4">Bikes</h2>
-    <div class="bg-panes rounded-lg p-6 shadow-md">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-            {% for bike in bikes %}
-            {% include "bike/card/content.html" %}
-            {% endfor %}
-        </div>
-    </div>
+    </section>
 </div>

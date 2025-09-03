@@ -1,20 +1,40 @@
-<div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-5">
-    <!-- Header Section -->
+<div class="max-w-7xl mx-auto mb-10 md:mb-5">
     <div class="flex flex-col justify-center items-center py-6">
         <h2 class="text-4xl font-bold text-sat-xl">Devices</h2>
     </div>
 
-    <div class="overflow-x-auto rounded-lg border border-base bg-cards">
-        <table class="min-w-full divide-y divide-base">
+    <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards">
+        <table class="w-full divide-y divide-base">
             <thead class="bg-muted/10">
             <tr>
-                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">ID</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Probe</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Name</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">MAC</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">IP</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Port</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    ID
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Probe
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Name
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    MAC
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    IP
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Port
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Actions
+                </th>
             </tr>
             </thead>
             <tbody class="divide-y divide-base">
@@ -37,7 +57,9 @@
                     <span class="text-muted-foreground">—</span>
                     {% endif %}
                 </td>
-                <td class="px-4 py-3 text-sm text-sat-l">{% if device[1].name is not none %}{{ device[1].name }} {% else %} <span class="text-muted-foreground">—</span>{% endif %}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{% if device[1].name is not none %}{{ device[1].name }} {% else
+                    %} <span class="text-muted-foreground">—</span>{% endif %}
+                </td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].mac }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].ip }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].port }}</td>

@@ -1,4 +1,5 @@
-<div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-6">
+<div class="max-w-7xl mx-auto mb-10 md:mb-5">
+
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-4xl font-semibold text-sat-xl">Probe {%if probe.name is none %}{{ probe.id[:13] }}...{% else %} {{ probe.name }} {% endif %}</h1>
@@ -7,6 +8,10 @@
                class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
                 ←
             </a>
+        </div>
+    </div>
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-2">
             {% if permissions|has_perm("Restart") %}
             <button
                     class="ml-2 bg-acc-l rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
@@ -290,11 +295,12 @@
 
     <!-- Permissions Table -->
     {% if admin %}
-    <div class="overflow-x-auto rounded-lg border border-base bg-cards mt-8 mb-8">
+    <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards mb-8">
         <div class="flex flex-col justify-center items-center py-4">
             <h2 class="text-3xl font-medium text-sat-xl">Permissions</h2>
         </div>
-        <table class="min-w-full divide-y divide-base" style="overflow: auto;table-layout: fixed;width: 100%;">
+        <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards">
+            <table class="w-full divide-y divide-base">
             <thead class="bg-muted/10">
             <tr>
                 <th scope="col"
@@ -369,6 +375,7 @@
             {% endfor %}
             </tbody>
         </table>
+    </div>
     </div>
     {% endif %}
     <!-- Devices Table -->

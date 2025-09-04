@@ -15,7 +15,6 @@
         <button
                 class="ml-2 bg-acc-l rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
                 hx-get="/probe/{{ probe.id }}/restart"
-                hx-confirm="Restart this probe now?"
                 hx-target="#probe-content-area"
                 hx-target-error="#probe-content-area"
                 hx-push-url="/probe/{{ probe.id }}"
@@ -51,6 +50,7 @@
         <button
                 class="ml-2 bg-red-600 hover:bg-red-700 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
                 hx-delete="/probe/{{ probe.id }}/delete"
+                hx-confirm="Delete this probe? All devices and related packets will be removed."
                 hx-target="#probe-content-area"
                 hx-target-error="#probe-content-area"
                 hx-push-url="/probe"

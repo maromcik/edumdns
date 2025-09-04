@@ -1,14 +1,14 @@
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::probe::{ProbeConfigForm, ProbePermissionForm, ProbeQuery};
-use crate::handlers::helpers::{get_template_name, parse_user_id, reconnect_probe};
+use crate::handlers::helpers::{get_probe_helper, get_template_name, parse_user_id, reconnect_probe};
 use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, rt, web};
-use actix_ws::AggregatedMessage;
+use actix_ws::{AggregatedMessage, Closed};
 use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, NetworkCommandPacket, NetworkStatusPacket};
 use edumdns_core::error::CoreError;
 use edumdns_db::models::{Group, Location, Probe};
@@ -29,7 +29,7 @@ use futures_util::StreamExt as _;
 use futures_util::{SinkExt, StreamExt};
 use itertools;
 use itertools::Itertools;
-use log::{error, warn};
+use log::{debug, error, warn};
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::channel;
 use strum::IntoEnumIterator;
@@ -102,51 +102,7 @@ pub async fn get_probe(
     path: web::Path<(Uuid,)>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
-    let probe_id = path.0;
-
-    let probe = probe_repo
-        .read_one_auth(&probe_id, &parse_user_id(&i)?)
-        .await?;
-
-    let granted: HashSet<(Id, Permission)> = probe_repo
-        .get_permissions(&probe_id)
-        .await?
-        .iter()
-        .map(|x| (x.group_id, x.permission))
-        .collect();
-
-    let matrix = group_repo
-        .read_many(&SelectManyGroups::new(None, None))
-        .await?
-        .into_iter()
-        .map(|g| {
-            (
-                {
-                    Permission::iter()
-                        .map(|p| (p, granted.contains(&(g.id, p))))
-                        .collect::<Vec<(Permission, bool)>>()
-                },
-                g,
-            )
-        })
-        .collect::<Vec<(Vec<(Permission, bool)>, Group)>>();
-
-    let template_name = get_template_name(&request, "probe/detail");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(ProbeDetailTemplate {
-        logged_in: true,
-        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
-        permissions: probe.permissions,
-        permission_matrix: matrix,
-        probe: ProbeDisplay::from(probe.data.0),
-        devices: probe.data.1.into_iter().map(DeviceDisplay::from).collect(),
-        configs: probe.data.2,
-        admin: probe.admin,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    get_probe_helper(request, identity, probe_repo, group_repo, state, path, session).await
 }
 
 #[get("{id}/adopt")]
@@ -186,8 +142,10 @@ pub async fn restart(
     request: HttpRequest,
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
+    group_repo: web::Data<PgGroupRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     probe_repo
@@ -195,10 +153,7 @@ pub async fn restart(
         .await?;
 
     reconnect_probe(state.command_channel.clone(), path.0).await?;
-
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/probe/{}", path.0)))
-        .finish())
+    get_probe_helper(request, Some(i), probe_repo, group_repo, state, path, session).await
 }
 
 #[post("{probe_id}/config")]
@@ -355,14 +310,19 @@ pub async fn get_probe_ws(
 
     let ts = Timestamp::now(uuid::NoContext);
     let session_uuid = Uuid::new_v7(ts);
-
-
+    
     let (res, mut session, stream) = actix_ws::handle(&request, stream)?;
     let mut stream = stream
         .aggregate_continuations()
         .max_continuation_size(2_usize.pow(20));
 
     let mut channel = mpsc::channel(100);
+    let unregister_packet = AppPacket::Local(LocalAppPacket::Command(
+        LocalCommandPacket::UnregisterFromEvents {
+            probe_id,
+            session_id: session_uuid,
+        }
+    ));
     let sender = channel.0.clone();
     state
         .command_channel
@@ -375,32 +335,26 @@ pub async fn get_probe_ws(
         )))
         .await
         .map_err(CoreError::from)?;
+    let command_channel_local = state.command_channel.clone();
+    let unregister_packet_local = unregister_packet.clone();
     rt::spawn(async move {
         while let Some(packet) = channel.1.recv().await {
-            match packet {
-                Ok(_) => session.text("ok").await.unwrap(),
-                Err(err) => session.text(err).await.unwrap()
-            }
-
-
-        }
-    });
+            let Err(_) = session.text(packet.to_string()).await else {
+                continue;
+            };
+            debug!("WebSocket closed, probe_id: {probe_id}, session_id: {session_uuid}");
+            
+            let Err(e) = command_channel_local.send(unregister_packet_local.clone()).await else {
+                    continue;
+            };
+            warn!("Error unregistering from events: {e}");
+        }});
     let command_channel = state.command_channel.clone();
-    let sender = channel.0.clone();
     rt::spawn(async move {
         while let Some(msg) = stream.recv().await {
             match msg {
                 Ok(AggregatedMessage::Close(_)) | Err(_) => {
-                    error!("UNREGISTERING");
-                    // unregister
-                    let _ = command_channel.send(AppPacket::Local(
-                        LocalAppPacket::Command(
-                            LocalCommandPacket::UnregisterFromEvents {
-                                probe_id,
-                                session_id: session_uuid,
-                            }
-                        )
-                    )).await;
+                    let _ = command_channel.send(unregister_packet).await;
                     break;
                 }
                 _ => {}

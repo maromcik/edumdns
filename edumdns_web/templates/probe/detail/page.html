@@ -4,11 +4,15 @@
 {% include "probe/detail/content.html"%}
 <script>
     console.log("Connecting to WebSocket...");
-    console.log(`ws://${location.host}/probe/{{ probe.id }}/ws`);
     if (!window.probeWs) {
         window.probeWs = new WebSocket(`ws://${location.host}/probe/{{ probe.id }}/ws`);
         window.probeWs.onmessage = (event) => {
             console.log("Update:", event.data);
+
+            // Determine success/error from payload
+            const msg = event.data;
+            const isError = msg.startsWith("Error:");
+            showNotification(msg, isError ? "error" : "success");
         };
     }
     window.addEventListener("beforeunload", () => {
@@ -17,6 +21,26 @@
             window.probeWs = null;
         }
     });
+
+    function showNotification(message, type) {
+        const container = document.getElementById("notifications");
+
+        const notif = document.createElement("div");
+        notif.className = `notification ${type}`;
+        notif.textContent = message;
+
+        container.appendChild(notif);
+
+        // trigger CSS transition
+        setTimeout(() => notif.classList.add("show"), 50);
+
+        // hide after 10s
+        setTimeout(() => {
+            notif.classList.remove("show");
+            notif.classList.add("hide");
+            setTimeout(() => notif.remove(), 500); // cleanup after fade
+        }, 10000);
+    }
 </script>
 {% endblock %}
 

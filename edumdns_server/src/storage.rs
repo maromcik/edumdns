@@ -2,9 +2,13 @@ use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, NetworkAppPacket, NetworkCommandPacket, PacketTransmitRequestPacket, ProbePacket, NetworkStatusPacket};
+use edumdns_core::app_packet::{
+    AppPacket, LocalAppPacket, LocalCommandPacket, NetworkAppPacket, NetworkCommandPacket,
+    NetworkStatusPacket, PacketTransmitRequestPacket, ProbePacket, ProbeResponse,
+};
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
+use edumdns_core::error::CoreError;
 use edumdns_db::repositories::common::{DbCreate, DbReadMany, DbReadOne};
 use edumdns_db::repositories::device::models::{CreateDevice, SelectSingleDevice};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
@@ -18,14 +22,14 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
-use edumdns_core::error::CoreError;
 
 pub struct PacketStorage {
     pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
     pub packet_receiver: Receiver<AppPacket>,
     pub transmitter_tasks: Arc<Mutex<HashMap<PacketTransmitRequestPacket, PacketTransmitterTask>>>,
     pub probe_handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
-    pub probe_ws_handles: Arc<Mutex<HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<Result<(), String>>>>>>,
+    pub probe_ws_handles:
+        Arc<Mutex<HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<ProbeResponse>>>>>,
     pub pg_device_repository: PgDeviceRepository,
     pub pg_packet_repository: PgPacketRepository,
     pub global_timeout: Duration,
@@ -53,7 +57,9 @@ impl PacketStorage {
     pub async fn handle_packets(&mut self) {
         while let Some(packet) = self.packet_receiver.recv().await {
             match packet {
-                AppPacket::Network(network_packet) => self.handle_network_packet(network_packet).await,
+                AppPacket::Network(network_packet) => {
+                    self.handle_network_packet(network_packet).await
+                }
                 AppPacket::Local(local_packet) => self.handle_local_packet(local_packet).await,
             }
         }
@@ -62,10 +68,23 @@ impl PacketStorage {
     pub async fn handle_local_packet(&mut self, packet: LocalAppPacket) {
         match packet {
             LocalAppPacket::Command(command) => match command {
-                LocalCommandPacket::RegisterForEvents { probe_id, session_id, respond_to } => {
-                    self.probe_ws_handles.lock().await.entry(probe_id).or_insert(HashMap::new()).entry(session_id).or_insert(respond_to);
+                LocalCommandPacket::RegisterForEvents {
+                    probe_id,
+                    session_id,
+                    respond_to,
+                } => {
+                    self.probe_ws_handles
+                        .lock()
+                        .await
+                        .entry(probe_id)
+                        .or_insert(HashMap::new())
+                        .entry(session_id)
+                        .or_insert(respond_to);
                 }
-                LocalCommandPacket::UnregisterFromEvents { probe_id, session_id } => {
+                LocalCommandPacket::UnregisterFromEvents {
+                    probe_id,
+                    session_id,
+                } => {
                     if let Some(session) = self.probe_ws_handles.lock().await.get_mut(&probe_id) {
                         session.remove(&session_id);
                     }
@@ -88,26 +107,23 @@ impl PacketStorage {
         }
     }
 
+    
     pub async fn handle_network_packet(&mut self, packet: NetworkAppPacket) {
         match packet {
             NetworkAppPacket::Command(_) => {}
-            NetworkAppPacket::Status(status) => {
-                match status {
-                    NetworkStatusPacket::ProbeInvalidConfig(uuid, e) => {
-                        if let Some(handles) = self.probe_ws_handles.lock().await.get(&uuid.0) {
-                            for handle in handles.values() {
-                                if let Err(err) = handle.send(Err(e.clone())).await {
-                                    warn!("Could not send response to a websocket {err}");
-                                };
-                            }
-                            return;
+            NetworkAppPacket::Status(status) => match status {
+                NetworkStatusPacket::ProbeResponse(uuid, response) => {
+                    if let Some(handles) = self.probe_ws_handles.lock().await.get(&uuid.0) {
+                        for handle in handles.values() {
+                            let Err(err) = handle.send(response.clone()).await else {
+                                return;
+                            };
+                            warn!("Could not send response to a websocket {err}");
                         }
-                        warn!("Probe {uuid} not registered for websocket events: {e}");
                     }
-                    NetworkStatusPacket::ProbeReconnectResponse(uuid, response) => {},
-                    _ => {}
                 }
-            }
+                _ => {}
+            },
             NetworkAppPacket::Data(probe_packet) => {
                 let src_mac = probe_packet
                     .packet_metadata

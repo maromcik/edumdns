@@ -1,23 +1,33 @@
+use actix_web::http::header::LOCATION;
+use std::collections::HashSet;
 use crate::error::{WebError, WebErrorKind};
 use crate::forms::device::DevicePacketTransmitRequest;
 use crate::handlers::utilities::is_htmx;
 use crate::utils::AppState;
 use actix_identity::Identity;
-use actix_web::{HttpRequest, web};
+use actix_session::Session;
+use actix_web::{HttpRequest, web, HttpResponse};
 use edumdns_core::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, NetworkAppPacket, NetworkCommandPacket,
     PacketTransmitRequestPacket,
 };
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
-use edumdns_db::models::Device;
-use edumdns_db::repositories::common::Id;
+use edumdns_db::models::{Device, Group};
+use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Permission};
 use edumdns_db::repositories::common::{DbCreate, DbResultSingle};
-use edumdns_db::repositories::device::models::CreatePacketTransmitRequest;
+use edumdns_db::repositories::device::models::{CreatePacketTransmitRequest, DeviceDisplay};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use ipnetwork::IpNetwork;
 use log::warn;
+use strum::IntoEnumIterator;
 use tokio::sync::mpsc::Sender;
+use edumdns_db::repositories::group::models::SelectManyGroups;
+use edumdns_db::repositories::group::repository::PgGroupRepository;
+use edumdns_db::repositories::probe::models::ProbeDisplay;
+use edumdns_db::repositories::probe::repository::PgProbeRepository;
+use crate::authorized;
+use crate::templates::probe::ProbeDetailTemplate;
 
 pub fn get_template_name(request: &HttpRequest, path: &str) -> String {
     if is_htmx(request) {
@@ -109,4 +119,61 @@ pub async fn reconnect_probe(
         .await
         .map_err(CoreError::from)?;
     Ok(())
+}
+
+
+pub async fn get_probe_helper(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    probe_repo: web::Data<PgProbeRepository>,
+    group_repo: web::Data<PgGroupRepository>,
+    state: web::Data<AppState>,
+    path: web::Path<(uuid::Uuid,)>,
+    session: Session,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request.path());
+    let probe_id = path.0;
+
+    let probe = probe_repo
+        .read_one_auth(&probe_id, &parse_user_id(&i)?)
+        .await?;
+
+    let granted: HashSet<(Id, Permission)> = probe_repo
+        .get_permissions(&probe_id)
+        .await?
+        .iter()
+        .map(|x| (x.group_id, x.permission))
+        .collect();
+
+    let matrix = group_repo
+        .read_many(&SelectManyGroups::new(None, None))
+        .await?
+        .into_iter()
+        .map(|g| {
+            (
+                {
+                    Permission::iter()
+                        .map(|p| (p, granted.contains(&(g.id, p))))
+                        .collect::<Vec<(Permission, bool)>>()
+                },
+                g,
+            )
+        })
+        .collect::<Vec<(Vec<(Permission, bool)>, Group)>>();
+
+    let template_name = get_template_name(&request, "probe/detail");
+    let env = state.jinja.acquire_env()?;
+    let template = env.get_template(&template_name)?;
+    let body = template.render(ProbeDetailTemplate {
+        logged_in: true,
+        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
+        permissions: probe.permissions,
+        permission_matrix: matrix,
+        probe: ProbeDisplay::from(probe.data.0),
+        devices: probe.data.1.into_iter().map(DeviceDisplay::from).collect(),
+        configs: probe.data.2,
+        admin: probe.admin,
+    })?;
+
+    Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

@@ -1,6 +1,6 @@
 use crate::error::{ProbeError, ProbeErrorKind};
 use edumdns_core::app_packet::{
-    NetworkAppPacket, NetworkCommandPacket, ProbeConfigPacket, NetworkStatusPacket,
+    NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeConfigPacket,
 };
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::metadata::ProbeMetadata;
@@ -86,7 +86,8 @@ impl ConnectionManager {
 
         let packet = self.receive_init_packet().await?;
 
-        let NetworkAppPacket::Status(NetworkStatusPacket::ProbeResponseConfig(config)) = packet else {
+        let NetworkAppPacket::Status(NetworkStatusPacket::ProbeResponseConfig(config)) = packet
+        else {
             return error;
         };
         info!("Connected to the server {}", self.server_connection_string);

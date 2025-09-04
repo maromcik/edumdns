@@ -8,6 +8,7 @@ use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 use tokio::sync::mpsc;
 
+#[derive(Debug, Clone)]
 pub enum AppPacket {
     Network(NetworkAppPacket),
     Local(LocalAppPacket),
@@ -29,7 +30,7 @@ pub enum LocalCommandPacket {
     RegisterForEvents {
         probe_id: uuid::Uuid,
         session_id: uuid::Uuid,
-        respond_to: mpsc::Sender<Result<(), String>>,
+        respond_to: mpsc::Sender<ProbeResponse>,
     },
     UnregisterFromEvents {
         probe_id: uuid::Uuid,
@@ -55,9 +56,40 @@ pub enum NetworkStatusPacket {
     ProbeUnknown,
     ProbeRequestConfig(ProbeMetadata),
     ProbeResponseConfig(ProbeConfigPacket),
-    ProbeInvalidConfig(Uuid, String),
-    ProbeReconnectResponse(Uuid, String),
+    ProbeResponse(Uuid, ProbeResponse),
 }
+
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
+pub struct ProbeResponse {
+    pub response: Result<Option<String>, String>,
+}
+
+impl ProbeResponse {
+    pub fn new(response: Result<Option<String>, String>) -> Self {
+        Self { response }
+    }
+    
+    pub fn new_ok() -> Self {
+        Self { response: Ok(None) }
+    }
+    pub fn new_error(error: String) -> Self {
+        Self { response: Err(error) }
+    }
+    pub fn new_ok_with_value(value: &str) -> Self {
+        Self { response: Ok(Some(value.to_owned())) }
+    }
+}
+
+impl Display for ProbeResponse {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.response {
+            Ok(Some(value)) => write!(f, "OK: {}", value),
+            Ok(None) => write!(f, "OK"),
+            Err(value) => write!(f, "Error: {}", value),
+        }
+    }
+}
+
 
 // #[derive(Clone, Debug)]
 // pub struct SenderWrapper(pub mpsc::Sender<AppPacket>);

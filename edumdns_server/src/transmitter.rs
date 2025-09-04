@@ -1,16 +1,13 @@
-use crate::error::{ServerError, ServerErrorKind};
-use edumdns_core::app_packet::{
-    NetworkAppPacket, NetworkCommandPacket, PacketTransmitRequestPacket, ProbePacket,
-};
+use crate::error::ServerError;
+use edumdns_core::app_packet::{NetworkCommandPacket, PacketTransmitRequestPacket, ProbePacket};
 use edumdns_core::connection::UdpConnection;
-use edumdns_core::error::CoreError;
+
 use log::{debug, error};
 use std::collections::HashSet;
-use std::sync::Arc;
+
 use std::time::Duration;
-use tokio::sync::RwLock;
+
 use tokio::task::JoinHandle;
-use tokio::time::Instant;
 
 pub struct PacketTransmitterTask {
     pub transmitter_task: JoinHandle<()>,

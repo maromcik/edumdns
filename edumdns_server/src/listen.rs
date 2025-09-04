@@ -1,27 +1,19 @@
 use crate::connection::ConnectionManager;
 use crate::error::{ServerError, ServerErrorKind};
-use crate::parse_host;
 use crate::handler::PacketHandler;
+use crate::parse_host;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{
-    AppPacket, NetworkAppPacket, NetworkCommandPacket, PacketTransmitRequestPacket,
-};
-use edumdns_core::bincode_types::{IpNetwork, MacAddr as MyMacAddr, Uuid};
-use edumdns_core::connection::{TcpConnection, TcpConnectionHandle};
-use edumdns_core::error::CoreError;
-use futures::StreamExt;
+use edumdns_core::app_packet::AppPacket;
+use edumdns_core::bincode_types::Uuid;
+use edumdns_core::connection::TcpConnectionHandle;
 use log::{debug, error, info, warn};
-use pnet::datalink::MacAddr;
 use std::collections::HashMap;
-use std::process::exit;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::time::sleep;
-use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 async fn handle_connection(mut connection_manager: ConnectionManager) -> Result<(), ServerError> {
     connection_manager.connection_init_server().await?;

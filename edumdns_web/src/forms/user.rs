@@ -1,4 +1,4 @@
-use edumdns_db::repositories::common::{Id, Pagination};
+use edumdns_db::repositories::common::Pagination;
 use edumdns_db::repositories::user::models::SelectManyUsers;
 use serde::{Deserialize, Serialize};
 

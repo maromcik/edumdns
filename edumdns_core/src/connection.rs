@@ -4,7 +4,7 @@ use bincode::{Decode, Encode};
 use bytes::{Bytes, BytesMut};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
-use log::{error};
+use log::error;
 use std::time::Duration;
 use tokio::net::UdpSocket;
 use tokio::net::{TcpSocket, TcpStream};

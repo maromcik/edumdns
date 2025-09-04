@@ -8,7 +8,6 @@ use diesel::{AsExpression, FromSqlRow, deserialize, serialize};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use strum_macros::EnumIter;
-use uuid::Uuid;
 
 const PAGINATION_ELEMENTS_PER_PAGE: i64 = 20;
 
@@ -164,15 +163,6 @@ impl Pagination {
         }
     }
 }
-
-pub trait EntityWithId {
-    type EntityId;
-    type UserId;
-
-    fn get_id(&self) -> Self::EntityId;
-    fn get_user_id(&self) -> Self::UserId;
-}
-
 #[repr(i16)]
 #[derive(
     AsExpression,

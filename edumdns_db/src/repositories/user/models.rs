@@ -1,7 +1,6 @@
 use crate::repositories::common::{Id, Pagination};
 use diesel::{AsChangeset, Identifiable};
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyUsers {

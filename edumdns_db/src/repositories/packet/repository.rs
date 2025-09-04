@@ -17,7 +17,6 @@ use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use schema::packet;
-use tokio::time::Instant;
 
 #[derive(Clone)]
 pub struct PgPacketRepository {

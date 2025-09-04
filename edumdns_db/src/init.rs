@@ -9,7 +9,7 @@ use std::env;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
-pub async fn init() -> Result<(Pool<AsyncPgConnection>), DbError> {
+pub async fn init() -> Result<Pool<AsyncPgConnection>, DbError> {
     run_migrations()?;
     set_up_database_pool()
 }

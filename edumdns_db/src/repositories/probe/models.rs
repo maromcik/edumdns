@@ -1,7 +1,6 @@
 use crate::models::Probe;
-use crate::repositories::common::{EntityWithId, Id, Pagination, Permission};
-use diesel::pg::Pg;
-use diesel::{AsChangeset, Identifiable, Insertable, Queryable, Selectable};
+use crate::repositories::common::{Id, Pagination, Permission};
+use diesel::{AsChangeset, Identifiable, Insertable};
 use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};

@@ -8,7 +8,6 @@ use edumdns_db::error::{BackendErrorKind, DbError, DbErrorKind};
 use image::ImageError;
 use minijinja::{Environment, path_loader};
 use rexiv2::Rexiv2Error;
-use serde::Serialize;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::Error;
 use std::num::ParseIntError;

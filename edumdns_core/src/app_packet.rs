@@ -39,7 +39,6 @@ pub enum LocalCommandPacket {
     ReconnectProbe(Uuid),
     TransmitDevicePackets(PacketTransmitRequestPacket),
     StopTransmitDevicePackets(PacketTransmitRequestPacket),
-
 }
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
@@ -68,15 +67,19 @@ impl ProbeResponse {
     pub fn new(response: Result<Option<String>, String>) -> Self {
         Self { response }
     }
-    
+
     pub fn new_ok() -> Self {
         Self { response: Ok(None) }
     }
     pub fn new_error(error: String) -> Self {
-        Self { response: Err(error) }
+        Self {
+            response: Err(error),
+        }
     }
     pub fn new_ok_with_value(value: &str) -> Self {
-        Self { response: Ok(Some(value.to_owned())) }
+        Self {
+            response: Ok(Some(value.to_owned())),
+        }
     }
 }
 
@@ -89,7 +92,6 @@ impl Display for ProbeResponse {
         }
     }
 }
-
 
 // #[derive(Clone, Debug)]
 // pub struct SenderWrapper(pub mpsc::Sender<AppPacket>);
@@ -108,7 +110,6 @@ impl Display for ProbeResponse {
 //     }
 // }
 //
-
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub struct ProbeConfigElement {

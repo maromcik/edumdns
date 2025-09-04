@@ -12,7 +12,7 @@ use actix_web::web::{FormConfig, PayloadConfig};
 use actix_web::{App, HttpServer, cookie::Key};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{AppPacket, NetworkAppPacket};
+use edumdns_core::app_packet::AppPacket;
 use log::{info, warn};
 use std::env;
 use std::sync::Arc;
@@ -65,7 +65,7 @@ pub async fn web_init(
     };
     info!("starting server on {host}");
 
-    let server = HttpServer::new(move || {
+    let _ = HttpServer::new(move || {
         App::new()
             .app_data(
                 MultipartFormConfig::default()

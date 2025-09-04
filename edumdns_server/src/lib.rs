@@ -2,17 +2,15 @@ use crate::error::ServerError;
 use crate::listen::listen;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{AppPacket, NetworkAppPacket};
-use edumdns_db::repositories::probe::repository::PgProbeRepository;
+use edumdns_core::app_packet::AppPacket;
 use std::env;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 
 mod connection;
-mod database;
 pub mod error;
-pub mod listen;
 pub mod handler;
+pub mod listen;
 mod transmitter;
 
 const DEFAULT_HOSTNAME: &str = "localhost";
@@ -23,7 +21,7 @@ pub async fn server_init(
     command_channel: (Sender<AppPacket>, Receiver<AppPacket>),
 ) -> Result<(), ServerError> {
     let global_timeout = Duration::from_secs(
-        env::var("EDUMDNS_PROBE_GLOBAL_TIMOUT")
+        env::var("EDUMDNS_PROBE_GLOBAL_TIMEOUT")
             .unwrap_or("10".to_string())
             .parse::<u64>()?,
     );

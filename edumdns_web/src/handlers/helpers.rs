@@ -1,33 +1,32 @@
-use actix_web::http::header::LOCATION;
-use std::collections::HashSet;
+use crate::authorized;
 use crate::error::{WebError, WebErrorKind};
 use crate::forms::device::DevicePacketTransmitRequest;
 use crate::handlers::utilities::is_htmx;
+use crate::templates::probe::ProbeDetailTemplate;
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
-use actix_web::{HttpRequest, web, HttpResponse};
+use actix_web::http::header::LOCATION;
+use actix_web::{HttpRequest, HttpResponse, web};
 use edumdns_core::app_packet::{
-    AppPacket, LocalAppPacket, LocalCommandPacket, NetworkAppPacket, NetworkCommandPacket,
-    PacketTransmitRequestPacket,
+    AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
 use edumdns_db::models::{Device, Group};
+use edumdns_db::repositories::common::DbCreate;
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Permission};
-use edumdns_db::repositories::common::{DbCreate, DbResultSingle};
 use edumdns_db::repositories::device::models::{CreatePacketTransmitRequest, DeviceDisplay};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use ipnetwork::IpNetwork;
-use log::warn;
-use strum::IntoEnumIterator;
-use tokio::sync::mpsc::Sender;
 use edumdns_db::repositories::group::models::SelectManyGroups;
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::probe::models::ProbeDisplay;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
-use crate::authorized;
-use crate::templates::probe::ProbeDetailTemplate;
+use ipnetwork::IpNetwork;
+use log::warn;
+use std::collections::HashSet;
+use strum::IntoEnumIterator;
+use tokio::sync::mpsc::Sender;
 
 pub fn get_template_name(request: &HttpRequest, path: &str) -> String {
     if is_htmx(request) {
@@ -120,7 +119,6 @@ pub async fn reconnect_probe(
         .map_err(CoreError::from)?;
     Ok(())
 }
-
 
 pub async fn get_probe_helper(
     request: HttpRequest,

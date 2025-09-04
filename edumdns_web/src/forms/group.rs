@@ -1,8 +1,6 @@
-use edumdns_db::repositories::common::{Id, Pagination};
-use serde::de::{Error, Visitor};
+use edumdns_db::repositories::common::Id;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashSet;
-use std::fmt::Formatter;
 
 #[derive(Serialize, Deserialize)]
 pub struct GroupQuery {

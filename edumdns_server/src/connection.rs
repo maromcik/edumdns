@@ -2,8 +2,7 @@ use crate::error::{ServerError, ServerErrorKind};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::{
-    AppPacket, NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeConfigElement,
-    ProbeConfigPacket,
+    AppPacket, NetworkAppPacket, NetworkStatusPacket, ProbeConfigElement, ProbeConfigPacket,
 };
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};

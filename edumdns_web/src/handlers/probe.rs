@@ -1,38 +1,30 @@
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::probe::{ProbeConfigForm, ProbePermissionForm, ProbeQuery};
-use crate::handlers::helpers::{get_probe_helper, get_template_name, parse_user_id, reconnect_probe};
-use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
+use crate::handlers::helpers::{
+    get_probe_helper, get_template_name, parse_user_id, reconnect_probe,
+};
+use crate::templates::probe::ProbeTemplate;
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, rt, web};
-use actix_ws::{AggregatedMessage, Closed};
-use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, NetworkCommandPacket, NetworkStatusPacket};
+use actix_ws::AggregatedMessage;
+use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket};
 use edumdns_core::error::CoreError;
-use edumdns_db::models::{Group, Location, Probe};
-use edumdns_db::repositories::common::{
-    DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination, Permission,
-};
-use edumdns_db::repositories::device::models::{DeviceDisplay, UpdateDevice};
-use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use edumdns_db::repositories::group::models::SelectManyGroups;
+use edumdns_db::models::{Location, Probe};
+use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbUpdate, Id, Pagination};
 use edumdns_db::repositories::group::repository::PgGroupRepository;
-use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::probe::models::{
     AlterProbePermission, CreateProbeConfig, ProbeDisplay, SelectManyProbes,
     SelectSingleProbeConfig, UpdateProbe,
 };
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
-use futures_util::StreamExt as _;
-use futures_util::{SinkExt, StreamExt};
 use itertools;
 use itertools::Itertools;
-use log::{debug, error, warn};
+use log::{debug, warn};
 use std::collections::{HashMap, HashSet};
-use std::sync::mpsc::channel;
-use strum::IntoEnumIterator;
 use tokio::sync::mpsc;
 use uuid::{Timestamp, Uuid};
 
@@ -102,7 +94,10 @@ pub async fn get_probe(
     path: web::Path<(Uuid,)>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    get_probe_helper(request, identity, probe_repo, group_repo, state, path, session).await
+    get_probe_helper(
+        request, identity, probe_repo, group_repo, state, path, session,
+    )
+    .await
 }
 
 #[get("{id}/adopt")]
@@ -153,7 +148,16 @@ pub async fn restart(
         .await?;
 
     reconnect_probe(state.command_channel.clone(), path.0).await?;
-    get_probe_helper(request, Some(i), probe_repo, group_repo, state, path, session).await
+    get_probe_helper(
+        request,
+        Some(i),
+        probe_repo,
+        group_repo,
+        state,
+        path,
+        session,
+    )
+    .await
 }
 
 #[post("{probe_id}/config")]
@@ -310,7 +314,7 @@ pub async fn get_probe_ws(
 
     let ts = Timestamp::now(uuid::NoContext);
     let session_uuid = Uuid::new_v7(ts);
-    
+
     let (res, mut session, stream) = actix_ws::handle(&request, stream)?;
     let mut stream = stream
         .aggregate_continuations()
@@ -321,7 +325,7 @@ pub async fn get_probe_ws(
         LocalCommandPacket::UnregisterFromEvents {
             probe_id,
             session_id: session_uuid,
-        }
+        },
     ));
     let sender = channel.0.clone();
     state
@@ -343,12 +347,16 @@ pub async fn get_probe_ws(
                 continue;
             };
             debug!("WebSocket closed, probe_id: {probe_id}, session_id: {session_uuid}");
-            
-            let Err(e) = command_channel_local.send(unregister_packet_local.clone()).await else {
-                    continue;
+
+            let Err(e) = command_channel_local
+                .send(unregister_packet_local.clone())
+                .await
+            else {
+                continue;
             };
             warn!("Error unregistering from events: {e}");
-        }});
+        }
+    });
     let command_channel = state.command_channel.clone();
     rt::spawn(async move {
         while let Some(msg) = stream.recv().await {

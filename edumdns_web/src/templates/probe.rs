@@ -1,4 +1,4 @@
-use edumdns_db::models::{Group, GroupProbePermission, Location, ProbeConfig};
+use edumdns_db::models::{Group, Location, ProbeConfig};
 use edumdns_db::repositories::common::{Permission, Permissions};
 use edumdns_db::repositories::device::models::DeviceDisplay;
 use edumdns_db::repositories::probe::models::ProbeDisplay;

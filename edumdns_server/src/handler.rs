@@ -184,7 +184,10 @@ impl PacketHandler {
                 .await
                 .map_err(ServerError::from)??;
         } else {
-            return Err(ServerError::new(ServerErrorKind::ProbeNotFound, "not connected"));
+            return Err(ServerError::new(
+                ServerErrorKind::ProbeNotFound,
+                "not connected",
+            ));
         }
         Ok(())
     }

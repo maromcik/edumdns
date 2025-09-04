@@ -1,4 +1,4 @@
-use edumdns_core::app_packet::{AppPacket, NetworkAppPacket};
+use edumdns_core::app_packet::AppPacket;
 use edumdns_db::models::GroupProbePermission;
 use edumdns_db::repositories::common::Permission;
 use minijinja::{Environment, Value, path_loader};

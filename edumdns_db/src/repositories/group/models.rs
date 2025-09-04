@@ -1,5 +1,4 @@
 use crate::repositories::common::{Id, Pagination};
-use diesel::{AsChangeset, Insertable};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]

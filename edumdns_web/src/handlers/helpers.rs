@@ -1,19 +1,23 @@
-use edumdns_db::repositories::common::{DbCreate, DbResultSingle};
 use crate::error::{WebError, WebErrorKind};
+use crate::forms::device::DevicePacketTransmitRequest;
 use crate::handlers::utilities::is_htmx;
+use crate::utils::AppState;
 use actix_identity::Identity;
-use actix_web::{web, HttpRequest};
-use ipnetwork::IpNetwork;
-use log::warn;
-use tokio::sync::mpsc::Sender;
-use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequestPacket};
+use actix_web::{HttpRequest, web};
+use edumdns_core::app_packet::{
+    AppPacket, LocalAppPacket, LocalCommandPacket, NetworkAppPacket, NetworkCommandPacket,
+    PacketTransmitRequestPacket,
+};
+use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
 use edumdns_db::models::Device;
 use edumdns_db::repositories::common::Id;
+use edumdns_db::repositories::common::{DbCreate, DbResultSingle};
 use edumdns_db::repositories::device::models::CreatePacketTransmitRequest;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use crate::forms::device::DevicePacketTransmitRequest;
-use crate::utils::AppState;
+use ipnetwork::IpNetwork;
+use log::warn;
+use tokio::sync::mpsc::Sender;
 
 pub fn get_template_name(request: &HttpRequest, path: &str) -> String {
     if is_htmx(request) {
@@ -32,7 +36,7 @@ pub async fn request_packet_transmit_helper(
     device: &Device,
     command_channel: Sender<AppPacket>,
     form: &DevicePacketTransmitRequest,
-) -> Result<(), WebError>{
+) -> Result<(), WebError> {
     let packet = PacketTransmitRequestPacket::new(
         device.probe_id,
         device.mac,
@@ -53,7 +57,12 @@ pub async fn request_packet_transmit_helper(
 
     let packet_transmit_request = match device_repo.create(&request).await {
         Ok(p) => p,
-        Err(_) => return Err(WebError::new(WebErrorKind::BadRequest, "Transmission already in progress to a different client, please try again later.")),
+        Err(_) => {
+            return Err(WebError::new(
+                WebErrorKind::BadRequest,
+                "Transmission already in progress to a different client, please try again later.",
+            ));
+        }
     };
     let command_channel_local = command_channel.clone();
     let packet_local = packet.clone();
@@ -73,16 +82,29 @@ pub async fn request_packet_transmit_helper(
             }
 
             command_channel_local
-                .send(AppPacket::Command(
-                    CommandPacket::StopTransmitDevicePackets(packet_local),
-                ))
+                .send(AppPacket::Local(LocalAppPacket::Command(
+                    LocalCommandPacket::StopTransmitDevicePackets(packet_local),
+                )))
                 .await
         });
     }
 
     command_channel
-        .send(AppPacket::Command(CommandPacket::TransmitDevicePackets(
-            packet,
+        .send(AppPacket::Local(LocalAppPacket::Command(
+            LocalCommandPacket::TransmitDevicePackets(packet),
+        )))
+        .await
+        .map_err(CoreError::from)?;
+    Ok(())
+}
+
+pub async fn reconnect_probe(
+    command_channel: Sender<AppPacket>,
+    probe_id: uuid::Uuid,
+) -> Result<(), WebError> {
+    command_channel
+        .send(AppPacket::Local(LocalAppPacket::Command(
+            LocalCommandPacket::ReconnectProbe(Uuid(probe_id)),
         )))
         .await
         .map_err(CoreError::from)?;

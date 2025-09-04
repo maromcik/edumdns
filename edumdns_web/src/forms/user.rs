@@ -1,6 +1,6 @@
 use edumdns_db::repositories::common::{Id, Pagination};
-use serde::{Deserialize, Serialize};
 use edumdns_db::repositories::user::models::SelectManyUsers;
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug, Clone)]
 #[allow(dead_code)]
@@ -59,4 +59,3 @@ impl From<UserQuery> for SelectManyUsers {
         }
     }
 }
-

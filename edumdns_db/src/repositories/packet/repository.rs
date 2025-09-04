@@ -13,9 +13,9 @@ use crate::schema::packet::BoxedQuery;
 use crate::schema::{group_probe_permission, group_user, probe, user};
 use diesel::pg::Pg;
 use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
-use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use diesel_async::pooled_connection::deadpool::Pool;
 use schema::packet;
 use tokio::time::Instant;
 
@@ -144,13 +144,17 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
 
         let packets = self.read_many(params).await?;
 
-        let ids: Vec<Id> = packets.iter().map(|p|p.id).collect();
+        let ids: Vec<Id> = packets.iter().map(|p| p.id).collect();
 
         let packets_with_perms = packet::table
             .filter(packet::id.eq_any(&ids))
             .inner_join(probe::table)
-            .inner_join(group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)))
-            .inner_join(group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)))
+            .inner_join(
+                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
+            )
+            .inner_join(
+                group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
+            )
             .filter(group_user::user_id.eq(user_id))
             .order_by(packet::id.asc())
             .select((Packet::as_select(), GroupProbePermission::as_select()))
@@ -164,9 +168,11 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
                 packets_only.push(packet.0);
             }
             permissions.insert(packet.1);
-
         }
-        Ok(DbDataPerm::new(packets_only, (false, Vec::from_iter(permissions))))
+        Ok(DbDataPerm::new(
+            packets_only,
+            (false, Vec::from_iter(permissions)),
+        ))
     }
 }
 

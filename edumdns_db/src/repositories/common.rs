@@ -119,7 +119,11 @@ pub trait DbUpdate<Update, Data> {
     /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn update(&self, params: &Update) -> impl Future<Output = DbResultMultiple<Data>> + Send;
 
-    fn update_auth(&self, params: &Update, user_id: &Id) -> impl Future<Output = DbResultMultiple<Data>> + Send;
+    fn update_auth(
+        &self,
+        params: &Update,
+        user_id: &Id,
+    ) -> impl Future<Output = DbResultMultiple<Data>> + Send;
 }
 
 pub trait DbDelete<Delete, Data> {

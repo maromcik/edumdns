@@ -1,25 +1,44 @@
 use crate::bincode_types::Uuid;
 use crate::bincode_types::{IpNetwork, MacAddr};
+use crate::error::CoreError;
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};
 use crate::network_packet::{DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};
 use sha2::{Digest, Sha256};
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
+use tokio::sync::mpsc;
+
+pub enum AppPacket {
+    Network(NetworkAppPacket),
+    Local(LocalAppPacket),
+}
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
-pub enum AppPacket {
-    Command(CommandPacket),
+pub enum NetworkAppPacket {
+    Command(NetworkCommandPacket),
     Data(ProbePacket),
     Status(StatusPacket),
 }
 
-#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
-pub enum CommandPacket {
+#[derive(Debug, Clone)]
+pub enum LocalAppPacket {
+    Command(LocalCommandPacket),
+}
+
+#[derive(Debug, Clone)]
+pub enum LocalCommandPacket {
+    RegisterForEvents {
+        respond_to: mpsc::Sender<Result<NetworkAppPacket, CoreError>>,
+    },
+    ReconnectProbe(Uuid),
     TransmitDevicePackets(PacketTransmitRequestPacket),
     StopTransmitDevicePackets(PacketTransmitRequestPacket),
+}
+
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
+pub enum NetworkCommandPacket {
     ReconnectThisProbe,
-    ReconnectProbe(Uuid),
 }
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
@@ -70,7 +89,7 @@ pub struct ProbePacket {
     pub probe_metadata: ProbeMetadata,
     pub packet_metadata: PacketMetadata,
     pub payload: Vec<u8>,
-    pub payload_hash: String
+    pub payload_hash: String,
 }
 
 impl ProbePacket {
@@ -95,7 +114,7 @@ impl ProbePacket {
                 transport_metadata,
             ),
             payload: payload.to_vec(),
-            payload_hash
+            payload_hash,
         })
     }
 }

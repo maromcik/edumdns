@@ -3,7 +3,8 @@ use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::{
-    AppPacket, CommandPacket, PacketTransmitRequestPacket, ProbePacket,
+    AppPacket, LocalAppPacket, LocalCommandPacket, NetworkAppPacket, NetworkCommandPacket,
+    PacketTransmitRequestPacket, ProbePacket,
 };
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
@@ -51,76 +52,89 @@ impl PacketStorage {
     pub async fn handle_packets(&mut self) {
         while let Some(packet) = self.packet_receiver.recv().await {
             match packet {
-                AppPacket::Command(command) => match command {
-                    CommandPacket::TransmitDevicePackets(target) => {
-                        if self.transmitter_tasks.lock().await.contains_key(&target) {
-                            warn!("Transmitter task already exists for target: {}", target);
-                        } else {
-                            self.transmit_device_packets(target)
-                        }
-                    }
-                    CommandPacket::StopTransmitDevicePackets(target) => {
-                        if let Some(t) = self.transmitter_tasks.lock().await.get(&target) {
-                            t.transmitter_task.abort();
-                        }
-                        self.transmitter_tasks.lock().await.remove(&target);
-                    }
-                    CommandPacket::ReconnectProbe(id) => self.send_reconnect(id).await,
-                    _ => {}
-                },
-                AppPacket::Status(status) => {}
-                AppPacket::Data(probe_packet) => {
-                    let src_mac = probe_packet
-                        .packet_metadata
-                        .datalink_metadata
-                        .mac_metadata
-                        .src_mac;
+                AppPacket::Network(network_packet) => {
+                    self.handle_network_packet(network_packet).await
+                }
+                AppPacket::Local(local_packet) => {}
+            }
+        }
+    }
 
-                    let src_ip = probe_packet.packet_metadata.ip_metadata.src_ip;
+    pub async fn handle_local_packet(&mut self, packet: LocalAppPacket) {
+        match packet {
+            LocalAppPacket::Command(command) => match command {
+                LocalCommandPacket::RegisterForEvents { .. } => {}
+                LocalCommandPacket::TransmitDevicePackets(target) => {
+                    if self.transmitter_tasks.lock().await.contains_key(&target) {
+                        warn!("Transmitter task already exists for target: {}", target);
+                    } else {
+                        self.transmit_device_packets(target)
+                    }
+                }
+                LocalCommandPacket::StopTransmitDevicePackets(target) => {
+                    if let Some(t) = self.transmitter_tasks.lock().await.get(&target) {
+                        t.transmitter_task.abort();
+                    }
+                    self.transmitter_tasks.lock().await.remove(&target);
+                }
+                LocalCommandPacket::ReconnectProbe(id) => self.send_reconnect(id).await,
+            },
+        }
+    }
 
-                    // self
-                    //     .packets
-                    //     .entry(probe_packet.probe_metadata.id)
-                    //     .or_default()
-                    //     .entry((src_mac, src_ip))
-                    //     .or_default()
-                    //     .insert(probe_packet.clone());
-                    match self.packets.entry(probe_packet.probe_metadata.id) {
-                        Entry::Occupied(mut probe_entry) => {
-                            match probe_entry.get_mut().entry((src_mac, src_ip)) {
-                                Entry::Occupied(mut device_entry) => {
-                                    if !device_entry.get().contains(&probe_packet) {
-                                        device_entry.get_mut().insert(probe_packet.clone());
-                                        debug!("Probe and device found; stored packet in database");
-                                        self.store_packet_in_database(probe_packet.clone()).await;
-                                    } else {
-                                        debug!("Probe, device and packet found; no action");
-                                    }
-                                }
-                                Entry::Vacant(device_entry) => {
-                                    let device_entry = device_entry.insert(HashSet::new());
-                                    device_entry.insert(probe_packet.clone());
-                                    debug!("Probe found; stored device and packet in database");
-                                    self.store_device_in_database(probe_packet.clone()).await;
+    pub async fn handle_network_packet(&mut self, packet: NetworkAppPacket) {
+        match packet {
+            NetworkAppPacket::Command(_) => {}
+            NetworkAppPacket::Status(_) => {}
+            NetworkAppPacket::Data(probe_packet) => {
+                let src_mac = probe_packet
+                    .packet_metadata
+                    .datalink_metadata
+                    .mac_metadata
+                    .src_mac;
+
+                let src_ip = probe_packet.packet_metadata.ip_metadata.src_ip;
+
+                // self
+                //     .packets
+                //     .entry(probe_packet.probe_metadata.id)
+                //     .or_default()
+                //     .entry((src_mac, src_ip))
+                //     .or_default()
+                //     .insert(probe_packet.clone());
+                match self.packets.entry(probe_packet.probe_metadata.id) {
+                    Entry::Occupied(mut probe_entry) => {
+                        match probe_entry.get_mut().entry((src_mac, src_ip)) {
+                            Entry::Occupied(mut device_entry) => {
+                                if !device_entry.get().contains(&probe_packet) {
+                                    device_entry.get_mut().insert(probe_packet.clone());
+                                    debug!("Probe and device found; stored packet in database");
                                     self.store_packet_in_database(probe_packet.clone()).await;
+                                } else {
+                                    debug!("Probe, device and packet found; no action");
                                 }
                             }
-                        }
-                        Entry::Vacant(probe_entry) => {
-                            let probe_entry = probe_entry.insert(HashMap::new());
-                            probe_entry
-                                .entry((src_mac, src_ip))
-                                .or_default()
-                                .insert(probe_packet.clone());
-                            self.store_device_in_database(probe_packet.clone()).await;
-                            self.store_packet_in_database(probe_packet.clone()).await;
-                            debug!(
-                                "Probe not found in hashmap; stored device and packet in database"
-                            );
+                            Entry::Vacant(device_entry) => {
+                                let device_entry = device_entry.insert(HashSet::new());
+                                device_entry.insert(probe_packet.clone());
+                                debug!("Probe found; stored device and packet in database");
+                                self.store_device_in_database(probe_packet.clone()).await;
+                                self.store_packet_in_database(probe_packet.clone()).await;
+                            }
                         }
                     }
-                    debug!("Packet <MAC: {src_mac}, IP: {src_ip}> stored in memory");
+                    Entry::Vacant(probe_entry) => {
+                        let probe_entry = probe_entry.insert(HashMap::new());
+                        probe_entry
+                            .entry((src_mac, src_ip))
+                            .or_default()
+                            .insert(probe_packet.clone());
+                        self.store_device_in_database(probe_packet.clone()).await;
+                        self.store_packet_in_database(probe_packet.clone()).await;
+                        debug!("Probe not found in hashmap; stored device and packet in database");
+                    }
                 }
+                debug!("Packet <MAC: {src_mac}, IP: {src_ip}> stored in memory");
             }
         }
     }
@@ -131,7 +145,7 @@ impl PacketStorage {
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
                         tx,
-                        AppPacket::Command(CommandPacket::ReconnectThisProbe),
+                        NetworkAppPacket::Command(NetworkCommandPacket::ReconnectThisProbe),
                     )
                 })
                 .await
@@ -213,7 +227,7 @@ impl PacketStorage {
                     packet.packet_metadata.transport_metadata.src_port,
                     packet.packet_metadata.transport_metadata.dst_port,
                     packet.payload,
-                    packet.payload_hash
+                    packet.payload_hash,
                 ))
                 .await;
             match packet {

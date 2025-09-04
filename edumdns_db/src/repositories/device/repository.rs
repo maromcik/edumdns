@@ -1,15 +1,22 @@
 use crate::error::DbError;
 use crate::models::{Device, GroupProbePermission, PacketTransmitRequest, Probe, User};
-use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission};
-use crate::repositories::device::models::{CreateDevice, CreatePacketTransmitRequest, SelectManyDevices, SelectSingleDevice, UpdateDevice};
+use crate::repositories::common::{
+    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
+    DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission,
+};
+use crate::repositories::device::models::{
+    CreateDevice, CreatePacketTransmitRequest, SelectManyDevices, SelectSingleDevice, UpdateDevice,
+};
 use crate::repositories::utilities::validate_permissions;
 use crate::schema::device::BoxedQuery;
-use crate::schema::{device, group_probe_permission, group_user, packet, packet_transmit_request, probe, user};
+use crate::schema::{
+    device, group_probe_permission, group_user, packet, packet_transmit_request, probe, user,
+};
 use diesel::pg::Pg;
 use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
+use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
-use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 use std::collections::HashSet;
 
@@ -170,7 +177,11 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
             .filter(group_user::user_id.eq(user_id))
             .distinct()
             .order_by(device::id.asc())
-            .select((Probe::as_select(), Device::as_select(), GroupProbePermission::as_select()))
+            .select((
+                Probe::as_select(),
+                Device::as_select(),
+                GroupProbePermission::as_select(),
+            ))
             .load::<(Probe, Device, GroupProbePermission)>(&mut conn)
             .await?;
         let mut devices_only = Vec::default();
@@ -181,9 +192,11 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
             }
 
             permissions.insert(device.2);
-
         }
-        Ok(DbDataPerm::new(devices_only, (false, Vec::from_iter(permissions))))
+        Ok(DbDataPerm::new(
+            devices_only,
+            (false, Vec::from_iter(permissions)),
+        ))
     }
 }
 
@@ -206,8 +219,7 @@ impl DbUpdate<UpdateDevice, Device> for PgDeviceRepository {
     async fn update(&self, params: &UpdateDevice) -> DbResultMultiple<Device> {
         let mut conn = self.pg_pool.get().await?;
 
-        let devices = diesel::update(device::table
-            .find(&params.id))
+        let devices = diesel::update(device::table.find(&params.id))
             .set(params)
             .get_results(&mut conn)
             .await?;
@@ -216,7 +228,10 @@ impl DbUpdate<UpdateDevice, Device> for PgDeviceRepository {
 
     async fn update_auth(&self, params: &UpdateDevice, user_id: &Id) -> DbResultMultiple<Device> {
         let mut conn = self.pg_pool.get().await?;
-        let d = device::table.find(&params.id).first::<Device>(&mut conn).await?;
+        let d = device::table
+            .find(&params.id)
+            .first::<Device>(&mut conn)
+            .await?;
         validate_permissions(&self.pg_pool, user_id, &d.probe_id, Permission::Update).await?;
         let devices = self.update(params).await?;
         Ok(devices)
@@ -226,25 +241,28 @@ impl DbUpdate<UpdateDevice, Device> for PgDeviceRepository {
 impl DbDelete<Id, Device> for PgDeviceRepository {
     async fn delete(&self, params: &Id) -> DbResultMultiple<Device> {
         let mut conn = self.pg_pool.get().await?;
-        conn.transaction::<_, DbError, _>(|c|
-        async move {
-            let deleted_devices = diesel::delete(device::table.find(params))
-                .get_results::<Device>(c)
-                .await?;
+        conn.transaction::<_, DbError, _>(|c| {
+            async move {
+                let deleted_devices = diesel::delete(device::table.find(params))
+                    .get_results::<Device>(c)
+                    .await?;
 
-            for d in &deleted_devices {
-                diesel::delete(packet::table
-                                   .filter(packet::probe_id.eq(d.probe_id))
-                                   .filter(packet::src_mac.eq(d.mac))
-                                   .filter(packet::src_addr.eq(d.ip)))
-                    .execute(c).await?;
+                for d in &deleted_devices {
+                    diesel::delete(
+                        packet::table
+                            .filter(packet::probe_id.eq(d.probe_id))
+                            .filter(packet::src_mac.eq(d.mac))
+                            .filter(packet::src_addr.eq(d.ip)),
+                    )
+                    .execute(c)
+                    .await?;
+                }
+
+                Ok::<Vec<Device>, DbError>(deleted_devices)
             }
-
-            Ok::<Vec<Device>, DbError>(deleted_devices)
-        }
             .scope_boxed()
-        )
-            .await
+        })
+        .await
     }
 
     async fn delete_auth(&self, params: &Id, user_id: &Id) -> DbResultMultiple<Device> {

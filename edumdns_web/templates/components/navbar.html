@@ -114,6 +114,11 @@
         <a href="/" class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Home
         </a>
+        {% if is_admin %}
+        <a href="/group" class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
+            Groups
+        </a>
+        {% endif %}
         <a href="/probe" class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Probes
         </a>

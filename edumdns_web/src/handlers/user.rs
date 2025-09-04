@@ -1,19 +1,24 @@
 use crate::error::WebError;
-use crate::forms::user::{UserLoginForm, UserLoginReturnURL, UserUpdateForm, UserUpdatePasswordForm};
-use crate::templates::user::{LoginTemplate, UserManagePasswordTemplate, UserManageProfileTemplate, UserManageProfileUserFormTemplate};
-use crate::{authorized, AppState};
+use crate::forms::user::{
+    UserLoginForm, UserLoginReturnURL, UserUpdateForm, UserUpdatePasswordForm,
+};
+use crate::handlers::helpers::{get_template_name, parse_user_id};
+use crate::handlers::utilities::validate_password;
+use crate::templates::user::{
+    LoginTemplate, UserManagePasswordTemplate, UserManageProfileTemplate,
+    UserManageProfileUserFormTemplate,
+};
+use crate::{AppState, authorized};
 use actix_identity::Identity;
 use actix_session::Session;
-use actix_web::http::header::LOCATION;
 use actix_web::http::StatusCode;
+use actix_web::http::header::LOCATION;
 use actix_web::web::Redirect;
-use actix_web::{get, post, web, HttpMessage, HttpRequest, HttpResponse, Responder};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, get, post, web};
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
 use edumdns_db::repositories::common::{DbReadOne, DbUpdate};
 use edumdns_db::repositories::user::models::{UserLogin, UserUpdate, UserUpdatePassword};
 use edumdns_db::repositories::user::repository::PgUserRepository;
-use crate::handlers::helpers::{get_template_name, parse_user_id};
-use crate::handlers::utilities::validate_password;
 
 #[get("/login")]
 pub async fn login(
@@ -98,9 +103,7 @@ pub async fn user_manage_form_page(
     session: Session,
 ) -> Result<impl Responder, WebError> {
     let u = authorized!(identity, request.path());
-    let user = user_repo
-        .read_one(&parse_user_id(&u)?)
-        .await?;
+    let user = user_repo.read_one(&parse_user_id(&u)?).await?;
 
     let template_name = get_template_name(&request, "user/manage/profile");
     let env = state.jinja.acquire_env()?;
@@ -144,9 +147,7 @@ pub async fn user_manage_profile_form(
     state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
     let u = authorized!(identity, request.path());
-    let user = user_repo
-        .read_one(&parse_user_id(&u)?)
-        .await?;
+    let user = user_repo.read_one(&parse_user_id(&u)?).await?;
 
     let template_name = get_template_name(&request, "user/manage/profile");
     let env = state.jinja.acquire_env()?;
@@ -182,7 +183,8 @@ pub async fn user_manage(
 
     let Some(user_valid) = user.into_iter().next() else {
         return Err(WebError::from(DbError::from(BackendError::new(
-            BackendErrorKind::UpdateParametersEmpty, ""
+            BackendErrorKind::UpdateParametersEmpty,
+            "",
         ))));
     };
 

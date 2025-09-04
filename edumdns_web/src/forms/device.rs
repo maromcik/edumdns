@@ -1,9 +1,9 @@
-use ipnetwork::IpNetwork;
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use edumdns_core::bincode_types::MacAddr;
 use edumdns_db::repositories::common::Pagination;
 use edumdns_db::repositories::device::models::SelectManyDevices;
+use ipnetwork::IpNetwork;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
 pub struct DeviceQuery {

@@ -1,9 +1,12 @@
 use crate::connection::ConnectionManager;
 use crate::error::{ServerError, ServerErrorKind};
+use crate::parse_host;
 use crate::storage::PacketStorage;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequestPacket};
+use edumdns_core::app_packet::{
+    AppPacket, NetworkAppPacket, NetworkCommandPacket, PacketTransmitRequestPacket,
+};
 use edumdns_core::bincode_types::{IpNetwork, MacAddr as MyMacAddr, Uuid};
 use edumdns_core::connection::{TcpConnection, TcpConnectionHandle};
 use edumdns_core::error::CoreError;
@@ -19,7 +22,6 @@ use tokio::sync::RwLock;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::sleep;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
-use crate::parse_host;
 
 async fn handle_connection(mut connection_manager: ConnectionManager) -> Result<(), ServerError> {
     connection_manager.connection_init_server().await?;

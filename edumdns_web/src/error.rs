@@ -177,6 +177,21 @@ impl From<ParseIntError> for WebError {
     }
 }
 
+impl From<ParseBoolError> for WebError {
+    fn from(value: ParseBoolError) -> Self {
+        Self::new(WebErrorKind::ParseError, value.to_string().as_str())
+    }
+}
+
+impl From<actix_web::Error> for WebError {
+    fn from(value: actix_web::Error) -> Self {
+        Self::new(
+            WebErrorKind::InternalServerError,
+            value.to_string().as_str(),
+        )
+    }
+}
+
 impl ResponseError for WebError {
     fn status_code(&self) -> StatusCode {
         match self.error_kind {
@@ -209,12 +224,6 @@ impl ResponseError for WebError {
 
     fn error_response(&self) -> HttpResponse {
         render_generic(self)
-    }
-}
-
-impl From<ParseBoolError> for WebError {
-    fn from(value: ParseBoolError) -> Self {
-        Self::new(WebErrorKind::ParseError, value.to_string().as_str())
     }
 }
 

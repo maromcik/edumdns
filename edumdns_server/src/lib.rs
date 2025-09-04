@@ -2,7 +2,7 @@ use crate::error::ServerError;
 use crate::listen::listen;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::AppPacket;
+use edumdns_core::app_packet::{AppPacket, NetworkAppPacket};
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use std::env;
 use std::time::Duration;

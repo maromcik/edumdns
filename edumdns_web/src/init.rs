@@ -1,9 +1,21 @@
-use crate::handlers::device::{delete_request_packet_transmit, get_device, get_devices, request_custom_packet_transmit, update_device, delete_device, request_packet_transmit, get_device_for_transmit};
-use crate::handlers::group::{add_group_users, delete_group_user, create_group, delete_group, get_group, get_group_users, get_groups, search_group_users};
+use crate::handlers::device::{
+    delete_device, delete_request_packet_transmit, get_device, get_device_for_transmit,
+    get_devices, request_custom_packet_transmit, request_packet_transmit, update_device,
+};
+use crate::handlers::group::{
+    add_group_users, create_group, delete_group, delete_group_user, get_group, get_group_users,
+    get_groups, search_group_users,
+};
 use crate::handlers::index::index;
 use crate::handlers::packet::{delete_packet, get_packet, get_packets};
-use crate::handlers::probe::{adopt, change_probe_permission, create_config, delete_config, delete_probe, forget, get_probe, get_probes, restart, save_config, update_probe};
-use crate::handlers::user::{login, login_user, logout_user, user_manage, user_manage_form_page, user_manage_password, user_manage_password_form, user_manage_profile_form};
+use crate::handlers::probe::{
+    adopt, change_probe_permission, create_config, delete_config, delete_probe, forget, get_probe,
+    get_probes, restart, save_config, update_probe,
+};
+use crate::handlers::user::{
+    login, login_user, logout_user, user_manage, user_manage_form_page, user_manage_password,
+    user_manage_password_form, user_manage_profile_form,
+};
 use crate::utils::AppState;
 use actix_files::Files;
 use actix_web::web;

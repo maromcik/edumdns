@@ -12,7 +12,7 @@ use actix_web::web::{FormConfig, PayloadConfig};
 use actix_web::{App, HttpServer, cookie::Key};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::AppPacket;
+use edumdns_core::app_packet::{AppPacket, NetworkAppPacket};
 use log::{info, warn};
 use std::env;
 use std::sync::Arc;

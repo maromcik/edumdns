@@ -24,7 +24,9 @@ pub struct GroupUser {
     pub user_id: Id,
 }
 
-#[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable, Eq, PartialEq, Hash, Debug)]
+#[derive(
+    Serialize, Deserialize, Queryable, Selectable, Identifiable, Eq, PartialEq, Hash, Debug,
+)]
 #[diesel(table_name = crate::schema::location)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Location {
@@ -38,7 +40,9 @@ pub struct Location {
     pub description: Option<String>,
 }
 
-#[derive(Queryable, Selectable, Associations, Serialize, Deserialize, Eq, PartialEq, Hash, Debug)]
+#[derive(
+    Queryable, Selectable, Associations, Serialize, Deserialize, Eq, PartialEq, Hash, Debug,
+)]
 #[diesel(table_name = crate::schema::group_probe_permission)]
 #[diesel(belongs_to(Probe))]
 #[diesel(belongs_to(Group))]
@@ -59,7 +63,9 @@ impl GroupProbePermission {
     }
 }
 
-#[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable, Eq, PartialEq, Hash, Debug)]
+#[derive(
+    Serialize, Deserialize, Queryable, Selectable, Identifiable, Eq, PartialEq, Hash, Debug,
+)]
 #[diesel(table_name = crate::schema::probe)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Probe {
@@ -96,6 +102,9 @@ pub struct Device {
     pub name: Option<String>,
     pub duration: i64,
     pub interval: i64,
+    pub acl_src_cidr: Option<ipnetwork::IpNetwork>,
+    pub acl_pwd_hash: Option<String>,
+    pub acl_ap_hostname_regex: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable, Associations, Debug)]

@@ -8,8 +8,11 @@ use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
-use edumdns_core::app_packet::{AppPacket, CommandPacket, PacketTransmitRequestPacket};
+use actix_web::{HttpRequest, HttpResponse, delete, get, post, rt, web};
+use edumdns_core::app_packet::{
+    AppPacket, LocalAppPacket, LocalCommandPacket, NetworkAppPacket, NetworkCommandPacket,
+    PacketTransmitRequestPacket,
+};
 use edumdns_core::error::CoreError;
 use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination};
 use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices, UpdateDevice};
@@ -31,7 +34,8 @@ pub async fn get_devices(
     let devices = device_repo
         .read_many_auth(
             &SelectManyDevices::from(query.into_inner()),
-            &parse_user_id(&i)?)
+            &parse_user_id(&i)?,
+        )
         .await?;
     let devices_parsed = devices
         .data
@@ -133,7 +137,9 @@ pub async fn delete_device(
         .map(String::as_str)
         .unwrap_or("/device");
 
-    device_repo.delete_auth(&path.0, &parse_user_id(&i)?).await?;
+    device_repo
+        .delete_auth(&path.0, &parse_user_id(&i)?)
+        .await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, return_url))
         .finish())
@@ -158,7 +164,8 @@ pub async fn request_custom_packet_transmit(
         &device.data,
         state.command_channel.clone(),
         &form,
-    ).await?;
+    )
+    .await?;
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/device/{}", device.data.id)))
@@ -200,9 +207,9 @@ pub async fn delete_request_packet_transmit(
 
     state
         .command_channel
-        .send(AppPacket::Command(
-            CommandPacket::StopTransmitDevicePackets(packet),
-        ))
+        .send(AppPacket::Local(LocalAppPacket::Command(
+            LocalCommandPacket::StopTransmitDevicePackets(packet),
+        )))
         .await
         .map_err(CoreError::from)?;
 
@@ -210,7 +217,6 @@ pub async fn delete_request_packet_transmit(
         .insert_header((LOCATION, format!("/device/{}", device_id)))
         .finish())
 }
-
 
 #[post("{id}/transmit")]
 pub async fn request_packet_transmit(
@@ -221,16 +227,16 @@ pub async fn request_packet_transmit(
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
     let _ = authorized!(identity, request.path());
-    let device = device_repo
-        .read_one(&path.0)
-        .await?;
+    let device = device_repo.read_one(&path.0).await?;
 
     let target_ip = request
         .connection_info()
         .realip_remote_addr()
         .map(|a| a.to_string());
-    let target_ip = target_ip
-        .ok_or(WebError::new(WebErrorKind::InternalServerError, "Could not determine target ip"))?;
+    let target_ip = target_ip.ok_or(WebError::new(
+        WebErrorKind::InternalServerError,
+        "Could not determine target ip",
+    ))?;
 
     let form = DevicePacketTransmitRequest::new(target_ip, device.port as u16, false);
     request_packet_transmit_helper(
@@ -238,7 +244,8 @@ pub async fn request_packet_transmit(
         &device,
         state.command_channel.clone(),
         &form,
-    ).await?;
+    )
+    .await?;
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/device/{}/transmit", device.id)))
@@ -254,17 +261,19 @@ pub async fn get_device_for_transmit(
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
     let _ = authorized!(identity, request.path());
-    let device = device_repo
-        .read_one(&path.0)
-        .await?;
+    let device = device_repo.read_one(&path.0).await?;
     let target_ip = request
         .connection_info()
         .realip_remote_addr()
         .map(|a| a.to_string());
-    let target_ip = target_ip
-        .ok_or(WebError::new(WebErrorKind::InternalServerError, "Could not determine target ip"))?;
+    let target_ip = target_ip.ok_or(WebError::new(
+        WebErrorKind::InternalServerError,
+        "Could not determine target ip",
+    ))?;
 
-    let packet_transmit_requests = device_repo.read_packet_transmit_requests(&device.id).await?;
+    let packet_transmit_requests = device_repo
+        .read_packet_transmit_requests(&device.id)
+        .await?;
 
     let template_name = get_template_name(&request, "device/public");
     let env = state.jinja.acquire_env()?;
@@ -273,7 +282,7 @@ pub async fn get_device_for_transmit(
         logged_in: true,
         device: DeviceDisplay::from(device),
         client_ip: target_ip,
-        packet_transmit_requests
+        packet_transmit_requests,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

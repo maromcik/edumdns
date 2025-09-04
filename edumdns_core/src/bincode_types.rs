@@ -1,9 +1,12 @@
+use crate::app_packet::NetworkAppPacket;
+use crate::error::CoreError;
 use bincode::enc::Encoder;
-use bincode::error::EncodeError;
+use bincode::{Decode, Encode};
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{Display, Formatter};
 use std::hash::Hash;
+use tokio::sync::mpsc;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MacAddr(pub pnet::datalink::MacAddr);
@@ -15,7 +18,7 @@ pub struct IpNetwork(pub ipnetwork::IpNetwork);
 pub struct Uuid(pub uuid::Uuid);
 
 impl bincode::Encode for MacAddr {
-    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), EncodeError> {
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), bincode::error::EncodeError> {
         bincode::Encode::encode(&self.0.0, encoder)?;
         bincode::Encode::encode(&self.0.1, encoder)?;
         bincode::Encode::encode(&self.0.2, encoder)?;
@@ -135,7 +138,7 @@ impl Display for IpNetwork {
 }
 
 impl bincode::Encode for IpNetwork {
-    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), EncodeError> {
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), bincode::error::EncodeError> {
         self.0.ip().encode(encoder)?;
         self.0.prefix().encode(encoder)?;
         Ok(())
@@ -175,7 +178,7 @@ impl Display for Uuid {
 }
 
 impl bincode::Encode for Uuid {
-    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), EncodeError> {
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), bincode::error::EncodeError> {
         self.0.as_bytes().encode(encoder)?;
         Ok(())
     }

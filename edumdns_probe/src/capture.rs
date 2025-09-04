@@ -1,5 +1,5 @@
 use crate::error::ProbeError;
-use edumdns_core::app_packet::{AppPacket, ProbeConfigElement, ProbePacket};
+use edumdns_core::app_packet::{NetworkAppPacket, ProbeConfigElement, ProbePacket};
 use edumdns_core::capture::PacketCapture;
 use edumdns_core::error::{CoreError, CoreErrorKind};
 use edumdns_core::metadata::ProbeMetadata;
@@ -13,7 +13,7 @@ use tokio_util::sync::CancellationToken;
 pub fn capture_and_transmit<T>(
     mut capture: impl PacketCapture<T>,
     probe_metadata: ProbeMetadata,
-    tx: Sender<AppPacket>,
+    tx: Sender<NetworkAppPacket>,
     cancellation_token: CancellationToken,
     config_element: ProbeConfigElement,
 ) -> Result<(), ProbeError>
@@ -61,7 +61,7 @@ where
             debug!("Not a TCP/IP packet, skipping");
             continue;
         };
-        let app_packet = AppPacket::Data(probe_packet);
+        let app_packet = NetworkAppPacket::Data(probe_packet);
         if let Err(e) = tx.blocking_send(app_packet) {
             warn!("Failed to send packet: {e}");
             return Ok(());

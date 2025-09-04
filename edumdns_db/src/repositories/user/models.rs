@@ -1,5 +1,5 @@
-use diesel::{AsChangeset, Identifiable};
 use crate::repositories::common::{Id, Pagination};
+use diesel::{AsChangeset, Identifiable};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 

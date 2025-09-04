@@ -70,7 +70,7 @@ pub struct ProbeDisplay {
     pub adopted: bool,
     pub mac: MacAddr,
     pub ip: IpNetwork,
-    pub name: Option<String>
+    pub name: Option<String>,
 }
 
 impl From<Probe> for ProbeDisplay {
@@ -82,7 +82,7 @@ impl From<Probe> for ProbeDisplay {
             adopted: value.adopted,
             mac: MacAddr::from_octets(value.mac),
             ip: value.ip,
-            name: value.name
+            name: value.name,
         }
     }
 }

@@ -1,7 +1,13 @@
 use crate::error::DbError;
 use crate::models::{Device, GroupProbePermission, Location, Probe, ProbeConfig, User};
-use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission};
-use crate::repositories::probe::models::{AlterProbePermission, CreateProbe, CreateProbeConfig, SelectManyProbes, SelectSingleProbeConfig, UpdateProbe};
+use crate::repositories::common::{
+    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
+    DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission,
+};
+use crate::repositories::probe::models::{
+    AlterProbePermission, CreateProbe, CreateProbeConfig, SelectManyProbes,
+    SelectSingleProbeConfig, UpdateProbe,
+};
 use crate::repositories::utilities::{validate_admin, validate_permissions};
 use crate::schema::group_probe_permission;
 use crate::schema::group_user;
@@ -10,10 +16,12 @@ use crate::schema::probe::BoxedQuery;
 use crate::schema::user;
 use crate::schema::{location, probe_config};
 use diesel::pg::Pg;
-use diesel::{BelongingToDsl, BoolExpressionMethods, ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
-use diesel_async::pooled_connection::deadpool::Pool;
+use diesel::{
+    BelongingToDsl, BoolExpressionMethods, ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper,
+};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use diesel_async::pooled_connection::deadpool::Pool;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -135,7 +143,11 @@ impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeReposito
                 group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
             )
             .filter(group_user::user_id.eq(user_id))
-            .filter(group_probe_permission::permission.eq(Permission::Read).or(group_probe_permission::permission.eq(Permission::Full)))
+            .filter(
+                group_probe_permission::permission
+                    .eq(Permission::Read)
+                    .or(group_probe_permission::permission.eq(Permission::Full)),
+            )
             .distinct()
             .left_outer_join(location::table)
             .select((Option::<Location>::as_select(), Probe::as_select()))
@@ -294,8 +306,7 @@ impl PgProbeRepository {
 impl DbUpdate<UpdateProbe, Probe> for PgProbeRepository {
     async fn update(&self, params: &UpdateProbe) -> DbResultMultiple<Probe> {
         let mut conn = self.pg_pool.get().await?;
-        let probes = diesel::update(probe::table
-            .find(&params.id))
+        let probes = diesel::update(probe::table.find(&params.id))
             .set(params)
             .get_results(&mut conn)
             .await?;

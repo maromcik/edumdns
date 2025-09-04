@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::packet::PacketQuery;
@@ -8,12 +7,13 @@ use crate::templates::packet::{PacketDetailTemplate, PacketTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
-use actix_web::{HttpRequest, HttpResponse, get, web, delete};
+use actix_web::{HttpRequest, HttpResponse, delete, get, web};
 use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, Id, Pagination};
 use edumdns_db::repositories::device::models::SelectSingleDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
+use std::collections::HashMap;
 
 #[get("")]
 pub async fn get_packets(

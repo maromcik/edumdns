@@ -7,7 +7,7 @@ use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{delete, get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
 use edumdns_db::repositories::common::{DbCreate, DbDelete};
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
 use edumdns_db::repositories::group::models::{CreateGroup, SelectManyGroups};
@@ -122,7 +122,10 @@ pub async fn get_group_users(
     let template_name = "group/users/content.html";
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(template_name)?;
-    let body = template.render(GroupDetailUsersTemplate { users, group_id: path.0 })?;
+    let body = template.render(GroupDetailUsersTemplate {
+        users,
+        group_id: path.0,
+    })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
@@ -160,13 +163,15 @@ pub async fn delete_group_user(
     identity: Option<Identity>,
     group_repo: web::Data<PgGroupRepository>,
     state: web::Data<AppState>,
-    path: web::Path<(Id, Id, )>,
+    path: web::Path<(Id, Id)>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let group_id = path.0;
     let user_id = path.1;
     let admin_id = parse_user_id(&i)?;
-    group_repo.delete_user(&group_id, &user_id, &admin_id).await?;
+    group_repo
+        .delete_user(&group_id, &user_id, &admin_id)
+        .await?;
 
     let users = group_repo.read_users(&group_id, &admin_id).await?;
     let template_name = get_template_name(&request, "group/users");
@@ -193,7 +198,10 @@ pub async fn search_group_users(
     let template_name = "group/users/search.html";
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(template_name)?;
-    let body = template.render(GroupDetailUsersTemplate { users, group_id: path.0 })?;
+    let body = template.render(GroupDetailUsersTemplate {
+        users,
+        group_id: path.0,
+    })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

@@ -1,6 +1,6 @@
 use crate::error::{ServerError, ServerErrorKind};
 use edumdns_core::app_packet::{
-    AppPacket, CommandPacket, PacketTransmitRequestPacket, ProbePacket,
+    NetworkAppPacket, NetworkCommandPacket, PacketTransmitRequestPacket, ProbePacket,
 };
 use edumdns_core::connection::UdpConnection;
 use edumdns_core::error::CoreError;

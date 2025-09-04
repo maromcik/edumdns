@@ -9,10 +9,13 @@ use std::ops::DerefMut;
 
 use crate::repositories::utilities::{validate_admin, validate_admin_transaction};
 use crate::schema::{group, group_user, user};
-use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgTextExpressionMethods, QueryDsl, SelectableHelper, TextExpressionMethods};
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgTextExpressionMethods, QueryDsl,
+    SelectableHelper, TextExpressionMethods,
+};
+use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
-use diesel_async::AsyncPgConnection;
 use diesel_async::{AsyncConnection, RunQueryDsl};
 
 #[derive(Clone)]
@@ -83,7 +86,10 @@ impl DbCreate<CreateGroup, Group> for PgGroupRepository {
                     validate_admin_transaction(c, &data.user_id).await?;
 
                     let g = diesel::insert_into(group::table)
-                        .values((group::name.eq(&data.name), group::description.eq(&data.description)))
+                        .values((
+                            group::name.eq(&data.name),
+                            group::description.eq(&data.description),
+                        ))
                         .returning(Group::as_returning())
                         .get_result(c)
                         .await?;
@@ -117,7 +123,12 @@ impl PgGroupRepository {
         let mut conn = self.pg_pool.get().await?;
         let rows = user_ids
             .iter()
-            .map(|uid| (group_user::group_id.eq(group_id), group_user::user_id.eq(uid)))
+            .map(|uid| {
+                (
+                    group_user::group_id.eq(group_id),
+                    group_user::user_id.eq(uid),
+                )
+            })
             .collect::<Vec<_>>();
 
         diesel::insert_into(group_user::table)
@@ -128,16 +139,22 @@ impl PgGroupRepository {
         Ok(())
     }
 
-    pub async fn delete_user(&self, group_id: &Id, target_user_id: &Id, admin_id: &Id) -> DbResult<()> {
+    pub async fn delete_user(
+        &self,
+        group_id: &Id,
+        target_user_id: &Id,
+        admin_id: &Id,
+    ) -> DbResult<()> {
         validate_admin(&self.pg_pool, admin_id).await?;
         let mut conn = self.pg_pool.get().await?;
-        diesel::delete(group_user::table
-            .filter(group_user::group_id.eq(group_id))
-            .filter(group_user::user_id.eq(target_user_id))
+        diesel::delete(
+            group_user::table
+                .filter(group_user::group_id.eq(group_id))
+                .filter(group_user::user_id.eq(target_user_id)),
         )
-            .execute(&mut conn)
-            .await
-            .map_err(DbError::from)?;
+        .execute(&mut conn)
+        .await
+        .map_err(DbError::from)?;
         Ok(())
     }
 
@@ -153,17 +170,27 @@ impl PgGroupRepository {
         Ok(users)
     }
 
-    pub async fn search_group_users(&self, params: &str, admin_id: &Id, exclude_group_id: &Id) -> DbResultMultiple<User> {
+    pub async fn search_group_users(
+        &self,
+        params: &str,
+        admin_id: &Id,
+        exclude_group_id: &Id,
+    ) -> DbResultMultiple<User> {
         validate_admin(&self.pg_pool, admin_id).await?;
         let mut conn = self.pg_pool.get().await?;
         let users = user::table
             .or_filter(user::email.ilike(&format!("%{}%", params)))
             .or_filter(user::name.ilike(&format!("%{}%", params)))
             .or_filter(user::surname.ilike(&format!("%{}%", params)))
-            .left_join(group_user::table.on(group_user::user_id.eq(user::id).and(group_user::group_id.eq(exclude_group_id))))
+            .left_join(
+                group_user::table.on(group_user::user_id
+                    .eq(user::id)
+                    .and(group_user::group_id.eq(exclude_group_id))),
+            )
             .filter(group_user::user_id.is_null())
             .select(User::as_select())
-            .load::<User>(&mut conn).await?;
+            .load::<User>(&mut conn)
+            .await?;
         Ok(users)
     }
 }

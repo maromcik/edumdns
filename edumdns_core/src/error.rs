@@ -7,7 +7,7 @@ use std::num::ParseIntError;
 use std::sync::mpsc;
 use thiserror::Error;
 
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Clone, Error, Eq, PartialEq)]
 pub enum CoreErrorKind {
     #[error("Capture error")]
     CaptureError,
@@ -47,7 +47,7 @@ pub enum CoreErrorKind {
     DnsPacketManipulationError,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CoreError {
     pub error_kind: CoreErrorKind,
     pub message: String,

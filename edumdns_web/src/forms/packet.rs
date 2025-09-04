@@ -1,9 +1,9 @@
 use edumdns_core::bincode_types::MacAddr;
+use edumdns_db::repositories::common::Pagination;
+use edumdns_db::repositories::packet::models::SelectManyPackets;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use edumdns_db::repositories::common::Pagination;
-use edumdns_db::repositories::packet::models::SelectManyPackets;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PacketQuery {

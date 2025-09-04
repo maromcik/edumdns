@@ -1,19 +1,24 @@
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::User;
-use crate::repositories::common::{DbDataPerm, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id};
+use crate::repositories::common::{
+    DbDataPerm, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm, DbResultSingle,
+    DbResultSinglePerm, DbUpdate, Id,
+};
 
 use crate::error::BackendErrorKind::UserPasswordDoesNotMatch;
-use crate::repositories::user::models::{SelectManyUsers, UserLogin, UserUpdate, UserUpdatePassword};
+use crate::repositories::user::models::{
+    SelectManyUsers, UserLogin, UserUpdate, UserUpdatePassword,
+};
 use crate::schema::user;
 use crate::schema::user::{admin, deleted_at, email, name, surname};
 use diesel::{ExpressionMethods, QueryDsl};
+use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
-use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
+use pbkdf2::Pbkdf2;
 use pbkdf2::password_hash::rand_core::OsRng;
 use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
-use pbkdf2::Pbkdf2;
 
 fn generate_salt() -> SaltString {
     SaltString::generate(&mut OsRng)
@@ -79,25 +84,29 @@ impl PgUserRepository {
     pub async fn update_password(&self, params: &UserUpdatePassword) -> DbResultSingle<User> {
         let mut conn = self.pg_pool.get().await?;
 
-        let user = conn.transaction::<_, DbError, _>(|c| async move {
-            let u = user::table
-                .find(&params.id)
-                .first::<User>(c)
-                .await?;
+        let user = conn
+            .transaction::<_, DbError, _>(|c| {
+                async move {
+                    let u = user::table.find(&params.id).first::<User>(c).await?;
 
-            let u = PgUserRepository::verify_password(u, &params.old_password)?;
+                    let u = PgUserRepository::verify_password(u, &params.old_password)?;
 
-            let salt = generate_salt();
-            let password_hash = hash_password(params.new_password.clone(), &salt)?;
+                    let salt = generate_salt();
+                    let password_hash = hash_password(params.new_password.clone(), &salt)?;
 
-            diesel::update(&u)
-                .set((user::password_hash.eq(password_hash), user::password_salt.eq(salt.to_string())))
-                .execute(c)
-                .await?;
+                    diesel::update(&u)
+                        .set((
+                            user::password_hash.eq(password_hash),
+                            user::password_salt.eq(salt.to_string()),
+                        ))
+                        .execute(c)
+                        .await?;
 
-
-            Ok::<User, DbError>(u)
-        }.scope_boxed()).await?;
+                    Ok::<User, DbError>(u)
+                }
+                .scope_boxed()
+            })
+            .await?;
         Ok(user)
     }
 }
@@ -114,7 +123,6 @@ impl DbReadOne<Id, User> for PgUserRepository {
         Ok(DbDataPerm::new(u, (false, vec![])))
     }
 }
-
 
 impl DbReadMany<SelectManyUsers, User> for PgUserRepository {
     async fn read_many(&self, params: &SelectManyUsers) -> DbResultMultiple<User> {
@@ -164,7 +172,6 @@ impl DbReadMany<SelectManyUsers, User> for PgUserRepository {
         Ok(DbDataPerm::new(users, (false, vec![])))
     }
 }
-
 
 impl DbUpdate<UserUpdate, User> for PgUserRepository {
     async fn update(&self, params: &UserUpdate) -> DbResultMultiple<User> {

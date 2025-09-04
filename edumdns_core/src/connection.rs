@@ -1,4 +1,4 @@
-use crate::app_packet::AppPacket;
+use crate::app_packet::NetworkAppPacket;
 use crate::error::{CoreError, CoreErrorKind};
 use bincode::{Decode, Encode};
 use bytes::{Bytes, BytesMut};
@@ -66,25 +66,25 @@ async fn run_message_multiplexer(
 
 pub enum TcpConnectionMessage {
     ReceivePacket {
-        respond_to: oneshot::Sender<Result<Option<AppPacket>, CoreError>>,
+        respond_to: oneshot::Sender<Result<Option<NetworkAppPacket>, CoreError>>,
         timeout: Option<Duration>,
     },
     SendPacket {
         respond_to: oneshot::Sender<Result<(), CoreError>>,
-        packet: AppPacket,
+        packet: NetworkAppPacket,
     },
 }
 
 impl TcpConnectionMessage {
     pub fn send_packet(
         respond_to: oneshot::Sender<Result<(), CoreError>>,
-        packet: AppPacket,
+        packet: NetworkAppPacket,
     ) -> Self {
         Self::SendPacket { respond_to, packet }
     }
 
     pub fn receive_packet(
-        respond_to: oneshot::Sender<Result<Option<AppPacket>, CoreError>>,
+        respond_to: oneshot::Sender<Result<Option<NetworkAppPacket>, CoreError>>,
         timeout: Option<Duration>,
     ) -> Self {
         Self::ReceivePacket {

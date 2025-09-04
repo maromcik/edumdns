@@ -2,7 +2,8 @@ use crate::error::{ServerError, ServerErrorKind};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::{
-    AppPacket, CommandPacket, ProbeConfigElement, ProbeConfigPacket, StatusPacket,
+    AppPacket, NetworkAppPacket, NetworkCommandPacket, ProbeConfigElement, ProbeConfigPacket,
+    StatusPacket,
 };
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
@@ -53,7 +54,7 @@ impl ConnectionManager {
         ));
         let packet = self.receive_init_packet().await?;
 
-        let AppPacket::Status(StatusPacket::ProbeHello(hello_metadata)) = packet else {
+        let NetworkAppPacket::Status(StatusPacket::ProbeHello(hello_metadata)) = packet else {
             return error;
         };
 
@@ -63,7 +64,7 @@ impl ConnectionManager {
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
                         tx,
-                        AppPacket::Status(StatusPacket::ProbeAdopted),
+                        NetworkAppPacket::Status(StatusPacket::ProbeAdopted),
                     )
                 })
                 .await??;
@@ -72,7 +73,7 @@ impl ConnectionManager {
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
                         tx,
-                        AppPacket::Status(StatusPacket::ProbeUnknown),
+                        NetworkAppPacket::Status(StatusPacket::ProbeUnknown),
                     )
                 })
                 .await??;
@@ -84,7 +85,8 @@ impl ConnectionManager {
 
         let packet = self.receive_init_packet().await?;
 
-        let AppPacket::Status(StatusPacket::ProbeRequestConfig(config_metadata)) = packet else {
+        let NetworkAppPacket::Status(StatusPacket::ProbeRequestConfig(config_metadata)) = packet
+        else {
             return error;
         };
 
@@ -97,7 +99,7 @@ impl ConnectionManager {
             .send_message_with_response(|tx| {
                 TcpConnectionMessage::send_packet(
                     tx,
-                    AppPacket::Status(StatusPacket::ProbeResponseConfig(config)),
+                    NetworkAppPacket::Status(StatusPacket::ProbeResponseConfig(config)),
                 )
             })
             .await??;
@@ -110,7 +112,7 @@ impl ConnectionManager {
         Ok(())
     }
 
-    pub async fn receive_init_packet(&mut self) -> Result<AppPacket, ServerError> {
+    pub async fn receive_init_packet(&mut self) -> Result<NetworkAppPacket, ServerError> {
         let packet = self
             .handle
             .send_message_with_response(|tx| {
@@ -136,13 +138,19 @@ impl ConnectionManager {
                 None => return Ok(()),
                 Some(app_packet) => {
                     match &app_packet {
-                        AppPacket::Command(_) => {
-                            self.tx.send(app_packet).await.map_err(CoreError::from)?;
+                        NetworkAppPacket::Command(_) => {
+                            self.tx
+                                .send(AppPacket::Network(app_packet))
+                                .await
+                                .map_err(CoreError::from)?;
                         }
-                        AppPacket::Data(_) => {
-                            self.tx.send(app_packet).await.map_err(CoreError::from)?;
+                        NetworkAppPacket::Data(_) => {
+                            self.tx
+                                .send(AppPacket::Network(app_packet))
+                                .await
+                                .map_err(CoreError::from)?;
                         }
-                        AppPacket::Status(status) => {
+                        NetworkAppPacket::Status(status) => {
                             match status {
                                 StatusPacket::PingRequest => {
                                     // TODO log time since last ping, threshold for considering a probe dead.
@@ -151,7 +159,9 @@ impl ConnectionManager {
                                         .send_message_with_response(|tx| {
                                             TcpConnectionMessage::send_packet(
                                                 tx,
-                                                AppPacket::Status(StatusPacket::PingResponse),
+                                                NetworkAppPacket::Status(
+                                                    StatusPacket::PingResponse,
+                                                ),
                                             )
                                         })
                                         .await??;

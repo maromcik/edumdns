@@ -1,6 +1,6 @@
 use crate::capture::capture_and_transmit;
 use crate::error::ProbeError;
-use edumdns_core::app_packet::{AppPacket, ProbeConfigPacket};
+use edumdns_core::app_packet::{NetworkAppPacket, ProbeConfigPacket};
 use edumdns_core::capture::PacketCaptureGeneric;
 use edumdns_core::metadata::ProbeMetadata;
 use pcap::Active;
@@ -10,14 +10,14 @@ use tokio::task::{Id, JoinSet};
 use tokio_util::sync::CancellationToken;
 
 pub struct ProbeCapture {
-    tx: Sender<AppPacket>,
+    tx: Sender<NetworkAppPacket>,
     probe_metadata: ProbeMetadata,
     probe_config: ProbeConfigPacket,
 }
 
 impl ProbeCapture {
     pub fn new(
-        tx: Sender<AppPacket>,
+        tx: Sender<NetworkAppPacket>,
         probe_metadata: ProbeMetadata,
         probe_config: ProbeConfigPacket,
     ) -> Self {

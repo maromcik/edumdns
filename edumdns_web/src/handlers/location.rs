@@ -1,10 +1,10 @@
-use actix_identity::Identity;
-use actix_session::Session;
-use actix_web::{web, HttpRequest, HttpResponse};
 use crate::authorized;
 use crate::error::WebError;
-use actix_web::http::header::LOCATION;
 use crate::utils::AppState;
+use actix_identity::Identity;
+use actix_session::Session;
+use actix_web::http::header::LOCATION;
+use actix_web::{HttpRequest, HttpResponse, web};
 
 // pub async fn get_locations(
 //     request: HttpRequest,

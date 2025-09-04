@@ -603,7 +603,7 @@ impl<'a> ApplicationPacket<'a> {
                 )?),
             }),
             _ => Ok(ApplicationPacket {
-                application_packet_type: ApplicationPacketType::Other(bytes)
+                application_packet_type: ApplicationPacketType::Other(bytes),
             }),
         }
     }

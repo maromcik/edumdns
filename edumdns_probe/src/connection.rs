@@ -1,5 +1,7 @@
 use crate::error::{ProbeError, ProbeErrorKind};
-use edumdns_core::app_packet::{AppPacket, CommandPacket, ProbeConfigPacket, StatusPacket};
+use edumdns_core::app_packet::{
+    NetworkAppPacket, NetworkCommandPacket, ProbeConfigPacket, StatusPacket,
+};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_core::retry;
@@ -13,7 +15,7 @@ use tokio_util::sync::CancellationToken;
 // TODO switch to probe manager
 // TODO spawn all tasks as tokio selects, when reconnect comes in, select dies and forces reconnect in probe manager's thread
 pub struct ReceivePacketTargets {
-    pub pinger: mpsc::Sender<AppPacket>,
+    pub pinger: mpsc::Sender<NetworkAppPacket>,
 }
 
 pub struct ConnectionManager {
@@ -57,7 +59,8 @@ impl ConnectionManager {
             ProbeErrorKind::InvalidConnectionInitiation,
             "Invalid connection initiation",
         ));
-        let hello_packet = AppPacket::Status(StatusPacket::ProbeHello(self.probe_metadata.clone()));
+        let hello_packet =
+            NetworkAppPacket::Status(StatusPacket::ProbeHello(self.probe_metadata.clone()));
 
         self.handle
             .send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, hello_packet))
@@ -65,15 +68,15 @@ impl ConnectionManager {
 
         let packet = self.receive_init_packet().await?;
 
-        if let AppPacket::Status(StatusPacket::ProbeUnknown) = packet {
+        if let NetworkAppPacket::Status(StatusPacket::ProbeUnknown) = packet {
             warn!("Probe is not adopted, make sure to adopt it in the web interface first");
             sleep(self.retry_interval).await;
             return Box::pin(self.reconnect()).await;
         }
-        let AppPacket::Status(StatusPacket::ProbeAdopted) = packet else {
+        let NetworkAppPacket::Status(StatusPacket::ProbeAdopted) = packet else {
             return error;
         };
-        let probe_packet = AppPacket::Status(StatusPacket::ProbeRequestConfig(
+        let probe_packet = NetworkAppPacket::Status(StatusPacket::ProbeRequestConfig(
             self.probe_metadata.clone(),
         ));
 
@@ -83,7 +86,7 @@ impl ConnectionManager {
 
         let packet = self.receive_init_packet().await?;
 
-        let AppPacket::Status(StatusPacket::ProbeResponseConfig(config)) = packet else {
+        let NetworkAppPacket::Status(StatusPacket::ProbeResponseConfig(config)) = packet else {
             return error;
         };
         info!("Connected to the server {}", self.server_connection_string);
@@ -91,7 +94,7 @@ impl ConnectionManager {
         Ok(config)
     }
 
-    pub async fn receive_init_packet(&mut self) -> Result<AppPacket, ProbeError> {
+    pub async fn receive_init_packet(&mut self) -> Result<NetworkAppPacket, ProbeError> {
         let packet = self
             .handle
             .send_message_with_response(|tx| {
@@ -132,8 +135,8 @@ impl ConnectionManager {
     pub async fn transmit_packets(
         join_set: &mut JoinSet<Result<(), ProbeError>>,
         handle: TcpConnectionHandle,
-        data_receiver: mpsc::Receiver<AppPacket>,
-        command_transmitter: mpsc::Sender<AppPacket>,
+        data_receiver: mpsc::Receiver<NetworkAppPacket>,
+        command_transmitter: mpsc::Sender<NetworkAppPacket>,
         cancellation_token: CancellationToken,
         max_retries: usize,
         retry_interval: Duration,
@@ -158,8 +161,8 @@ impl ConnectionManager {
 
     async fn transmit_packets_worker(
         handle: TcpConnectionHandle,
-        mut data_receiver: mpsc::Receiver<AppPacket>,
-        command_transmitter: mpsc::Sender<AppPacket>,
+        mut data_receiver: mpsc::Receiver<NetworkAppPacket>,
+        command_transmitter: mpsc::Sender<NetworkAppPacket>,
         max_retries: usize,
         retry_interval: Duration,
     ) -> Result<(), ProbeError> {
@@ -180,7 +183,7 @@ impl ConnectionManager {
         join_set: &mut JoinSet<Result<(), ProbeError>>,
         handle: TcpConnectionHandle,
         target: ReceivePacketTargets,
-        command_transmitter: mpsc::Sender<AppPacket>,
+        command_transmitter: mpsc::Sender<NetworkAppPacket>,
         cancellation_token: CancellationToken,
     ) -> Result<(), ProbeError> {
         join_set.spawn(async move {
@@ -203,7 +206,7 @@ impl ConnectionManager {
     async fn receive_packets_worker(
         handle: TcpConnectionHandle,
         target: ReceivePacketTargets,
-        command_transmitter: mpsc::Sender<AppPacket>,
+        command_transmitter: mpsc::Sender<NetworkAppPacket>,
     ) -> Result<(), ProbeError> {
         loop {
             let packet = handle
@@ -212,17 +215,13 @@ impl ConnectionManager {
             match packet {
                 None => return Ok(()),
                 Some(app_packet) => match &app_packet {
-                    AppPacket::Command(command_packet) => match command_packet {
-                        CommandPacket::ReconnectProbe(_) => {
+                    NetworkAppPacket::Command(command_packet) => match command_packet {
+                        NetworkCommandPacket::ReconnectThisProbe => {
                             command_transmitter.send(app_packet).await?
                         }
-                        CommandPacket::ReconnectThisProbe => {
-                            command_transmitter.send(app_packet).await?
-                        }
-                        _ => {}
                     },
-                    AppPacket::Data(_) => {}
-                    AppPacket::Status(status) => match status {
+                    NetworkAppPacket::Data(_) => {}
+                    NetworkAppPacket::Status(status) => match status {
                         StatusPacket::PingResponse => target.pinger.send(app_packet).await?,
                         StatusPacket::ProbeHello(_) => {}
                         StatusPacket::ProbeAdopted => {}
@@ -239,10 +238,10 @@ impl ConnectionManager {
 
     pub async fn send_packet_with_reconnect(
         handle: &TcpConnectionHandle,
-        command_transmitter: &mpsc::Sender<AppPacket>,
+        command_transmitter: &mpsc::Sender<NetworkAppPacket>,
         max_retries: usize,
         retry_interval: Duration,
-        packet: AppPacket,
+        packet: NetworkAppPacket,
     ) -> Result<(), ProbeError> {
         let mut counter = 0;
         loop {
@@ -256,7 +255,9 @@ impl ConnectionManager {
                 Err(e) => {
                     error!("Failed to send packet: {e}");
                     command_transmitter
-                        .send(AppPacket::Command(CommandPacket::ReconnectThisProbe))
+                        .send(NetworkAppPacket::Command(
+                            NetworkCommandPacket::ReconnectThisProbe,
+                        ))
                         .await?;
                     if counter >= max_retries {
                         return Err(ProbeError::from(e));
@@ -272,8 +273,8 @@ impl ConnectionManager {
     pub async fn pinger(
         join_set: &mut JoinSet<Result<(), ProbeError>>,
         handle: TcpConnectionHandle,
-        packet_receiver: mpsc::Receiver<AppPacket>,
-        command_sender: mpsc::Sender<AppPacket>,
+        packet_receiver: mpsc::Receiver<NetworkAppPacket>,
+        command_sender: mpsc::Sender<NetworkAppPacket>,
         interval: Duration,
         cancellation_token: CancellationToken,
     ) -> Result<(), ProbeError> {
@@ -297,8 +298,8 @@ impl ConnectionManager {
 
     async fn pinger_worker(
         handle: TcpConnectionHandle,
-        mut packet_receiver: mpsc::Receiver<AppPacket>,
-        command_sender: mpsc::Sender<AppPacket>,
+        mut packet_receiver: mpsc::Receiver<NetworkAppPacket>,
+        command_sender: mpsc::Sender<NetworkAppPacket>,
         interval: Duration,
     ) -> Result<(), ProbeError> {
         debug!("Starting pinger");
@@ -307,17 +308,19 @@ impl ConnectionManager {
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
                         tx,
-                        AppPacket::Status(StatusPacket::PingRequest),
+                        NetworkAppPacket::Status(StatusPacket::PingRequest),
                     )
                 })
                 .await??;
             trace!("Ping request sent");
             let packet = packet_receiver.recv().await;
             trace!("Ping response received");
-            if Some(AppPacket::Status(StatusPacket::PingResponse)) != packet {
+            if Some(NetworkAppPacket::Status(StatusPacket::PingResponse)) != packet {
                 debug!("Not a ping response");
                 command_sender
-                    .send(AppPacket::Command(CommandPacket::ReconnectThisProbe))
+                    .send(NetworkAppPacket::Command(
+                        NetworkCommandPacket::ReconnectThisProbe,
+                    ))
                     .await?
             };
             sleep(interval).await;

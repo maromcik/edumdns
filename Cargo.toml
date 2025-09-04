@@ -24,6 +24,6 @@ tokio-util = "0.7.16"
 
 [workspace]
 members = [
-    "edumdns_core", "edumdns_db", "edumdns_probe",
+    "edumdns_core", "edumdns_db", "edumdns_device_auth", "edumdns_probe",
     "edumdns_server", "edumdns_web"
 ]

@@ -1,15 +1,15 @@
-use itertools;
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::probe::{ProbeConfigForm, ProbePermissionForm, ProbeQuery};
-use crate::handlers::helpers::{get_template_name, parse_user_id};
+use crate::handlers::helpers::{get_template_name, parse_user_id, reconnect_probe};
 use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, web};
-use edumdns_core::app_packet::{AppPacket, CommandPacket};
+use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, rt, web};
+use actix_ws::AggregatedMessage;
+use edumdns_core::app_packet::{AppPacket, NetworkAppPacket, NetworkCommandPacket};
 use edumdns_core::error::CoreError;
 use edumdns_db::models::{Group, Location, Probe};
 use edumdns_db::repositories::common::{
@@ -25,11 +25,13 @@ use edumdns_db::repositories::probe::models::{
     SelectSingleProbeConfig, UpdateProbe,
 };
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
-use std::collections::{HashMap, HashSet};
+use futures_util::StreamExt;
+use futures_util::StreamExt as _;
+use itertools;
 use itertools::Itertools;
+use std::collections::{HashMap, HashSet};
 use strum::IntoEnumIterator;
 use uuid::Uuid;
-
 #[get("")]
 pub async fn get_probes(
     request: HttpRequest,
@@ -41,15 +43,17 @@ pub async fn get_probes(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
 
-    let not_adopted_probes = probe_repo.read_many(&SelectManyProbes::new(
-        query.owner_id,
-        query.location_id,
-        Some(false),
-        query.mac.map(|mac| mac.to_octets()),
-        query.ip,
-        query.name.clone(),
-        Some(Pagination::default_pagination(query.page)),
-    )).await?;
+    let not_adopted_probes = probe_repo
+        .read_many(&SelectManyProbes::new(
+            query.owner_id,
+            query.location_id,
+            Some(false),
+            query.mac.map(|mac| mac.to_octets()),
+            query.ip,
+            query.name.clone(),
+            Some(Pagination::default_pagination(query.page)),
+        ))
+        .await?;
 
     let probes = probe_repo
         .read_many_auth(
@@ -61,7 +65,10 @@ pub async fn get_probes(
     let mut all_probes: HashSet<(Option<Location>, Probe)> = HashSet::from_iter(probes.data);
     all_probes.extend(not_adopted_probes);
 
-    let all_probes = all_probes.into_iter().sorted_by_key(|(l, p)| (l.is_some(), p.id)).collect_vec();
+    let all_probes = all_probes
+        .into_iter()
+        .sorted_by_key(|(l, p)| (l.is_some(), p.id))
+        .collect_vec();
 
     let probes_parsed = all_probes
         .into_iter()
@@ -90,6 +97,7 @@ pub async fn get_probe(
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
     session: Session,
+    stream: web::Payload,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let probe = probe_repo
@@ -119,6 +127,37 @@ pub async fn get_probe(
         })
         .collect::<Vec<(Vec<(Permission, bool)>, Group)>>();
 
+    // let (res, mut ws_session, stream) = actix_ws::handle(&request, stream)?;
+
+    // let mut stream = stream
+    //     .aggregate_continuations()
+    //     .max_continuation_size(2_usize.pow(20));
+    //
+    // rt::spawn(
+    //     async move {
+    //         while let Some(msg) = stream.next().await {
+    //             match msg {
+    //                 Ok(AggregatedMessage::Text(text)) => {
+    //                     // echo text message
+    //                     ws_session.text(text).await.unwrap();
+    //                 }
+    //
+    //                 Ok(AggregatedMessage::Binary(bin)) => {
+    //                     // echo binary message
+    //                     ws_session.binary(bin).await.unwrap();
+    //                 }
+    //
+    //                 Ok(AggregatedMessage::Ping(msg)) => {
+    //                     // respond to PING frame with PONG frame
+    //                     ws_session.pong(&msg).await.unwrap();
+    //                 }
+    //
+    //                 _ => {}
+    //             }
+    //         }
+    //     }
+    // );
+
     let template_name = get_template_name(&request, "probe/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
@@ -146,13 +185,7 @@ pub async fn adopt(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     probe_repo.adopt(&path.0, &parse_user_id(&i)?).await?;
-    state
-        .command_channel
-        .send(AppPacket::Command(CommandPacket::ReconnectProbe(
-            edumdns_core::bincode_types::Uuid(path.0),
-        )))
-        .await
-        .map_err(CoreError::from)?;
+    reconnect_probe(state.command_channel.clone(), path.0).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))
         .finish())
@@ -168,14 +201,7 @@ pub async fn forget(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     probe_repo.forget(&path.0, &parse_user_id(&i)?).await?;
-    state
-        .command_channel
-        .send(AppPacket::Command(CommandPacket::ReconnectProbe(
-            edumdns_core::bincode_types::Uuid(path.0),
-        )))
-        .await
-        .map_err(CoreError::from)?;
-
+    reconnect_probe(state.command_channel.clone(), path.0).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))
         .finish())
@@ -193,13 +219,8 @@ pub async fn restart(
     probe_repo
         .check_permissions_for_restart(&path.0, &parse_user_id(&i)?)
         .await?;
-    state
-        .command_channel
-        .send(AppPacket::Command(CommandPacket::ReconnectProbe(
-            edumdns_core::bincode_types::Uuid(path.0),
-        )))
-        .await
-        .map_err(CoreError::from)?;
+
+    reconnect_probe(state.command_channel.clone(), path.0).await?;
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))
@@ -225,14 +246,7 @@ pub async fn create_config(
         )
         .await?;
 
-    state
-        .command_channel
-        .send(AppPacket::Command(CommandPacket::ReconnectProbe(
-            edumdns_core::bincode_types::Uuid(path.0),
-        )))
-        .await
-        .map_err(CoreError::from)?;
-
+    reconnect_probe(state.command_channel.clone(), path.0).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))
         .finish())
@@ -261,13 +275,7 @@ pub async fn save_config(
         )
         .await?;
 
-    state
-        .command_channel
-        .send(AppPacket::Command(CommandPacket::ReconnectProbe(
-            edumdns_core::bincode_types::Uuid(path.0),
-        )))
-        .await
-        .map_err(CoreError::from)?;
+    reconnect_probe(state.command_channel.clone(), path.0).await?;
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))
@@ -292,15 +300,7 @@ pub async fn delete_config(
             probe_id,
         ))
         .await?;
-
-    state
-        .command_channel
-        .send(AppPacket::Command(CommandPacket::ReconnectProbe(
-            edumdns_core::bincode_types::Uuid(path.0),
-        )))
-        .await
-        .map_err(CoreError::from)?;
-
+    reconnect_probe(state.command_channel.clone(), path.0).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))
         .finish())

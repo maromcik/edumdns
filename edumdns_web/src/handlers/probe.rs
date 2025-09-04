@@ -285,6 +285,7 @@ pub async fn delete_probe(
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
     path: web::Path<(Uuid,)>,
+    state: web::Data<AppState>,
     query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
@@ -296,6 +297,7 @@ pub async fn delete_probe(
         .unwrap_or("/probe");
 
     probe_repo.delete_auth(&path.0, &user_id).await?;
+    reconnect_probe(state.command_channel.clone(), path.0).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, return_url))
         .finish())

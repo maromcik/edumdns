@@ -1,4 +1,4 @@
-use crate::error::ServerError;
+use crate::error::{ServerError, ServerErrorKind};
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -102,7 +102,18 @@ impl PacketStorage {
                     }
                     self.transmitter_tasks.lock().await.remove(&target);
                 }
-                LocalCommandPacket::ReconnectProbe(id) => self.send_reconnect(id).await,
+                LocalCommandPacket::ReconnectProbe(id) => {
+                    if let Err(e) = self.send_reconnect(id).await {
+                        if let Some(handles) = self.probe_ws_handles.lock().await.get(&id.0) {
+                            for handle in handles.values() {
+                                let Err(err) = handle.send(ProbeResponse::new_error(e.to_string().clone())).await else {
+                                    return;
+                                };
+                                warn!("Could not send response to a websocket {err}");
+                            }
+                        }
+                    }
+                },
             },
         }
     }
@@ -177,9 +188,9 @@ impl PacketStorage {
         }
     }
 
-    pub async fn send_reconnect(&self, id: Uuid) {
+    pub async fn send_reconnect(&self, id: Uuid) -> Result<(), ServerError> {
         if let Some(handle) = self.probe_handles.read().await.get(&id) {
-            let res = handle
+            handle
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
                         tx,
@@ -187,21 +198,12 @@ impl PacketStorage {
                     )
                 })
                 .await
-                .map_err(ServerError::from);
-            match res {
-                Ok(o) => {
-                    if let Err(e) = o {
-                        error!(
-                            "Error while reconnecting probe {id}: {}",
-                            ServerError::from(e)
-                        );
-                    }
-                }
-                Err(e) => {
-                    error!("Error while reconnecting probe {id}: {e}");
-                }
-            }
+                .map_err(ServerError::from)??;
         }
+        else {
+            return Err(ServerError::new(ServerErrorKind::ProbeNotFound, ""))
+        }
+        Ok(())
     }
 
     pub async fn store_device_in_database(&self, packet: ProbePacket) {

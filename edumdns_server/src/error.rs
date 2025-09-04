@@ -17,6 +17,8 @@ pub enum ServerErrorKind {
     InvalidConnectionInitiation,
     #[error("probe not adopted error")]
     ProbeNotAdopted,
+    #[error("probe not found")]
+    ProbeNotFound,
     #[error("parse error")]
     ParseError,
 }

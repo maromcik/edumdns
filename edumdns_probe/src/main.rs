@@ -155,13 +155,13 @@ async fn main() -> Result<(), ProbeError> {
                 cancellation_token.cancel();
                 info!("Reconnecting...");
                 config = connection_manager.reconnect().await?;
-                handle
+                let _ = handle
                 .send_message_with_response(|tx|
                                 TcpConnectionMessage::send_packet(
                                     tx,
                                     NetworkAppPacket::Status(
                                         NetworkStatusPacket::
-                                        ProbeResponse(uuid, ProbeResponse::new_ok_with_value("Reconnected"))))).await??;
+                                        ProbeResponse(uuid, ProbeResponse::new_ok_with_value("Reconnected"))))).await;
             },
         }
     }

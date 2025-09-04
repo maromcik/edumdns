@@ -167,8 +167,7 @@ impl ConnectionManager {
                                         })
                                         .await??;
                                 }
-                                NetworkStatusPacket::ProbeResponse(_, e) => {
-                                    error!("{e}");
+                                NetworkStatusPacket::ProbeResponse(_, _) => {
                                     self.tx
                                         .send(AppPacket::Network(app_packet))
                                         .await

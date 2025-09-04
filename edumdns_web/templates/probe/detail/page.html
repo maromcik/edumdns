@@ -26,21 +26,28 @@
         const container = document.getElementById("notifications");
 
         const notif = document.createElement("div");
-        notif.className = `notification ${type}`;
+        notif.className = `notification ${type} hidden`;
         notif.textContent = message;
 
         container.appendChild(notif);
 
-        // trigger CSS transition
-        setTimeout(() => notif.classList.add("show"), 50);
+        // Let the DOM paint, then fade in
+        requestAnimationFrame(() => {
+            notif.classList.remove("hidden");
+            notif.classList.add("show");
+        });
 
-        // hide after 10s
+        // Keep visible for 10s
+        const lifetime = 10000;
         setTimeout(() => {
             notif.classList.remove("show");
             notif.classList.add("hide");
-            setTimeout(() => notif.remove(), 500); // cleanup after fade
-        }, 10000);
+
+            notif.addEventListener("transitionend", () => notif.remove(), { once: true });
+        }, lifetime);
     }
+
+
 </script>
 {% endblock %}
 

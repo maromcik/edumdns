@@ -204,14 +204,17 @@
     border-radius: 6px;
     min-width: 200px;
 }
+
 .notification.show {
     opacity: 1;
     transform: translateY(0);
 }
+
 .notification.hide {
     opacity: 0;
     transform: translateY(10px);
 }
+
 .notification.success {
     background: #16a34a; /* green */
 }

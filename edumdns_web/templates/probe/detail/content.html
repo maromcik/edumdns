@@ -1,475 +1,472 @@
-<div id="probe-content-area" class="max-w-7xl mx-auto mb-10 md:mb-5">
-
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-6">
-        <h1 class="text-4xl font-semibold text-sat-xl">Probe {%if probe.name is none %}{{ probe.id[:13] }}...{% else %}
-            {{ probe.name }} {% endif %}</h1>
-        <div class="flex items-center gap-2">
-            <a href="/probe"
-               class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
-                ←
-            </a>
-        </div>
+<!-- Header -->
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-4xl font-semibold text-sat-xl">Probe {%if probe.name is none %}{{ probe.id[:13] }}...{% else %}
+        {{ probe.name }} {% endif %}</h1>
+    <div class="flex items-center gap-2">
+        <a href="/probe"
+           class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
+            ←
+        </a>
     </div>
-    <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center gap-2">
-            {% if permissions|has_perm("Restart") %}
-            <button
-                    class="ml-2 bg-acc-l rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
-                    hx-get="/probe/{{ probe.id }}/restart"
-                    hx-confirm="Restart this probe now?"
-                    hx-target="#probe-content-area"
-                    hx-target-error="#probe-content-area"
-                    hx-push-url="/probe/{{ probe.id }}"
-            >
-                Restart
-            </button>
-            {% endif %}
-            {% if probe.adopted and permissions|has_perm("Forget") %}
-            <button
-                    class="ml-2 bg-purple-400 hover:bg-purple-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
-                    hx-get="/probe/{{ probe.id }}/forget"
-                    hx-confirm="Forget this probe? Devices will remain, but the probe will be marked as not adopted."
-                    hx-target="#probe-content-area"
-                    hx-target-error="#probe-content-area"
-                    hx-push-url="/probe/{{ probe.id }}"
-            >
-                Forget
-            </button>
-            {% endif %}
-            {% if not probe.adopted and permissions|has_perm("Adopt") %}
-            <button
-                    class="ml-2 bg-green-400 hover:bg-green-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
-                    hx-get="/probe/{{ probe.id }}/adopt"
-                    hx-target="#probe-content-area"
-                    hx-target-error="#probe-content-area"
-                    hx-push-url="/probe/{{ probe.id }}"
-            >
-                Adopt
-            </button>
-            {% endif %}
-            {% if permissions|has_perm("Delete") %}
-            <button
-                    class="ml-2 bg-red-600 hover:bg-red-700 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
-                    hx-delete="/probe/{{ probe.id }}/delete"
-                    hx-target="#probe-content-area"
-                    hx-target-error="#probe-content-area"
-                    hx-push-url="/probe"
-            >
-                Delete
-            </button>
-            {% endif %}
-        </div>
+</div>
+<div class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-2">
+        {% if permissions|has_perm("Restart") %}
+        <button
+                class="ml-2 bg-acc-l rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                hx-get="/probe/{{ probe.id }}/restart"
+                hx-confirm="Restart this probe now?"
+                hx-target="#probe-content-area"
+                hx-target-error="#probe-content-area"
+                hx-push-url="/probe/{{ probe.id }}"
+                hx-swap="none"
+        >
+            Restart
+        </button>
+        {% endif %}
+        {% if probe.adopted and permissions|has_perm("Forget") %}
+        <button
+                class="ml-2 bg-purple-400 hover:bg-purple-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                hx-get="/probe/{{ probe.id }}/forget"
+                hx-confirm="Forget this probe? Devices will remain, but the probe will be marked as not adopted."
+                hx-target="#probe-content-area"
+                hx-target-error="#probe-content-area"
+                hx-push-url="/probe/{{ probe.id }}"
+        >
+            Forget
+        </button>
+        {% endif %}
+        {% if not probe.adopted and permissions|has_perm("Adopt") %}
+        <button
+                class="ml-2 bg-green-400 hover:bg-green-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                hx-get="/probe/{{ probe.id }}/adopt"
+                hx-target="#probe-content-area"
+                hx-target-error="#probe-content-area"
+                hx-push-url="/probe/{{ probe.id }}"
+        >
+            Adopt
+        </button>
+        {% endif %}
+        {% if permissions|has_perm("Delete") %}
+        <button
+                class="ml-2 bg-red-600 hover:bg-red-700 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                hx-delete="/probe/{{ probe.id }}/delete"
+                hx-target="#probe-content-area"
+                hx-target-error="#probe-content-area"
+                hx-push-url="/probe"
+        >
+            Delete
+        </button>
+        {% endif %}
     </div>
+</div>
 
-    <!-- Probe Card -->
-    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- ID -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
-                <span class="font-mono text-code"><code>{{ probe.id }}</code></span>
-            </div>
+<!-- Probe Card -->
+<div class="rounded-lg border border-base bg-cards p-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- ID -->
+        <div class="flex flex-col">
+            <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
+            <span class="font-mono text-code"><code>{{ probe.id }}</code></span>
+        </div>
 
-            <!-- Adopted -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Adopted</span>
-                <span class="font-mono text-sat-xl">
+        <!-- Adopted -->
+        <div class="flex flex-col">
+            <span class="text-xs uppercase tracking-wide text-sat-m">Adopted</span>
+            <span class="font-mono text-sat-xl">
           {% if probe.adopted %}
             <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
           {% else %}
             <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
           {% endif %}
         </span>
-            </div>
-
-            <!-- MAC -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">MAC</span>
-                <span class="font-mono text-code"><code>{{ probe.mac }}</code></span>
-            </div>
-
-            <!-- IP -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">IP</span>
-                <span class="font-mono text-code"><code>{{ probe.ip }}</code></span>
-            </div>
-
-
         </div>
+
+        <!-- MAC -->
+        <div class="flex flex-col">
+            <span class="text-xs uppercase tracking-wide text-sat-m">MAC</span>
+            <span class="font-mono text-code"><code>{{ probe.mac }}</code></span>
+        </div>
+
+        <!-- IP -->
+        <div class="flex flex-col">
+            <span class="text-xs uppercase tracking-wide text-sat-m">IP</span>
+            <span class="font-mono text-code"><code>{{ probe.ip }}</code></span>
+        </div>
+
+
     </div>
-    {% if permissions|has_perm("Update") %}
-    <!-- Make these fields editable -->
-    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
-        <h3 class="text-2xl font-medium mb-4 text-sat-l">Probe Settings</h3>
-        <form
-                method="post"
-                hx-post="/probe/update"
-                hx-target="#probe-content-area"
-                hx-error-target="#probe-content-area"
-                class="grid grid-cols-1 md:grid-cols-2 gap-4"
-        >
-            <input type="hidden" id="probe_id" name="id" value="{{ probe.id }}"/>
+</div>
+{% if permissions|has_perm("Update") %}
+<!-- Make these fields editable -->
+<div class="rounded-lg border border-base bg-cards p-6 mb-8">
+    <h3 class="text-2xl font-medium mb-4 text-sat-l">Probe Settings</h3>
+    <form
+            method="post"
+            hx-post="/probe/update"
+            hx-target="#probe-content-area"
+            hx-error-target="#probe-content-area"
+            class="grid grid-cols-1 md:grid-cols-2 gap-4"
+    >
+        <input type="hidden" id="probe_id" name="id" value="{{ probe.id }}"/>
 
-            <!-- Name -->
-            <div class="flex flex-col">
-                <label for="name" class="text-xs uppercase tracking-wide text-sat-m">Name</label>
+        <!-- Name -->
+        <div class="flex flex-col">
+            <label for="name" class="text-xs uppercase tracking-wide text-sat-m">Name</label>
+            <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    placeholder="{{ probe.name }}"
+                    class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+            />
+            <p class="text-xs text-sat-m mt-1">Optional friendly name for the probe.</p>
+        </div>
+
+        <!--            &lt;!&ndash; Location &ndash;&gt;-->
+        <!--            <div class="flex flex-col">-->
+        <!--                <label for="location_id" class="text-xs uppercase tracking-wide text-sat-m">Location</label>-->
+        <!--                <select-->
+        <!--                    id="location_id"-->
+        <!--                    name="location_id"-->
+        <!--                    class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"-->
+        <!--                    hx-get="/location/?selected={{ probe.location_id | default('', true) }}"-->
+        <!--                    hx-trigger="load"-->
+        <!--                    hx-target="#location_id"-->
+        <!--                    hx-swap="innerHTML"-->
+        <!--                >-->
+        <!--                    <option value="">{{ '—' }}</option>-->
+        <!--                </select>-->
+        <!--                <p class="text-xs text-sat-m mt-1">Choose a location for this probe.</p>-->
+        <!--            </div>-->
+
+        <!-- Actions -->
+        <div class="md:col-span-2 flex items-center gap-2 pt-2">
+            <button
+                    type="submit"
+                    class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+            >
+                Save
+            </button>
+            <button
+                    type="reset"
+                    class="inline-flex items-center rounded-md border border-base bg-cards px-4 py-2 text-sm font-medium text-sat-l hover:bg-panes transition-colors"
+            >
+                Reset
+            </button>
+        </div>
+    </form>
+</div>
+{% endif %}
+<!-- Probe Configs Table -->
+<div class="overflow-x-auto rounded-lg border border-base bg-cards mt-8 mb-8">
+    <div class="flex flex-col justify-center items-center py-4">
+        <h2 class="text-3xl font-medium text-sat-xl">Capture Configs</h2>
+    </div>
+
+    <table class="min-w-full divide-y divide-base">
+        <thead class="bg-muted/10">
+        <tr>
+            <th scope="col"
+                class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                Interface
+            </th>
+            <th scope="col"
+                class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                Filter
+            </th>
+            <th scope="col"
+                class="px-4 py-3 text-right text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                Actions
+            </th>
+        </tr>
+        </thead>
+        <tbody class="divide-y divide-base">
+        {% for cfg in configs %}
+        <tr class="hover:bg-muted/5 transition-colors">
+            <td class="px-4 py-3 text-sm text-code">
                 <input
-                        id="name"
-                        name="name"
                         type="text"
-                        placeholder="{{ probe.name }}"
-                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        name="interface"
+                        value="{{ cfg.interface }}"
+                        class="w-full rounded-md border border-base bg-background px-2 py-1 font-mono text-sm"
+                        form="cfg-form-{{ loop.index0 }}"
+                        required
                 />
-                <p class="text-xs text-sat-m mt-1">Optional friendly name for the probe.</p>
-            </div>
+            </td>
+            <td class="px-4 py-3 text-sm text-code">
+                <input
+                        type="text"
+                        name="filter"
+                        value="{% if cfg.filter is not none %}{{ cfg.filter }}{% endif %}"
+                        class="w-full rounded-md border border-base bg-background px-2 py-1 font-mono text-sm"
+                        form="cfg-form-{{ loop.index0 }}"
+                        placeholder="optional"
+                />
+            </td>
+            <td class="px-4 py-3 text-right">
+                <form id="cfg-form-{{ loop.index0 }}"
+                      hx-put="/probe/{{ probe.id }}/config/{{ cfg.id }}"
+                      hx-target="#probe-content-area"
+                      hx-target-error="#probe-content-area"
+                      hx-push-url="/probe/{{ probe.id }}"
+                      class="inline-flex">
+                    {% if permissions|has_perm("ModifyConfig") %}
+                    <button
+                            type="submit"
+                            class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-green-700 bg-green-50 hover:bg-green-200 text-primary hover:bg-muted/10 transition-colors"
+                            aria-label="Save config"
+                            title="Save"
+                    >
+                        <i class="fa-solid fa-floppy-disk mr-1.5"></i>
+                    </button>
+                    <button
+                            class="ml-2 inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-red-700 bg-red-50 hover:bg-red-200 transition-colors"
+                            type="button"
+                            hx-delete="/probe/{{ probe.id }}/config/{{ cfg.id }}"
+                            hx-target-error="#probe-content-area"
+                            hx-push-url="/probe/{{ probe.id }}"
+                            aria-label="Delete config"
+                            title="Delete"
+                    >
+                        <i class="fa-solid fa-trash mr-1.5"></i>
+                    </button>
+                    {% endif %}
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        <!-- Add Config Row -->
+        {% if permissions | has_perm("ModifyConfig") %}
+        <tr class="hover:bg-muted/5 transition-colors">
+            <td class="px-4 py-3 text-sm text-code">
+                <input
+                        type="text"
+                        name="interface"
+                        class="w-full rounded-md border border-base bg-background px-2 py-1 font-mono text-sm"
+                        form="cfg-create-form"
+                        placeholder="e.g. eth0"
+                        required
+                />
+            </td>
 
-            <!--            &lt;!&ndash; Location &ndash;&gt;-->
-            <!--            <div class="flex flex-col">-->
-            <!--                <label for="location_id" class="text-xs uppercase tracking-wide text-sat-m">Location</label>-->
-            <!--                <select-->
-            <!--                    id="location_id"-->
-            <!--                    name="location_id"-->
-            <!--                    class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"-->
-            <!--                    hx-get="/location/?selected={{ probe.location_id | default('', true) }}"-->
-            <!--                    hx-trigger="load"-->
-            <!--                    hx-target="#location_id"-->
-            <!--                    hx-swap="innerHTML"-->
-            <!--                >-->
-            <!--                    <option value="">{{ '—' }}</option>-->
-            <!--                </select>-->
-            <!--                <p class="text-xs text-sat-m mt-1">Choose a location for this probe.</p>-->
-            <!--            </div>-->
+            <td class="px-4 py-3 text-sm text-code">
+                <input
+                        type="text"
+                        name="filter"
+                        class="w-full rounded-md border border-base bg-background px-2 py-1 font-mono text-sm"
+                        form="cfg-create-form"
+                        placeholder="optional, e.g. port 53"
+                />
+            </td>
+            <td class="px-4 py-3 text-right">
 
-            <!-- Actions -->
-            <div class="md:col-span-2 flex items-center gap-2 pt-2">
-                <button
-                        type="submit"
-                        class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
-                >
-                    Save
-                </button>
-                <button
-                        type="reset"
-                        class="inline-flex items-center rounded-md border border-base bg-cards px-4 py-2 text-sm font-medium text-sat-l hover:bg-panes transition-colors"
-                >
-                    Reset
-                </button>
-            </div>
-        </form>
+                <form id="cfg-create-form"
+                      hx-post="/probe/{{ probe.id }}/config"
+                      hx-target="#probe-content-area"
+                      hx-target-error="#probe-content-area"
+                      hx-push-url="/probe/{{ probe.id }}"
+                      class="inline-flex">
+                    <button
+                            type="submit"
+                            class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-acc hover:bg-muted/10 transition-colors"
+                            aria-label="Add config"
+                            title="Add config"
+                    >
+                        <i class="fa-solid fa-plus mr-1.5"></i>
+                        Add config
+                    </button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+
+    {% if configs|length == 0 %}
+    <div class="p-6 text-center text-muted-foreground">
+        No probe configs found for this probe.
     </div>
     {% endif %}
-    <!-- Probe Configs Table -->
-    <div class="overflow-x-auto rounded-lg border border-base bg-cards mt-8 mb-8">
-        <div class="flex flex-col justify-center items-center py-4">
-            <h2 class="text-3xl font-medium text-sat-xl">Capture Configs</h2>
-        </div>
+</div>
 
-        <table class="min-w-full divide-y divide-base">
+<!-- Permissions Table -->
+{% if admin %}
+<div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards mb-8">
+    <div class="flex flex-col justify-center items-center py-4">
+        <h2 class="text-3xl font-medium text-sat-xl">Permissions</h2>
+    </div>
+    <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards">
+        <table class="w-full divide-y divide-base">
             <thead class="bg-muted/10">
             <tr>
                 <th scope="col"
                     class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                    Interface
+                    Group
                 </th>
                 <th scope="col"
-                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                    Filter
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Read
                 </th>
                 <th scope="col"
-                    class="px-4 py-3 text-right text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                    Actions
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Adopt
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Forget
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Restart
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    ModifyConfig
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Delete
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Update
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Full
                 </th>
             </tr>
             </thead>
             <tbody class="divide-y divide-base">
-            {% for cfg in configs %}
+            {% for permissions, group in permission_matrix %}
             <tr class="hover:bg-muted/5 transition-colors">
-                <td class="px-4 py-3 text-sm text-code">
-                    <input
-                            type="text"
-                            name="interface"
-                            value="{{ cfg.interface }}"
-                            class="w-full rounded-md border border-base bg-background px-2 py-1 font-mono text-sm"
-                            form="cfg-form-{{ loop.index0 }}"
-                            required
-                    />
+                <td class="px-4 py-3 text-sm text-sat-l">
+                    {{ group.name }}
                 </td>
-                <td class="px-4 py-3 text-sm text-code">
-                    <input
-                            type="text"
-                            name="filter"
-                            value="{% if cfg.filter is not none %}{{ cfg.filter }}{% endif %}"
-                            class="w-full rounded-md border border-base bg-background px-2 py-1 font-mono text-sm"
-                            form="cfg-form-{{ loop.index0 }}"
-                            placeholder="optional"
-                    />
-                </td>
-                <td class="px-4 py-3 text-right">
-                    <form id="cfg-form-{{ loop.index0 }}"
-                          hx-put="/probe/{{ probe.id }}/config/{{ cfg.id }}"
-                          hx-target="#probe-content-area"
-                          hx-target-error="#probe-content-area"
-                          hx-push-url="/probe/{{ probe.id }}"
-                          class="inline-flex">
-                        {% if permissions|has_perm("ModifyConfig") %}
-                        <button
-                                type="submit"
-                                class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-green-700 bg-green-50 hover:bg-green-200 text-primary hover:bg-muted/10 transition-colors"
-                                aria-label="Save config"
-                                title="Save"
-                        >
-                            <i class="fa-solid fa-floppy-disk mr-1.5"></i>
-                        </button>
-                        <button
-                                class="ml-2 inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-red-700 bg-red-50 hover:bg-red-200 transition-colors"
-                                type="button"
-                                hx-delete="/probe/{{ probe.id }}/config/{{ cfg.id }}"
-                                hx-target-error="#probe-content-area"
-                                hx-push-url="/probe/{{ probe.id }}"
-                                aria-label="Delete config"
-                                title="Delete"
-                        >
-                            <i class="fa-solid fa-trash mr-1.5"></i>
-                        </button>
-                        {% endif %}
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-            <!-- Add Config Row -->
-            {% if permissions | has_perm("ModifyConfig") %}
-            <tr class="hover:bg-muted/5 transition-colors">
-                <td class="px-4 py-3 text-sm text-code">
-                    <input
-                            type="text"
-                            name="interface"
-                            class="w-full rounded-md border border-base bg-background px-2 py-1 font-mono text-sm"
-                            form="cfg-create-form"
-                            placeholder="e.g. eth0"
-                            required
-                    />
-                </td>
-
-                <td class="px-4 py-3 text-sm text-code">
-                    <input
-                            type="text"
-                            name="filter"
-                            class="w-full rounded-md border border-base bg-background px-2 py-1 font-mono text-sm"
-                            form="cfg-create-form"
-                            placeholder="optional, e.g. port 53"
-                    />
-                </td>
-                <td class="px-4 py-3 text-right">
-
-                    <form id="cfg-create-form"
-                          hx-post="/probe/{{ probe.id }}/config"
-                          hx-target="#probe-content-area"
-                          hx-target-error="#probe-content-area"
-                          hx-push-url="/probe/{{ probe.id }}"
-                          class="inline-flex">
-                        <button
-                                type="submit"
-                                class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-acc hover:bg-muted/10 transition-colors"
-                                aria-label="Add config"
-                                title="Add config"
-                        >
-                            <i class="fa-solid fa-plus mr-1.5"></i>
-                            Add config
-                        </button>
-                    </form>
-                    {% endif %}
-                </td>
-            </tr>
-            </tbody>
-        </table>
-
-
-        {% if configs|length == 0 %}
-        <div class="p-6 text-center text-muted-foreground">
-            No probe configs found for this probe.
-        </div>
-        {% endif %}
-    </div>
-
-    <!-- Permissions Table -->
-    {% if admin %}
-    <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards mb-8">
-        <div class="flex flex-col justify-center items-center py-4">
-            <h2 class="text-3xl font-medium text-sat-xl">Permissions</h2>
-        </div>
-        <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards">
-            <table class="w-full divide-y divide-base">
-                <thead class="bg-muted/10">
-                <tr>
-                    <th scope="col"
-                        class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                        Group
-                    </th>
-                    <th scope="col"
-                        class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                        Read
-                    </th>
-                    <th scope="col"
-                        class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                        Adopt
-                    </th>
-                    <th scope="col"
-                        class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                        Forget
-                    </th>
-                    <th scope="col"
-                        class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                        Restart
-                    </th>
-                    <th scope="col"
-                        class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                        ModifyConfig
-                    </th>
-                    <th scope="col"
-                        class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                        Delete
-                    </th>
-                    <th scope="col"
-                        class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                        Update
-                    </th>
-                    <th scope="col"
-                        class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                        Full
-                    </th>
-                </tr>
-                </thead>
-                <tbody class="divide-y divide-base">
-                {% for permissions, group in permission_matrix %}
-                <tr class="hover:bg-muted/5 transition-colors">
-                    <td class="px-4 py-3 text-sm text-sat-l">
-                        {{ group.name }}
-                    </td>
-                    {% for perm, checked in permissions %}
-                    <td class="px-4 py-3 text-sm text-sat-l text-center">
-                        <form
-                                hx-post="/probe/{{ probe.id }}/permission/toggle"
-                                hx-target="#probe-content-area"
-                                hx-target-error="#probe-content-area"
-                        >
-                            <input
-                                    type="checkbox"
-                                    class="h-4 w-4 rounded border-base text-acc focus:ring-acc"
-                                    {% if checked %}checked{% endif %}
-                                    name="value"
-                                    value="{% if checked %}true{% else %}false{% endif %}"
-                                    onchange="
+                {% for perm, checked in permissions %}
+                <td class="px-4 py-3 text-sm text-sat-l text-center">
+                    <form
+                            hx-post="/probe/{{ probe.id }}/permission/toggle"
+                            hx-target="#probe-content-area"
+                            hx-target-error="#probe-content-area"
+                    >
+                        <input
+                                type="checkbox"
+                                class="h-4 w-4 rounded border-base text-acc focus:ring-acc"
+                                {% if checked %}checked{% endif %}
+                                name="value"
+                                value="{% if checked %}true{% else %}false{% endif %}"
+                                onchange="
                 this.value = this.checked ? 'true' : 'false';
                 this.form.requestSubmit();
             "
-                                    aria-label="Toggle permission"
-                            />
-                            <input type="hidden" name="permission" value="{{ perm }}">
-                            <input type="hidden" name="group_id" value="{{ group.id }}">
-                        </form>
-                    </td>
-                    {% endfor %}
-                </tr>
+                                aria-label="Toggle permission"
+                        />
+                        <input type="hidden" name="permission" value="{{ perm }}">
+                        <input type="hidden" name="group_id" value="{{ group.id }}">
+                    </form>
+                </td>
                 {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    {% endif %}
-    <!-- Devices Table -->
-    <div class="overflow-x-auto rounded-lg border border-base bg-cards mt-8">
-        <div class="flex flex-col justify-center items-center py-4">
-            <h2 class="text-3xl font-medium text-sat-xl">Devices</h2>
-        </div>
-
-        <table class="min-w-full divide-y divide-base">
-            <thead class="bg-muted/10">
-            <tr>
-                <th scope="col"
-                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                    ID
-                </th>
-                <th scope="col"
-                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                    MAC
-                </th>
-                <th scope="col"
-                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                    IP
-                </th>
-                <th scope="col"
-                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                    Port
-                </th>
-                <th scope="col"
-                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                    Duration
-                </th>
-                <th scope="col"
-                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                    Interval
-                </th>
-                <th scope="col"
-                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                    Actions
-                </th>
-
-            </tr>
-            </thead>
-            <tbody class="divide-y divide-base">
-            {% for device in devices %}
-            <tr class="hover:bg-muted/5 transition-colors">
-                <td class="px-4 py-3 font-mono text-sm text-sat-l">
-                    <a href="/device/{{ device.id }}" class="text-primary hover:underline">
-                        {{ device.id }}
-                    </a>
-                </td>
-
-                <td class="px-4 py-3 text-sm text-sat-l">{{ device.mac }}</td>
-                <td class="px-4 py-3 text-sm text-sat-l">{{ device.ip }}</td>
-                <td class="px-4 py-3 text-sm text-sat-l">{{ device.port }}</td>
-                <td class="px-4 py-3 text-sm text-sat-l">
-                    {% if device.duration is not none %}
-                    {{ device.duration }}
-                    {% else %}
-                    <span class="text-muted-foreground">—</span>
-                    {% endif %}
-                </td>
-                <td class="px-4 py-3 text-sm text-sat-l">
-                    {% if device.interval is not none %}
-                    {{ device.interval }}
-                    {% else %}
-                    <span class="text-muted-foreground">—</span>
-                    {% endif %}
-                </td>
-                {% if permissions|has_perm("Delete") %}
-                <td class="px-4 py-3 text-sm text-sat-l">
-                    <button
-                            hx-delete="/device/{{ device.id }}/delete?return_url=/probe/{{ probe.id }}"
-                            hx-target="#probe-content-area"
-                            hx-target-error="#probe-content-area"
-                            hx-push-url="/probe/{{ probe.id }}"
-                            class="inline-flex items-center rounded-md border border-base px-3 py-1 text-sm text-red-400 hover:bg-muted/20 transition-colors"
-                            title="Delete device"
-
-                    >
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </td>
-                {% endif %}
             </tr>
             {% endfor %}
             </tbody>
         </table>
-
-
-        {% if devices|length == 0 %}
-        <div class="p-6 text-center text-muted-foreground">
-            No devices found for this probe.
-        </div>
-        {% endif %}
     </div>
 </div>
+{% endif %}
+<!-- Devices Table -->
+<div class="overflow-x-auto rounded-lg border border-base bg-cards mt-8">
+    <div class="flex flex-col justify-center items-center py-4">
+        <h2 class="text-3xl font-medium text-sat-xl">Devices</h2>
+    </div>
 
-<div id="notifications" class="fixed bottom-4 right-4 flex flex-col gap-2 z-50"></div>
+    <table class="min-w-full divide-y divide-base">
+        <thead class="bg-muted/10">
+        <tr>
+            <th scope="col"
+                class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                ID
+            </th>
+            <th scope="col"
+                class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                MAC
+            </th>
+            <th scope="col"
+                class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                IP
+            </th>
+            <th scope="col"
+                class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                Port
+            </th>
+            <th scope="col"
+                class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                Duration
+            </th>
+            <th scope="col"
+                class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                Interval
+            </th>
+            <th scope="col"
+                class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                Actions
+            </th>
+
+        </tr>
+        </thead>
+        <tbody class="divide-y divide-base">
+        {% for device in devices %}
+        <tr class="hover:bg-muted/5 transition-colors">
+            <td class="px-4 py-3 font-mono text-sm text-sat-l">
+                <a href="/device/{{ device.id }}" class="text-primary hover:underline">
+                    {{ device.id }}
+                </a>
+            </td>
+
+            <td class="px-4 py-3 text-sm text-sat-l">{{ device.mac }}</td>
+            <td class="px-4 py-3 text-sm text-sat-l">{{ device.ip }}</td>
+            <td class="px-4 py-3 text-sm text-sat-l">{{ device.port }}</td>
+            <td class="px-4 py-3 text-sm text-sat-l">
+                {% if device.duration is not none %}
+                {{ device.duration }}
+                {% else %}
+                <span class="text-muted-foreground">—</span>
+                {% endif %}
+            </td>
+            <td class="px-4 py-3 text-sm text-sat-l">
+                {% if device.interval is not none %}
+                {{ device.interval }}
+                {% else %}
+                <span class="text-muted-foreground">—</span>
+                {% endif %}
+            </td>
+            {% if permissions|has_perm("Delete") %}
+            <td class="px-4 py-3 text-sm text-sat-l">
+                <button
+                        hx-delete="/device/{{ device.id }}/delete?return_url=/probe/{{ probe.id }}"
+                        hx-target="#probe-content-area"
+                        hx-target-error="#probe-content-area"
+                        hx-push-url="/probe/{{ probe.id }}"
+                        class="inline-flex items-center rounded-md border border-base px-3 py-1 text-sm text-red-400 hover:bg-muted/20 transition-colors"
+                        title="Delete device"
+
+                >
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+
+    {% if devices|length == 0 %}
+    <div class="p-6 text-center text-muted-foreground">
+        No devices found for this probe.
+    </div>
+    {% endif %}
+</div>
+

@@ -12,7 +12,7 @@ mod connection;
 mod database;
 pub mod error;
 pub mod listen;
-pub mod storage;
+pub mod handler;
 mod transmitter;
 
 const DEFAULT_HOSTNAME: &str = "localhost";

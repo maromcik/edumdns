@@ -1,7 +1,7 @@
 use crate::connection::ConnectionManager;
 use crate::error::{ServerError, ServerErrorKind};
 use crate::parse_host;
-use crate::storage::PacketStorage;
+use crate::handler::PacketHandler;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::{
@@ -46,7 +46,7 @@ pub async fn listen(
     let probe_handles_local = probe_handles.clone();
     let _packet_storage_task = tokio::task::spawn(async move {
         let mut packet_storage =
-            PacketStorage::new(rx, pool_local, probe_handles_local, global_timeout);
+            PacketHandler::new(rx, pool_local, probe_handles_local, global_timeout);
         packet_storage.handle_packets().await
     });
     info!("Packet storage initialized");

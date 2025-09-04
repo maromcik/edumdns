@@ -1,7 +1,10 @@
 {% extends "index/page.html" %}
 
 {% block content %}
-{% include "probe/detail/content.html"%}
+<div id="probe-content-area" class="max-w-7xl mx-auto mb-10 md:mb-5">
+    {% include "probe/detail/content.html"%}
+</div>
+<div id="notifications" class="fixed bottom-4 right-4 flex flex-col gap-2 z-50"></div>
 <script>
     console.log("Connecting to WebSocket...");
     if (!window.probeWs) {
@@ -43,7 +46,7 @@
             notif.classList.remove("show");
             notif.classList.add("hide");
 
-            notif.addEventListener("transitionend", () => notif.remove(), { once: true });
+            notif.addEventListener("transitionend", () => notif.remove(), {once: true});
         }, lifetime);
     }
 

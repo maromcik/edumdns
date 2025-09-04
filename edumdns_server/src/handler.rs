@@ -8,7 +8,6 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
-use edumdns_core::error::CoreError;
 use edumdns_db::repositories::common::{DbCreate, DbReadMany, DbReadOne};
 use edumdns_db::repositories::device::models::{CreateDevice, SelectSingleDevice};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
@@ -17,13 +16,12 @@ use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use log::{debug, error, info, warn};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
 
-pub struct PacketStorage {
+pub struct PacketHandler {
     pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
     pub packet_receiver: Receiver<AppPacket>,
     pub transmitter_tasks: Arc<Mutex<HashMap<PacketTransmitRequestPacket, PacketTransmitterTask>>>,
@@ -35,7 +33,7 @@ pub struct PacketStorage {
     pub global_timeout: Duration,
 }
 
-impl PacketStorage {
+impl PacketHandler {
     pub fn new(
         receiver: Receiver<AppPacket>,
         db_pool: Pool<AsyncPgConnection>,
@@ -186,7 +184,7 @@ impl PacketStorage {
                 .await
                 .map_err(ServerError::from)??;
         } else {
-            return Err(ServerError::new(ServerErrorKind::ProbeNotFound, ""));
+            return Err(ServerError::new(ServerErrorKind::ProbeNotFound, "not connected"));
         }
         Ok(())
     }

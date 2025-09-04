@@ -2,8 +2,8 @@ use crate::error::{ServerError, ServerErrorKind};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::{
-    AppPacket, NetworkAppPacket, NetworkCommandPacket, ProbeConfigElement, ProbeConfigPacket,
-    StatusPacket,
+    AppPacket, NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeConfigElement,
+    ProbeConfigPacket,
 };
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
@@ -54,7 +54,8 @@ impl ConnectionManager {
         ));
         let packet = self.receive_init_packet().await?;
 
-        let NetworkAppPacket::Status(StatusPacket::ProbeHello(hello_metadata)) = packet else {
+        let NetworkAppPacket::Status(NetworkStatusPacket::ProbeHello(hello_metadata)) = packet
+        else {
             return error;
         };
 
@@ -64,7 +65,7 @@ impl ConnectionManager {
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
                         tx,
-                        NetworkAppPacket::Status(StatusPacket::ProbeAdopted),
+                        NetworkAppPacket::Status(NetworkStatusPacket::ProbeAdopted),
                     )
                 })
                 .await??;
@@ -73,7 +74,7 @@ impl ConnectionManager {
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
                         tx,
-                        NetworkAppPacket::Status(StatusPacket::ProbeUnknown),
+                        NetworkAppPacket::Status(NetworkStatusPacket::ProbeUnknown),
                     )
                 })
                 .await??;
@@ -85,7 +86,8 @@ impl ConnectionManager {
 
         let packet = self.receive_init_packet().await?;
 
-        let NetworkAppPacket::Status(StatusPacket::ProbeRequestConfig(config_metadata)) = packet
+        let NetworkAppPacket::Status(NetworkStatusPacket::ProbeRequestConfig(config_metadata)) =
+            packet
         else {
             return error;
         };
@@ -99,7 +101,7 @@ impl ConnectionManager {
             .send_message_with_response(|tx| {
                 TcpConnectionMessage::send_packet(
                     tx,
-                    NetworkAppPacket::Status(StatusPacket::ProbeResponseConfig(config)),
+                    NetworkAppPacket::Status(NetworkStatusPacket::ProbeResponseConfig(config)),
                 )
             })
             .await??;
@@ -152,7 +154,7 @@ impl ConnectionManager {
                         }
                         NetworkAppPacket::Status(status) => {
                             match status {
-                                StatusPacket::PingRequest => {
+                                NetworkStatusPacket::PingRequest => {
                                     // TODO log time since last ping, threshold for considering a probe dead.
 
                                     self.handle
@@ -160,21 +162,20 @@ impl ConnectionManager {
                                             TcpConnectionMessage::send_packet(
                                                 tx,
                                                 NetworkAppPacket::Status(
-                                                    StatusPacket::PingResponse,
+                                                    NetworkStatusPacket::PingResponse,
                                                 ),
                                             )
                                         })
                                         .await??;
                                 }
-                                StatusPacket::PingResponse => {}
-                                StatusPacket::ProbeHello(_) => {}
-                                StatusPacket::ProbeAdopted => {}
-                                StatusPacket::ProbeUnknown => {}
-                                StatusPacket::ProbeRequestConfig(_) => {}
-                                StatusPacket::ProbeResponseConfig(_) => {}
-                                StatusPacket::ProbeInvalidConfig(e) => {
-                                    error!("Invalid config {e}")
+                                NetworkStatusPacket::ProbeInvalidConfig(_, e) => {
+                                    error!("{e}");
+                                    self.tx
+                                        .send(AppPacket::Network(app_packet))
+                                        .await
+                                        .map_err(CoreError::from)?;
                                 }
+                                _ => {}
                             }
                         }
                     }

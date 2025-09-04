@@ -1,6 +1,5 @@
 use crate::bincode_types::Uuid;
 use crate::bincode_types::{IpNetwork, MacAddr};
-use crate::error::CoreError;
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};
 use crate::network_packet::{DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};
@@ -18,22 +17,29 @@ pub enum AppPacket {
 pub enum NetworkAppPacket {
     Command(NetworkCommandPacket),
     Data(ProbePacket),
-    Status(StatusPacket),
+    Status(NetworkStatusPacket),
 }
 
 #[derive(Debug, Clone)]
 pub enum LocalAppPacket {
     Command(LocalCommandPacket),
+    Status(LocalStatusPacket)
 }
-
 #[derive(Debug, Clone)]
 pub enum LocalCommandPacket {
     RegisterForEvents {
-        respond_to: mpsc::Sender<Result<NetworkAppPacket, CoreError>>,
+        probe_id: uuid::Uuid,
+        session_id: uuid::Uuid,
+        respond_to: mpsc::Sender<AppPacket>,
+    },
+    UnregisterFromEvents {
+        probe_id: uuid::Uuid,
+        session_id: uuid::Uuid,
     },
     ReconnectProbe(Uuid),
     TransmitDevicePackets(PacketTransmitRequestPacket),
     StopTransmitDevicePackets(PacketTransmitRequestPacket),
+
 }
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
@@ -41,8 +47,14 @@ pub enum NetworkCommandPacket {
     ReconnectThisProbe,
 }
 
+
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
-pub enum StatusPacket {
+pub enum LocalStatusPacket {
+    WsResponse(String)
+}
+
+#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
+pub enum NetworkStatusPacket {
     PingRequest,
     PingResponse,
     ProbeHello(ProbeMetadata),
@@ -50,8 +62,28 @@ pub enum StatusPacket {
     ProbeUnknown,
     ProbeRequestConfig(ProbeMetadata),
     ProbeResponseConfig(ProbeConfigPacket),
-    ProbeInvalidConfig(String),
+    ProbeInvalidConfig(Uuid, String),
+    ProbeReconnectResponse(Uuid, String),
 }
+
+// #[derive(Clone, Debug)]
+// pub struct SenderWrapper(pub mpsc::Sender<AppPacket>);
+//
+// impl PartialEq for SenderWrapper {
+//     fn eq(&self, other: &Self) -> bool {
+//         self.0.same_channel(&other.0)
+//     }
+// }
+// impl Eq for SenderWrapper {}
+//
+// impl Hash for SenderWrapper {
+//     fn hash<H: Hasher>(&self, state: &mut H) {
+//         // hash by pointer address
+//         (&self.0 as *const mpsc::Sender<AppPacket>).hash(state);
+//     }
+// }
+//
+
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub struct ProbeConfigElement {

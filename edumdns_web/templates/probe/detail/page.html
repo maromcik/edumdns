@@ -2,4 +2,21 @@
 
 {% block content %}
 {% include "probe/detail/content.html"%}
+<script>
+    console.log("Connecting to WebSocket...");
+    console.log(`ws://${location.host}/probe/{{ probe.id }}/ws`);
+    if (!window.probeWs) {
+        window.probeWs = new WebSocket(`ws://${location.host}/probe/{{ probe.id }}/ws`);
+        window.probeWs.onmessage = (event) => {
+            console.log("Update:", event.data);
+        };
+    }
+    window.addEventListener("beforeunload", () => {
+        if (window.probeWs) {
+            window.probeWs.close();
+            window.probeWs = null;
+        }
+    });
+</script>
 {% endblock %}
+

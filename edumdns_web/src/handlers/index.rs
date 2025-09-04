@@ -1,11 +1,12 @@
 use crate::error::WebError;
 use crate::handlers::helpers::get_template_name;
 use crate::templates::index::IndexTemplate;
-use crate::{AppState, authorized};
+use crate::{authorized, AppState};
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, get, web};
+use actix_web::{get, web, HttpRequest, HttpResponse};
+
 
 #[get("/")]
 pub async fn index(

@@ -595,7 +595,7 @@ impl<'a> ApplicationPacket<'a> {
             _ => None,
         }
     }
-    pub fn from_bytes(port: i32, bytes: &[u8]) -> Result<ApplicationPacket, CoreError> {
+    pub fn from_bytes(port: i32, bytes: &'_ [u8]) -> Result<ApplicationPacket<'_>, CoreError> {
         match port {
             53 | 5353 => Ok(ApplicationPacket {
                 application_packet_type: ApplicationPacketType::DnsPacket(Message::from_bytes(

@@ -1,6 +1,6 @@
 use crate::error::{ProbeError, ProbeErrorKind};
 use edumdns_core::app_packet::{
-    NetworkAppPacket, NetworkCommandPacket, ProbeConfigPacket, StatusPacket,
+    NetworkAppPacket, NetworkCommandPacket, ProbeConfigPacket, NetworkStatusPacket,
 };
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::metadata::ProbeMetadata;
@@ -60,7 +60,7 @@ impl ConnectionManager {
             "Invalid connection initiation",
         ));
         let hello_packet =
-            NetworkAppPacket::Status(StatusPacket::ProbeHello(self.probe_metadata.clone()));
+            NetworkAppPacket::Status(NetworkStatusPacket::ProbeHello(self.probe_metadata.clone()));
 
         self.handle
             .send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, hello_packet))
@@ -68,15 +68,15 @@ impl ConnectionManager {
 
         let packet = self.receive_init_packet().await?;
 
-        if let NetworkAppPacket::Status(StatusPacket::ProbeUnknown) = packet {
+        if let NetworkAppPacket::Status(NetworkStatusPacket::ProbeUnknown) = packet {
             warn!("Probe is not adopted, make sure to adopt it in the web interface first");
             sleep(self.retry_interval).await;
             return Box::pin(self.reconnect()).await;
         }
-        let NetworkAppPacket::Status(StatusPacket::ProbeAdopted) = packet else {
+        let NetworkAppPacket::Status(NetworkStatusPacket::ProbeAdopted) = packet else {
             return error;
         };
-        let probe_packet = NetworkAppPacket::Status(StatusPacket::ProbeRequestConfig(
+        let probe_packet = NetworkAppPacket::Status(NetworkStatusPacket::ProbeRequestConfig(
             self.probe_metadata.clone(),
         ));
 
@@ -86,7 +86,7 @@ impl ConnectionManager {
 
         let packet = self.receive_init_packet().await?;
 
-        let NetworkAppPacket::Status(StatusPacket::ProbeResponseConfig(config)) = packet else {
+        let NetworkAppPacket::Status(NetworkStatusPacket::ProbeResponseConfig(config)) = packet else {
             return error;
         };
         info!("Connected to the server {}", self.server_connection_string);
@@ -222,14 +222,8 @@ impl ConnectionManager {
                     },
                     NetworkAppPacket::Data(_) => {}
                     NetworkAppPacket::Status(status) => match status {
-                        StatusPacket::PingResponse => target.pinger.send(app_packet).await?,
-                        StatusPacket::ProbeHello(_) => {}
-                        StatusPacket::ProbeAdopted => {}
-                        StatusPacket::ProbeUnknown => {}
-                        StatusPacket::ProbeRequestConfig(_) => {}
-                        StatusPacket::ProbeResponseConfig(_) => {}
-                        StatusPacket::PingRequest => {}
-                        StatusPacket::ProbeInvalidConfig(_) => {}
+                        NetworkStatusPacket::PingResponse => target.pinger.send(app_packet).await?,
+                        _ => {}
                     },
                 },
             }
@@ -308,14 +302,14 @@ impl ConnectionManager {
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
                         tx,
-                        NetworkAppPacket::Status(StatusPacket::PingRequest),
+                        NetworkAppPacket::Status(NetworkStatusPacket::PingRequest),
                     )
                 })
                 .await??;
             trace!("Ping request sent");
             let packet = packet_receiver.recv().await;
             trace!("Ping response received");
-            if Some(NetworkAppPacket::Status(StatusPacket::PingResponse)) != packet {
+            if Some(NetworkAppPacket::Status(NetworkStatusPacket::PingResponse)) != packet {
                 debug!("Not a ping response");
                 command_sender
                     .send(NetworkAppPacket::Command(

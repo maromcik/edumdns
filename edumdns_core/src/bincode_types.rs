@@ -1,12 +1,8 @@
-use crate::app_packet::NetworkAppPacket;
-use crate::error::CoreError;
 use bincode::enc::Encoder;
-use bincode::{Decode, Encode};
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{Display, Formatter};
 use std::hash::Hash;
-use tokio::sync::mpsc;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MacAddr(pub pnet::datalink::MacAddr);

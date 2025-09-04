@@ -1,7 +1,7 @@
 use crate::connection::{ConnectionManager, ReceivePacketTargets};
 use crate::error::{ProbeError, ProbeErrorKind};
 use crate::probe::ProbeCapture;
-use edumdns_core::app_packet::{NetworkAppPacket, NetworkCommandPacket, StatusPacket};
+use edumdns_core::app_packet::{NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket};
 use edumdns_core::bincode_types::{MacAddr, Uuid};
 use edumdns_core::connection::TcpConnectionMessage;
 use edumdns_core::metadata::ProbeMetadata;
@@ -131,7 +131,7 @@ async fn main() -> Result<(), ProbeError> {
                     if capture_handles.contains(&res.0) {
                         if let Err(e) = res.1 {
                             error!("{e}");
-                            handle.send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, NetworkAppPacket::Status(StatusPacket::ProbeInvalidConfig(e.to_string())))).await??;
+                            handle.send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, NetworkAppPacket::Status(NetworkStatusPacket::ProbeInvalidConfig(uuid, e.to_string())))).await??;
                         }
                     }
                     else {

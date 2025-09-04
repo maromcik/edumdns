@@ -6,12 +6,9 @@ use crate::handlers::group::{
     add_group_users, create_group, delete_group, delete_group_user, get_group, get_group_users,
     get_groups, search_group_users,
 };
-use crate::handlers::index::index;
+use crate::handlers::index::{index};
 use crate::handlers::packet::{delete_packet, get_packet, get_packets};
-use crate::handlers::probe::{
-    adopt, change_probe_permission, create_config, delete_config, delete_probe, forget, get_probe,
-    get_probes, restart, save_config, update_probe,
-};
+use crate::handlers::probe::{get_probe_ws,adopt, change_probe_permission, create_config, delete_config, delete_probe, forget, get_probe, get_probes, restart, save_config, update_probe};
 use crate::handlers::user::{
     login, login_user, logout_user, user_manage, user_manage_form_page, user_manage_password,
     user_manage_password_form, user_manage_profile_form,
@@ -75,7 +72,8 @@ pub fn configure_webapp(
         .service(create_config)
         .service(change_probe_permission)
         .service(update_probe)
-        .service(delete_probe);
+        .service(delete_probe)
+        .service(get_probe_ws);
 
     let device_scope = web::scope("device")
         .app_data(web::Data::new(device_repo.clone()))

@@ -2,7 +2,7 @@ use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, NetworkAppPacket, NetworkCommandPacket, PacketTransmitRequestPacket, ProbePacket, NetworkStatusPacket, LocalStatusPacket};
+use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, NetworkAppPacket, NetworkCommandPacket, PacketTransmitRequestPacket, ProbePacket, NetworkStatusPacket};
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_db::repositories::common::{DbCreate, DbReadMany, DbReadOne};
@@ -25,7 +25,7 @@ pub struct PacketStorage {
     pub packet_receiver: Receiver<AppPacket>,
     pub transmitter_tasks: Arc<Mutex<HashMap<PacketTransmitRequestPacket, PacketTransmitterTask>>>,
     pub probe_handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
-    pub probe_ws_handles: Arc<Mutex<HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<AppPacket>>>>>,
+    pub probe_ws_handles: Arc<Mutex<HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<Result<(), String>>>>>>,
     pub pg_device_repository: PgDeviceRepository,
     pub pg_packet_repository: PgPacketRepository,
     pub global_timeout: Duration,
@@ -85,7 +85,6 @@ impl PacketStorage {
                 }
                 LocalCommandPacket::ReconnectProbe(id) => self.send_reconnect(id).await,
             },
-            LocalAppPacket::Status(_) => {},
         }
     }
 
@@ -97,7 +96,7 @@ impl PacketStorage {
                     NetworkStatusPacket::ProbeInvalidConfig(uuid, e) => {
                         if let Some(handles) = self.probe_ws_handles.lock().await.get(&uuid.0) {
                             for handle in handles.values() {
-                                if let Err(err) = handle.send(AppPacket::Local(LocalAppPacket::Status(LocalStatusPacket::WsResponse(e.clone())))).await {
+                                if let Err(err) = handle.send(Err(e.clone())).await {
                                     warn!("Could not send response to a websocket {err}");
                                 };
                             }

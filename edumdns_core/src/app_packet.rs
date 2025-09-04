@@ -23,14 +23,13 @@ pub enum NetworkAppPacket {
 #[derive(Debug, Clone)]
 pub enum LocalAppPacket {
     Command(LocalCommandPacket),
-    Status(LocalStatusPacket)
 }
 #[derive(Debug, Clone)]
 pub enum LocalCommandPacket {
     RegisterForEvents {
         probe_id: uuid::Uuid,
         session_id: uuid::Uuid,
-        respond_to: mpsc::Sender<AppPacket>,
+        respond_to: mpsc::Sender<Result<(), String>>,
     },
     UnregisterFromEvents {
         probe_id: uuid::Uuid,
@@ -45,12 +44,6 @@ pub enum LocalCommandPacket {
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub enum NetworkCommandPacket {
     ReconnectThisProbe,
-}
-
-
-#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
-pub enum LocalStatusPacket {
-    WsResponse(String)
 }
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]

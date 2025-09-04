@@ -9,7 +9,7 @@ use actix_session::Session;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, rt, web};
 use actix_ws::AggregatedMessage;
-use edumdns_core::app_packet::{AppPacket, NetworkAppPacket, NetworkCommandPacket};
+use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, NetworkCommandPacket, NetworkStatusPacket};
 use edumdns_core::error::CoreError;
 use edumdns_db::models::{Group, Location, Probe};
 use edumdns_db::repositories::common::{
@@ -25,13 +25,17 @@ use edumdns_db::repositories::probe::models::{
     SelectSingleProbeConfig, UpdateProbe,
 };
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
-use futures_util::StreamExt;
 use futures_util::StreamExt as _;
+use futures_util::{SinkExt, StreamExt};
 use itertools;
 use itertools::Itertools;
+use log::{error, warn};
 use std::collections::{HashMap, HashSet};
+use std::sync::mpsc::channel;
 use strum::IntoEnumIterator;
-use uuid::Uuid;
+use tokio::sync::mpsc;
+use uuid::{Timestamp, Uuid};
+
 #[get("")]
 pub async fn get_probes(
     request: HttpRequest,
@@ -97,15 +101,16 @@ pub async fn get_probe(
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
     session: Session,
-    stream: web::Payload,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
+    let probe_id = path.0;
+
     let probe = probe_repo
-        .read_one_auth(&path.0, &parse_user_id(&i)?)
+        .read_one_auth(&probe_id, &parse_user_id(&i)?)
         .await?;
 
     let granted: HashSet<(Id, Permission)> = probe_repo
-        .get_permissions(&path.0)
+        .get_permissions(&probe_id)
         .await?
         .iter()
         .map(|x| (x.group_id, x.permission))
@@ -126,37 +131,6 @@ pub async fn get_probe(
             )
         })
         .collect::<Vec<(Vec<(Permission, bool)>, Group)>>();
-
-    // let (res, mut ws_session, stream) = actix_ws::handle(&request, stream)?;
-
-    // let mut stream = stream
-    //     .aggregate_continuations()
-    //     .max_continuation_size(2_usize.pow(20));
-    //
-    // rt::spawn(
-    //     async move {
-    //         while let Some(msg) = stream.next().await {
-    //             match msg {
-    //                 Ok(AggregatedMessage::Text(text)) => {
-    //                     // echo text message
-    //                     ws_session.text(text).await.unwrap();
-    //                 }
-    //
-    //                 Ok(AggregatedMessage::Binary(bin)) => {
-    //                     // echo binary message
-    //                     ws_session.binary(bin).await.unwrap();
-    //                 }
-    //
-    //                 Ok(AggregatedMessage::Ping(msg)) => {
-    //                     // respond to PING frame with PONG frame
-    //                     ws_session.pong(&msg).await.unwrap();
-    //                 }
-    //
-    //                 _ => {}
-    //             }
-    //         }
-    //     }
-    // );
 
     let template_name = get_template_name(&request, "probe/detail");
     let env = state.jinja.acquire_env()?;
@@ -366,4 +340,72 @@ pub async fn delete_probe(
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, return_url))
         .finish())
+}
+
+#[get("{id}/ws")]
+pub async fn get_probe_ws(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    state: web::Data<AppState>,
+    path: web::Path<(Uuid,)>,
+    stream: web::Payload,
+) -> Result<HttpResponse, WebError> {
+    let _ = authorized!(identity, request.path());
+    let probe_id = path.0;
+
+    let ts = Timestamp::now(uuid::NoContext);
+    let session_uuid = Uuid::new_v7(ts);
+
+
+    let (res, mut session, stream) = actix_ws::handle(&request, stream)?;
+    let mut stream = stream
+        .aggregate_continuations()
+        .max_continuation_size(2_usize.pow(20));
+
+    let mut channel = mpsc::channel(100);
+    let sender = channel.0.clone();
+    state
+        .command_channel
+        .send(AppPacket::Local(LocalAppPacket::Command(
+            LocalCommandPacket::RegisterForEvents {
+                probe_id,
+                session_id: session_uuid,
+                respond_to: sender,
+            },
+        )))
+        .await
+        .map_err(CoreError::from)?;
+    rt::spawn(async move {
+        while let Some(packet) = channel.1.recv().await {
+            match packet {
+                Ok(_) => session.text("ok").await.unwrap(),
+                Err(err) => session.text(err).await.unwrap()
+            }
+
+
+        }
+    });
+    let command_channel = state.command_channel.clone();
+    let sender = channel.0.clone();
+    rt::spawn(async move {
+        while let Some(msg) = stream.recv().await {
+            match msg {
+                Ok(AggregatedMessage::Close(_)) | Err(_) => {
+                    error!("UNREGISTERING");
+                    // unregister
+                    let _ = command_channel.send(AppPacket::Local(
+                        LocalAppPacket::Command(
+                            LocalCommandPacket::UnregisterFromEvents {
+                                probe_id,
+                                session_id: session_uuid,
+                            }
+                        )
+                    )).await;
+                    break;
+                }
+                _ => {}
+            }
+        }
+    });
+    Ok(res)
 }

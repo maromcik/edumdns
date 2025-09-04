@@ -104,34 +104,20 @@ impl PacketStorage {
                 }
                 LocalCommandPacket::ReconnectProbe(id) => {
                     if let Err(e) = self.send_reconnect(id).await {
-                        if let Some(handles) = self.probe_ws_handles.lock().await.get(&id.0) {
-                            for handle in handles.values() {
-                                let Err(err) = handle.send(ProbeResponse::new_error(e.to_string().clone())).await else {
-                                    return;
-                                };
-                                warn!("Could not send response to a websocket {err}");
-                            }
-                        }
+                        self.send_response_to_ws(id, ProbeResponse::new_error(e.to_string()))
+                            .await;
                     }
-                },
+                }
             },
         }
     }
 
-    
     pub async fn handle_network_packet(&mut self, packet: NetworkAppPacket) {
         match packet {
             NetworkAppPacket::Command(_) => {}
             NetworkAppPacket::Status(status) => match status {
                 NetworkStatusPacket::ProbeResponse(uuid, response) => {
-                    if let Some(handles) = self.probe_ws_handles.lock().await.get(&uuid.0) {
-                        for handle in handles.values() {
-                            let Err(err) = handle.send(response.clone()).await else {
-                                return;
-                            };
-                            warn!("Could not send response to a websocket {err}");
-                        }
-                    }
+                    self.send_response_to_ws(uuid, response).await;
                 }
                 _ => {}
             },
@@ -199,9 +185,8 @@ impl PacketStorage {
                 })
                 .await
                 .map_err(ServerError::from)??;
-        }
-        else {
-            return Err(ServerError::new(ServerErrorKind::ProbeNotFound, ""))
+        } else {
+            return Err(ServerError::new(ServerErrorKind::ProbeNotFound, ""));
         }
         Ok(())
     }
@@ -281,6 +266,17 @@ impl PacketStorage {
                 ),
             }
         });
+    }
+
+    pub async fn send_response_to_ws(&self, id: Uuid, response: ProbeResponse) {
+        if let Some(handles) = self.probe_ws_handles.lock().await.get(&id.0) {
+            for handle in handles.values() {
+                let Err(err) = handle.send(response.clone()).await else {
+                    return;
+                };
+                warn!("Could not send response to a websocket {err}");
+            }
+        }
     }
 
     pub fn transmit_device_packets(&mut self, transmit_request: PacketTransmitRequestPacket) {

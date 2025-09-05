@@ -41,8 +41,8 @@ impl ProbeCapture {
             let cancellation_token_local = cancellation_token.clone();
             let config_element_local = config_element.clone();
             let mut filter = format!("(host not {} and host not {})", server_host, bind_ip);
-            if let Some(f) = &config_element_local.bpf_filter {
-                filter.push_str(&format!(" and {}", f));
+            if let Some(f) = &config_element_local.bpf_filter && !f.is_empty() {
+                    filter.push_str(&format!(" and {}", f));
             }
             let handle = join_set.spawn_blocking({
                 move || {

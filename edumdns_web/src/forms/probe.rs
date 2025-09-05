@@ -32,7 +32,6 @@ impl From<ProbeQuery> for SelectManyProbes {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ProbeConfigForm {
     pub interface: String,
-    // Option is easiest to handle blank filters (treat empty as None)
     #[serde(default)]
     pub filter: Option<String>,
 }

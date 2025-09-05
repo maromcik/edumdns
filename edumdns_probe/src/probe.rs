@@ -30,6 +30,8 @@ impl ProbeCapture {
     pub async fn start_captures(
         &self,
         join_set: &mut JoinSet<Result<(), ProbeError>>,
+        bind_ip: &str,
+        server_host: &str,
         cancellation_token: CancellationToken,
     ) -> Result<HashSet<Id>, ProbeError> {
         let mut handles = HashSet::new();
@@ -38,11 +40,15 @@ impl ProbeCapture {
             let probe_metadata_local = self.probe_metadata.clone();
             let cancellation_token_local = cancellation_token.clone();
             let config_element_local = config_element.clone();
+            let mut filter = format!("(host not {} and host not {})", server_host, bind_ip);
+            if let Some(f) = &config_element_local.bpf_filter {
+                filter.push_str(&format!(" and {}", f));
+            }
             let handle = join_set.spawn_blocking({
-                || {
+                move || {
                     let capture = PacketCaptureGeneric::<Active>::open_device_capture(
                         config_element_local.interface_name.as_str(),
-                        config_element_local.bpf_filter.as_deref(),
+                        Some(filter.as_str()),
                     )?;
                     capture_and_transmit(
                         capture,

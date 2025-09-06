@@ -1,9 +1,9 @@
-FROM rust:1.89 as base
+FROM rust:1.88 as base
 
 RUN apt-get update
-RUN apt-get install -y postgresql-client zip build-essential autoconf libtool pkg-config libgexiv2-dev
+RUN apt-get install -y postgresql-client zip build-essential autoconf libtool pkg-config libpq-dev libpcap-dev libssl-dev
 
-RUN cargo install cargo-chef --version 0.1.89
+RUN cargo install cargo-chef --version 0.1.72
 
 
 FROM base AS planner

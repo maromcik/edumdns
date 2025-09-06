@@ -8,36 +8,20 @@ edumdns_core = { path = "../edumdns_core" }
 edumdns_db = { path = "../edumdns_db" }
 actix-files = { version = "0.6.7" }
 actix-web = { version = "4.11.0" }
-chrono = { version = "0.4.40", features = ["serde"] }
-dotenv = "0.15.0"
 dotenvy = "0.15.7"
-futures = "0.3.31"
-hmac = "0.13.0-pre.4"
 log = "0.4.27"
 serde = { version = "1.0.219", features = ["derive"] }
 diesel-async = { version = "0.5.2" , features = ["tokio-postgres", "postgres", "deadpool"]}
 thiserror = "2.0.12"
 uuid = { version = "1.11.0", features = ["v4"] }
-pbkdf2 = { version = "0.12.2", features = ["simple"] }
-rand_core = { version = "0.6.4", features = ["std"] }
 actix-identity = "0.8.0"
 actix-session = { version = "0.10.1", features = ["cookie-session"]}
 actix-cors = "0.7.0"
 actix-multipart = "0.7.2"
 actix-ws = "0.3.0"
-futures-util = "0.3.31"
-lazy_static = "1.5.0"
-image = "0.25.5"
-rayon = "1.10.0"
-rexiv2 = "0.10.0"
 minijinja = { version = "2.12.0", features = ["default", "loader", "deserialization"] }
 minijinja-autoreload = "2.12.0"
 itertools = "0.14.0"
-markdown = "1.0.0-alpha.21"
-lettre = { version = "0.11.11", features = ["tokio1-native-tls"] }
 tokio = {version = "1.47.1", features = ["full"] }
 ipnetwork = "0.21.1"
 strum = "0.27.2"
-strum_macros = "0.27.2"
-serde_qs = { version = "0.15.0", features = ["actix-web4"] }
-actix_web_openidconnect = "0.2.0"

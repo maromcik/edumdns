@@ -188,6 +188,7 @@ impl PgGroupRepository {
                     .and(group_user::group_id.eq(exclude_group_id))),
             )
             .filter(group_user::user_id.is_null())
+            .limit(20)
             .select(User::as_select())
             .load::<User>(&mut conn)
             .await?;

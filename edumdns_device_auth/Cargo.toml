@@ -1,9 +1,0 @@
-[package]
-name = "edumdns_device_auth"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-edumdns_core = { path = "../edumdns_core" }
-edumdns_db = { path = "../edumdns_db" }
-ipnetwork = "0.21.1"

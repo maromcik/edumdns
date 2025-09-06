@@ -19,6 +19,8 @@ use pnet::packet::udp::{ipv4_checksum as ipv4_checksum_udp, ipv6_checksum as ipv
 use pnet::packet::vlan::MutableVlanPacket;
 use pnet::packet::{MutablePacket, Packet};
 use std::net::{Ipv4Addr, Ipv6Addr};
+use hickory_proto::rr::RData;
+use log::error;
 
 pub trait FixablePacket {
     fn fix(&mut self, payload_len: Option<usize>);
@@ -617,7 +619,16 @@ impl<'a> ApplicationPacket<'a> {
 
     pub fn read_content(&mut self) -> String {
         match self.application_packet_type {
-            ApplicationPacketType::DnsPacket(ref mut packet) => packet.to_string(),
+            ApplicationPacketType::DnsPacket(ref mut packet) => {
+                // for answer in packet.answers_mut() {
+                //     if answer.data().is_a() {
+                //         answer.set_data(RData::A(hickory_proto::rr::rdata::a::A::new(1, 1,1,1)));
+                //         error!("{:?}", answer.data());
+                //     }
+                //
+                // }
+                packet.to_string()
+            },
             ApplicationPacketType::Other(packet) => String::from_utf8_lossy(packet).to_string(),
         }
     }

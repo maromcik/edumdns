@@ -1242,15 +1242,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "edumdns_device_auth"
-version = "0.1.0"
-dependencies = [
- "edumdns_core",
- "edumdns_db",
- "ipnetwork 0.21.1",
-]
-
-[[package]]
 name = "edumdns_probe"
 version = "0.1.0"
 dependencies = [

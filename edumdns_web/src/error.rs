@@ -5,9 +5,7 @@ use actix_web::http::header::ContentType;
 use actix_web::{HttpResponse, ResponseError};
 use edumdns_core::error::CoreError;
 use edumdns_db::error::{BackendErrorKind, DbError, DbErrorKind};
-use image::ImageError;
 use minijinja::{Environment, path_loader};
-use rexiv2::Rexiv2Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::Error;
 use std::num::ParseIntError;
@@ -122,39 +120,10 @@ impl From<actix_session::SessionInsertError> for WebError {
     }
 }
 
-impl From<lettre::error::Error> for WebError {
-    fn from(value: lettre::error::Error) -> Self {
-        Self::new(WebErrorKind::EmailError, value.to_string().as_str())
-    }
-}
-
-impl From<lettre::address::AddressError> for WebError {
-    fn from(value: lettre::address::AddressError) -> Self {
-        Self::new(WebErrorKind::EmailAddressError, value.to_string().as_str())
-    }
-}
-
-impl From<lettre::transport::smtp::Error> for WebError {
-    fn from(value: lettre::transport::smtp::Error) -> Self {
-        Self::new(WebErrorKind::EmailError, value.to_string().as_str())
-    }
-}
 
 impl From<minijinja::Error> for WebError {
     fn from(value: minijinja::Error) -> Self {
         Self::new(WebErrorKind::TemplatingError, value.to_string().as_str())
-    }
-}
-
-impl From<Rexiv2Error> for WebError {
-    fn from(value: Rexiv2Error) -> Self {
-        Self::new(WebErrorKind::FileError, value.to_string().as_str())
-    }
-}
-
-impl From<image::ImageError> for WebError {
-    fn from(value: ImageError) -> Self {
-        Self::new(WebErrorKind::FileError, value.to_string().as_str())
     }
 }
 

@@ -65,6 +65,16 @@ impl PgPacketRepository {
         }
         query
     }
+    
+    pub async fn get_packet_count(&self, mut params: SelectManyPackets) -> DbResultSingle<i64> {
+        let mut conn = self.pg_pool.get().await?;
+        params.pagination = None;
+        Self::build_select_many_query(&params)
+            .count()
+            .get_result(&mut conn)
+            .await
+            .map_err(DbError::from)
+    }
 }
 
 impl DbReadOne<SelectSinglePacket, Packet> for PgPacketRepository {

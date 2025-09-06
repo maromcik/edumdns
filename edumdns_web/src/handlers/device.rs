@@ -13,12 +13,13 @@ use edumdns_core::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
 use edumdns_core::error::CoreError;
-use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination};
+use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination, PAGINATION_ELEMENTS_PER_PAGE};
 use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices, UpdateDevice};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use std::collections::HashMap;
+use crate::templates::PageInfo;
 
 #[get("")]
 pub async fn get_devices(
@@ -30,9 +31,11 @@ pub async fn get_devices(
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
+    let page = query.page.unwrap_or(1);
+    let query = SelectManyDevices::from(query.into_inner());
     let devices = device_repo
         .read_many_auth(
-            &SelectManyDevices::from(query.into_inner()),
+            &query,
             &parse_user_id(&i)?,
         )
         .await?;
@@ -42,6 +45,9 @@ pub async fn get_devices(
         .map(|(p, d)| (p, DeviceDisplay::from(d)))
         .collect();
 
+    let device_count = device_repo.get_device_count(query).await?;
+    let total_pages = (device_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
+    
     let template_name = get_template_name(&request, "device");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
@@ -50,6 +56,7 @@ pub async fn get_devices(
         permissions: devices.permissions,
         devices: devices_parsed,
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
+        page_info: PageInfo::new(page, total_pages),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -70,18 +77,19 @@ pub async fn get_device(
     let device = device_repo
         .read_one_auth(&path.0, &parse_user_id(&i)?)
         .await?;
-
+    let page = query.page.unwrap_or(1);
+    let query = SelectManyPackets::new(
+        Some(device.data.probe_id),
+        Some(device.data.mac),
+        query.dst_mac.map(|mac|mac.to_octets()),
+        Some(device.data.ip),
+        query.dst_addr,
+        query.src_port,
+        query.dst_port,
+        Some(Pagination::default_pagination(query.page)),
+    );
     let packets = packet_repo
-        .read_many(&SelectManyPackets::new(
-            Some(device.data.probe_id),
-            Some(device.data.mac),
-            None,
-            Some(device.data.ip),
-            None,
-            None,
-            None,
-            Some(Pagination::default_pagination(query.page)),
-        ))
+        .read_many(&query)
         .await?
         .into_iter()
         .map(PacketDisplay::from)
@@ -92,6 +100,9 @@ pub async fn get_device(
         .read_packet_transmit_requests(&device.data.id)
         .await?;
 
+    let packet_count = packet_repo.get_packet_count(query).await?;
+    let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
+    
     let template_name = get_template_name(&request, "device/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
@@ -102,6 +113,7 @@ pub async fn get_device(
         packets,
         packet_transmit_requests,
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
+        page_info: PageInfo::new(page, total_pages),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

@@ -75,4 +75,39 @@
         </div>
         {% endif %}
     </div>
+
+    {% if page_info.total_pages > 1 %}
+    <div class="flex justify-center items-center mt-6 space-x-2">
+
+        {# Previous button #}
+        {% if page_info.page > 1 %}
+        <a href="/probe?page={{ page_info.page - 1 }}"
+           class="px-3 py-1 rounded-md border border-base text-sm hover:bg-muted/20 transition-colors">
+            Prev
+        </a>
+        {% endif %}
+
+        {# Numbered pages #}
+        {% for p in range(1, page_info.total_pages + 1) %}
+        {% if p == page_info.page %}
+        <span class="px-3 py-1 rounded-md bg-primary text-white text-sm">{{ p }}</span>
+        {% else %}
+        <a href="/probe?page={{ p }}"
+           class="px-3 py-1 rounded-md border border-base text-sm hover:bg-muted/20 transition-colors">
+            {{ p }}
+        </a>
+        {% endif %}
+        {% endfor %}
+
+        {# Next button #}
+        {% if page_info.page < page_info.total_pages %}
+        <a href="/probe?page={{ page_info.page + 1 }}"
+           class="px-3 py-1 rounded-md border border-base text-sm hover:bg-muted/20 transition-colors">
+            Next
+        </a>
+        {% endif %}
+
+    </div>
+    {% endif %}
+
 </div>

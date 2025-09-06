@@ -1,12 +1,15 @@
 use edumdns_db::repositories::common::{Id, Permissions};
 use edumdns_db::repositories::packet::models::PacketDisplay;
 use serde::Serialize;
+use crate::templates::PageInfo;
+
 #[derive(Serialize)]
 pub struct PacketTemplate<'a> {
     pub logged_in: bool,
     pub is_admin: bool,
     pub permissions: Permissions,
     pub packets: &'a Vec<PacketDisplay>,
+    pub page_info: PageInfo,
 }
 
 #[derive(Serialize)]

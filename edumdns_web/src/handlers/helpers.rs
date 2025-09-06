@@ -1,6 +1,6 @@
 use crate::authorized;
 use crate::error::{WebError, WebErrorKind};
-use crate::forms::device::DevicePacketTransmitRequest;
+use crate::forms::device::{DevicePacketTransmitRequest, DeviceQuery};
 use crate::handlers::utilities::is_htmx;
 use crate::templates::probe::ProbeDetailTemplate;
 use crate::utils::AppState;
@@ -14,9 +14,9 @@ use edumdns_core::app_packet::{
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
 use edumdns_db::models::{Device, Group};
-use edumdns_db::repositories::common::DbCreate;
+use edumdns_db::repositories::common::{DbCreate, PAGINATION_ELEMENTS_PER_PAGE};
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Permission};
-use edumdns_db::repositories::device::models::{CreatePacketTransmitRequest, DeviceDisplay};
+use edumdns_db::repositories::device::models::{CreatePacketTransmitRequest, DeviceDisplay, SelectManyDevices};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::group::models::SelectManyGroups;
 use edumdns_db::repositories::group::repository::PgGroupRepository;
@@ -27,6 +27,7 @@ use log::warn;
 use std::collections::HashSet;
 use strum::IntoEnumIterator;
 use tokio::sync::mpsc::Sender;
+use crate::templates::PageInfo;
 
 pub fn get_template_name(request: &HttpRequest, path: &str) -> String {
     if is_htmx(request) {
@@ -125,13 +126,15 @@ pub async fn get_probe_helper(
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
     group_repo: web::Data<PgGroupRepository>,
+    device_repo: web::Data<PgDeviceRepository>,
     state: web::Data<AppState>,
     path: web::Path<(uuid::Uuid,)>,
+    query: web::Query<DeviceQuery>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let probe_id = path.0;
-
+    let page = query.page.unwrap_or(1);
     let probe = probe_repo
         .read_one_auth(&probe_id, &parse_user_id(&i)?)
         .await?;
@@ -158,7 +161,13 @@ pub async fn get_probe_helper(
             )
         })
         .collect::<Vec<(Vec<(Permission, bool)>, Group)>>();
-
+    
+    let mut query = SelectManyDevices::from(query.into_inner());
+    query.probe_id = Some(probe_id);
+    let devices = device_repo.read_many(&query).await?;
+    let device_count = device_repo.get_device_count(query).await?;
+    let total_pages = (device_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
+    
     let template_name = get_template_name(&request, "probe/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
@@ -168,9 +177,10 @@ pub async fn get_probe_helper(
         permissions: probe.permissions,
         permission_matrix: matrix,
         probe: ProbeDisplay::from(probe.data.0),
-        devices: probe.data.1.into_iter().map(DeviceDisplay::from).collect(),
-        configs: probe.data.2,
+        devices: devices.into_iter().map(|d| DeviceDisplay::from(d.1)).collect(),
+        configs: probe.data.1,
         admin: probe.admin,
+        page_info: PageInfo::new(page, total_pages),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

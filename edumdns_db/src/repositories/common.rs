@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use strum_macros::EnumIter;
 
-const PAGINATION_ELEMENTS_PER_PAGE: i64 = 20;
+pub const PAGINATION_ELEMENTS_PER_PAGE: i64 = 20;
 
 pub type Id = i64;
 pub type Permissions = Vec<GroupProbePermission>;

@@ -22,7 +22,7 @@ impl SelectManyDevices {
         mac: Option<[u8; 6]>,
         ip: Option<IpNetwork>,
         port: Option<i32>,
-        name: Option<String>,
+        name: Option<&String>,
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
@@ -30,7 +30,7 @@ impl SelectManyDevices {
             mac,
             ip,
             port,
-            name,
+            name: name.map(|s| s.to_string()),
             pagination,
         }
     }

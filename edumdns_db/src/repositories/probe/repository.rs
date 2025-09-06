@@ -65,11 +65,11 @@ impl PgProbeRepository {
     }
 }
 
-impl DbReadOne<Uuid, (Probe, Vec<Device>, Vec<ProbeConfig>)> for PgProbeRepository {
+impl DbReadOne<Uuid, (Probe, Vec<ProbeConfig>)> for PgProbeRepository {
     async fn read_one(
         &self,
         params: &Uuid,
-    ) -> DbResultSingle<(Probe, Vec<Device>, Vec<ProbeConfig>)> {
+    ) -> DbResultSingle<(Probe, Vec<ProbeConfig>)> {
         let mut conn = self.pg_pool.get().await?;
         let probe_data = probe::table
             .find(params)
@@ -77,18 +77,14 @@ impl DbReadOne<Uuid, (Probe, Vec<Device>, Vec<ProbeConfig>)> for PgProbeReposito
             .first(&mut conn)
             .await?;
         let configs = self.get_probe_configs_no_auth(params).await?;
-        let devices = Device::belonging_to(&probe_data)
-            .select(Device::as_select())
-            .load(&mut conn)
-            .await?;
-        Ok((probe_data, devices, configs))
+        Ok((probe_data, configs))
     }
 
     async fn read_one_auth(
         &self,
         params: &Uuid,
         user_id: &Id,
-    ) -> DbResultSinglePerm<(Probe, Vec<Device>, Vec<ProbeConfig>)> {
+    ) -> DbResultSinglePerm<(Probe, Vec<ProbeConfig>)> {
         let permissions =
             validate_permissions(&self.pg_pool, user_id, params, Permission::Read).await?;
         let data = self.read_one(params).await?;
@@ -188,6 +184,16 @@ impl DbDelete<Uuid, Probe> for PgProbeRepository {
 }
 
 impl PgProbeRepository {
+    pub async fn get_probe_count(&self, mut params: SelectManyProbes) -> DbResultSingle<i64> {
+        let mut conn = self.pg_pool.get().await?;
+        params.pagination = None;
+        Self::build_select_many_query(&params)
+            .count()
+            .get_result(&mut conn)
+            .await
+            .map_err(DbError::from)
+    }
+    
     pub async fn forget(&self, params: &Uuid, user_id: &Id) -> DbResult<()> {
         let mut conn = self.pg_pool.get().await?;
         validate_permissions(&self.pg_pool, user_id, params, Permission::Forget).await?;

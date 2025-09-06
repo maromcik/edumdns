@@ -65,6 +65,7 @@ pub fn configure_webapp(
     let probe_scope = web::scope("probe")
         .app_data(web::Data::new(probe_repo.clone()))
         .app_data(web::Data::new(group_repo.clone()))
+        .app_data(web::Data::new(device_repo.clone()))
         .service(get_probes)
         .service(get_probe)
         .service(forget)

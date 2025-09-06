@@ -79,6 +79,16 @@ impl PgDeviceRepository {
             .await
             .map_err(DbError::from)
     }
+
+    pub async fn get_device_count(&self, mut params: SelectManyDevices) -> DbResultSingle<i64> {
+        let mut conn = self.pg_pool.get().await?;
+        params.pagination = None;
+        Self::build_select_many_query(&params)
+            .count()
+            .get_result(&mut conn)
+            .await
+            .map_err(DbError::from)
+    }
 }
 
 impl DbReadOne<Id, Device> for PgDeviceRepository {

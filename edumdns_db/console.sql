@@ -15,4 +15,4 @@ WHERE (
     ) ;
 
 select count (*) from packet;
-select count (*) from device;
+select count (*) from device where probe_id = '019911f9-2fa9-7469-942e-d0269c439a3b';

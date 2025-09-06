@@ -1,3 +1,4 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-6">
 <!-- Header -->
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-4xl font-semibold text-sat-xl">Probe {%if probe.name is none %}{{ probe.id[:13] }}...{% else %}
@@ -445,7 +446,7 @@
             {% if permissions|has_perm("Delete") %}
             <td class="px-4 py-3 text-sm text-sat-l">
                 <button
-                        hx-delete="/device/{{ device.id }}/delete?return_url=/probe/{{ probe.id }}"
+                        hx-delete="/device/{{ device.id }}/delete?return_url=/probe/{{ probe.id }}?page={{ page_info.page }}"
                         hx-target="#probe-content-area"
                         hx-target-error="#probe-content-area"
                         hx-push-url="/probe/{{ probe.id }}"
@@ -470,3 +471,81 @@
     {% endif %}
 </div>
 
+
+{% if page_info.total_pages > 1 %}
+<div class="flex justify-center items-center mt-6 space-x-2">
+    {# Previous button #}
+    {% if page_info.page > 1 %}
+    <button hx-get="/probe/{{ probe.id }}?page={{ page_info.page - 1 }}"
+       hx-target="#probe-content-area"
+       hx-target-error="#probe-content-area"
+       hx-push-url="/probe/{{ probe.id }}?page={{ page_info.page - 1 }}"
+       class="px-3 py-1 rounded-md border border-base text-acc text-sm hover:bg-muted/20 transition-colors">
+        Prev
+    </button>
+    {% endif %}
+
+    {# Display the first page #}
+    {% if page_info.page > 4 %}
+    <button hx-get="/probe/{{ probe.id }}?page=1"
+       hx-target="#probe-content-area"
+       hx-target-error="#probe-content-area"
+       hx-push-url="/probe/{{ probe.id }}?page=1"
+       class="px-3 py-1 rounded-md border border-base text-acc text-sm hover:bg-muted/20 transition-colors">
+        1
+    </button>
+    {% endif %}
+
+    {# Display the '...' if needed #}
+    {% if page_info.page > 4 %}
+    <span class="px-3 py-1 rounded-md border border-base text-sm">...</span>
+    {% endif %}
+
+    {# Numbered pages #}
+    {% for p in [page_info.page - 2, page_info.page - 1, page_info.page, page_info.page + 1, page_info.page + 2] %}
+    {% if 1 <= p and p <= page_info.total_pages %}
+    {% if p == page_info.page %}
+    <span class="px-3 py-1 rounded-md bg-primary text-white text-sm">{{ p }}</span>
+    {% else %}
+    <button hx-get="/probe/{{ probe.id }}?page={{ p }}"
+       hx-target="#probe-content-area"
+       hx-target-error="#probe-content-area"
+       hx-push-url="/probe/{{ probe.id }}?page={{ p }}"
+       class="px-3 py-1 rounded-md border border-base text-sm text-acc hover:bg-muted/20 transition-colors">
+        {{ p }}
+    </button>
+    {% endif %}
+    {% endif %}
+    {% endfor %}
+
+    {# Display the '...' if needed #}
+    {% if page_info.page < page_info.total_pages - 3 %}
+    <span class="px-3 py-1 rounded-md border border-base text-sm">...</span>
+    {% endif %}
+
+    {# Display the last page #}
+    {% if page_info.page < page_info.total_pages - 2 %}
+    <button hx-get="/probe/{{ probe.id }}?page={{ page_info.total_pages }}"
+       hx-target="#probe-content-area"
+       hx-target-error="#probe-content-area"
+       hx-push-url="/probe/{{ probe.id }}?page={{ page_info.total_pages }}"
+       class="px-3 py-1 rounded-md border border-base text-acc text-sm hover:bg-muted/20 transition-colors">
+        {{ page_info.total_pages }}
+    </button>
+    {% endif %}
+
+    {# Next button #}
+    {% if page_info.page < page_info.total_pages %}
+    <button hx-get="/probe/{{ probe.id }}?page={{ page_info.page + 1 }}"
+       hx-target="#probe-content-area"
+       hx-target-error="#probe-content-area"
+       hx-push-url="/probe/{{ probe.id }}?page={{ page_info.page + 1 }}"
+       class="px-3 py-1 rounded-md border border-base text-acc text-sm hover:bg-muted/20 transition-colors">
+        Next
+    </button>
+    {% endif %}
+</div>
+{% endif %}
+
+
+</div>

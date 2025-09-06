@@ -14,7 +14,7 @@ use actix_ws::AggregatedMessage;
 use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket};
 use edumdns_core::error::CoreError;
 use edumdns_db::models::{Location, Probe};
-use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbUpdate, Id, Pagination};
+use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbUpdate, Id, Pagination, PAGINATION_ELEMENTS_PER_PAGE};
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::probe::models::{
     AlterProbePermission, CreateProbeConfig, ProbeDisplay, SelectManyProbes,
@@ -27,6 +27,9 @@ use log::{debug, warn};
 use std::collections::{HashMap, HashSet};
 use tokio::sync::mpsc;
 use uuid::{Timestamp, Uuid};
+use edumdns_db::repositories::device::repository::PgDeviceRepository;
+use crate::forms::device::DeviceQuery;
+use crate::templates::PageInfo;
 
 #[get("")]
 pub async fn get_probes(
@@ -38,6 +41,7 @@ pub async fn get_probes(
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
+    let page = query.page.unwrap_or(1);
 
     let not_adopted_probes = probe_repo
         .read_many(&SelectManyProbes::new(
@@ -51,9 +55,10 @@ pub async fn get_probes(
         ))
         .await?;
 
+    let query = SelectManyProbes::from(query.into_inner());
     let probes = probe_repo
         .read_many_auth(
-            &SelectManyProbes::from(query.into_inner()),
+            &query,
             &parse_user_id(&i)?,
         )
         .await?;
@@ -71,6 +76,9 @@ pub async fn get_probes(
         .map(|(l, p)| (l, ProbeDisplay::from(p)))
         .collect();
 
+    let probe_count = probe_repo.get_probe_count(query).await?;
+    let total_pages = (probe_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
+
     let template_name = get_template_name(&request, "probe");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
@@ -79,6 +87,7 @@ pub async fn get_probes(
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
         permissions: probes.permissions,
         probes: probes_parsed,
+        page_info: PageInfo::new(page, total_pages),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -90,12 +99,14 @@ pub async fn get_probe(
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
     group_repo: web::Data<PgGroupRepository>,
+    device_repo: web::Data<PgDeviceRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
+    query: web::Query<DeviceQuery>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     get_probe_helper(
-        request, identity, probe_repo, group_repo, state, path, session,
+        request, identity, probe_repo, group_repo, device_repo, state, path, query, session,
     )
     .await
 }
@@ -137,10 +148,8 @@ pub async fn restart(
     request: HttpRequest,
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
-    group_repo: web::Data<PgGroupRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
-    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     probe_repo
@@ -148,16 +157,9 @@ pub async fn restart(
         .await?;
 
     reconnect_probe(state.command_channel.clone(), path.0).await?;
-    get_probe_helper(
-        request,
-        Some(i),
-        probe_repo,
-        group_repo,
-        state,
-        path,
-        session,
-    )
-    .await
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/probe/{}", path.0)))
+        .finish())
 }
 
 #[post("{probe_id}/config")]

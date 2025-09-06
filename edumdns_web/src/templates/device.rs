@@ -3,12 +3,15 @@ use edumdns_db::repositories::common::Permissions;
 use edumdns_db::repositories::device::models::DeviceDisplay;
 use edumdns_db::repositories::packet::models::PacketDisplay;
 use serde::Serialize;
+use crate::templates::PageInfo;
+
 #[derive(Serialize)]
 pub struct DeviceTemplate {
     pub logged_in: bool,
     pub is_admin: bool,
     pub permissions: Permissions,
     pub devices: Vec<(Probe, DeviceDisplay)>,
+    pub page_info: PageInfo,
 }
 
 #[derive(Serialize)]
@@ -19,6 +22,7 @@ pub struct DeviceDetailTemplate {
     pub device: DeviceDisplay,
     pub packets: Vec<PacketDisplay>,
     pub packet_transmit_requests: Vec<PacketTransmitRequest>,
+    pub page_info: PageInfo,
 }
 
 #[derive(Serialize)]

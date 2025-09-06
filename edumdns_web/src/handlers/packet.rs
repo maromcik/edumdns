@@ -8,12 +8,13 @@ use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::{HttpRequest, HttpResponse, delete, get, web};
-use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, Id};
+use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, Id, PAGINATION_ELEMENTS_PER_PAGE};
 use edumdns_db::repositories::device::models::SelectSingleDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use std::collections::HashMap;
+use crate::templates::PageInfo;
 
 #[get("")]
 pub async fn get_packets(
@@ -25,12 +26,16 @@ pub async fn get_packets(
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
+    let page = query.page.unwrap_or(1);
+    let query = SelectManyPackets::from(query.into_inner());
     let packets = packet_repo
         .read_many_auth(
-            &SelectManyPackets::from(query.into_inner()),
+            &query,
             &parse_user_id(&i)?,
         )
         .await?;
+    let packet_count = packet_repo.get_packet_count(query).await?;
+    let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
     let packets_parsed = packets
         .data
         .into_iter()
@@ -46,6 +51,7 @@ pub async fn get_packets(
         permissions: packets.permissions,
         packets: &packets_parsed,
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
+        page_info: PageInfo::new(page, total_pages),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

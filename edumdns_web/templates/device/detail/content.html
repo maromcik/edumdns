@@ -291,7 +291,7 @@
           {% if permissions|has_perm("Delete") %}
           <td class="px-4 py-3 text-sm text-sat-l">
             <button
-                    hx-delete="/packet/{{ packet.id }}/delete?return_url=/device/{{ device.id }}"
+                    hx-delete="/packet/{{ packet.id }}/delete?return_url=/device/{{ device.id }}?page={{ page_info.page }}"
                     hx-target="#content-area"
                     hx-target-error="#content-area"
                     hx-push-url="/packet"
@@ -314,4 +314,80 @@
     </div>
     {% endif %}
   </div>
+
+  {% if page_info.total_pages > 1 %}
+  <div class="flex justify-center items-center mt-6 space-x-2">
+    {# Previous button #}
+    {% if page_info.page > 1 %}
+    <button hx-get="/device/{{ device.id }}?page={{ page_info.page - 1 }}"
+       hx-target="#content-area"
+       hx-target-error="#content-area"
+       hx-push-url="/device/{{ device.id }}?page={{ page_info.page - 1 }}"
+       class="px-3 py-1 rounded-md border border-base text-acc text-sm hover:bg-muted/20 transition-colors">
+      Prev
+    </button>
+    {% endif %}
+
+    {# Display the first page #}
+    {% if page_info.page > 4 %}
+    <button hx-get="/device/{{ device.id }}?page=1"
+       hx-target="#content-area"
+       hx-target-error="#content-area"
+       hx-push-url="/device/{{ device.id }}?page=1"
+       class="px-3 py-1 rounded-md border text-acc border-base text-sm hover:bg-muted/20 transition-colors">
+      1
+    </button>
+    {% endif %}
+
+    {# Display the '...' if needed #}
+    {% if page_info.page > 4 %}
+    <span class="px-3 py-1 rounded-md border border-base text-sm">...</span>
+    {% endif %}
+
+    {# Numbered pages #}
+    {% for p in [page_info.page - 2, page_info.page - 1, page_info.page, page_info.page + 1, page_info.page + 2] %}
+    {% if 1 <= p and p <= page_info.total_pages %}
+    {% if p == page_info.page %}
+    <span class="px-3 py-1 rounded-md bg-primary text-white text-sm">{{ p }}</span>
+    {% else %}
+    <button hx-get="/device/{{ device.id }}?page={{ p }}"
+       hx-target="#content-area"
+       hx-target-error="#content-area"
+       hx-push-url="/device/{{ device.id }}?page={{ p }}"
+       class="px-3 py-1 rounded-md border border-base text-sm text-acc hover:bg-muted/20 transition-colors">
+      {{ p }}
+    </button>
+    {% endif %}
+    {% endif %}
+    {% endfor %}
+
+    {# Display the '...' if needed #}
+    {% if page_info.page < page_info.total_pages - 3 %}
+    <span class="px-3 py-1 rounded-md border border-base text-sm">...</span>
+    {% endif %}
+
+    {# Display the last page #}
+    {% if page_info.page < page_info.total_pages - 2 %}
+    <button hx-get="/device/{{ device.id }}?page={{ page_info.total_pages }}"
+       hx-target="#content-area"
+       hx-target-error="#content-area"
+       hx-push-url="/device/{{ device.id }}?page={{ page_info.total_pages }}"
+       class="px-3 py-1 rounded-md border border-base text-sm text-acc hover:bg-muted/20 transition-colors">
+      {{ page_info.total_pages }}
+    </button>
+    {% endif %}
+
+    {# Next button #}
+    {% if page_info.page < page_info.total_pages %}
+    <button hx-get="/device/{{ device.id }}?page={{ page_info.page + 1 }}"
+       hx-target="#content-area"
+       hx-target-error="#content-area"
+       hx-push-url="/device/{{ device.id }}?page={{ page_info.page + 1 }}"
+       class="px-3 py-1 rounded-md border border-base text-sm text-acc hover:bg-muted/20 transition-colors">
+      Next
+    </button>
+    {% endif %}
+  </div>
+  {% endif %}
+
 </div>

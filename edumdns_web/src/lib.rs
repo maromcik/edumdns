@@ -62,7 +62,7 @@ pub async fn web_init(
     };
     let openid = ActixWebOpenId::builder(
         "c6827485-d58f-424a-af4e-ac07a7738002".to_string(),
-        "https://edumdns-dev.priv.ics.muni.cz/oidc/callback/".to_string(),
+        "http://edumdns-dev.priv.ics.muni.cz/oidc/callback/".to_string(),
         "https://id.muni.cz/oidc/".to_string(),
     )
         .client_secret("test_client_secret".to_string())

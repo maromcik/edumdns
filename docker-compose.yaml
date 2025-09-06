@@ -1,0 +1,32 @@
+services:
+  edumdns-db:
+    image: postgres:latest
+    container_name: edumdns-db
+    command: postgres -c 'max_connections=2000'
+    user: "0:0"
+    volumes:
+      - ./data/db:/var/lib/postgresql/data:z
+    environment:
+      - POSTGRES_DB=edumdns
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+  edumdns:
+    build: .
+    container_name: edumdns-app
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./.env-docker
+    depends_on:
+      - edumdns-db
+  edumdns-nginx:
+    build: ./nginx
+    container_name: edumdns-nginx
+    depends_on:
+      - edumdns
+    volumes:
+      - ./static/:/var/www/static:z
+      - ./media/:/var/www/media:z
+    ports:
+      - "8080:80"
+      - "8443:443"

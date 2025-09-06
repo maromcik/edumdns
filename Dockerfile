@@ -1,7 +1,7 @@
 FROM rust:1.88 as base
 
 RUN apt-get update
-RUN apt-get install -y postgresql-client zip build-essential autoconf libtool pkg-config libpq-dev libpcap-dev libssl-dev libpcap libpq libssl
+RUN apt-get install -y postgresql-client zip build-essential autoconf libtool pkg-config libpq-dev libpcap-dev libssl-dev
 
 RUN cargo install cargo-chef --version 0.1.72
 
@@ -28,7 +28,7 @@ RUN cargo build --release --bin edumdns
 
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update
-RUN apt-get install -y zip pkg-config libgexiv2-dev
+RUN apt-get install -y zip pkg-config libpq-dev libpcap-dev libssl-dev
 
 WORKDIR /usr/src/edumdns
 COPY --from=builder /usr/src/edumdns/target/release/edumdns /usr/local/bin

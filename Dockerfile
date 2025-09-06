@@ -1,7 +1,7 @@
 FROM rust:1.88 as base
 
 RUN apt-get update
-RUN apt-get install -y postgresql-client zip build-essential autoconf libtool pkg-config libpq-dev libpcap-dev libssl-dev
+RUN apt-get install -y postgresql-client zip build-essential autoconf libtool pkg-config libpq-dev libpcap-dev libssl-dev libpcap libpq libssl
 
 RUN cargo install cargo-chef --version 0.1.72
 

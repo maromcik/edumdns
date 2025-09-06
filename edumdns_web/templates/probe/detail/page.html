@@ -6,9 +6,10 @@
 </div>
 <div id="notifications" class="fixed bottom-4 right-4 flex flex-col gap-2 z-50"></div>
 <script>
-    console.log("Connecting to WebSocket...");
+    const locationProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    console.log(`Connecting to WebSocket ${locationProtocol}://${location.host}/probe/{{ probe.id }}/ws`);
     if (!window.probeWs) {
-        window.probeWs = new WebSocket(`ws://${location.host}/probe/{{ probe.id }}/ws`);
+        window.probeWs = new WebSocket(`${locationProtocol}://${location.host}/probe/{{ probe.id }}/ws`);
         window.probeWs.onmessage = (event) => {
             console.log("Update:", event.data);
 

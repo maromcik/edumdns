@@ -120,13 +120,11 @@ impl From<actix_session::SessionInsertError> for WebError {
     }
 }
 
-
 impl From<minijinja::Error> for WebError {
     fn from(value: minijinja::Error) -> Self {
         Self::new(WebErrorKind::TemplatingError, value.to_string().as_str())
     }
 }
-
 impl From<std::io::Error> for WebError {
     fn from(value: Error) -> Self {
         Self::new(WebErrorKind::FileError, value.to_string().as_str())

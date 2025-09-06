@@ -11,10 +11,14 @@ FROM base AS planner
 WORKDIR /usr/src/edumdns
 
 COPY ./.env ./.env
-COPY ./migrations ./migrations
-COPY ./src ./src
+COPY ./edumdns_core ./edumdns_core
+COPY ./edumdns_db ./edumdns_db
+COPY ./edumdns_server ./edumdns_server
+COPY ./edumdns_web/src ./edumdns_web/src
+COPY ./edumdns_web/Cargo.toml ./edumdns_web/Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
 COPY ./Cargo.toml ./Cargo.toml
+
 RUN cargo chef prepare --recipe-path recipe.json
 
 
@@ -28,9 +32,11 @@ COPY --from=planner /usr/src/edumdns/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY ./.env ./.env
-COPY ./.sqlx ./.sqlx
-COPY ./migrations ./migrations
-COPY ./src ./src
+COPY ./edumdns_core ./edumdns_core
+COPY ./edumdns_db ./edumdns_db
+COPY ./edumdns_server ./edumdns_server
+COPY ./edumdns_web/src ./edumdns_web/src
+COPY ./edumdns_web/Cargo.toml ./edumdns_web/Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
 COPY ./Cargo.toml ./Cargo.toml
 
@@ -44,10 +50,9 @@ RUN apt-get install -y zip pkg-config libgexiv2-dev
 WORKDIR /usr/src/edumdns
 COPY --from=builder /usr/src/edumdns/target/release/edumdns /usr/local/bin
 
-COPY ./static ./static
-COPY ./templates ./templates
-COPY ./media ./media
-COPY ./webroot ./webroot
+COPY ./edumdns_web/static ./edumdns_web/static
+COPY ./edumdns_web/templates ./edumdns_web/templates
+COPY ./edumdns_web/webroot ./edumdns_web/webroot
 
 EXPOSE 8000
 

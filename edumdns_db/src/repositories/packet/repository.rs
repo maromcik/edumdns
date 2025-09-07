@@ -12,7 +12,7 @@ use crate::schema;
 use crate::schema::packet::BoxedQuery;
 use crate::schema::{group_probe_permission, group_user, probe, user};
 use diesel::pg::Pg;
-use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
+use diesel::{ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -44,11 +44,11 @@ impl PgPacketRepository {
         }
 
         if let Some(q) = &params.src_addr {
-            query = query.filter(packet::src_addr.eq(q));
+            query = query.filter(packet::src_addr.is_contained_by_or_eq(q));
         }
 
         if let Some(q) = &params.dst_addr {
-            query = query.filter(packet::dst_addr.eq(q));
+            query = query.filter(packet::dst_addr.is_contained_by_or_eq(q));
         }
 
         if let Some(q) = &params.src_port {

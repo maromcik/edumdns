@@ -16,10 +16,7 @@ use crate::schema::probe::BoxedQuery;
 use crate::schema::user;
 use crate::schema::{location, probe_config};
 use diesel::pg::Pg;
-use diesel::{
-    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgTextExpressionMethods, QueryDsl,
-    SelectableHelper,
-};
+use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -47,7 +44,7 @@ impl PgProbeRepository {
         }
 
         if let Some(q) = &params.ip {
-            query = query.filter(probe::ip.eq(q));
+            query = query.filter(probe::ip.is_contained_by_or_eq(q));
         }
 
         if let Some(q) = &params.owner_id {

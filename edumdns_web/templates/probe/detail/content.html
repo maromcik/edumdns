@@ -392,6 +392,10 @@
             </th>
             <th scope="col"
                 class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                Name
+            </th>
+            <th scope="col"
+                class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
                 MAC
             </th>
             <th scope="col"
@@ -425,7 +429,13 @@
                     {{ device.id }}
                 </a>
             </td>
-
+            <td class="px-4 py-3 text-sm text-sat-l">
+                {% if device.name is not none %}
+                {{ device.name }}
+                {% else %}
+                <span class="text-muted-foreground">—</span>
+                {% endif %}
+            </td>
             <td class="px-4 py-3 text-sm text-sat-l">{{ device.mac }}</td>
             <td class="px-4 py-3 text-sm text-sat-l">{{ device.ip }}</td>
             <td class="px-4 py-3 text-sm text-sat-l">{{ device.port }}</td>

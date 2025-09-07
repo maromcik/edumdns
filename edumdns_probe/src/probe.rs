@@ -40,7 +40,7 @@ impl ProbeCapture {
             let probe_metadata_local = self.probe_metadata.clone();
             let cancellation_token_local = cancellation_token.clone();
             let config_element_local = config_element.clone();
-            let mut filter = format!("(host not {} and host not {})", server_host, bind_ip);
+            let mut filter = format!("(host not {})", server_host);
             if let Some(f) = &config_element_local.bpf_filter && !f.is_empty() {
                     filter.push_str(&format!(" and {}", f));
             }

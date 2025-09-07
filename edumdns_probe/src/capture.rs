@@ -36,7 +36,7 @@ where
 
     loop {
         if cancellation_token.is_cancelled() {
-            warn!("Probe capture for <{config_element}> cancelled");
+            warn!("Probe capture for {config_element} cancelled");
             return Ok(());
         }
         let cap_packet = match cap.next_packet() {

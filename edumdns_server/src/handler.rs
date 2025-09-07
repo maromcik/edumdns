@@ -104,6 +104,7 @@ impl PacketHandler {
                 LocalCommandPacket::ReconnectProbe(id) => {
                     if let Err(e) = self.send_reconnect(id).await {
                         error!("Could not reconnect probe: {}", e);
+                        self.probe_handles.write().await.remove(&id);
                         self.send_response_to_ws(id, ProbeResponse::new_error(e.to_string()))
                             .await;
                     }

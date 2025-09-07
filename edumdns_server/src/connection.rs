@@ -155,7 +155,6 @@ impl ConnectionManager {
                             match status {
                                 NetworkStatusPacket::PingRequest => {
                                     // TODO log time since last ping, threshold for considering a probe dead.
-
                                     self.handle
                                         .send_message_with_response(|tx| {
                                             TcpConnectionMessage::send_packet(

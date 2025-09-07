@@ -7,20 +7,61 @@
 <div id="notifications" class="fixed bottom-4 right-4 flex flex-col gap-2 z-50"></div>
 <script>
     const locationProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    console.log(`Connecting to WebSocket ${locationProtocol}://${location.host}/probe/{{ probe.id }}/ws`);
-    if (!window.probeWs) {
-        window.probeWs = new WebSocket(`${locationProtocol}://${location.host}/probe/{{ probe.id }}/ws`);
-        window.probeWs.onmessage = (event) => {
-            console.log("Update:", event.data);
+    const wsUrl = `${locationProtocol}://${location.host}/probe/{{ probe.id }}/ws`;
 
-            // Determine success/error from payload
+    function connectWebSocket() {
+        if (window.probeWs && window.probeWs.readyState === WebSocket.OPEN) {
+            return; // Already connected
+        }
+
+        console.log(`Connecting to WebSocket ${wsUrl}`);
+        const ws = new WebSocket(wsUrl);
+        window.probeWs = ws;
+
+        ws.onopen = () => {
+            console.log("WebSocket connected");
+        };
+
+        ws.onmessage = (event) => {
+            console.log("Update:", event.data);
             const msg = event.data;
             const isError = msg.startsWith("Error:");
             showNotification(msg, isError ? "error" : "success");
         };
+
+        ws.onclose = () => {
+            console.warn("WebSocket closed, retrying...");
+            // Retry after delay
+            setTimeout(connectWebSocket, 2000);
+        };
+
+        ws.onerror = (err) => {
+            console.error("WebSocket error:", err);
+            ws.close(); // Will trigger onclose → reconnect
+        };
     }
+
+    // Reconnect when page becomes visible again (unlock, tab focus, back nav)
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            connectWebSocket();
+        }
+    });
+
+    window.addEventListener("pageshow", (event) => {
+        if (event.persisted) {
+            // Page loaded from bfcache (back/forward nav)
+            connectWebSocket();
+        }
+    });
+
+    window.addEventListener("focus", () => {
+        connectWebSocket();
+    });
+
     window.addEventListener("beforeunload", () => {
         if (window.probeWs) {
+            window.probeWs.onclose = null; // Don’t trigger reconnect on unload
             window.probeWs.close();
             window.probeWs = null;
         }
@@ -35,23 +76,20 @@
 
         container.appendChild(notif);
 
-        // Let the DOM paint, then fade in
         requestAnimationFrame(() => {
             notif.classList.remove("hidden");
             notif.classList.add("show");
         });
 
-        // Keep visible for 10s
         const lifetime = 10000;
         setTimeout(() => {
             notif.classList.remove("show");
             notif.classList.add("hide");
-
-            notif.addEventListener("transitionend", () => notif.remove(), {once: true});
+            notif.addEventListener("transitionend", () => notif.remove(), { once: true });
         }, lifetime);
     }
 
-
+    // Initial connect
+    connectWebSocket();
 </script>
 {% endblock %}
-

@@ -4,19 +4,17 @@ use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
     DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission,
 };
-use crate::repositories::device::models::{
-    CreateDevice, CreatePacketTransmitRequest, SelectManyDevices, SelectSingleDevice, UpdateDevice,
-};
-use crate::repositories::utilities::validate_permissions;
+use crate::repositories::device::models::{CreateDevice, CreatePacketTransmitRequest, DeviceUpdatePassword, SelectManyDevices, SelectSingleDevice, UpdateDevice};
+use crate::repositories::utilities::{generate_salt, hash_password, validate_permissions};
 use crate::schema::device::BoxedQuery;
 use crate::schema::{
     device, group_probe_permission, group_user, packet, packet_transmit_request, probe, user,
 };
 use diesel::pg::Pg;
 use diesel::{ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl, SelectableHelper};
-use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
+use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 use std::collections::HashSet;
 
@@ -92,6 +90,33 @@ impl PgDeviceRepository {
             .get_result(&mut conn)
             .await
             .map_err(DbError::from)
+    }
+
+    pub async fn update_password(&self, params: &DeviceUpdatePassword) -> DbResultSingle<Device> {
+        let mut conn = self.pg_pool.get().await?;
+
+        let device = conn
+            .transaction::<_, DbError, _>(|c| {
+                async move {
+                    let d = device::table.find(&params.id).first::<Device>(c).await?;
+                    
+                    let salt = generate_salt();
+                    let password_hash = hash_password(params.new_password.clone(), &salt)?;
+
+                    diesel::update(&d)
+                        .set((
+                            device::acl_pwd_hash.eq(password_hash),
+                            device::acl_pwd_salt.eq(salt.to_string()),
+                        ))
+                        .execute(c)
+                        .await?;
+
+                    Ok::<Device, DbError>(d)
+                }
+                    .scope_boxed()
+            })
+            .await?;
+        Ok(device)
     }
 }
 

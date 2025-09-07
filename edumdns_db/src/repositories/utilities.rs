@@ -1,3 +1,5 @@
+use std::str::FromStr;
+use serde::{Deserialize, Deserializer};
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::{GroupProbePermission, User};
 use crate::repositories::common::{DbResult, Id, Permission};
@@ -10,6 +12,9 @@ use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 use std::ops::DerefMut;
+use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
+use pbkdf2::Pbkdf2;
+use rand_core::OsRng;
 use uuid::Uuid;
 
 pub async fn validate_permissions(
@@ -93,4 +98,38 @@ pub async fn validate_admin(pool: &Pool<AsyncPgConnection>, user_id: &Id) -> Res
             .scope_boxed()
         })
         .await
+}
+
+pub fn generate_salt() -> SaltString {
+    SaltString::generate(&mut OsRng)
+}
+
+pub fn hash_password(password: String, salt: &SaltString) -> Result<String, DbError> {
+    let password_hash = Pbkdf2.hash_password(password.as_bytes(), salt)?.to_string();
+    Ok(password_hash)
+}
+
+pub fn verify_password_hash(
+    expected_password_hash: &str,
+    password_candidate: &str,
+) -> Result<bool, DbError> {
+    let parsed_hash = PasswordHash::new(expected_password_hash)?;
+    let bytes = password_candidate.bytes().collect::<Vec<u8>>();
+    Ok(Pbkdf2.verify_password(&bytes, &parsed_hash).is_ok())
+}
+
+
+pub fn empty_string_is_none<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: FromStr,
+    <T as FromStr>::Err: std::fmt::Display,
+{
+    let opt = Option::<String>::deserialize(deserializer)?;
+    match opt {
+        Some(s) if s.trim() == "none" => Ok(None),
+        Some(s) if s.trim().is_empty() => Ok(None),
+        Some(s) => s.parse::<T>().map(Some).map_err(serde::de::Error::custom),
+        None => Ok(None),
+    }
 }

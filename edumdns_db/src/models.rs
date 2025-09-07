@@ -104,6 +104,7 @@ pub struct Device {
     pub interval: i64,
     pub acl_src_cidr: Option<ipnetwork::IpNetwork>,
     pub acl_pwd_hash: Option<String>,
+    pub acl_pwd_salt: Option<String>,
     pub acl_ap_hostname_regex: Option<String>,
 }
 

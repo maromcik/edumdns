@@ -12,31 +12,11 @@ use crate::repositories::user::models::{
 use crate::schema::user;
 use crate::schema::user::{admin, deleted_at, email, name, surname};
 use diesel::{ExpressionMethods, QueryDsl};
-use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
+use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
-use pbkdf2::Pbkdf2;
-use pbkdf2::password_hash::rand_core::OsRng;
-use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
-
-fn generate_salt() -> SaltString {
-    SaltString::generate(&mut OsRng)
-}
-
-fn hash_password(password: String, salt: &SaltString) -> Result<String, DbError> {
-    let password_hash = Pbkdf2.hash_password(password.as_bytes(), salt)?.to_string();
-    Ok(password_hash)
-}
-
-fn verify_password_hash(
-    expected_password_hash: &str,
-    password_candidate: &str,
-) -> Result<bool, DbError> {
-    let parsed_hash = PasswordHash::new(expected_password_hash)?;
-    let bytes = password_candidate.bytes().collect::<Vec<u8>>();
-    Ok(Pbkdf2.verify_password(&bytes, &parsed_hash).is_ok())
-}
+use crate::repositories::utilities::{generate_salt, hash_password, verify_password_hash};
 
 #[derive(Clone)]
 pub struct PgUserRepository {

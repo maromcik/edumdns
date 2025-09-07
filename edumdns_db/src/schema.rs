@@ -12,6 +12,7 @@ diesel::table! {
         interval -> Int8,
         acl_src_cidr -> Nullable<Cidr>,
         acl_pwd_hash -> Nullable<Text>,
+        acl_pwd_salt -> Nullable<Text>,
         acl_ap_hostname_regex -> Nullable<Text>,
     }
 }

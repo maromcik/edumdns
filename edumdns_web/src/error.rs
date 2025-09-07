@@ -46,6 +46,9 @@ pub enum WebErrorKind {
     ZipError,
     #[error("parse error")]
     ParseError,
+    #[error("device packet transmit request denied")]
+    DeviceTransmitRequestDenied
+
 }
 
 // impl From<askama::Error> for AppError {
@@ -158,10 +161,18 @@ impl From<actix_web::Error> for WebError {
     }
 }
 
+impl From<ipnetwork::IpNetworkError> for WebError {
+    fn from(value: ipnetwork::IpNetworkError) -> Self {
+        Self::new(WebErrorKind::ParseError, value.to_string().as_str())
+    }
+}
+
+
+
 impl ResponseError for WebError {
     fn status_code(&self) -> StatusCode {
         match self.error_kind {
-            WebErrorKind::BadRequest | WebErrorKind::EmailAddressError => StatusCode::BAD_REQUEST,
+            WebErrorKind::BadRequest | WebErrorKind::EmailAddressError | WebErrorKind::DeviceTransmitRequestDenied => StatusCode::BAD_REQUEST,
             WebErrorKind::NotFound => StatusCode::NOT_FOUND,
             WebErrorKind::Conflict => StatusCode::CONFLICT,
             WebErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
@@ -188,9 +199,7 @@ impl ResponseError for WebError {
         }
     }
 
-    fn error_response(&self) -> HttpResponse {
-        render_generic(self)
-    }
+    fn error_response(&self) -> HttpResponse { render_generic(self) }
 }
 
 fn render_generic(error: &WebError) -> HttpResponse {

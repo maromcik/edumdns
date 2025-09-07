@@ -1,6 +1,6 @@
 use crate::authorized;
 use crate::error::{WebError, WebErrorKind};
-use crate::forms::device::{DevicePacketTransmitRequest, DeviceQuery};
+use crate::forms::device::{DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest, DeviceQuery, UpdateDeviceForm};
 use crate::forms::packet::PacketQuery;
 use crate::handlers::helpers::{get_template_name, parse_user_id, request_packet_transmit_helper};
 use crate::templates::PageInfo;
@@ -22,6 +22,7 @@ use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use std::collections::HashMap;
+use edumdns_db::repositories::utilities::verify_password_hash;
 
 #[get("")]
 pub async fn get_devices(
@@ -126,12 +127,13 @@ pub async fn update_device(
     request: HttpRequest,
     identity: Option<Identity>,
     device_repo: web::Data<PgDeviceRepository>,
-    form: web::Form<UpdateDevice>,
+    form: web::Form<UpdateDeviceForm>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
-    device_repo.update_auth(&form, &parse_user_id(&i)?).await?;
+    let params = form.into_inner().to_db_params()?;
+    device_repo.update_auth(&params, &parse_user_id(&i)?).await?;
     Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}", form.id)))
+        .insert_header((LOCATION, format!("/device/{}", params.id)))
         .finish())
 }
 
@@ -165,7 +167,7 @@ pub async fn request_custom_packet_transmit(
     device_repo: web::Data<PgDeviceRepository>,
     path: web::Path<(Id,)>,
     state: web::Data<AppState>,
-    form: web::Form<DevicePacketTransmitRequest>,
+    form: web::Form<DeviceCustomPacketTransmitRequest>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let device = device_repo
@@ -238,6 +240,7 @@ pub async fn request_packet_transmit(
     device_repo: web::Data<PgDeviceRepository>,
     path: web::Path<(Id,)>,
     state: web::Data<AppState>,
+    form: web::Form<DevicePacketTransmitRequest>,
 ) -> Result<HttpResponse, WebError> {
     let _ = authorized!(identity, request.path());
     let device = device_repo.read_one(&path.0).await?;
@@ -251,7 +254,36 @@ pub async fn request_packet_transmit(
         "Could not determine target ip",
     ))?;
 
-    let form = DevicePacketTransmitRequest::new(target_ip, device.port as u16, false);
+    if let Some(acl_src_cidr) = device.acl_src_cidr {
+        let ip = target_ip.parse::<ipnetwork::IpNetwork>()?;
+        if !acl_src_cidr.contains(ip.ip()) {
+            return Err(WebError::new(
+                WebErrorKind::DeviceTransmitRequestDenied,
+                format!("Target IP is not allowed to request packets from this device. Allowed subnet is {acl_src_cidr}").as_str(),
+            ));
+        }
+    }
+
+    if let Some(acl_pwd_hash) = &device.acl_pwd_hash {
+        let Some(pwd) = &form.acl_pwd else {
+            return Err(WebError::new(
+                WebErrorKind::DeviceTransmitRequestDenied,
+                "ACL password is required to request packets from this device",
+            ));
+        };
+        if !verify_password_hash(acl_pwd_hash, pwd)? {
+            return Err(WebError::new(
+                WebErrorKind::DeviceTransmitRequestDenied,
+                "ACL password is incorrect",
+            ));
+        }
+    }
+
+    if let Some(acl_ap_hostname_regex) = &device.acl_ap_hostname_regex {
+        // TODO
+    }
+
+    let form = DeviceCustomPacketTransmitRequest::new(target_ip, device.port as u16, false);
     request_packet_transmit_helper(
         device_repo.clone(),
         &device,
@@ -275,6 +307,7 @@ pub async fn get_device_for_transmit(
 ) -> Result<HttpResponse, WebError> {
     let _ = authorized!(identity, request.path());
     let device = device_repo.read_one(&path.0).await?;
+
     let target_ip = request
         .connection_info()
         .realip_remote_addr()

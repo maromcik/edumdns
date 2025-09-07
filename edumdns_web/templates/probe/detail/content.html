@@ -106,7 +106,7 @@
             method="post"
             hx-post="/probe/update"
             hx-target="#probe-content-area"
-            hx-error-target="#probe-content-area"
+            hx-target-error="#probe-content-area"
             class="grid grid-cols-1 md:grid-cols-2 gap-4"
     >
         <input type="hidden" id="probe_id" name="id" value="{{ probe.id }}"/>
@@ -118,6 +118,7 @@
                     id="name"
                     name="name"
                     type="text"
+                    value="{{ probe.name }}"
                     placeholder="{{ probe.name }}"
                     class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
             />

@@ -80,13 +80,39 @@
             </table>
 
             <div class="mt-8">
-                <button
-                        type="button"
-                        class="inline-flex items-center rounded-md border border-base bg-acc px-6 py-3 text-lg font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                <!-- Conditional Form -->
+                <form
+                        method="post"
                         hx-post="/device/{{ device.id }}/transmit"
-                        hx-target="#content-area">
-                    Transmit to your device
-                </button>
+                        hx-target="#content-area"
+                        hx-target-error="#transmit-result"
+                        class="space-y-4 mb-6"
+                >
+                    {% if device.acl_pwd_hash is not none %}
+                    <div class="flex flex-col text-left">
+                        <label for="acl_pwd" class="text-xs uppercase tracking-wide text-sat-m mb-1">
+                            Password
+                        </label>
+                        <input
+                                id="acl_pwd"
+                                name="acl_pwd"
+                                type="password"
+                                class="rounded-md border border-base bg-bg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-acc"
+                                placeholder="Enter password"
+                        >
+                    </div>
+                    {% endif %}
+
+                    <!-- Transmit Button -->
+                    <div class="mt-6">
+                        <button
+                                type="submit"
+                                class="inline-flex items-center rounded-md border border-base bg-acc px-6 py-3 text-lg font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                        >
+                            Transmit to your device
+                        </button>
+                    </div>
+                </form>
                 <div id="transmit-result" class="mt-4 text-sat-m"></div>
             </div>
         </div>

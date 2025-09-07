@@ -79,6 +79,9 @@ pub struct DeviceDisplay {
     pub name: Option<String>,
     pub duration: i64,
     pub interval: i64,
+    pub acl_src_cidr: Option<IpNetwork>,
+    pub acl_pwd_hash: Option<String>,
+    pub acl_ap_hostname_regex: Option<String>,
 }
 
 impl From<Device> for DeviceDisplay {
@@ -92,6 +95,9 @@ impl From<Device> for DeviceDisplay {
             name: value.name,
             duration: value.duration,
             interval: value.interval,
+            acl_src_cidr: value.acl_src_cidr,
+            acl_pwd_hash: value.acl_pwd_hash,
+            acl_ap_hostname_regex: value.acl_ap_hostname_regex,
         }
     }
 }
@@ -105,12 +111,28 @@ pub struct CreatePacketTransmitRequest {
     pub permanent: bool,
 }
 
+
 #[derive(Serialize, Deserialize, AsChangeset, Identifiable, Debug)]
 #[diesel(table_name = crate::schema::device)]
 pub struct UpdateDevice {
     pub id: Id,
+    #[diesel(treat_none_as_null = true)]
     pub name: Option<String>,
     pub port: Option<i32>,
     pub duration: Option<i64>,
     pub interval: Option<i64>,
+    #[diesel(treat_none_as_null = true)]
+    pub acl_src_cidr: Option<IpNetwork>,
+    #[diesel(treat_none_as_null = true)]
+    pub acl_pwd_hash: Option<String>,
+    #[diesel(treat_none_as_null = true)]
+    pub acl_pwd_salt: Option<String>,
+    #[diesel(treat_none_as_null = true)]
+    pub acl_ap_hostname_regex: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DeviceUpdatePassword {
+    pub id: Id,
+    pub new_password: String,
 }

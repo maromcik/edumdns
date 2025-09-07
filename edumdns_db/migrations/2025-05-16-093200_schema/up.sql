@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS "device"
     interval               bigint       NOT NULL DEFAULT 100,
     acl_src_cidr           cidr,
     acl_pwd_hash           text,
+    acl_pwd_salt           text,
     acl_ap_hostname_regex  text,
 
     UNIQUE (probe_id, mac, ip),

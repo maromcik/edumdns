@@ -53,14 +53,13 @@
   </div>
 
   <!-- Editable Device Settings -->
-
   <div class="rounded-lg border border-base bg-cards p-6 mb-8">
     <h3 class="text-2xl font-medium mb-4 text-sat-l">Device Settings</h3>
     <form
             method="post"
             hx-post="/device/update"
             hx-target="#content-area"
-            hx-error-target="#content-area"
+            hx-target-error="#content-area"
             class="grid grid-cols-1 md:grid-cols-2 gap-4"
     >
       <input type="hidden" id="device_id" name="id" value="{{ device.id }}" />
@@ -71,7 +70,7 @@
                 id="name"
                 name="name"
                 type="text"
-                value=""
+                value="{{ device.name }}"
                 placeholder="{{ device.name }}"
                 class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
         />
@@ -123,6 +122,46 @@
                 required
         />
         <p class="text-xs text-sat-m mt-1">Interval in milliseconds.</p>
+      </div>
+
+      <!-- Password -->
+      <div class="flex flex-col">
+        <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">ACL Password</label>
+        <input
+                id="acl_password"
+                name="acl_password"
+                type="password"
+                value="{{ device.acl_pwd_hash }}"
+                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                required
+        />
+        <p class="text-xs text-sat-m mt-1">ACL Password.</p>
+      </div>
+
+      <!-- Src CIDS -->
+      <div class="flex flex-col">
+        <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">ACL SRC SUBNET</label>
+        <input
+                id="acl_src_cidr"
+                name="acl_src_cidr"
+                value="{{ device.acl_src_cidr }}"
+                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                required
+        />
+        <p class="text-xs text-sat-m mt-1">ACL subnet.</p>
+      </div>
+
+      <!-- AP hostname regex -->
+      <div class="flex flex-col">
+        <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">ACL AP Hostname REGEX</label>
+        <input
+                id="acl_ap_hostname_regex"
+                name="acl_ap_hostname_regex"
+                value="{{ device.acl_ap_hostname_regex }}"
+                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                required
+        />
+        <p class="text-xs text-sat-m mt-1">Regex over client AP hostname.</p>
       </div>
       {% if permissions|has_perm("Update") %}
       <!-- Actions -->
@@ -200,7 +239,7 @@
                 class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
                 hx-post="/device/{{ device.id }}/transmit-custom"
                 hx-target="#content-area"
-                hx-error-target="#content-area"
+                hx-target-error="#content-area"
         >
           Transmit
         </button>
@@ -235,7 +274,7 @@
                       hx-delete="/device/{{ device.id }}/transmit/{{ r.id }}"
                       hx-vals='{"target_ip":"{{ r.target_ip }}","target_port":"{{ r.target_port }}"}'
                       hx-target="#content-area"
-                      hx-error-target="#content-area"
+                      hx-target-error="#content-area"
               >
                 <i class="fa fa-trash text-sat-l"></i>
               </button>

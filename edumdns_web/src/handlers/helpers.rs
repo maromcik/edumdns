@@ -1,5 +1,5 @@
 use crate::error::{WebError, WebErrorKind};
-use crate::forms::device::DevicePacketTransmitRequest;
+use crate::forms::device::DeviceCustomPacketTransmitRequest;
 use crate::handlers::utilities::is_htmx;
 use actix_identity::Identity;
 use actix_web::{HttpRequest, web};
@@ -34,7 +34,7 @@ pub async fn request_packet_transmit_helper(
     device_repo: web::Data<PgDeviceRepository>,
     device: &Device,
     command_channel: Sender<AppPacket>,
-    form: &DevicePacketTransmitRequest,
+    form: &DeviceCustomPacketTransmitRequest,
 ) -> Result<(), WebError> {
     let packet = PacketTransmitRequestPacket::new(
         device.probe_id,

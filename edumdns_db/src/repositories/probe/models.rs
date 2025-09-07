@@ -5,6 +5,7 @@ use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use crate::repositories::utilities::empty_string_is_none;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SelectManyProbes {
@@ -177,6 +178,10 @@ impl From<AlterProbePermission> for CreateGroupProbePermission {
 #[diesel(table_name = crate::schema::probe)]
 pub struct UpdateProbe {
     pub id: Uuid,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
+    #[diesel(treat_none_as_null = true)]
     pub name: Option<String>,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
+    #[diesel(treat_none_as_null = true)]
     pub location_id: Option<Id>,
 }

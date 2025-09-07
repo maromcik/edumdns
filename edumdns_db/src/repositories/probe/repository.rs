@@ -16,9 +16,7 @@ use crate::schema::probe::BoxedQuery;
 use crate::schema::user;
 use crate::schema::{location, probe_config};
 use diesel::pg::Pg;
-use diesel::{
-    BelongingToDsl, BoolExpressionMethods, ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper,
-};
+use diesel::{BelongingToDsl, BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgTextExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -55,6 +53,10 @@ impl PgProbeRepository {
 
         if let Some(q) = &params.location_id {
             query = query.filter(probe::location_id.eq(q));
+        }
+
+        if let Some(q) = &params.name {
+            query = query.filter(probe::name.ilike(format!("%{q}%")))
         }
 
         if let Some(pagination) = params.pagination {

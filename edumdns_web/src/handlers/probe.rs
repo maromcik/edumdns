@@ -51,7 +51,7 @@ pub async fn get_probes(
         .read_many(&SelectManyProbes::new(
             query.owner_id,
             query.location_id,
-            Some(false),
+            query.adopted.or(Some(false)),
             query.mac.map(|mac| mac.to_octets()),
             query.ip,
             query.name.clone(),

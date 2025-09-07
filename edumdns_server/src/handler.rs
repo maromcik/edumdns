@@ -27,8 +27,7 @@ pub struct PacketHandler {
     pub packet_receiver: Receiver<AppPacket>,
     pub transmitter_tasks: Arc<Mutex<HashMap<PacketTransmitRequestPacket, PacketTransmitterTask>>>,
     pub probe_handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
-    pub probe_ws_handles:
-        Arc<Mutex<HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<ProbeResponse>>>>>,
+    pub probe_ws_handles: HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<ProbeResponse>>>,
     pub pg_device_repository: PgDeviceRepository,
     pub pg_packet_repository: PgPacketRepository,
     pub global_timeout: Duration,
@@ -46,7 +45,7 @@ impl PacketHandler {
             packet_receiver: receiver,
             transmitter_tasks: Arc::new(Mutex::new(HashMap::new())),
             probe_handles: handles,
-            probe_ws_handles: Arc::new(Mutex::new(HashMap::new())),
+            probe_ws_handles: HashMap::new(),
             pg_device_repository: PgDeviceRepository::new(db_pool.clone()),
             pg_packet_repository: PgPacketRepository::new(db_pool.clone()),
             global_timeout,
@@ -73,8 +72,6 @@ impl PacketHandler {
                     respond_to,
                 } => {
                     self.probe_ws_handles
-                        .lock()
-                        .await
                         .entry(probe_id)
                         .or_insert(HashMap::new())
                         .entry(session_id)
@@ -84,10 +81,10 @@ impl PacketHandler {
                     probe_id,
                     session_id,
                 } => {
-                    if let Some(session) = self.probe_ws_handles.lock().await.get_mut(&probe_id) {
+                    if let Some(session) = self.probe_ws_handles.get_mut(&probe_id) {
                         session.remove(&session_id);
                         if session.is_empty() {
-                            self.probe_ws_handles.lock().await.remove(&probe_id);
+                            self.probe_ws_handles.remove(&probe_id);
                         }
                     }
                 }
@@ -106,6 +103,7 @@ impl PacketHandler {
                 }
                 LocalCommandPacket::ReconnectProbe(id) => {
                     if let Err(e) = self.send_reconnect(id).await {
+                        error!("Could not reconnect probe: {}", e);
                         self.send_response_to_ws(id, ProbeResponse::new_error(e.to_string()))
                             .await;
                     }
@@ -188,6 +186,7 @@ impl PacketHandler {
                 .await
                 .map_err(ServerError::from)??;
         } else {
+            warn!("Probe not found: {}", id);
             return Err(ServerError::new(
                 ServerErrorKind::ProbeNotFound,
                 "not connected",
@@ -274,7 +273,7 @@ impl PacketHandler {
     }
 
     pub async fn send_response_to_ws(&self, id: Uuid, response: ProbeResponse) {
-        if let Some(handles) = self.probe_ws_handles.lock().await.get(&id.0) {
+        if let Some(handles) = self.probe_ws_handles.get(&id.0) {
             for (id, handle) in handles {
                 match handle.send(response.clone()).await {
                     Ok(_) => {debug!("Response sent to websocket: {}", id);}

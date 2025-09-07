@@ -61,6 +61,20 @@
                     Actions
                 </th>
             </tr>
+            <tr>
+                <td class="px-4 py-2"></td>
+                <td class="px-4 py-2"><input type="text" id="filter-name"  value="{{ filters.name  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2 flex gap-2">
+                    <button type="button" id="filter-button"
+                            class="px-3 py-1 rounded-md border border-base bg-acc text-sm bg-primary text-black hover:bg-primary/90 transition-colors">
+                        Search
+                    </button>
+                    <button type="button" id="reset-button"
+                            class="px-3 py-1 rounded-md border border-base text-sm bg-acc-l hover:bg-muted/20 transition-colors">
+                        Reset
+                    </button>
+                </td>
+            </tr>
             </thead>
 
             <tbody class="divide-y divide-base">
@@ -107,3 +121,27 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+    document.getElementById("filter-button").addEventListener("click", () => {
+        const params = new URLSearchParams();
+
+        ["name"].forEach(field => {
+            const value = document.getElementById(`filter-${field}`).value.trim();
+            if (value) {
+                params.set(field, value);
+            }
+        });
+
+        // Reset to first page when filtering
+        params.delete("page");
+
+        window.location.search = params.toString();
+    });
+
+    document.getElementById("reset-button").addEventListener("click", () => {
+        // Reload without query params
+        window.location.href = window.location.pathname;
+    });
+</script>
+

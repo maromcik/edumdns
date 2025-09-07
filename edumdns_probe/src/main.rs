@@ -14,6 +14,7 @@ use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::net::IpAddr;
 use std::time::Duration;
+use clap::Parser;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::EnvFilter;
@@ -24,9 +25,26 @@ pub mod connection;
 pub mod error;
 pub mod probe;
 
+#[derive(Parser)]
+#[clap(author, version, about, long_about = None)]
+struct Cli {
+    /// Optional `.env` file path for loading environment variables.
+    #[clap(short, long, value_name = "ENV_FILE")]
+    env_file: Option<String>,
+
+    /// Optional `.env` file path for loading environment variables.
+    #[clap(short, long, value_name = "UUID_FILE")]
+    uuid_file: Option<String>,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), ProbeError> {
     dotenvy::dotenv().ok();
+    let mut cli = Cli::parse();
+    if let Some(env_file) = cli.env_file {
+        dotenvy::from_filename(env_file).expect("failed to load .env file");
+        cli = Cli::parse();
+    }
     let env = EnvFilter::try_from_env("EDUMDNS_LOG_LEVEL").unwrap_or(EnvFilter::new("info"));
     let timer = tracing_subscriber::fmt::time::LocalTime::rfc_3339();
     tracing_subscriber::fmt()
@@ -53,7 +71,7 @@ async fn main() -> Result<(), ProbeError> {
         .unwrap_or("5".to_string())
         .parse::<usize>()?;
 
-    let uuid = generate_uuid()?;
+    let uuid = generate_uuid(cli.uuid_file)?;
 
     info!("Starting probe with id: {}", uuid);
     info!("Binding to IP: {}:{}", bind_ip, bind_port);
@@ -172,13 +190,13 @@ async fn main() -> Result<(), ProbeError> {
     }
 }
 
-fn generate_uuid() -> Result<Uuid, ProbeError> {
+fn generate_uuid(uuid_file: Option<String>) -> Result<Uuid, ProbeError> {
     let mut file = OpenOptions::new()
         .write(true)
         .read(true)
         .create(true)
         .truncate(false)
-        .open("uuid")?;
+        .open(uuid_file.unwrap_or("uuid".to_string()))?;
     let mut uuid = String::new();
     file.read_to_string(&mut uuid)?;
     match uuid::Uuid::parse_str(uuid.trim()) {

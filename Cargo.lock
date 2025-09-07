@@ -1181,6 +1181,7 @@ dependencies = [
  "actix-web",
  "anyhow",
  "bytes",
+ "clap",
  "diesel-async",
  "dotenvy",
  "edumdns_core",

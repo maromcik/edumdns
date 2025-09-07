@@ -13,7 +13,7 @@ use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, rt, web};
 use actix_ws::AggregatedMessage;
 use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket};
 use edumdns_core::error::CoreError;
-use edumdns_db::models::{Group, Location, Probe};
+use edumdns_db::models::{Group, Probe};
 use edumdns_db::repositories::common::{
     DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE, Pagination,
     Permission,
@@ -28,7 +28,6 @@ use edumdns_db::repositories::probe::models::{
 };
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use itertools;
-use itertools::Itertools;
 use log::{debug, warn};
 use std::collections::{HashMap, HashSet};
 use strum::IntoEnumIterator;
@@ -47,33 +46,13 @@ pub async fn get_probes(
     let i = authorized!(identity, request.path());
     let page = query.page.unwrap_or(1);
 
-    let not_adopted_probes = probe_repo
-        .read_many(&SelectManyProbes::new(
-            query.owner_id,
-            query.location_id,
-            query.adopted.or(Some(false)),
-            query.mac.map(|mac| mac.to_octets()),
-            query.ip,
-            query.name.clone(),
-            Some(Pagination::default_pagination(query.page)),
-        ))
-        .await?;
-
     let query = query.into_inner();
     let params = SelectManyProbes::from(query.clone());
     let probes = probe_repo
         .read_many_auth(&params, &parse_user_id(&i)?)
         .await?;
 
-    let mut all_probes: HashSet<(Option<Location>, Probe)> = HashSet::from_iter(probes.data);
-    all_probes.extend(not_adopted_probes);
-
-    let all_probes = all_probes
-        .into_iter()
-        .sorted_by_key(|(l, p)| (l.is_some(), p.id))
-        .collect_vec();
-
-    let probes_parsed = all_probes
+    let probes_parsed = probes.data
         .into_iter()
         .map(|(l, p)| (l, ProbeDisplay::from(p)))
         .collect();

@@ -41,7 +41,7 @@ pub async fn get_groups(
         permissions: groups.permissions,
         groups: groups.data,
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
-        filters: query.into_inner()
+        filters: query.into_inner(),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

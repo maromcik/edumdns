@@ -1,5 +1,5 @@
 use crate::error::DbError;
-use crate::models::{Device, GroupProbePermission, Location, Probe, ProbeConfig, User};
+use crate::models::{GroupProbePermission, Location, Probe, ProbeConfig, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
     DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission,
@@ -16,7 +16,10 @@ use crate::schema::probe::BoxedQuery;
 use crate::schema::user;
 use crate::schema::{location, probe_config};
 use diesel::pg::Pg;
-use diesel::{BelongingToDsl, BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgTextExpressionMethods, QueryDsl, SelectableHelper};
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgTextExpressionMethods, QueryDsl,
+    SelectableHelper,
+};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -68,10 +71,7 @@ impl PgProbeRepository {
 }
 
 impl DbReadOne<Uuid, (Probe, Vec<ProbeConfig>)> for PgProbeRepository {
-    async fn read_one(
-        &self,
-        params: &Uuid,
-    ) -> DbResultSingle<(Probe, Vec<ProbeConfig>)> {
+    async fn read_one(&self, params: &Uuid) -> DbResultSingle<(Probe, Vec<ProbeConfig>)> {
         let mut conn = self.pg_pool.get().await?;
         let probe_data = probe::table
             .find(params)
@@ -195,7 +195,7 @@ impl PgProbeRepository {
             .await
             .map_err(DbError::from)
     }
-    
+
     pub async fn forget(&self, params: &Uuid, user_id: &Id) -> DbResult<()> {
         let mut conn = self.pg_pool.get().await?;
         validate_permissions(&self.pg_pool, user_id, params, Permission::Forget).await?;

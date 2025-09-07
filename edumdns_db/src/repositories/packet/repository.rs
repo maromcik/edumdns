@@ -65,7 +65,7 @@ impl PgPacketRepository {
         }
         query
     }
-    
+
     pub async fn get_packet_count(&self, mut params: SelectManyPackets) -> DbResultSingle<i64> {
         let mut conn = self.pg_pool.get().await?;
         params.pagination = None;

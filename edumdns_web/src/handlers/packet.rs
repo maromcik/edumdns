@@ -3,18 +3,20 @@ use crate::error::WebError;
 use crate::forms::packet::PacketQuery;
 use crate::handlers::helpers::{get_template_name, parse_user_id};
 use crate::header::LOCATION;
+use crate::templates::PageInfo;
 use crate::templates::packet::{PacketDetailTemplate, PacketTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::{HttpRequest, HttpResponse, delete, get, web};
-use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, Id, PAGINATION_ELEMENTS_PER_PAGE};
+use edumdns_db::repositories::common::{
+    DbDelete, DbReadMany, DbReadOne, Id, PAGINATION_ELEMENTS_PER_PAGE,
+};
 use edumdns_db::repositories::device::models::SelectSingleDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use std::collections::HashMap;
-use crate::templates::PageInfo;
 
 #[get("")]
 pub async fn get_packets(
@@ -30,10 +32,7 @@ pub async fn get_packets(
     let query = query.into_inner();
     let params = SelectManyPackets::from(query.clone());
     let packets = packet_repo
-        .read_many_auth(
-            &params,
-            &parse_user_id(&i)?,
-        )
+        .read_many_auth(&params, &parse_user_id(&i)?)
         .await?;
     let packet_count = packet_repo.get_packet_count(params).await?;
     let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;

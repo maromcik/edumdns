@@ -42,7 +42,7 @@ pub async fn listen(
         packet_storage.handle_packets().await
     });
     info!("Packet storage initialized");
-
+    let probe_handles_local = probe_handles.clone();
     loop {
         let (socket, addr) = listener.accept().await?;
         info!("Connection from {addr}");
@@ -61,6 +61,8 @@ pub async fn listen(
                     error!("{e}");
                 }
             }
+            // TODO remove handle
+            // probe_handles_local.write().await.re
         });
     }
 }

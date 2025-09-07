@@ -1,5 +1,5 @@
 use crate::error::{WebError, WebErrorKind};
-use crate::forms::device::{DevicePacketTransmitRequest};
+use crate::forms::device::DevicePacketTransmitRequest;
 use crate::handlers::utilities::is_htmx;
 use actix_identity::Identity;
 use actix_web::{HttpRequest, web};
@@ -8,10 +8,10 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
-use edumdns_db::models::{Device};
-use edumdns_db::repositories::common::{DbCreate};
-use edumdns_db::repositories::common::{Id};
-use edumdns_db::repositories::device::models::{CreatePacketTransmitRequest};
+use edumdns_db::models::Device;
+use edumdns_db::repositories::common::DbCreate;
+use edumdns_db::repositories::common::Id;
+use edumdns_db::repositories::device::models::CreatePacketTransmitRequest;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 
 use ipnetwork::IpNetwork;

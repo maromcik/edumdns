@@ -1,8 +1,8 @@
+use crate::forms::packet::PacketQuery;
+use crate::templates::PageInfo;
 use edumdns_db::repositories::common::{Id, Permissions};
 use edumdns_db::repositories::packet::models::PacketDisplay;
 use serde::Serialize;
-use crate::forms::packet::PacketQuery;
-use crate::templates::PageInfo;
 
 #[derive(Serialize)]
 pub struct PacketTemplate<'a> {

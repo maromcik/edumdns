@@ -95,7 +95,12 @@ async fn main() -> Result<(), ProbeError> {
         };
 
         let capture_handles = probe_capture
-            .start_captures(&mut join_set, bind_ip.as_ref(), server_host.as_ref(), cancellation_token.clone())
+            .start_captures(
+                &mut join_set,
+                bind_ip.as_ref(),
+                server_host.as_ref(),
+                cancellation_token.clone(),
+            )
             .await?;
         ConnectionManager::transmit_packets(
             &mut join_set,

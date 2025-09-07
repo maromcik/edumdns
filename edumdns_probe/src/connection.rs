@@ -112,6 +112,7 @@ impl ConnectionManager {
     }
 
     pub async fn reconnect(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
+        self.handle.close().await?;
         match retry!(
             TcpConnectionHandle::connect(
                 &self.server_connection_string,

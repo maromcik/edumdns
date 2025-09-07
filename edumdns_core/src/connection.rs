@@ -16,19 +16,24 @@ async fn run_tcp_connection_receive_loop(
     mut actor: TcpConnectionReceiver,
 ) -> Result<(), CoreError> {
     while let Some(msg) = actor.receiver.recv().await {
-        if let TcpConnectionMessage::ReceivePacket {
-            respond_to,
-            timeout,
-        } = msg
-        {
-            respond_to
-                .send(actor.receive_next(timeout).await)
-                .map_err(|e| {
-                    CoreError::new(
-                        CoreErrorKind::TokioOneshotChannelError,
-                        format!("Could not send value {e:?}").as_str(),
-                    )
-                })?;
+        match msg {
+            TcpConnectionMessage::ReceivePacket {
+                respond_to,
+                timeout,
+            } => {
+                respond_to
+                    .send(actor.receive_next(timeout).await)
+                    .map_err(|e| {
+                        CoreError::new(
+                            CoreErrorKind::TokioOneshotChannelError,
+                            format!("Could not send value {e:?}").as_str(),
+                        )
+                    })?;
+            }
+            TcpConnectionMessage::Close => {
+                return Ok(());
+            }
+            _ => {}
         }
     }
     Ok(())
@@ -36,15 +41,22 @@ async fn run_tcp_connection_receive_loop(
 
 async fn run_tcp_connection_send_loop(mut actor: TcpConnectionSender) -> Result<(), CoreError> {
     while let Some(msg) = actor.receiver.recv().await {
-        if let TcpConnectionMessage::SendPacket { respond_to, packet } = msg {
-            respond_to
-                .send(actor.send_packet(&packet).await)
-                .map_err(|e| {
-                    CoreError::new(
-                        CoreErrorKind::TokioOneshotChannelError,
-                        format!("Could not send value {e:?}").as_str(),
-                    )
-                })?;
+        match msg {
+            TcpConnectionMessage::SendPacket { respond_to, packet } => {
+                respond_to
+                    .send(actor.send_packet(&packet).await)
+                    .map_err(|e| {
+                        CoreError::new(
+                            CoreErrorKind::TokioOneshotChannelError,
+                            format!("Could not send value {e:?}").as_str(),
+                        )
+                    })?;
+            }
+            TcpConnectionMessage::Close { } => {
+                actor.framed_sink.close().await.map_err(CoreError::from)?;
+                return Ok(());
+            }
+            _ => {}
         }
     }
     Ok(())
@@ -59,6 +71,15 @@ async fn run_message_multiplexer(
         match msg {
             TcpConnectionMessage::SendPacket { .. } => send_channel.send(msg).await?,
             TcpConnectionMessage::ReceivePacket { .. } => recv_channel.send(msg).await?,
+            TcpConnectionMessage::Close => {
+                send_channel
+                    .send(TcpConnectionMessage::Close)
+                    .await?;
+                recv_channel
+                    .send(TcpConnectionMessage::Close)
+                    .await?;
+                return Ok(());
+            }
         }
     }
     Ok(())
@@ -73,6 +94,7 @@ pub enum TcpConnectionMessage {
         respond_to: oneshot::Sender<Result<(), CoreError>>,
         packet: NetworkAppPacket,
     },
+    Close,
 }
 
 impl TcpConnectionMessage {
@@ -180,6 +202,11 @@ impl TcpConnectionHandle {
         let (tx, rx) = oneshot::channel();
         self.sender.send(message_creator(tx)).await?;
         rx.await.map_err(Into::into)
+    }
+
+    pub async fn close(&self) -> Result<(), CoreError> {
+        self.sender.send(TcpConnectionMessage::Close).await?;
+        Ok(())
     }
 }
 

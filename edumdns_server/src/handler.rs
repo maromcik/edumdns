@@ -18,9 +18,9 @@ use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
-use tokio::sync::mpsc::error::SendError;
 
 pub struct PacketHandler {
     pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
@@ -277,10 +277,11 @@ impl PacketHandler {
         if let Some(handles) = self.probe_ws_handles.get(&id.0) {
             for (id, handle) in handles {
                 match handle.send(response.clone()).await {
-                    Ok(_) => {debug!("Response sent to websocket: {}", id);}
-                    Err(err) => warn!("Could not send response to a websocket {err}")
+                    Ok(_) => {
+                        debug!("Response sent to websocket: {}", id);
+                    }
+                    Err(err) => warn!("Could not send response to a websocket {err}"),
                 }
-
             }
         }
     }

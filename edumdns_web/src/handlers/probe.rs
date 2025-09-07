@@ -1,7 +1,9 @@
 use crate::authorized;
 use crate::error::WebError;
+use crate::forms::device::DeviceQuery;
 use crate::forms::probe::{ProbeConfigForm, ProbePermissionForm, ProbeQuery};
-use crate::handlers::helpers::{get_template_name, parse_user_id, reconnect_probe, };
+use crate::handlers::helpers::{get_template_name, parse_user_id, reconnect_probe};
+use crate::templates::PageInfo;
 use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
@@ -12,7 +14,13 @@ use actix_ws::AggregatedMessage;
 use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket};
 use edumdns_core::error::CoreError;
 use edumdns_db::models::{Group, Location, Probe};
-use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination, Permission, PAGINATION_ELEMENTS_PER_PAGE};
+use edumdns_db::repositories::common::{
+    DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE, Pagination,
+    Permission,
+};
+use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
+use edumdns_db::repositories::device::repository::PgDeviceRepository;
+use edumdns_db::repositories::group::models::SelectManyGroups;
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::probe::models::{
     AlterProbePermission, CreateProbeConfig, ProbeDisplay, SelectManyProbes,
@@ -26,11 +34,6 @@ use std::collections::{HashMap, HashSet};
 use strum::IntoEnumIterator;
 use tokio::sync::mpsc;
 use uuid::{Timestamp, Uuid};
-use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
-use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use edumdns_db::repositories::group::models::SelectManyGroups;
-use crate::forms::device::DeviceQuery;
-use crate::templates::PageInfo;
 
 #[get("")]
 pub async fn get_probes(
@@ -59,10 +62,7 @@ pub async fn get_probes(
     let query = query.into_inner();
     let params = SelectManyProbes::from(query.clone());
     let probes = probe_repo
-        .read_many_auth(
-            &params,
-            &parse_user_id(&i)?,
-        )
+        .read_many_auth(&params, &parse_user_id(&i)?)
         .await?;
 
     let mut all_probes: HashSet<(Option<Location>, Probe)> = HashSet::from_iter(probes.data);
@@ -90,7 +90,7 @@ pub async fn get_probes(
         permissions: probes.permissions,
         probes: probes_parsed,
         page_info: PageInfo::new(page, total_pages),
-        filters: query
+        filters: query,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -154,11 +154,14 @@ pub async fn get_probe(
         permissions: probe.permissions,
         permission_matrix: matrix,
         probe: ProbeDisplay::from(probe.data.0),
-        devices: devices.into_iter().map(|d| DeviceDisplay::from(d.1)).collect(),
+        devices: devices
+            .into_iter()
+            .map(|d| DeviceDisplay::from(d.1))
+            .collect(),
         configs: probe.data.1,
         admin: probe.admin,
         page_info: PageInfo::new(page, total_pages),
-        filters: query
+        filters: query,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

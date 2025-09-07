@@ -1,7 +1,7 @@
+use crate::forms::group::GroupQuery;
 use edumdns_db::models::{Group, User};
 use edumdns_db::repositories::common::{Id, Permissions};
 use serde::Serialize;
-use crate::forms::group::GroupQuery;
 
 #[derive(Serialize)]
 pub struct GroupTemplate {
@@ -9,7 +9,7 @@ pub struct GroupTemplate {
     pub is_admin: bool,
     pub permissions: Permissions,
     pub groups: Vec<Group>,
-    pub filters: GroupQuery
+    pub filters: GroupQuery,
 }
 
 #[derive(Serialize)]

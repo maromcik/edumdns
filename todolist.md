@@ -3,6 +3,7 @@
   - config
   - data
 - env vars and uuid path
+- pinger from ws
 ## Web
 - access control (modules - allow loading auth function - traits)
   - 3 nullable fields any of them should suffice

@@ -1,6 +1,6 @@
 use crate::connection::ConnectionManager;
 use crate::error::{ServerError, ServerErrorKind};
-use crate::handler::PacketHandler;
+use crate::manager::PacketManager;
 use crate::parse_host;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -15,11 +15,11 @@ use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tokio::sync::mpsc::{Receiver, Sender};
 
-async fn handle_connection(mut connection_manager: ConnectionManager) -> Result<(), ServerError> {
-    connection_manager.connection_init_server().await?;
+async fn handle_connection(mut connection_manager: ConnectionManager) -> Result<Uuid, ServerError> {
+    let uuid = connection_manager.connection_init_server().await?;
     connection_manager.transfer_packets().await?;
-    debug!("Client disconnected");
-    Ok(())
+    info!("Probe {uuid} disconnected");
+    Ok(uuid)
 }
 
 pub async fn listen(
@@ -38,11 +38,11 @@ pub async fn listen(
     let probe_handles_local = probe_handles.clone();
     let _packet_storage_task = tokio::task::spawn(async move {
         let mut packet_storage =
-            PacketHandler::new(rx, pool_local, probe_handles_local, global_timeout);
+            PacketManager::new(rx, pool_local, probe_handles_local, global_timeout);
         packet_storage.handle_packets().await
     });
     info!("Packet storage initialized");
-    let probe_handles_local = probe_handles.clone();
+
     loop {
         let (socket, addr) = listener.accept().await?;
         info!("Connection from {addr}");
@@ -53,16 +53,20 @@ pub async fn listen(
             probe_handles.clone(),
             global_timeout,
         )?;
+        let probe_handles_local = probe_handles.clone();
         tokio::spawn(async move {
-            if let Err(e) = handle_connection(connection_manager).await {
-                if let ServerErrorKind::ProbeNotAdopted = e.error_kind {
-                    warn!("Client {addr} tried to connect, but probe is not adopted");
-                } else {
-                    error!("{e}");
+            match handle_connection(connection_manager).await {
+                Ok(uuid) => {
+                    probe_handles_local.write().await.remove(&uuid);
+                }
+                Err(err) => {
+                    if let ServerErrorKind::ProbeNotAdopted = err.error_kind {
+                        info!("Client {addr} tried to connect, but probe is not adopted");
+                    } else {
+                        error!("{err}");
+                    }
                 }
             }
-            // TODO remove handle
-            // probe_handles_local.write().await.re
         });
     }
 }

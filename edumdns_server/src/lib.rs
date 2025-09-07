@@ -9,7 +9,7 @@ use tokio::sync::mpsc::{Receiver, Sender};
 
 mod connection;
 pub mod error;
-pub mod handler;
+pub mod manager;
 pub mod listen;
 mod transmitter;
 

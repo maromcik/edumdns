@@ -79,6 +79,13 @@ async fn main() -> Result<(), ProbeError> {
 
     loop {
         let handle = connection_manager.handle.clone();
+        let _ = handle
+            .send_message_with_response(|tx|
+                TcpConnectionMessage::send_packet(
+                    tx,
+                    NetworkAppPacket::Status(
+                        NetworkStatusPacket::
+                        ProbeResponse(uuid, ProbeResponse::new_ok_with_value("Reconnected"))))).await;
         let handle_local = connection_manager.handle.clone();
         let cancellation_token = CancellationToken::new();
         let mut join_set = tokio::task::JoinSet::new();
@@ -160,14 +167,7 @@ async fn main() -> Result<(), ProbeError> {
                 cancellation_token.cancel();
                 info!("Reconnecting...");
                 config = connection_manager.reconnect().await?;
-                let _ = handle
-                .send_message_with_response(|tx|
-                                TcpConnectionMessage::send_packet(
-                                    tx,
-                                    NetworkAppPacket::Status(
-                                        NetworkStatusPacket::
-                                        ProbeResponse(uuid, ProbeResponse::new_ok_with_value("Reconnected"))))).await;
-            },
+        }
         }
     }
 }

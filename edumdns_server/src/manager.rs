@@ -22,7 +22,7 @@ use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
 
-pub struct PacketHandler {
+pub struct PacketManager {
     pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
     pub packet_receiver: Receiver<AppPacket>,
     pub transmitter_tasks: Arc<Mutex<HashMap<PacketTransmitRequestPacket, PacketTransmitterTask>>>,
@@ -33,7 +33,7 @@ pub struct PacketHandler {
     pub global_timeout: Duration,
 }
 
-impl PacketHandler {
+impl PacketManager {
     pub fn new(
         receiver: Receiver<AppPacket>,
         db_pool: Pool<AsyncPgConnection>,
@@ -73,7 +73,7 @@ impl PacketHandler {
                 } => {
                     self.probe_ws_handles
                         .entry(probe_id)
-                        .or_insert(HashMap::new())
+                        .or_default()
                         .entry(session_id)
                         .or_insert(respond_to);
                 }
@@ -104,7 +104,7 @@ impl PacketHandler {
                 LocalCommandPacket::ReconnectProbe(id) => {
                     if let Err(e) = self.send_reconnect(id).await {
                         error!("Could not reconnect probe: {}", e);
-                        self.probe_handles.write().await.remove(&id);
+                        // self.probe_handles.write().await.remove(&id);
                         self.send_response_to_ws(id, ProbeResponse::new_error(e.to_string()))
                             .await;
                     }

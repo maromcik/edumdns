@@ -1,6 +1,6 @@
 use crate::error::{ServerError, ServerErrorKind};
-use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
+use diesel_async::AsyncPgConnection;
 use edumdns_core::app_packet::{
     AppPacket, NetworkAppPacket, NetworkStatusPacket, ProbeConfigElement, ProbeConfigPacket,
 };
@@ -13,13 +13,12 @@ use edumdns_db::repositories::common::DbCreate;
 use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use ipnetwork::IpNetwork;
-use log::error;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpStream;
-use tokio::sync::RwLock;
 use tokio::sync::mpsc::Sender;
+use tokio::sync::RwLock;
 
 pub struct ConnectionManager {
     handle: TcpConnectionHandle,
@@ -46,7 +45,7 @@ impl ConnectionManager {
         })
     }
 
-    pub async fn connection_init_server(&mut self) -> Result<(), ServerError> {
+    pub async fn connection_init_server(&mut self) -> Result<Uuid, ServerError> {
         let error = Err(ServerError::new(
             ServerErrorKind::InvalidConnectionInitiation,
             "invalid connection initiation",
@@ -110,7 +109,7 @@ impl ConnectionManager {
             .await
             .insert(config_metadata.id, self.handle.clone());
 
-        Ok(())
+        Ok(config_metadata.id)
     }
 
     pub async fn receive_init_packet(&mut self) -> Result<NetworkAppPacket, ServerError> {

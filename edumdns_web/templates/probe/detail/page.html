@@ -48,17 +48,6 @@
         }
     });
 
-    window.addEventListener("pageshow", (event) => {
-        if (event.persisted) {
-            // Page loaded from bfcache (back/forward nav)
-            connectWebSocket();
-        }
-    });
-
-    window.addEventListener("focus", () => {
-        connectWebSocket();
-    });
-
     window.addEventListener("beforeunload", () => {
         if (window.probeWs) {
             window.probeWs.onclose = null; // Don’t trigger reconnect on unload

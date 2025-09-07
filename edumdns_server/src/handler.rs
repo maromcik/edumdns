@@ -20,6 +20,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
+use tokio::sync::mpsc::error::SendError;
 
 pub struct PacketHandler {
     pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
@@ -85,6 +86,9 @@ impl PacketHandler {
                 } => {
                     if let Some(session) = self.probe_ws_handles.lock().await.get_mut(&probe_id) {
                         session.remove(&session_id);
+                        if session.is_empty() {
+                            self.probe_ws_handles.lock().await.remove(&probe_id);
+                        }
                     }
                 }
                 LocalCommandPacket::TransmitDevicePackets(target) => {
@@ -271,11 +275,12 @@ impl PacketHandler {
 
     pub async fn send_response_to_ws(&self, id: Uuid, response: ProbeResponse) {
         if let Some(handles) = self.probe_ws_handles.lock().await.get(&id.0) {
-            for handle in handles.values() {
-                let Err(err) = handle.send(response.clone()).await else {
-                    return;
-                };
-                warn!("Could not send response to a websocket {err}");
+            for (id, handle) in handles {
+                match handle.send(response.clone()).await {
+                    Ok(_) => {debug!("Response sent to websocket: {}", id);}
+                    Err(err) => warn!("Could not send response to a websocket {err}")
+                }
+
             }
         }
     }

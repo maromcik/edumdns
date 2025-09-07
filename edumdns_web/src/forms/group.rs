@@ -5,6 +5,7 @@ use std::collections::HashSet;
 #[derive(Serialize, Deserialize)]
 pub struct GroupQuery {
     pub page: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub name: Option<String>,
 }
 

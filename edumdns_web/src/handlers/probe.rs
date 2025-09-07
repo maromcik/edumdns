@@ -1,10 +1,8 @@
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::probe::{ProbeConfigForm, ProbePermissionForm, ProbeQuery};
-use crate::handlers::helpers::{
-    get_probe_helper, get_template_name, parse_user_id, reconnect_probe,
-};
-use crate::templates::probe::ProbeTemplate;
+use crate::handlers::helpers::{get_template_name, parse_user_id, reconnect_probe, };
+use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
@@ -13,8 +11,8 @@ use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, rt, web};
 use actix_ws::AggregatedMessage;
 use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket};
 use edumdns_core::error::CoreError;
-use edumdns_db::models::{Location, Probe};
-use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbUpdate, Id, Pagination, PAGINATION_ELEMENTS_PER_PAGE};
+use edumdns_db::models::{Group, Location, Probe};
+use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination, Permission, PAGINATION_ELEMENTS_PER_PAGE};
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::probe::models::{
     AlterProbePermission, CreateProbeConfig, ProbeDisplay, SelectManyProbes,
@@ -25,9 +23,12 @@ use itertools;
 use itertools::Itertools;
 use log::{debug, warn};
 use std::collections::{HashMap, HashSet};
+use strum::IntoEnumIterator;
 use tokio::sync::mpsc;
 use uuid::{Timestamp, Uuid};
+use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
+use edumdns_db::repositories::group::models::SelectManyGroups;
 use crate::forms::device::DeviceQuery;
 use crate::templates::PageInfo;
 
@@ -55,10 +56,11 @@ pub async fn get_probes(
         ))
         .await?;
 
-    let query = SelectManyProbes::from(query.into_inner());
+    let query = query.into_inner();
+    let params = SelectManyProbes::from(query.clone());
     let probes = probe_repo
         .read_many_auth(
-            &query,
+            &params,
             &parse_user_id(&i)?,
         )
         .await?;
@@ -76,7 +78,7 @@ pub async fn get_probes(
         .map(|(l, p)| (l, ProbeDisplay::from(p)))
         .collect();
 
-    let probe_count = probe_repo.get_probe_count(query).await?;
+    let probe_count = probe_repo.get_probe_count(params).await?;
     let total_pages = (probe_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
 
     let template_name = get_template_name(&request, "probe");
@@ -88,6 +90,7 @@ pub async fn get_probes(
         permissions: probes.permissions,
         probes: probes_parsed,
         page_info: PageInfo::new(page, total_pages),
+        filters: query
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -105,10 +108,60 @@ pub async fn get_probe(
     query: web::Query<DeviceQuery>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    get_probe_helper(
-        request, identity, probe_repo, group_repo, device_repo, state, path, query, session,
-    )
-    .await
+    let i = authorized!(identity, request.path());
+    let probe_id = path.0;
+    let page = query.page.unwrap_or(1);
+    let probe = probe_repo
+        .read_one_auth(&probe_id, &parse_user_id(&i)?)
+        .await?;
+
+    let granted: HashSet<(Id, Permission)> = probe_repo
+        .get_permissions(&probe_id)
+        .await?
+        .iter()
+        .map(|x| (x.group_id, x.permission))
+        .collect();
+
+    let matrix = group_repo
+        .read_many(&SelectManyGroups::new(None, None))
+        .await?
+        .into_iter()
+        .map(|g| {
+            (
+                {
+                    Permission::iter()
+                        .map(|p| (p, granted.contains(&(g.id, p))))
+                        .collect::<Vec<(Permission, bool)>>()
+                },
+                g,
+            )
+        })
+        .collect::<Vec<(Vec<(Permission, bool)>, Group)>>();
+
+    let query = query.into_inner();
+    let mut params = SelectManyDevices::from(query.clone());
+    params.probe_id = Some(probe_id);
+    let devices = device_repo.read_many(&params).await?;
+    let device_count = device_repo.get_device_count(params).await?;
+    let total_pages = (device_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
+
+    let template_name = get_template_name(&request, "probe/detail");
+    let env = state.jinja.acquire_env()?;
+    let template = env.get_template(&template_name)?;
+    let body = template.render(ProbeDetailTemplate {
+        logged_in: true,
+        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
+        permissions: probe.permissions,
+        permission_matrix: matrix,
+        probe: ProbeDisplay::from(probe.data.0),
+        devices: devices.into_iter().map(|d| DeviceDisplay::from(d.1)).collect(),
+        configs: probe.data.1,
+        admin: probe.admin,
+        page_info: PageInfo::new(page, total_pages),
+        filters: query
+    })?;
+
+    Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
 #[get("{id}/adopt")]

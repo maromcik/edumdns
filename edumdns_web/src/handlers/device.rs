@@ -32,10 +32,11 @@ pub async fn get_devices(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let page = query.page.unwrap_or(1);
-    let query = SelectManyDevices::from(query.into_inner());
+    let query = query.into_inner();
+    let params = SelectManyDevices::from(query.clone());
     let devices = device_repo
         .read_many_auth(
-            &query,
+            &params,
             &parse_user_id(&i)?,
         )
         .await?;
@@ -45,7 +46,7 @@ pub async fn get_devices(
         .map(|(p, d)| (p, DeviceDisplay::from(d)))
         .collect();
 
-    let device_count = device_repo.get_device_count(query).await?;
+    let device_count = device_repo.get_device_count(params).await?;
     let total_pages = (device_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
     
     let template_name = get_template_name(&request, "device");
@@ -57,6 +58,7 @@ pub async fn get_devices(
         devices: devices_parsed,
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
         page_info: PageInfo::new(page, total_pages),
+        filters: query
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -78,7 +80,7 @@ pub async fn get_device(
         .read_one_auth(&path.0, &parse_user_id(&i)?)
         .await?;
     let page = query.page.unwrap_or(1);
-    let query = SelectManyPackets::new(
+    let params = SelectManyPackets::new(
         Some(device.data.probe_id),
         Some(device.data.mac),
         query.dst_mac.map(|mac|mac.to_octets()),
@@ -89,7 +91,7 @@ pub async fn get_device(
         Some(Pagination::default_pagination(query.page)),
     );
     let packets = packet_repo
-        .read_many(&query)
+        .read_many(&params)
         .await?
         .into_iter()
         .map(PacketDisplay::from)
@@ -100,7 +102,7 @@ pub async fn get_device(
         .read_packet_transmit_requests(&device.data.id)
         .await?;
 
-    let packet_count = packet_repo.get_packet_count(query).await?;
+    let packet_count = packet_repo.get_packet_count(params).await?;
     let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
     
     let template_name = get_template_name(&request, "device/detail");
@@ -114,6 +116,7 @@ pub async fn get_device(
         packet_transmit_requests,
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
         page_info: PageInfo::new(page, total_pages),
+        filters: query.into_inner()
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

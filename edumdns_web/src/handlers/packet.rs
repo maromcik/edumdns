@@ -27,14 +27,15 @@ pub async fn get_packets(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let page = query.page.unwrap_or(1);
-    let query = SelectManyPackets::from(query.into_inner());
+    let query = query.into_inner();
+    let params = SelectManyPackets::from(query.clone());
     let packets = packet_repo
         .read_many_auth(
-            &query,
+            &params,
             &parse_user_id(&i)?,
         )
         .await?;
-    let packet_count = packet_repo.get_packet_count(query).await?;
+    let packet_count = packet_repo.get_packet_count(params).await?;
     let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
     let packets_parsed = packets
         .data
@@ -52,6 +53,7 @@ pub async fn get_packets(
         packets: &packets_parsed,
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
         page_info: PageInfo::new(page, total_pages),
+        filters: query,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

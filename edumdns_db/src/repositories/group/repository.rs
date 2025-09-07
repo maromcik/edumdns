@@ -51,7 +51,7 @@ impl DbReadMany<SelectManyGroups, Group> for PgGroupRepository {
         let mut query = group::table.into_boxed();
 
         if let Some(n) = &params.name {
-            query = query.filter(group::name.like(format!("%{n}%")));
+            query = query.filter(group::name.ilike(format!("%{n}%")));
         }
 
         if let Some(pagination) = params.pagination {

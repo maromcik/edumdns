@@ -7,11 +7,17 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProbeQuery {
     pub page: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub owner_id: Option<Id>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub location_id: Option<Id>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub adopted: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub mac: Option<MacAddr>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub ip: Option<IpNetwork>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub name: Option<String>,
 }
 

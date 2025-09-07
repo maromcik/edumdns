@@ -8,12 +8,19 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PacketQuery {
     pub page: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub probe_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub src_mac: Option<MacAddr>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub dst_mac: Option<MacAddr>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub src_addr: Option<IpNetwork>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub dst_addr: Option<IpNetwork>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub src_port: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub dst_port: Option<i32>,
 }
 

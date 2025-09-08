@@ -70,8 +70,8 @@
                 id="name"
                 name="name"
                 type="text"
-                value="{{ device.name }}"
-                placeholder="{{ device.name }}"
+                value="{% if device.name is none%}{% else %}{{ device.name }}{% endif %}"
+                placeholder="Friendly name"
                 class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
         />
         <p class="text-xs text-sat-m mt-1">Optional friendly name for the device.</p>
@@ -131,8 +131,9 @@
                 id="acl_password"
                 name="acl_password"
                 type="password"
-                value="{{ device.acl_pwd_hash }}"
+                value="{% if device.acl_pwd_hash is none%}{% else %}{{ device.acl_pwd_hash }}{% endif %}"
                 class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                placeholder="Secret"
                 required
         />
         <p class="text-xs text-sat-m mt-1">ACL Password.</p>
@@ -144,8 +145,9 @@
         <input
                 id="acl_src_cidr"
                 name="acl_src_cidr"
-                value="{{ device.acl_src_cidr }}"
+                value="{% if device.acl_src_cidr is none%}{% else %}{{ device.acl_src_cidr }}{% endif %}"
                 class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                placeholder="e.g., 192.168.1.0/24"
                 required
         />
         <p class="text-xs text-sat-m mt-1">ACL subnet.</p>
@@ -157,7 +159,8 @@
         <input
                 id="acl_ap_hostname_regex"
                 name="acl_ap_hostname_regex"
-                value="{{ device.acl_ap_hostname_regex }}"
+                value="{% if device.acl_ap_hostname_regex is none%}{% else %}{{ device.acl_ap_hostname_regex }}{% endif %}"
+                placeholder="Regex"
                 class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
                 required
         />

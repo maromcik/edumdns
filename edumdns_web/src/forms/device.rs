@@ -3,6 +3,7 @@ use edumdns_core::bincode_types::MacAddr;
 use edumdns_db::repositories::common::{Id, Pagination};
 use edumdns_db::repositories::device::models::{SelectManyDevices, UpdateDevice};
 use ipnetwork::IpNetwork;
+use log::error;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use edumdns_db::repositories::utilities::{generate_salt, hash_password};
@@ -82,6 +83,7 @@ pub struct UpdateDeviceForm {
 
 impl UpdateDeviceForm {
     pub fn to_db_params(self) -> Result<UpdateDevice, WebError> {
+        error!("{:?}", self.acl_password);
         let (hash, salt) = match self.acl_password {
             None => (None, None),
             Some(password) => {

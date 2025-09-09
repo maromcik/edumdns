@@ -10,6 +10,10 @@
       <sourceFolder url="file://$MODULE_DIR$/edumdns_web/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/edumdns_db/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/edumdns_device_auth/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/edumdns_proxy/edumdns_proxy-common/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/edumdns_proxy/edumdns_proxy-ebpf/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/edumdns_proxy/edumdns_proxy/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/edumdns_proxy/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

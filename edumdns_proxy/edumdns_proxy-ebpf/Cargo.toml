@@ -8,6 +8,9 @@ edumdns_proxy-common = { path = "../edumdns_proxy-common" }
 
 aya-ebpf = { workspace = true }
 aya-log-ebpf = { workspace = true }
+network-types = "0.1.0"
+memoffset = "0.9.1"
+log = "0.4.28"
 
 [build-dependencies]
 which = { workspace = true }

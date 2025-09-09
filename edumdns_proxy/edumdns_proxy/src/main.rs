@@ -1,4 +1,6 @@
+use std::net::Ipv4Addr;
 use anyhow::Context as _;
+use aya::maps::HashMap;
 use aya::programs::{Xdp, XdpFlags};
 use clap::Parser;
 #[rustfmt::skip]
@@ -58,6 +60,15 @@ async fn main() -> anyhow::Result<()> {
     program.load()?;
     program.attach(&iface, XdpFlags::default())
         .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
+
+
+
+    let mut redirect_map: HashMap<_, u32, u32> =
+        HashMap::try_from(ebpf.map_mut("BLOCKLIST").unwrap())?;
+
+    let block_addr: u32 = Ipv4Addr::new(192, 168, 0, 36).into();
+
+    redirect_map.insert(block_addr, 0, 0)?;
 
     let ctrl_c = signal::ctrl_c();
     println!("Waiting for Ctrl-C...");

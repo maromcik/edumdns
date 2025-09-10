@@ -1,7 +1,7 @@
 use std::net::Ipv4Addr;
 use anyhow::Context as _;
 use aya::maps::HashMap;
-use aya::programs::{Xdp, XdpFlags};
+use aya::programs::{Xdp};
 use clap::Parser;
 #[rustfmt::skip]
 use log::{debug, warn};
@@ -58,17 +58,25 @@ async fn main() -> anyhow::Result<()> {
     let Opt { iface } = opt;
     let program: &mut Xdp = ebpf.program_mut("edumdns_proxy").unwrap().try_into()?;
     program.load()?;
-    program.attach(&iface, XdpFlags::default())
+    program.attach(&iface, aya::programs::XdpFlags::default())
         .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
 
+    let wg1: u32 = Ipv4Addr::new(192, 168, 0, 17).into();
+    let cctv1: u32 = Ipv4Addr::new(192, 168, 0, 21).into();
+
+    // let mut redirect_map_v4_mac: HashMap<_, u32, [u8; 6]> =
+    //     HashMap::try_from(ebpf.map_mut("REWRITE_MAP_V4_MAC").unwrap())?;
+
+    // redirect_map_v4_mac.insert(cctv1, [0x52, 0x54, 0x00, 0x0e, 0xf2, 0xd4], 0)?;
+    // redirect_map_v4_mac.insert(dev_fedora, [0x52, 0x54, 0x00, 0xe5, 0xa8, 0xf8], 0)?;
+
+    let mut redirect_map_v4: HashMap<_, u32, u32> =
+        HashMap::try_from(ebpf.map_mut("REWRITE_MAP_V4").unwrap())?;
 
 
-    let mut redirect_map: HashMap<_, u32, u32> =
-        HashMap::try_from(ebpf.map_mut("BLOCKLIST").unwrap())?;
+    redirect_map_v4.insert(wg1, cctv1, 0)?;
+    redirect_map_v4.insert(cctv1, wg1, 0)?;
 
-    let block_addr: u32 = Ipv4Addr::new(192, 168, 0, 36).into();
-
-    redirect_map.insert(block_addr, 0, 0)?;
 
     let ctrl_c = signal::ctrl_c();
     println!("Waiting for Ctrl-C...");

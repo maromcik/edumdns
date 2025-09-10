@@ -47,7 +47,7 @@ impl PacketTransmitter {
     pub async fn transmit(&self) {
         let host = format!(
             "{}:{}",
-            self.transmit_request.target_ip, self.transmit_request.target_port
+            self.transmit_request.target_ip.ip(), self.transmit_request.target_port
         );
 
         loop {

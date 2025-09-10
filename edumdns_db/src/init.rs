@@ -15,9 +15,9 @@ pub async fn init() -> Result<Pool<AsyncPgConnection>, DbError> {
 }
 
 /// Runs your embedded migrations
-/// DATABASE_URL environment variable needs to be set with proper connection string.
+/// EDUMDNS_DATABASE_URL environment variable needs to be set with proper connection string.
 pub fn run_migrations() -> Result<(), DbError> {
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let database_url = env::var("EDUMDNS_DATABASE_URL").expect("EDUMDNS_DATABASE_URL must be set");
     let mut connection = PgConnection::establish(&database_url)?;
 
     connection
@@ -27,7 +27,7 @@ pub fn run_migrations() -> Result<(), DbError> {
 }
 
 fn set_up_database_pool() -> Result<Pool<AsyncPgConnection>, DbError> {
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let database_url = env::var("EDUMDNS_DATABASE_URL").expect("EDUMDNS_DATABASE_URL must be set");
     let config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(database_url);
     Pool::builder(config)
         .max_size(20)

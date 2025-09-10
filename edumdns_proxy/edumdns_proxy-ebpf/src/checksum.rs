@@ -62,6 +62,10 @@ impl ChecksumUpdate {
         !self.inner
     }
 
+    pub fn into_tcp_checksum(self) -> u16 {
+        !self.inner
+    }
+
     pub fn into_udp_checksum(self) -> u16 {
         // RFC 768, Section 3.1 states that we must invert the final computed checksum if it came
         // out to be zero.

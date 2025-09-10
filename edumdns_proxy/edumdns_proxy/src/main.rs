@@ -1,26 +1,26 @@
-use std::net::Ipv4Addr;
+mod error;
 use anyhow::Context as _;
-use aya::maps::HashMap;
-use aya::programs::{Xdp};
+use aya::programs::Xdp;
 use clap::Parser;
+use std::path::Path;
 #[rustfmt::skip]
 use log::{debug, warn};
+use crate::error::ProxyError;
+use log::info;
 use tokio::signal;
-
 #[derive(Debug, Parser)]
-struct Opt {
-    #[clap(short, long, default_value = "eth0")]
-    iface: String,
+struct Cli {
+    #[clap(short, long)]
+    interface: String,
+    #[clap(short, long, default_value = "/sys/fs/bpf/edumdns")]
+    ebpf_pin_path: String,
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let opt = Opt::parse();
-
+async fn main() -> Result<(), ProxyError> {
+    let cli = Cli::parse();
     env_logger::init();
 
-    // Bump the memlock rlimit. This is needed for older kernels that don't use the
-    // new memcg based accounting, see https://lwn.net/Articles/837122/
     let rlim = libc::rlimit {
         rlim_cur: libc::RLIM_INFINITY,
         rlim_max: libc::RLIM_INFINITY,
@@ -30,14 +30,11 @@ async fn main() -> anyhow::Result<()> {
         debug!("remove limit on locked memory failed, ret is: {ret}");
     }
 
-    // This will include your eBPF object file as raw bytes at compile-time and load it at
-    // runtime. This approach is recommended for most real-world use cases. If you would
-    // like to specify the eBPF program at runtime rather than at compile-time, you can
-    // reach for `Bpf::load_file` instead.
     let mut ebpf = aya::Ebpf::load(aya::include_bytes_aligned!(concat!(
         env!("OUT_DIR"),
         "/edumdns_proxy"
     )))?;
+
     match aya_log::EbpfLogger::init(&mut ebpf) {
         Err(e) => {
             // This can happen if you remove all log statements from your eBPF program.
@@ -55,33 +52,30 @@ async fn main() -> anyhow::Result<()> {
             });
         }
     }
-    let Opt { iface } = opt;
     let program: &mut Xdp = ebpf.program_mut("edumdns_proxy").unwrap().try_into()?;
     program.load()?;
-    program.attach(&iface, aya::programs::XdpFlags::default())
+    program.attach(&cli.interface, aya::programs::XdpFlags::default())
         .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
 
-    let wg1: u32 = Ipv4Addr::new(192, 168, 0, 17).into();
-    let cctv1: u32 = Ipv4Addr::new(192, 168, 0, 21).into();
+    let pin_dir = cli.ebpf_pin_path.as_str();
+    std::fs::create_dir_all(pin_dir)?;
+    if let Some(map_v4) = ebpf.map_mut("REWRITE_MAP_V4") {
+        map_v4.pin(Path::new(&format!("{}/rewrite_v4", pin_dir)))?;
+        info!("pinned map_v4 to: {}/rewrite_v4", pin_dir);
+    }
 
-    // let mut redirect_map_v4_mac: HashMap<_, u32, [u8; 6]> =
-    //     HashMap::try_from(ebpf.map_mut("REWRITE_MAP_V4_MAC").unwrap())?;
-
-    // redirect_map_v4_mac.insert(cctv1, [0x52, 0x54, 0x00, 0x0e, 0xf2, 0xd4], 0)?;
-    // redirect_map_v4_mac.insert(dev_fedora, [0x52, 0x54, 0x00, 0xe5, 0xa8, 0xf8], 0)?;
-
-    let mut redirect_map_v4: HashMap<_, u32, u32> =
-        HashMap::try_from(ebpf.map_mut("REWRITE_MAP_V4").unwrap())?;
-
-
-    redirect_map_v4.insert(wg1, cctv1, 0)?;
-    redirect_map_v4.insert(cctv1, wg1, 0)?;
-
+    if let Some(map_v6) = ebpf.map_mut("REWRITE_MAP_V6") {
+        map_v6.pin(Path::new(&format!("{}/rewrite_v6", pin_dir)))?;
+        info!("pinned map_v6 to: {}/rewrite_v6", pin_dir);
+    }
 
     let ctrl_c = signal::ctrl_c();
-    println!("Waiting for Ctrl-C...");
+    info!("Waiting for Ctrl-C...");
     ctrl_c.await?;
-    println!("Exiting...");
+    info!("Exiting...");
+
+    std::fs::remove_dir_all(pin_dir)?;
+    info!("unpinned maps");
 
     Ok(())
 }

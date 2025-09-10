@@ -38,14 +38,14 @@ impl From<DeviceQuery> for SelectManyDevices {
 
 #[derive(Serialize, Deserialize)]
 pub struct DeviceCustomPacketTransmitRequest {
-    pub target_ip: String,
+    pub target_ip: IpNetwork,
     pub target_port: u16,
     #[serde(default)]
     pub permanent: bool,
 }
 
 impl DeviceCustomPacketTransmitRequest {
-    pub fn new(target_ip: String, target_port: u16, permanent: bool) -> Self {
+    pub fn new(target_ip: IpNetwork, target_port: u16, permanent: bool) -> Self {
         Self {
             target_ip,
             target_port,

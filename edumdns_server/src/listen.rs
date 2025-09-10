@@ -37,9 +37,13 @@ pub async fn listen(
         Arc::new(RwLock::new(HashMap::new()));
     let probe_handles_local = probe_handles.clone();
     let _packet_storage_task = tokio::task::spawn(async move {
-        let mut packet_storage =
-            PacketManager::new(rx, pool_local, probe_handles_local, global_timeout);
-        packet_storage.handle_packets().await
+        match PacketManager::new(rx, pool_local, probe_handles_local, global_timeout) {
+            Ok(mut manager) => manager.handle_packets().await,
+            Err(e) => {
+                error!("Could not initialize packet manager: {e}");
+            }
+        }
+
     });
     info!("Packet storage initialized");
 

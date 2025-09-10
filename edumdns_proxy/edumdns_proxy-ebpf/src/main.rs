@@ -20,10 +20,6 @@ mod checksum;
 static REWRITE_MAP_V4: HashMap<u32, u32> =
     HashMap::<u32, u32>::with_max_entries(4096, 0);
 
-#[map(name = "REWRITE_MAP_V4_MAC")]
-static REWRITE_MAP_V4_MAC: HashMap<u32, [u8; 6]> =
-    HashMap::<u32, [u8; 6]>::with_max_entries(4096, 0);
-
 
 // IPv6 redirect map: key = original source IPv6, value = new destination IPv6
 #[map(name = "REWRITE_MAP_V6")]
@@ -91,14 +87,13 @@ fn try_edumdns_proxy(ctx: XdpContext) -> Result<u32, ()> {
                     let tcphdr: *mut TcpHdr =
                         ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
 
-
                     let old_checksum = u16::from_be_bytes((*tcphdr).check);
                     (*tcphdr).check = u16::to_be_bytes(ChecksumUpdate::new(old_checksum)
                         .remove_u32(u32::from_be_bytes(old_src))
                         .remove_u32(u32::from_be_bytes(old_dst))
                         .add_u32(proxy_ip)
                         .add_u32(*new_dst)
-                        .into_udp_checksum());
+                        .into_tcp_checksum());
 
                 }
                 IpProto::Udp => {

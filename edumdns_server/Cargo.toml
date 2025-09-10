@@ -10,7 +10,6 @@ pcap = {  version = "2.2.0", features = ["tokio", "lending-iter", "futures"]}
 pnet = "0.35.0"
 clap = { version = "4.5.36", features = ["derive"] }
 thiserror = "2.0.12"
-dns-parser = "0.8.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_bytes = "0.11.17"
 tokio = { version = "1.44.2", features = ["full"] }
@@ -22,3 +21,5 @@ log = "0.4.27"
 diesel-async = { version = "0.5.2" , features = ["tokio-postgres", "postgres", "deadpool"]}
 ipnetwork = "0.21.1"
 uuid = "1.18.0"
+aya = "0.13.1"
+hickory-proto = "0.25.2"

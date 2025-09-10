@@ -12,6 +12,7 @@ pub mod error;
 pub mod manager;
 pub mod listen;
 mod transmitter;
+mod ebpf;
 
 const DEFAULT_HOSTNAME: &str = "localhost";
 const DEFAULT_PORT: &str = "5000";

@@ -21,6 +21,8 @@ pub enum ProxyErrorKind {
     EbpfPinError,
     #[error("anyhow any error")]
     AnyError,
+    #[error("ebpf config missing")]
+    MapMissing,
 }
 
 #[derive(Error, Clone)]

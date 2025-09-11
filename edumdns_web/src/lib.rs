@@ -71,6 +71,9 @@ pub async fn web_init(
     //     .await
     //     .unwrap();
 
+    let files_dir = env::var("EDUMDNS_FILES_DIR")
+        .unwrap_or("edumdns".to_string());
+
     let use_secure_cookie = env::var("EDUMDNS_USE_SECURE_COOKIE")
         .unwrap_or("false".to_string())
         .parse::<bool>()?;
@@ -112,7 +115,7 @@ pub async fn web_init(
             )
             .wrap(Logger::default())
             // .configure(openid.configure_open_id())
-            .configure(configure_webapp(&pool, app_state.clone()))
+            .configure(configure_webapp(&pool, app_state.clone(), files_dir.clone()))
     })
     .bind(host2)?
     .run()

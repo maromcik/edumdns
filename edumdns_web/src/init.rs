@@ -32,6 +32,7 @@ use edumdns_db::repositories::user::repository::PgUserRepository;
 pub fn configure_webapp(
     pool: &Pool<AsyncPgConnection>,
     app_state: AppState,
+    files_dir: String,
 ) -> Box<dyn FnOnce(&mut ServiceConfig)> {
     let _ = PgLocationRepository::new(pool.clone());
     let group_repo = PgGroupRepository::new(pool.clone());
@@ -106,7 +107,7 @@ pub fn configure_webapp(
             .service(device_scope)
             .service(packet_scope)
             .service(group_scope)
-            .service(Files::new("/static", "./edumdns_web/static").prefer_utf8(true))
-            .service(Files::new("/", "./edumdns_web/webroot").prefer_utf8(true));
+            .service(Files::new("/static", format!("{files_dir}/static")).prefer_utf8(true))
+            .service(Files::new("/", format!("{files_dir}/webroot")).prefer_utf8(true));
     })
 }

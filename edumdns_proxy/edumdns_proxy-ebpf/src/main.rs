@@ -76,14 +76,7 @@ fn try_edumdns_proxy(ctx: XdpContext) -> Result<u32, ()> {
 
             let proxy_ip = u32::from_be_bytes(cfg.proxy_ip);
             let old_dst_u32 = u32::from_be_bytes((*ipv4hdr).dst_addr);
-            info!(
-                &ctx,
-                "Rewriting packet; old_src: {:i}; new_src {:i}", source, proxy_ip
-            );
-            info!(
-                &ctx,
-                "Rewriting packet; old_dst: {:i}; new_dst {:i}", old_dst_u32, *new_dst
-            );
+
             (*ipv4hdr).src_addr = proxy_ip.to_be_bytes();
             (*ipv4hdr).dst_addr = new_dst.to_be_bytes();
             let new_ipv4_len = (*ipv4hdr).tot_len();
@@ -102,7 +95,7 @@ fn try_edumdns_proxy(ctx: XdpContext) -> Result<u32, ()> {
             match unsafe { (*ipv4hdr).proto } {
                 IpProto::Tcp => {
                     let tcphdr: *mut TcpHdr = ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
-
+                    info!(&ctx,"Rewriting packet; old_src: {:i}; new_src {:i}; old_dst: {:i}; new_dst {:i}; old udp: {}; new tcp: {}", source, proxy_ip, old_dst_u32, *new_dst, u16::from_be_bytes((*tcphdr).source), u16::from_be_bytes((*tcphdr).dest));
                     let old_checksum = u16::from_be_bytes((*tcphdr).check);
                     (*tcphdr).check = u16::to_be_bytes(
                         ChecksumUpdate::new(old_checksum)
@@ -115,7 +108,7 @@ fn try_edumdns_proxy(ctx: XdpContext) -> Result<u32, ()> {
                 }
                 IpProto::Udp => {
                     let udphdr: *mut UdpHdr = ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
-
+                    info!(&ctx,"Rewriting packet; old_src: {:i}; new_src {:i}; old_dst: {:i}; new_dst {:i}; old udp: {}; new udp: {}", source, proxy_ip, old_dst_u32, *new_dst, u16::from_be_bytes((*udphdr).src), u16::from_be_bytes((*udphdr).dst));
                     let old_checksum = u16::from_be_bytes((*udphdr).check);
                     (*udphdr).check = u16::to_be_bytes(
                         ChecksumUpdate::new(old_checksum)

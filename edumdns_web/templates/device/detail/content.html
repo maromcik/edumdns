@@ -147,7 +147,6 @@
                 value="{% if device.acl_src_cidr is none%}{% else %}{{ device.acl_src_cidr }}{% endif %}"
                 class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
                 placeholder="e.g., 192.168.1.0/24"
-                required
         />
         <p class="text-xs text-sat-m mt-1">ACL subnet.</p>
       </div>
@@ -161,7 +160,6 @@
                 value="{% if device.acl_ap_hostname_regex is none%}{% else %}{{ device.acl_ap_hostname_regex }}{% endif %}"
                 placeholder="Regex"
                 class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
-                required
         />
         <p class="text-xs text-sat-m mt-1">Regex over client AP hostname.</p>
       </div>

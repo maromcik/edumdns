@@ -1,6 +1,7 @@
-use edumdns_core::error::CoreError;
+use edumdns_core::error::{CoreError, CoreErrorKind};
 use edumdns_db::error::DbError;
 use std::fmt::{Debug, Display, Formatter};
+use std::net::AddrParseError;
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone)]
@@ -21,6 +22,8 @@ pub enum ServerErrorKind {
     ProbeNotFound,
     #[error("parse error")]
     ParseError,
+    #[error("ebpf map error")]
+    EbpfMapError,
 }
 
 #[derive(Error, Debug, Clone)]
@@ -69,5 +72,17 @@ impl From<DbError> for ServerError {
 impl From<std::num::ParseIntError> for ServerError {
     fn from(value: std::num::ParseIntError) -> Self {
         Self::new(ServerErrorKind::ParseError, value.to_string().as_str())
+    }
+}
+
+impl From<aya::maps::MapError> for ServerError {
+    fn from(value: aya::maps::MapError) -> Self {
+        Self::new(ServerErrorKind::EbpfMapError, value.to_string().as_str())
+    }
+}
+
+impl From<AddrParseError> for ServerError {
+    fn from(value: AddrParseError) -> Self {
+        ServerError::new(ServerErrorKind::ParseError, &value.to_string())
     }
 }

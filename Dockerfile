@@ -65,7 +65,7 @@ COPY ./edumdns_web/webroot ./edumdns_web/webroot
 
 EXPOSE 8000
 
-ENTRYPOINT ["/usr/local/bin/edumdns"]
+ENTRYPOINT ["/usr/bin/mount -t bpf none /usr/src/edumdns/bpf && /usr/local/bin/edumdns"]
 
 
 

@@ -207,16 +207,16 @@ impl PartialEq for ProbePacket {
 
 impl Eq for ProbePacket {}
 
-#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct PacketTransmitRequestPacket {
     pub probe_uuid: Uuid,
     pub device_mac: MacAddr,
-    pub device_ip: IpNetwork,
-    pub target_ip: String,
+    pub device_ip: ipnetwork::IpNetwork,
+    pub target_ip: ipnetwork::IpNetwork,
     pub target_port: u16,
 }
 
-#[derive(Encode, Decode, Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct PacketTransmitTarget {
     pub ip: String,
     pub port: u16,
@@ -234,14 +234,14 @@ impl PacketTransmitRequestPacket {
         probe_uuid: uuid::Uuid,
         device_mac: [u8; 6],
         device_ip: ipnetwork::IpNetwork,
-        target_ip: &str,
+        target_ip: ipnetwork::IpNetwork,
         target_port: u16,
     ) -> Self {
         Self {
             probe_uuid: Uuid(probe_uuid),
             device_mac: MacAddr::from_octets(device_mac),
-            device_ip: IpNetwork(device_ip),
-            target_ip: target_ip.to_string(),
+            device_ip,
+            target_ip,
             target_port,
         }
     }

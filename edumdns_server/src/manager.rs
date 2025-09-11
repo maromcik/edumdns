@@ -1,3 +1,5 @@
+
+use crate::ebpf::EbpfUpdater;
 use crate::error::{ServerError, ServerErrorKind};
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use diesel_async::AsyncPgConnection;
@@ -16,11 +18,24 @@ use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use log::{debug, error, info, warn};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
+use std::env;
+use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::mpsc::error::SendError;
+use hickory_proto::op::Message;
+use hickory_proto::rr::RData;
+use hickory_proto::serialize::binary::{BinDecodable, BinEncodable};
+use pnet::packet::PrimitiveValues;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
+use edumdns_core::network_packet::{ApplicationPacket, ApplicationPacketType};
+
+#[derive(Clone)]
+pub struct Proxy {
+    pub proxy_ipv4: Ipv4Addr,
+    pub proxy_ipv6: Ipv6Addr,
+    pub ebpf_updater: Arc<Mutex<EbpfUpdater>>,
+}
 
 pub struct PacketManager {
     pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
@@ -30,6 +45,7 @@ pub struct PacketManager {
     pub probe_ws_handles: HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<ProbeResponse>>>,
     pub pg_device_repository: PgDeviceRepository,
     pub pg_packet_repository: PgPacketRepository,
+    pub proxy: Option<Proxy>,
     pub global_timeout: Duration,
 }
 
@@ -39,8 +55,26 @@ impl PacketManager {
         db_pool: Pool<AsyncPgConnection>,
         handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
         global_timeout: Duration,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, ServerError> {
+        let use_proxy = env::var("EDUMDNS_SERVER_USE_PROXY")
+            .unwrap_or("false".to_string())
+            .parse::<bool>()
+            .unwrap_or(false);
+
+        let proxy_ipv4 = env::var("EDUMDNS_SERVER_PROXY_IPV4").unwrap_or("127.0.0.1".to_string()).parse::<Ipv4Addr>()?;
+        let proxy = if use_proxy {
+            Some(
+                Proxy {
+                    proxy_ipv4,
+                    proxy_ipv6: Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0),
+                    ebpf_updater: Arc::new(Mutex::new(EbpfUpdater::new()?)),
+                }
+            )
+        } else {
+            None
+        };
+
+        Ok(Self {
             packets: HashMap::new(),
             packet_receiver: receiver,
             transmitter_tasks: Arc::new(Mutex::new(HashMap::new())),
@@ -48,8 +82,9 @@ impl PacketManager {
             probe_ws_handles: HashMap::new(),
             pg_device_repository: PgDeviceRepository::new(db_pool.clone()),
             pg_packet_repository: PgPacketRepository::new(db_pool.clone()),
+            proxy,
             global_timeout,
-        }
+        })
     }
 
     pub async fn handle_packets(&mut self) {
@@ -100,6 +135,16 @@ impl PacketManager {
                         t.transmitter_task.abort();
                     }
                     self.transmitter_tasks.lock().await.remove(&target);
+                    let Some(proxy) = &self.proxy else {
+                        return;
+                    };
+                    if let Err(e) = proxy.ebpf_updater
+                        .lock()
+                        .await
+                        .remove_ip(target.device_ip, target.target_ip)
+                    {
+                        error!("Could not remove IP from an ebpf map: {}", e);
+                    }
                 }
                 LocalCommandPacket::ReconnectProbe(id) => {
                     if let Err(e) = self.send_reconnect(id).await {
@@ -294,9 +339,10 @@ impl PacketManager {
         let device_lookup = SelectSingleDevice::new(
             probe_id,
             transmit_request.device_mac.to_octets(),
-            transmit_request.device_ip.0,
+            transmit_request.device_ip,
         );
 
+        let proxy = self.proxy.clone();
         let transmitter_tasks = self.transmitter_tasks.clone();
         let global_timeout = self.global_timeout;
         tokio::task::spawn(async move {
@@ -332,10 +378,39 @@ impl PacketManager {
 
             info!("Packets found for target: {}", transmit_request);
 
-            let payloads = packets
-                .into_iter()
-                .map(|p| p.payload)
-                .collect::<HashSet<Vec<u8>>>();
+
+            let payloads = if let Some(proxy) = proxy
+            {
+                 match proxy.ebpf_updater
+                .lock()
+                .await
+                .add_ip(device.ip, transmit_request.target_ip) {
+                     Ok(_) => {
+                         let mut payloads = HashSet::new();
+                         for packet in packets {
+                             let Ok(mut message) = Message::from_bytes(packet.payload.as_slice()) else {
+                                 continue;
+                             };
+                             for ans in message.answers_mut() {
+                                 if ans.data().is_a() {
+                                     ans.set_data(RData::A(hickory_proto::rr::rdata::a::A::from(proxy.proxy_ipv4)));
+                                 }
+                             }
+                             if let Ok(bytes) = message.to_vec() {
+                                 payloads.insert(bytes);
+                             }
+                         }
+                         payloads
+                     }
+                     Err(e) => {
+                         error!("Could not add IP to an ebpf map for proxy: {}", e);
+                         return;
+                     }
+                 }
+            } else {
+                packets.into_iter().map(|p| p.payload).collect()
+            };
+
             let transmitter = PacketTransmitter::new(
                 payloads,
                 transmit_request.clone(),

@@ -50,7 +50,7 @@ pub async fn web_init(
     let app_state = AppState::new(jinja.clone(), command_channel.clone());
 
     let key = Key::from(
-        &env::var("COOKIE_SESSION_KEY")
+        &env::var("EDUMDNS_COOKIE_SESSION_KEY")
             .unwrap_or_default()
             .bytes()
             .collect::<Vec<u8>>(),
@@ -71,10 +71,10 @@ pub async fn web_init(
     //     .await
     //     .unwrap();
 
-    let use_secure_cookie = env::var("USE_SECURE_COOKIE")
+    let use_secure_cookie = env::var("EDUMDNS_USE_SECURE_COOKIE")
         .unwrap_or("false".to_string())
         .parse::<bool>()?;
-    info!("USE_SECURE_COOKIE: {}", use_secure_cookie);
+    info!("EDUMDNS_USE_SECURE_COOKIE: {}", use_secure_cookie);
 
     if let Err(e) = dotenvy::dotenv() {
         warn!("failed loading .env file: {e}");

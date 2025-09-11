@@ -40,16 +40,13 @@ pub async fn request_packet_transmit_helper(
         device.probe_id,
         device.mac,
         device.ip,
-        &form.target_ip,
+        form.target_ip,
         form.target_port,
     );
 
     let request = CreatePacketTransmitRequest {
         device_id: device.id,
-        target_ip: form
-            .target_ip
-            .parse::<IpNetwork>()
-            .map_err(CoreError::from)?,
+        target_ip: form.target_ip,
         target_port: form.target_port as i32,
         permanent: form.permanent,
     };

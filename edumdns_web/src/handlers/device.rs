@@ -216,7 +216,7 @@ pub async fn delete_request_packet_transmit(
         device.data.probe_id,
         device.data.mac,
         device.data.ip,
-        &r.target_ip.ip().to_string(),
+        r.target_ip,
         r.target_port as u16,
     );
 
@@ -254,9 +254,9 @@ pub async fn request_packet_transmit(
         "Could not determine target ip",
     ))?;
 
+    let target_ip = target_ip.parse::<ipnetwork::IpNetwork>()?;
     if let Some(acl_src_cidr) = device.acl_src_cidr {
-        let ip = target_ip.parse::<ipnetwork::IpNetwork>()?;
-        if !acl_src_cidr.contains(ip.ip()) {
+        if !acl_src_cidr.contains(target_ip.ip()) {
             return Err(WebError::new(
                 WebErrorKind::DeviceTransmitRequestDenied,
                 format!("Target IP is not allowed to request packets from this device. Allowed subnet is {acl_src_cidr}").as_str(),

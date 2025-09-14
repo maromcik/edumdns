@@ -1,474 +1,518 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-6">
-  <!-- Header -->
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-4xl font-semibold text-sat-xl">Device {% if device.name is not none %} {{ device.name }} {% else %} {{ device.id }} {% endif %}</h1>
-    <div class="flex items-center gap-2">
-      <a href="/device" class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
-        ←
-      </a>
-      {% if permissions|has_perm("Delete") %}
-      <button
-              class="ml-2 bg-red-600 hover:bg-red-700 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
-              hx-delete="/device/{{ device.id }}/delete"
-              hx-target="#content-area"
-              hx-target-error="#content-area"
-              hx-push-url="/device"
-      >
-        Delete
-      </button>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Device Card -->
-  <div class="rounded-lg border border-base bg-cards p-6 mb-8">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- ID -->
-      <div class="flex flex-col">
-        <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
-        <span class="font-mono text-code"><code>{{ device.id }}</code></span>
-      </div>
-
-      <!-- Probe ID -->
-      <div class="flex flex-col">
-        <span class="text-xs uppercase tracking-wide text-sat-m">Probe ID</span>
-        <span class="font-mono text-code">
-          <a class="underline text-acc hover:text-acc-xl" href="/probe/{{ device.probe_id }}"><code>{{ device.probe_id }}</code></a>
-        </span>
-      </div>
-
-      <!-- MAC -->
-      <div class="flex flex-col">
-        <span class="text-xs uppercase tracking-wide text-sat-m">MAC</span>
-        <span class="font-mono text-code"><code>{{ device.mac }}</code></span>
-      </div>
-
-      <!-- IP -->
-      <div class="flex flex-col">
-        <span class="text-xs uppercase tracking-wide text-sat-m">IP</span>
-        <span class="font-mono text-code"><code>{{ device.ip }}</code></span>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- Editable Device Settings -->
-  <div class="rounded-lg border border-base bg-cards p-6 mb-8">
-    <h3 class="text-2xl font-medium mb-4 text-sat-l">Device Settings</h3>
-    <form
-            method="post"
-            hx-post="/device/update"
-            hx-target="#content-area"
-            hx-target-error="#content-area"
-            class="grid grid-cols-1 md:grid-cols-2 gap-4"
-    >
-      <input type="hidden" id="device_id" name="id" value="{{ device.id }}" />
-      <!-- Name -->
-      <div class="flex flex-col">
-        <label for="name" class="text-xs uppercase tracking-wide text-sat-m">Name</label>
-        <input
-                id="name"
-                name="name"
-                type="text"
-                value="{% if device.name is none%}{% else %}{{ device.name }}{% endif %}"
-                placeholder="Friendly name"
-                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
-        />
-        <p class="text-xs text-sat-m mt-1">Optional friendly name for the device.</p>
-      </div>
-
-      <!-- Port -->
-      <div class="flex flex-col">
-        <label for="port" class="text-xs uppercase tracking-wide text-sat-m">Port</label>
-        <input
-                id="port"
-                name="port"
-                type="number"
-                min="1"
-                max="65535"
-                value="{{ device.port }}"
-                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
-                required
-        />
-      </div>
-
-      <!-- Duration -->
-      <div class="flex flex-col">
-        <label for="duration" class="text-xs uppercase tracking-wide text-sat-m">Duration</label>
-        <input
-                id="duration"
-                name="duration"
-                type="number"
-                min="0"
-                step="1"
-                value="{{ device.duration }}"
-                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
-                required
-        />
-        <p class="text-xs text-sat-m mt-1">Duration in seconds.</p>
-      </div>
-
-      <!-- Interval -->
-      <div class="flex flex-col">
-        <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">Interval</label>
-        <input
-                id="interval"
-                name="interval"
-                type="number"
-                min="0"
-                step="1"
-                value="{{ device.interval }}"
-                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
-                required
-        />
-        <p class="text-xs text-sat-m mt-1">Interval in milliseconds.</p>
-      </div>
-
-      <!-- Password -->
-      <div class="flex flex-col">
-        <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">ACL Password</label>
-        <input
-                id="acl_password"
-                name="acl_password"
-                type="password"
-                value="{% if device.acl_pwd_hash is none%}{% else %}{{ device.acl_pwd_hash }}{% endif %}"
-                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
-                placeholder="Secret"
-        />
-        <p class="text-xs text-sat-m mt-1">ACL Password.</p>
-      </div>
-
-      <!-- Src CIDS -->
-      <div class="flex flex-col">
-        <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">ACL SRC SUBNET</label>
-        <input
-                id="acl_src_cidr"
-                name="acl_src_cidr"
-                value="{% if device.acl_src_cidr is none%}{% else %}{{ device.acl_src_cidr }}{% endif %}"
-                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
-                placeholder="e.g., 192.168.1.0/24"
-        />
-        <p class="text-xs text-sat-m mt-1">ACL subnet.</p>
-      </div>
-
-      <!-- AP hostname regex -->
-      <div class="flex flex-col">
-        <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">ACL AP Hostname REGEX</label>
-        <input
-                id="acl_ap_hostname_regex"
-                name="acl_ap_hostname_regex"
-                value="{% if device.acl_ap_hostname_regex is none%}{% else %}{{ device.acl_ap_hostname_regex }}{% endif %}"
-                placeholder="Regex"
-                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
-        />
-        <p class="text-xs text-sat-m mt-1">Regex over client AP hostname.</p>
-      </div>
-      {% if permissions|has_perm("Update") %}
-      <!-- Actions -->
-      <div class="md:col-span-2 flex items-center gap-2 pt-2">
-        <button
-                type="submit"
-                class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
-        >
-          Save
-        </button>
-        <button
-                type="reset"
-                class="inline-flex items-center rounded-md border border-base bg-cards px-4 py-2 text-sm font-medium text-sat-l hover:bg-panes transition-colors"
-        >
-          Reset
-        </button>
-      </div>
-      {% endif %}
-    </form>
-  </div>
-
-
-  <!-- Request Packet Transmission -->
-  <div class="rounded-lg border border-base bg-cards p-6 mb-6">
-    <h3 class="text-2xl font-medium mb-4 text-sat-l">Request Packet Transmission</h3>
-
-    <form class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- Target IP -->
-      <div class="flex flex-col">
-        <label for="target_ip" class="text-xs uppercase tracking-wide text-sat-m">Target IP</label>
-        <input
-                id="target_ip"
-                name="target_ip"
-                type="text"
-                inputmode="numeric"
-                placeholder="e.g., 8.8.8.8"
-                required
-                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
-        />
-        <p class="text-xs text-sat-m mt-1">Destination IPv4/IPv6 address.</p>
-      </div>
-
-      <!-- Target Port -->
-      <div class="flex flex-col">
-        <label for="target_port" class="text-xs uppercase tracking-wide text-sat-m">Target Port</label>
-        <input
-                id="target_port"
-                name="target_port"
-                type="number"
-                min="1"
-                max="65535"
-                placeholder="e.g., 53"
-                required
-                class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
-        />
-        <p class="text-xs text-sat-m mt-1">Destination TCP/UDP port (1–65535).</p>
-      </div>
-
-
-      <div class="md:col-span-2 flex items-center gap-2">
-        <input
-                id="permanent"
-                name="permanent"
-                type="checkbox"
-                value="true"
-                class="h-4 w-4 rounded border-base bg-panes text-acc focus:ring-2 focus:ring-acc"
-        />
-        <label for="permanent" class="text-sm text-sat-l">Permanent</label>
-      </div>
-
-      <!-- Actions -->
-      <div class="md:col-span-2 flex items-center gap-2">
-        <button
-                type="button"
-                class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
-                hx-post="/device/{{ device.id }}/transmit-custom"
-                hx-target="#content-area"
-                hx-target-error="#content-area"
-        >
-          Transmit
-        </button>
-      </div>
-    </form>
-  </div>
-
-  <div class="rounded-lg border border-base bg-cards p-6 mb-6">
-    <h3 class="text-2xl font-medium mb-4 text-sat-l">Packet Transmissions in progress</h3>
-
-    <div class="overflow-x-auto rounded-md border border-base">
-      <table class="min-w-full divide-y divide-base">
-        <thead class="bg-panes">
-        <tr>
-          <th class="px-4 py-2 text-left text-xs font-medium text-sat-m uppercase tracking-wide">Target IP</th>
-          <th class="px-4 py-2 text-left text-xs font-medium text-sat-m uppercase tracking-wide">Target Port</th>
-          <th class="px-4 py-2 text-right text-xs font-medium text-sat-m uppercase tracking-wide">Actions</th>
-        </tr>
-        </thead>
-        <tbody class="divide-y divide-base bg-bg">
-        {% if packet_transmit_requests and packet_transmit_requests | length > 0 %}
-        {% for r in packet_transmit_requests %}
-        <tr>
-          <td class="px-4 py-2 text-sat-l">{{ r.target_ip }}</td>
-          <td class="px-4 py-2 text-sat-l">{{ r.target_port }}</td>
-          <td class="px-4 py-2">
-            <div class="flex justify-end">
-              <button
-                      type="button"
-                      class="inline-flex items-center gap-2 rounded-md border border-danger/20 bg-danger/10 px-3 py-1.5 text-sm text-danger hover:bg-danger/20 transition-colors"
-                      title="Delete"
-                      hx-delete="/device/{{ device.id }}/transmit/{{ r.id }}"
-                      hx-vals='{"target_ip":"{{ r.target_ip }}","target_port":"{{ r.target_port }}"}'
-                      hx-target="#content-area"
-                      hx-target-error="#content-area"
-              >
-                <i class="fa fa-trash text-sat-l"></i>
-              </button>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-        {% else %}
-        <tr>
-          <td colspan="3" class="px-4 py-6 text-center text-sat-m">No packet transmissions.</td>
-        </tr>
-        {% endif %}
-        </tbody>
-      </table>
-    </div>
-
-  </div>
-
-
-  <!-- Packets Table -->
-  <div class="overflow-x-auto rounded-lg border border-base bg-cards p-6">
-    <div class="flex flex-col justify-center items-center py-4">
-      <h2 class="text-3xl font-medium text-sat-xl">Packets</h2>
-    </div>
-
-    <table class="min-w-full divide-y divide-base">
-      <thead class="bg-muted/10">
-        <tr>
-          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">ID</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Src MAC</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Dst MAC</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Src Addr</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Dst Addr</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Src Port</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Dst Port</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
-        </tr>
-        <tr>
-          <td class="px-4 py-2"></td>
-          <td class="px-4 py-2"><input type="text" id="filter-src_mac"  value="{{ filters.src_mac  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
-          <td class="px-4 py-2"><input type="text" id="filter-dst_mac"   value="{{ filters.dst_mac   | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
-          <td class="px-4 py-2"><input type="text" id="filter-src_addr"    value="{{ filters.src_addr    | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
-          <td class="px-4 py-2"><input type="text" id="filter-dst_addr"  value="{{ filters.dst_addr  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
-          <td class="px-4 py-2"><input type="text" id="filter-src_port"    value="{{ filters.src_port    | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
-          <td class="px-4 py-2"><input type="text" id="filter-dst_port"  value="{{ filters.dst_port  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
-          <td class="px-4 py-2 flex gap-2">
-            <button type="button" id="filter-button"
-                    class="px-3 py-1 rounded-md border border-base bg-acc text-sm bg-primary text-black hover:bg-primary/90 transition-colors">
-              Search
-            </button>
-            <button type="button" id="reset-button"
-                    class="px-3 py-1 rounded-md border border-base text-sm bg-acc-l hover:bg-muted/20 transition-colors">
-              Reset
-            </button>
-          </td>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-base">
-        {% for packet in packets %}
-        <tr class="hover:bg-muted/5 transition-colors">
-          <td class="px-4 py-3 font-mono text-sm text-sat-l">
-            <a href="/packet/{{ packet.id }}" class="text-primary hover:underline">
-              {{ packet.id }}
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-4xl font-semibold text-sat-xl">Device {% if device.name is not none %} {{ device.name }} {% else
+            %} {{ device.id }} {% endif %}</h1>
+        <div class="flex items-center gap-2">
+            <a href="/device"
+               class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
+                ←
             </a>
-          </td>
-          <td class="px-4 py-3 text-sm text-sat-l">{{ packet.src_mac }}</td>
-          <td class="px-4 py-3 text-sm text-sat-l">{{ packet.dst_mac }}</td>
-          <td class="px-4 py-3 text-sm text-sat-l">{{ packet.src_addr }}</td>
-          <td class="px-4 py-3 text-sm text-sat-l">{{ packet.dst_addr }}</td>
-          <td class="px-4 py-3 text-sm text-sat-l">{{ packet.src_port }}</td>
-          <td class="px-4 py-3 text-sm text-sat-l">{{ packet.dst_port }}</td>
-          {% if permissions|has_perm("Delete") %}
-          <td class="px-4 py-3 text-sm text-sat-l">
+            {% if permissions|has_perm("Delete") %}
             <button
-                    hx-delete="/packet/{{ packet.id }}/delete?return_url=/device/{{ device.id }}?page={{ page_info.page }}"
+                    class="ml-2 bg-red-600 hover:bg-red-700 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                    hx-delete="/device/{{ device.id }}/delete"
                     hx-target="#content-area"
                     hx-target-error="#content-area"
-                    hx-push-url="/packet"
-                    class="inline-flex items-center rounded-md border border-base px-3 py-1 text-sm text-red-400 hover:bg-muted/20 transition-colors"
-                    title="Delete Packet"
-
+                    hx-push-url="/device"
             >
-              <i class="fa-solid fa-trash"></i>
+                Delete
             </button>
-          </td>
-          {% endif %}
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+            {% endif %}
+        </div>
+    </div>
 
-    {% if packets|length == 0 %}
-    <div class="p-6 text-center text-muted-foreground">
-      No packets found for this device.
+    <!-- Device Card -->
+    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- ID -->
+            <div class="flex flex-col">
+                <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
+                <span class="font-mono text-code"><code>{{ device.id }}</code></span>
+            </div>
+
+            <!-- Probe ID -->
+            <div class="flex flex-col">
+                <span class="text-xs uppercase tracking-wide text-sat-m">Probe ID</span>
+                <span class="font-mono text-code">
+          <a class="underline text-acc hover:text-acc-xl" href="/probe/{{ device.probe_id }}"><code>{{ device.probe_id }}</code></a>
+        </span>
+            </div>
+
+            <!-- MAC -->
+            <div class="flex flex-col">
+                <span class="text-xs uppercase tracking-wide text-sat-m">MAC</span>
+                <span class="font-mono text-code"><code>{{ device.mac }}</code></span>
+            </div>
+
+            <!-- IP -->
+            <div class="flex flex-col">
+                <span class="text-xs uppercase tracking-wide text-sat-m">IP</span>
+                <span class="font-mono text-code"><code>{{ device.ip }}</code></span>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Editable Device Settings -->
+    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
+        <h3 class="text-2xl font-medium mb-4 text-sat-l">Device Settings</h3>
+        <form
+                method="post"
+                hx-post="/device/update"
+                hx-target="#content-area"
+                hx-target-error="#content-area"
+                class="grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
+            <input type="hidden" id="device_id" name="id" value="{{ device.id }}"/>
+            <!-- Name -->
+            <div class="flex flex-col">
+                <label for="name" class="text-xs uppercase tracking-wide text-sat-m">Name</label>
+                <input
+                        id="name"
+                        name="name"
+                        type="text"
+                        value="{% if device.name is none%}{% else %}{{ device.name }}{% endif %}"
+                        placeholder="Friendly name"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                />
+                <p class="text-xs text-sat-m mt-1">Optional friendly name for the device.</p>
+            </div>
+
+            <!-- Port -->
+            <div class="flex flex-col">
+                <label for="port" class="text-xs uppercase tracking-wide text-sat-m">Port</label>
+                <input
+                        id="port"
+                        name="port"
+                        type="number"
+                        min="1"
+                        max="65535"
+                        value="{{ device.port }}"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        required
+                />
+            </div>
+
+            <!-- Duration -->
+            <div class="flex flex-col">
+                <label for="duration" class="text-xs uppercase tracking-wide text-sat-m">Duration</label>
+                <input
+                        id="duration"
+                        name="duration"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value="{{ device.duration }}"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        required
+                />
+                <p class="text-xs text-sat-m mt-1">Duration in seconds.</p>
+            </div>
+
+            <!-- Interval -->
+            <div class="flex flex-col">
+                <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">Interval</label>
+                <input
+                        id="interval"
+                        name="interval"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value="{{ device.interval }}"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        required
+                />
+                <p class="text-xs text-sat-m mt-1">Interval in milliseconds.</p>
+            </div>
+
+            <!-- Password -->
+            <div class="flex flex-col">
+                <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">ACL Password</label>
+                <input
+                        id="acl_password"
+                        name="acl_password"
+                        type="password"
+                        value="{% if device.acl_pwd_hash is none%}{% else %}{{ device.acl_pwd_hash }}{% endif %}"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        placeholder="Secret"
+                />
+                <p class="text-xs text-sat-m mt-1">ACL Password.</p>
+            </div>
+
+            <!-- Src CIDS -->
+            <div class="flex flex-col">
+                <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">ACL SRC SUBNET</label>
+                <input
+                        id="acl_src_cidr"
+                        name="acl_src_cidr"
+                        value="{% if device.acl_src_cidr is none%}{% else %}{{ device.acl_src_cidr }}{% endif %}"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        placeholder="e.g., 192.168.1.0/24"
+                />
+                <p class="text-xs text-sat-m mt-1">ACL subnet.</p>
+            </div>
+
+            <!-- AP hostname regex -->
+            <div class="flex flex-col">
+                <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">ACL AP Hostname REGEX</label>
+                <input
+                        id="acl_ap_hostname_regex"
+                        name="acl_ap_hostname_regex"
+                        value="{% if device.acl_ap_hostname_regex is none%}{% else %}{{ device.acl_ap_hostname_regex }}{% endif %}"
+                        placeholder="Regex"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                />
+                <p class="text-xs text-sat-m mt-1">Regex over client AP hostname.</p>
+            </div>
+            {% if permissions|has_perm("Update") %}
+            <!-- Actions -->
+            <div class="md:col-span-2 flex items-center gap-2 pt-2">
+                <button
+                        type="submit"
+                        class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                >
+                    Save
+                </button>
+                <button
+                        type="reset"
+                        class="inline-flex items-center rounded-md border border-base bg-cards px-4 py-2 text-sm font-medium text-sat-l hover:bg-panes transition-colors"
+                >
+                    Reset
+                </button>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+
+    <!-- Request Packet Transmission -->
+    <div class="rounded-lg border border-base bg-cards p-6 mb-6">
+        <h3 class="text-2xl font-medium mb-4 text-sat-l">Request Packet Transmission</h3>
+
+        <form class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Target IP -->
+            <div class="flex flex-col">
+                <label for="target_ip" class="text-xs uppercase tracking-wide text-sat-m">Target IP</label>
+                <input
+                        id="target_ip"
+                        name="target_ip"
+                        type="text"
+                        inputmode="numeric"
+                        placeholder="e.g., 8.8.8.8"
+                        required
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                />
+                <p class="text-xs text-sat-m mt-1">Destination IPv4/IPv6 address.</p>
+            </div>
+
+            <!-- Target Port -->
+            <div class="flex flex-col">
+                <label for="target_port" class="text-xs uppercase tracking-wide text-sat-m">Target Port</label>
+                <input
+                        id="target_port"
+                        name="target_port"
+                        type="number"
+                        min="1"
+                        max="65535"
+                        placeholder="e.g., 53"
+                        required
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                />
+                <p class="text-xs text-sat-m mt-1">Destination TCP/UDP port (1–65535).</p>
+            </div>
+
+
+            <div class="md:col-span-2 flex items-center gap-2">
+                <input
+                        id="permanent"
+                        name="permanent"
+                        type="checkbox"
+                        value="true"
+                        class="h-4 w-4 rounded border-base bg-panes text-acc focus:ring-2 focus:ring-acc"
+                />
+                <label for="permanent" class="text-sm text-sat-l">Permanent</label>
+            </div>
+
+            <!-- Actions -->
+            <div class="md:col-span-2 flex items-center gap-2">
+                <button
+                        type="button"
+                        class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                        hx-post="/device/{{ device.id }}/transmit-custom"
+                        hx-target="#content-area"
+                        hx-target-error="#content-area"
+                >
+                    Transmit
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="rounded-lg border border-base bg-cards p-6 mb-6">
+        <h3 class="text-2xl font-medium mb-4 text-sat-l">Packet Transmissions in progress</h3>
+
+        <div class="overflow-x-auto rounded-md border border-base">
+            <table class="min-w-full divide-y divide-base">
+                <thead class="bg-panes">
+                <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-sat-m uppercase tracking-wide">Target IP
+                    </th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-sat-m uppercase tracking-wide">Target Port
+                    </th>
+                    <th class="px-4 py-2 text-right text-xs font-medium text-sat-m uppercase tracking-wide">Actions</th>
+                </tr>
+                </thead>
+                <tbody class="divide-y divide-base bg-bg">
+                {% if packet_transmit_requests and packet_transmit_requests | length > 0 %}
+                {% for r in packet_transmit_requests %}
+                <tr>
+                    <td class="px-4 py-2 text-sat-l">{{ r.target_ip }}</td>
+                    <td class="px-4 py-2 text-sat-l">{{ r.target_port }}</td>
+                    <td class="px-4 py-2">
+                        <div class="flex justify-end">
+                            <button
+                                    type="button"
+                                    class="inline-flex items-center gap-2 rounded-md border border-danger/20 bg-danger/10 px-3 py-1.5 text-sm text-danger hover:bg-danger/20 transition-colors"
+                                    title="Delete"
+                                    hx-delete="/device/{{ device.id }}/transmit/{{ r.id }}"
+                                    hx-vals='{"target_ip":"{{ r.target_ip }}","target_port":"{{ r.target_port }}"}'
+                                    hx-target="#content-area"
+                                    hx-target-error="#content-area"
+                            >
+                                <i class="fa fa-trash text-sat-l"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="3" class="px-4 py-6 text-center text-sat-m">No packet transmissions.</td>
+                </tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+
+    <!-- Packets Table -->
+    <div class="overflow-x-auto rounded-lg border border-base bg-cards p-6">
+        <div class="flex flex-col justify-center items-center py-4">
+            <h2 class="text-3xl font-medium text-sat-xl">Packets</h2>
+        </div>
+
+        <table class="min-w-full divide-y divide-base">
+            <thead class="bg-muted/10">
+            <tr>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    ID
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Src MAC
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Dst MAC
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Src Addr
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Dst Addr
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Src Port
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Dst Port
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Actions
+                </th>
+            </tr>
+            <tr>
+                <td class="px-4 py-2"></td>
+                <td class="px-4 py-2"><input type="text" id="filter-src_mac"
+                                             value="{{ filters.src_mac  | default('') }}"
+                                             class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2"><input type="text" id="filter-dst_mac"
+                                             value="{{ filters.dst_mac   | default('') }}"
+                                             class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2"><input type="text" id="filter-src_addr"
+                                             value="{{ filters.src_addr    | default('') }}"
+                                             class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2"><input type="text" id="filter-dst_addr"
+                                             value="{{ filters.dst_addr  | default('') }}"
+                                             class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2"><input type="text" id="filter-src_port"
+                                             value="{{ filters.src_port    | default('') }}"
+                                             class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2"><input type="text" id="filter-dst_port"
+                                             value="{{ filters.dst_port  | default('') }}"
+                                             class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2 flex gap-2">
+                    <button type="button" id="filter-button"
+                            class="px-3 py-1 rounded-md border border-base bg-acc text-sm bg-primary text-black hover:bg-primary/90 transition-colors">
+                        Search
+                    </button>
+                    <button type="button" id="reset-button"
+                            class="px-3 py-1 rounded-md border border-base text-sm bg-acc-l hover:bg-muted/20 transition-colors">
+                        Reset
+                    </button>
+                </td>
+            </tr>
+            </thead>
+            <tbody class="divide-y divide-base">
+            {% for packet in packets %}
+            <tr class="hover:bg-muted/5 transition-colors">
+                <td class="px-4 py-3 font-mono text-sm text-sat-l">
+                    <a href="/packet/{{ packet.id }}" class="text-primary hover:underline">
+                        {{ packet.id }}
+                    </a>
+                </td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ packet.src_mac }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ packet.dst_mac }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ packet.src_addr }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ packet.dst_addr }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ packet.src_port }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ packet.dst_port }}</td>
+                {% if permissions|has_perm("Delete") %}
+                <td class="px-4 py-3 text-sm text-sat-l">
+                    <button
+                            hx-delete="/packet/{{ packet.id }}/delete?return_url=/device/{{ device.id }}?page={{ page_info.page }}"
+                            hx-target="#content-area"
+                            hx-target-error="#content-area"
+                            hx-push-url="/packet"
+                            class="inline-flex items-center rounded-md border border-base px-3 py-1 text-sm text-red-400 hover:bg-muted/20 transition-colors"
+                            title="Delete Packet"
+
+                    >
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        {% if packets|length == 0 %}
+        <div class="p-6 text-center text-muted-foreground">
+            No packets found for this device.
+        </div>
+        {% endif %}
+    </div>
+
+    {% if page_info.total_pages > 1 %}
+    {% set qs = query_string|replace('page=' ~ page_info.page, '') %}
+    {% if qs != "" %}
+    {% set qs = "&" ~ qs | trim("&") %}
+    {% endif %}
+    <div class="flex justify-center items-center mt-6 space-x-2">
+        {# Previous button #}
+        {% if page_info.page > 1 %}
+        <button hx-get="/device/{{ device.id }}?page={{ page_info.page - 1 }}{{ qs }}"
+                hx-target="#content-area"
+                hx-target-error="#content-area"
+                hx-push-url="/device/{{ device.id }}?page={{ page_info.page - 1 }}{{ qs }}"
+                class="px-3 py-1 rounded-md border border-base text-acc text-sm hover:bg-muted/20 transition-colors">
+            Prev
+        </button>
+        {% endif %}
+
+        {# Display the first page #}
+        {% if page_info.page > 4 %}
+        <button hx-get="/device/{{ device.id }}?page=1{{ qs }}"
+                hx-target="#content-area"
+                hx-target-error="#content-area"
+                hx-push-url="/device/{{ device.id }}?page=1{{ qs }}"
+                class="px-3 py-1 rounded-md border text-acc border-base text-sm hover:bg-muted/20 transition-colors">
+            1
+        </button>
+        {% endif %}
+
+        {# Display the '...' if needed #}
+        {% if page_info.page > 4 %}
+        <span class="px-3 py-1 rounded-md border border-base text-sm">...</span>
+        {% endif %}
+
+        {# Numbered pages #}
+        {% for p in [page_info.page - 2, page_info.page - 1, page_info.page, page_info.page + 1, page_info.page + 2] %}
+        {% if 1 <= p and p <= page_info.total_pages %}
+        {% if p == page_info.page %}
+        <span class="px-3 py-1 rounded-md bg-primary text-white text-sm">{{ p }}</span>
+        {% else %}
+        <button hx-get="/device/{{ device.id }}?page={{ p }}{{ qs }}"
+                hx-target="#content-area"
+                hx-target-error="#content-area"
+                hx-push-url="/device/{{ device.id }}?page={{ p }}{{ qs }}"
+                class="px-3 py-1 rounded-md border border-base text-sm text-acc hover:bg-muted/20 transition-colors">
+            {{ p }}
+        </button>
+        {% endif %}
+        {% endif %}
+        {% endfor %}
+
+        {# Display the '...' if needed #}
+        {% if page_info.page < page_info.total_pages - 3 %}
+        <span class="px-3 py-1 rounded-md border border-base text-sm">...</span>
+        {% endif %}
+
+        {# Display the last page #}
+        {% if page_info.page < page_info.total_pages - 2 %}
+        <button hx-get="/device/{{ device.id }}?page={{ page_info.total_pages }}{{ qs }}"
+                hx-target="#content-area"
+                hx-target-error="#content-area"
+                hx-push-url="/device/{{ device.id }}?page={{ page_info.total_pages }}{{ qs }}"
+                class="px-3 py-1 rounded-md border border-base text-sm text-acc hover:bg-muted/20 transition-colors">
+            {{ page_info.total_pages }}
+        </button>
+        {% endif %}
+
+        {# Next button #}
+        {% if page_info.page < page_info.total_pages %}
+        <button hx-get="/device/{{ device.id }}?page={{ page_info.page + 1 }}{{ qs }}"
+                hx-target="#content-area"
+                hx-target-error="#content-area"
+                hx-push-url="/device/{{ device.id }}?page={{ page_info.page + 1 }}{{ qs }}"
+                class="px-3 py-1 rounded-md border border-base text-sm text-acc hover:bg-muted/20 transition-colors">
+            Next
+        </button>
+        {% endif %}
     </div>
     {% endif %}
-  </div>
-
-  {% if page_info.total_pages > 1 %}
-  <div class="flex justify-center items-center mt-6 space-x-2">
-    {# Previous button #}
-    {% if page_info.page > 1 %}
-    <button hx-get="/device/{{ device.id }}?page={{ page_info.page - 1 }}"
-       hx-target="#content-area"
-       hx-target-error="#content-area"
-       hx-push-url="/device/{{ device.id }}?page={{ page_info.page - 1 }}"
-       class="px-3 py-1 rounded-md border border-base text-acc text-sm hover:bg-muted/20 transition-colors">
-      Prev
-    </button>
-    {% endif %}
-
-    {# Display the first page #}
-    {% if page_info.page > 4 %}
-    <button hx-get="/device/{{ device.id }}?page=1"
-       hx-target="#content-area"
-       hx-target-error="#content-area"
-       hx-push-url="/device/{{ device.id }}?page=1"
-       class="px-3 py-1 rounded-md border text-acc border-base text-sm hover:bg-muted/20 transition-colors">
-      1
-    </button>
-    {% endif %}
-
-    {# Display the '...' if needed #}
-    {% if page_info.page > 4 %}
-    <span class="px-3 py-1 rounded-md border border-base text-sm">...</span>
-    {% endif %}
-
-    {# Numbered pages #}
-    {% for p in [page_info.page - 2, page_info.page - 1, page_info.page, page_info.page + 1, page_info.page + 2] %}
-    {% if 1 <= p and p <= page_info.total_pages %}
-    {% if p == page_info.page %}
-    <span class="px-3 py-1 rounded-md bg-primary text-white text-sm">{{ p }}</span>
-    {% else %}
-    <button hx-get="/device/{{ device.id }}?page={{ p }}"
-       hx-target="#content-area"
-       hx-target-error="#content-area"
-       hx-push-url="/device/{{ device.id }}?page={{ p }}"
-       class="px-3 py-1 rounded-md border border-base text-sm text-acc hover:bg-muted/20 transition-colors">
-      {{ p }}
-    </button>
-    {% endif %}
-    {% endif %}
-    {% endfor %}
-
-    {# Display the '...' if needed #}
-    {% if page_info.page < page_info.total_pages - 3 %}
-    <span class="px-3 py-1 rounded-md border border-base text-sm">...</span>
-    {% endif %}
-
-    {# Display the last page #}
-    {% if page_info.page < page_info.total_pages - 2 %}
-    <button hx-get="/device/{{ device.id }}?page={{ page_info.total_pages }}"
-       hx-target="#content-area"
-       hx-target-error="#content-area"
-       hx-push-url="/device/{{ device.id }}?page={{ page_info.total_pages }}"
-       class="px-3 py-1 rounded-md border border-base text-sm text-acc hover:bg-muted/20 transition-colors">
-      {{ page_info.total_pages }}
-    </button>
-    {% endif %}
-
-    {# Next button #}
-    {% if page_info.page < page_info.total_pages %}
-    <button hx-get="/device/{{ device.id }}?page={{ page_info.page + 1 }}"
-       hx-target="#content-area"
-       hx-target-error="#content-area"
-       hx-push-url="/device/{{ device.id }}?page={{ page_info.page + 1 }}"
-       class="px-3 py-1 rounded-md border border-base text-sm text-acc hover:bg-muted/20 transition-colors">
-      Next
-    </button>
-    {% endif %}
-  </div>
-  {% endif %}
 
 </div>
 
 <script>
-  document.getElementById("filter-button").addEventListener("click", () => {
-    const params = new URLSearchParams();
+    document.getElementById("filter-button").addEventListener("click", () => {
+        const params = new URLSearchParams();
 
-    ["src_mac","dst_mac","src_addr","dst_addr", "src_port", "dst_port"].forEach(field => {
-      const value = document.getElementById(`filter-${field}`).value.trim();
-      if (value) {
-        params.set(field, value);
-      }
+        ["src_mac", "dst_mac", "src_addr", "dst_addr", "src_port", "dst_port"].forEach(field => {
+            const value = document.getElementById(`filter-${field}`).value.trim();
+            if (value) {
+                params.set(field, value);
+            }
+        });
+
+        // Reset to first page when filtering
+        params.delete("page");
+
+        window.location.search = params.toString();
     });
 
-    // Reset to first page when filtering
-    params.delete("page");
-
-    window.location.search = params.toString();
-  });
-
-  document.getElementById("reset-button").addEventListener("click", () => {
-    // Reload without query params
-    window.location.href = window.location.pathname;
-  });
+    document.getElementById("reset-button").addEventListener("click", () => {
+        // Reload without query params
+        window.location.href = window.location.pathname;
+    });
 </script>

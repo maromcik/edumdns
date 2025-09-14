@@ -15,6 +15,7 @@ pub struct ProbeTemplate {
     pub probes: Vec<(Option<Location>, ProbeDisplay)>,
     pub page_info: PageInfo,
     pub filters: ProbeQuery,
+    pub query_string: String,
 }
 
 #[derive(Serialize)]
@@ -29,4 +30,5 @@ pub struct ProbeDetailTemplate {
     pub admin: bool,
     pub page_info: PageInfo,
     pub filters: DeviceQuery,
+    pub query_string: String,
 }

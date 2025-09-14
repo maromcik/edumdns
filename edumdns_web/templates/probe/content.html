@@ -34,15 +34,21 @@
             </tr>
             <tr>
                 <td class="px-4 py-2"></td>
-                <td class="px-4 py-2"><input type="text" id="filter-name"  value="{{ filters.name  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2"><input type="text" id="filter-name" value="{{ filters.name  | default('') }}"
+                                             class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"></td>
-                <td class="px-4 py-2"><input type="text" id="filter-mac"    value="{{ filters.mac    | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
-                <td class="px-4 py-2"><input type="text" id="filter-ip"  value="{{ filters.ip  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2"><input type="text" id="filter-mac" value="{{ filters.mac    | default('') }}"
+                                             class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2"><input type="text" id="filter-ip" value="{{ filters.ip  | default('') }}"
+                                             class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2">
                     <select id="filter-adopted" class="w-full rounded-md border border-base px-2 py-1 text-sm">
                         <option value="" {% if filters.adopted is none %} selected {% endif %}>All</option>
-                        <option value="true" {% if filters.adopted is sameas true %} selected {% endif %}>Adopted</option>
-                        <option value="false" {% if filters.adopted is sameas false %} selected {% endif %}>Not Adopted</option>
+                        <option value="true" {% if filters.adopted is sameas true %} selected {% endif %}>Adopted
+                        </option>
+                        <option value="false" {% if filters.adopted is sameas false %} selected {% endif %}>Not
+                            Adopted
+                        </option>
                     </select>
                 </td>
                 <td class="px-4 py-2 flex gap-2">
@@ -101,38 +107,69 @@
     </div>
 
     {% if page_info.total_pages > 1 %}
+    {% set qs = query_string|replace('page=' ~ page_info.page, '') %}
+    {% if qs != "" %}
+    {% set qs = "&" ~ qs | trim("&") %}
+    {% endif %}
     <div class="flex justify-center items-center mt-6 space-x-2">
-
         {# Previous button #}
         {% if page_info.page > 1 %}
-        <a href="/probe?page={{ page_info.page - 1 }}"
+        <a href="/packet?page={{ page_info.page - 1 }}{{ qs }}"
            class="px-3 py-1 rounded-md border border-base text-sm hover:bg-muted/20 transition-colors">
             Prev
         </a>
         {% endif %}
 
+        {# Display the first page #}
+        {% if page_info.page > 4 %}
+        <a href="/probe?page=1{{ qs }}"
+           class="px-3 py-1 rounded-md border border-base text-sm hover:bg-muted/20 transition-colors">
+            1
+        </a>
+        {% endif %}
+
+        {# Display the '...' if needed #}
+        {% if page_info.page > 4 %}
+        <span class="px-3 py-1 rounded-md border border-base text-sm">...</span>
+        {% endif %}
+
         {# Numbered pages #}
-        {% for p in range(1, page_info.total_pages + 1) %}
+        {% for p in [page_info.page - 2, page_info.page - 1, page_info.page, page_info.page + 1, page_info.page + 2] %}
+        {% if 1 <= p and p <= page_info.total_pages %}
         {% if p == page_info.page %}
         <span class="px-3 py-1 rounded-md bg-primary text-white text-sm">{{ p }}</span>
         {% else %}
-        <a href="/probe?page={{ p }}"
+        <a href="/probe?page={{ p }}{{ qs }}"
            class="px-3 py-1 rounded-md border border-base text-sm hover:bg-muted/20 transition-colors">
             {{ p }}
         </a>
         {% endif %}
+        {% endif %}
         {% endfor %}
+
+        {# Display the '...' if needed #}
+        {% if page_info.page < page_info.total_pages - 3 %}
+        <span class="px-3 py-1 rounded-md border border-base text-sm">...</span>
+        {% endif %}
+
+        {# Display the last page #}
+        {% if page_info.page < page_info.total_pages - 2 %}
+        <a href="/probe?page={{ page_info.total_pages }}{{ qs }}"
+           class="px-3 py-1 rounded-md border border-base text-sm hover:bg-muted/20 transition-colors">
+            {{ page_info.total_pages }}
+        </a>
+        {% endif %}
 
         {# Next button #}
         {% if page_info.page < page_info.total_pages %}
-        <a href="/probe?page={{ page_info.page + 1 }}"
+        <a href="/probe?page={{ page_info.page + 1 }}{{ qs }}"
            class="px-3 py-1 rounded-md border border-base text-sm hover:bg-muted/20 transition-colors">
             Next
         </a>
         {% endif %}
-
     </div>
     {% endif %}
+
 
 </div>
 
@@ -140,7 +177,7 @@
     document.getElementById("filter-button").addEventListener("click", () => {
         const params = new URLSearchParams();
 
-        ["name", "mac","ip","adopted"].forEach(field => {
+        ["name", "mac", "ip", "adopted"].forEach(field => {
             const value = document.getElementById(`filter-${field}`).value.trim();
             if (value) {
                 params.set(field, value);

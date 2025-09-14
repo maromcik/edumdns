@@ -46,6 +46,7 @@ pub async fn get_packets(
     let template_name = get_template_name(&request, "packet");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
+    let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(PacketTemplate {
         logged_in: true,
         permissions: packets.permissions,
@@ -53,6 +54,7 @@ pub async fn get_packets(
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
         page_info: PageInfo::new(page, total_pages),
         filters: query,
+        query_string,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

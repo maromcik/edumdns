@@ -52,6 +52,7 @@ pub async fn get_devices(
     let template_name = get_template_name(&request, "device");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
+    let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(DeviceTemplate {
         logged_in: true,
         permissions: devices.permissions,
@@ -59,6 +60,7 @@ pub async fn get_devices(
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
         page_info: PageInfo::new(page, total_pages),
         filters: query,
+        query_string
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -104,7 +106,7 @@ pub async fn get_device(
 
     let packet_count = packet_repo.get_packet_count(params).await?;
     let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
-
+    let query_string = request.uri().query().unwrap_or("").to_string();
     let template_name = get_template_name(&request, "device/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
@@ -117,6 +119,7 @@ pub async fn get_device(
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
         page_info: PageInfo::new(page, total_pages),
         filters: query.into_inner(),
+        query_string
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

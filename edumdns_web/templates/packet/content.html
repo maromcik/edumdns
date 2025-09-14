@@ -121,11 +121,16 @@
         {% endif %}
     </div>
 
+
     {% if page_info.total_pages > 1 %}
+    {% set qs = query_string|replace('page=' ~ page_info.page, '') %}
+    {% if qs != "" %}
+    {% set qs = "&" ~ qs | trim("&") %}
+    {% endif %}
     <div class="flex justify-center items-center mt-6 space-x-2">
         {# Previous button #}
         {% if page_info.page > 1 %}
-        <a href="/packet?page={{ page_info.page - 1 }}"
+        <a href="/packet?page={{ page_info.page - 1 }}{{ qs }}"
            class="px-3 py-1 rounded-md border border-base text-sm hover:bg-muted/20 transition-colors">
             Prev
         </a>
@@ -133,7 +138,7 @@
 
         {# Display the first page #}
         {% if page_info.page > 4 %}
-        <a href="/packet?page=1"
+        <a href="/packet?page=1{{ qs }}"
            class="px-3 py-1 rounded-md border border-base text-sm hover:bg-muted/20 transition-colors">
             1
         </a>
@@ -150,7 +155,7 @@
         {% if p == page_info.page %}
         <span class="px-3 py-1 rounded-md bg-primary text-white text-sm">{{ p }}</span>
         {% else %}
-        <a href="/packet?page={{ p }}"
+        <a href="/packet?page={{ p }}{{ qs }}"
            class="px-3 py-1 rounded-md border border-base text-sm hover:bg-muted/20 transition-colors">
             {{ p }}
         </a>
@@ -165,7 +170,7 @@
 
         {# Display the last page #}
         {% if page_info.page < page_info.total_pages - 2 %}
-        <a href="/packet?page={{ page_info.total_pages }}"
+        <a href="/packet?page={{ page_info.total_pages }}{{ qs }}"
            class="px-3 py-1 rounded-md border border-base text-sm hover:bg-muted/20 transition-colors">
             {{ page_info.total_pages }}
         </a>
@@ -173,7 +178,7 @@
 
         {# Next button #}
         {% if page_info.page < page_info.total_pages %}
-        <a href="/packet?page={{ page_info.page + 1 }}"
+        <a href="/packet?page={{ page_info.page + 1 }}{{ qs }}"
            class="px-3 py-1 rounded-md border border-base text-sm hover:bg-muted/20 transition-colors">
             Next
         </a>

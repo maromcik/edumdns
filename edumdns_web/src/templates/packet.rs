@@ -12,6 +12,7 @@ pub struct PacketTemplate<'a> {
     pub packets: &'a Vec<PacketDisplay>,
     pub page_info: PageInfo,
     pub filters: PacketQuery,
+    pub query_string: String,
 }
 
 #[derive(Serialize)]

@@ -15,6 +15,7 @@ pub struct DeviceTemplate {
     pub devices: Vec<(Probe, DeviceDisplay)>,
     pub page_info: PageInfo,
     pub filters: DeviceQuery,
+    pub query_string: String,
 }
 
 #[derive(Serialize)]
@@ -27,6 +28,7 @@ pub struct DeviceDetailTemplate {
     pub packet_transmit_requests: Vec<PacketTransmitRequest>,
     pub page_info: PageInfo,
     pub filters: PacketQuery,
+    pub query_string: String,
 }
 
 #[derive(Serialize)]

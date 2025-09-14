@@ -1,3 +1,4 @@
+use std::env;
 use crate::templates::error::GenericError;
 
 use actix_web::http::StatusCode;
@@ -204,7 +205,9 @@ impl ResponseError for WebError {
 
 fn render_generic(error: &WebError) -> HttpResponse {
     let mut env = Environment::new();
-    env.set_loader(path_loader("edumdns_web/templates"));
+    let files_dir = env::var("EDUMDNS_FILES_DIR")
+        .unwrap_or("edumdns_web".to_string());
+    env.set_loader(path_loader(format!("{files_dir}/templates")));
     let template = env
         .get_template("error.html")
         .expect("Failed to read the error template");

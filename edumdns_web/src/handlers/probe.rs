@@ -63,6 +63,7 @@ pub async fn get_probes(
     let template_name = get_template_name(&request, "probe");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
+    let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(ProbeTemplate {
         logged_in: true,
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
@@ -70,6 +71,7 @@ pub async fn get_probes(
         probes: probes_parsed,
         page_info: PageInfo::new(page, total_pages),
         filters: query,
+        query_string
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -127,6 +129,7 @@ pub async fn get_probe(
     let template_name = get_template_name(&request, "probe/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
+    let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(ProbeDetailTemplate {
         logged_in: true,
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
@@ -141,6 +144,7 @@ pub async fn get_probe(
         admin: probe.admin,
         page_info: PageInfo::new(page, total_pages),
         filters: query,
+        query_string
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

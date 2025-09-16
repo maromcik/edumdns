@@ -2,6 +2,7 @@ use crate::error::{WebError, WebErrorKind};
 use crate::forms::device::DeviceCustomPacketTransmitRequest;
 use crate::handlers::utilities::is_htmx;
 use actix_identity::Identity;
+use actix_session::Session;
 use actix_web::{HttpRequest, web};
 use edumdns_core::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
@@ -97,10 +98,12 @@ pub async fn request_packet_transmit_helper(
 pub async fn reconnect_probe(
     command_channel: Sender<AppPacket>,
     probe_id: uuid::Uuid,
+    session: Session,
 ) -> Result<(), WebError> {
+    let uuid = session.get::<uuid::Uuid>("session_id")?.map(|uuid| Uuid(uuid));
     command_channel
         .send(AppPacket::Local(LocalAppPacket::Command(
-            LocalCommandPacket::ReconnectProbe(Uuid(probe_id)),
+            LocalCommandPacket::ReconnectProbe(Uuid(probe_id), uuid),
         )))
         .await
         .map_err(CoreError::from)?;

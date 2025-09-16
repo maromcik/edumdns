@@ -36,14 +36,14 @@ pub enum LocalCommandPacket {
         probe_id: uuid::Uuid,
         session_id: uuid::Uuid,
     },
-    ReconnectProbe(Uuid),
+    ReconnectProbe(Uuid, Option<Uuid>),
     TransmitDevicePackets(PacketTransmitRequestPacket),
     StopTransmitDevicePackets(PacketTransmitRequestPacket),
 }
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub enum NetworkCommandPacket {
-    ReconnectThisProbe,
+    ReconnectThisProbe(Option<Uuid>),
 }
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
@@ -55,7 +55,7 @@ pub enum NetworkStatusPacket {
     ProbeUnknown,
     ProbeRequestConfig(ProbeMetadata),
     ProbeResponseConfig(ProbeConfigPacket),
-    ProbeResponse(Uuid, ProbeResponse),
+    ProbeResponse(Uuid, Option<Uuid>, ProbeResponse),
 }
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]

@@ -157,10 +157,11 @@ pub async fn adopt(
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     probe_repo.adopt(&path.0, &parse_user_id(&i)?).await?;
-    reconnect_probe(state.command_channel.clone(), path.0).await?;
+    reconnect_probe(state.command_channel.clone(), path.0, session).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))
         .finish())
@@ -173,10 +174,11 @@ pub async fn forget(
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     probe_repo.forget(&path.0, &parse_user_id(&i)?).await?;
-    reconnect_probe(state.command_channel.clone(), path.0).await?;
+    reconnect_probe(state.command_channel.clone(), path.0, session).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))
         .finish())
@@ -189,13 +191,14 @@ pub async fn restart(
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     probe_repo
         .check_permissions_for_restart(&path.0, &parse_user_id(&i)?)
         .await?;
 
-    reconnect_probe(state.command_channel.clone(), path.0).await?;
+    reconnect_probe(state.command_channel.clone(), path.0, session).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))
         .finish())
@@ -209,6 +212,7 @@ pub async fn create_config(
     state: web::Data<AppState>,
     form: web::Form<ProbeConfigForm>,
     path: web::Path<(Uuid,)>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let probe_id = path.0;
     let i = authorized!(identity, request.path());
@@ -220,7 +224,7 @@ pub async fn create_config(
         )
         .await?;
 
-    reconnect_probe(state.command_channel.clone(), path.0).await?;
+    reconnect_probe(state.command_channel.clone(), path.0, session).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))
         .finish())
@@ -234,6 +238,7 @@ pub async fn save_config(
     state: web::Data<AppState>,
     form: web::Form<ProbeConfigForm>,
     path: web::Path<(Uuid, Id)>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let probe_id = path.0;
     let config_id = path.1;
@@ -249,7 +254,7 @@ pub async fn save_config(
         )
         .await?;
 
-    reconnect_probe(state.command_channel.clone(), path.0).await?;
+    reconnect_probe(state.command_channel.clone(), path.0, session).await?;
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))
@@ -263,6 +268,7 @@ pub async fn delete_config(
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Uuid, Id)>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let probe_id = path.0;
     let config_id = path.1;
@@ -274,7 +280,7 @@ pub async fn delete_config(
             probe_id,
         ))
         .await?;
-    reconnect_probe(state.command_channel.clone(), path.0).await?;
+    reconnect_probe(state.command_channel.clone(), path.0, session).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", path.0)))
         .finish())
@@ -328,6 +334,7 @@ pub async fn delete_probe(
     path: web::Path<(Uuid,)>,
     state: web::Data<AppState>,
     query: web::Query<HashMap<String, String>>,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let user_id = parse_user_id(&i)?;
@@ -338,7 +345,7 @@ pub async fn delete_probe(
         .unwrap_or("/probe");
 
     probe_repo.delete_auth(&path.0, &user_id).await?;
-    reconnect_probe(state.command_channel.clone(), path.0).await?;
+    reconnect_probe(state.command_channel.clone(), path.0, session).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, return_url))
         .finish())
@@ -351,6 +358,7 @@ pub async fn get_probe_ws(
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
     stream: web::Payload,
+    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let _ = authorized!(identity, request.path());
     let probe_id = path.0;
@@ -358,7 +366,7 @@ pub async fn get_probe_ws(
     let ts = Timestamp::now(uuid::NoContext);
     let session_uuid = Uuid::new_v7(ts);
 
-    let (res, mut session, stream) = actix_ws::handle(&request, stream)?;
+    let (res, mut ws_session, stream) = actix_ws::handle(&request, stream)?;
     let mut stream = stream
         .aggregate_continuations()
         .max_continuation_size(2_usize.pow(20));
@@ -384,9 +392,10 @@ pub async fn get_probe_ws(
         .map_err(CoreError::from)?;
     let command_channel_local = state.command_channel.clone();
     let unregister_packet_local = unregister_packet.clone();
+    session.insert("session_id", session_uuid.to_string())?;
     rt::spawn(async move {
         while let Some(packet) = channel.1.recv().await {
-            let Err(_) = session.text(packet.to_string()).await else {
+            let Err(_) = ws_session.text(packet.to_string()).await else {
                 continue;
             };
             debug!("WebSocket closed, probe_id: {probe_id}, session_id: {session_uuid}");

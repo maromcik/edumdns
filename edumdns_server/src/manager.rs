@@ -146,11 +146,11 @@ impl PacketManager {
                         error!("Could not remove IP from an ebpf map: {}", e);
                     }
                 }
-                LocalCommandPacket::ReconnectProbe(id) => {
-                    if let Err(e) = self.send_reconnect(id).await {
+                LocalCommandPacket::ReconnectProbe(id, session_id) => {
+                    if let Err(e) = self.send_reconnect(id, session_id).await {
                         error!("Could not reconnect probe: {}", e);
-                        // self.probe_handles.write().await.remove(&id);
-                        self.send_response_to_ws(id, ProbeResponse::new_error(e.to_string()))
+                        self.probe_handles.write().await.remove(&id);
+                        self.send_response_to_ws(id, session_id, ProbeResponse::new_error(e.to_string()))
                             .await;
                     }
                 }
@@ -162,8 +162,8 @@ impl PacketManager {
         match packet {
             NetworkAppPacket::Command(_) => {}
             NetworkAppPacket::Status(status) => match status {
-                NetworkStatusPacket::ProbeResponse(uuid, response) => {
-                    self.send_response_to_ws(uuid, response).await;
+                NetworkStatusPacket::ProbeResponse(uuid, session_id, response) => {
+                    self.send_response_to_ws(uuid, session_id, response).await;
                 }
                 _ => {}
             },
@@ -220,13 +220,13 @@ impl PacketManager {
         }
     }
 
-    pub async fn send_reconnect(&self, id: Uuid) -> Result<(), ServerError> {
+    pub async fn send_reconnect(&self, id: Uuid, session_id: Option<Uuid>) -> Result<(), ServerError> {
         if let Some(handle) = self.probe_handles.read().await.get(&id) {
             handle
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
                         tx,
-                        NetworkAppPacket::Command(NetworkCommandPacket::ReconnectThisProbe),
+                        NetworkAppPacket::Command(NetworkCommandPacket::ReconnectThisProbe(session_id)),
                     )
                 })
                 .await
@@ -318,16 +318,31 @@ impl PacketManager {
         });
     }
 
-    pub async fn send_response_to_ws(&self, id: Uuid, response: ProbeResponse) {
+    pub async fn send_response_to_ws(&self, id: Uuid, session_id: Option<Uuid>, response: ProbeResponse) {
         if let Some(handles) = self.probe_ws_handles.get(&id.0) {
-            for (id, handle) in handles {
-                match handle.send(response.clone()).await {
-                    Ok(_) => {
-                        debug!("Response sent to websocket: {}", id);
+            match session_id {
+                None => {
+                    for (id, handle) in handles {
+                        match handle.send(response.clone()).await {
+                            Ok(_) => {
+                                debug!("Response sent to websocket: {}", id);
+                            }
+                            Err(err) => warn!("Could not send response to a websocket {err}"),
+                        }
                     }
-                    Err(err) => warn!("Could not send response to a websocket {err}"),
+                }
+                Some(ses_id) => {
+                    if let Some(handle) = handles.get(&ses_id.0) {
+                        match handle.send(response.clone()).await {
+                            Ok(_) => {
+                                debug!("Response sent to websocket: {}", id);
+                            }
+                            Err(err) => warn!("Could not send response to a websocket {err}"),
+                        }
+                    }
                 }
             }
+
         }
     }
 

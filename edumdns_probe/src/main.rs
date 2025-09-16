@@ -94,7 +94,7 @@ async fn main() -> Result<(), ProbeError> {
     .await?;
 
     let mut config = connection_manager.connection_init_probe().await?;
-
+    let mut session_id = Some(Uuid(uuid::Uuid::nil()));
     loop {
         let handle = connection_manager.handle.clone();
         let handle_local = connection_manager.handle.clone();
@@ -162,7 +162,7 @@ async fn main() -> Result<(), ProbeError> {
                                     tx,
                                     NetworkAppPacket::Status(
                                         NetworkStatusPacket::
-                                        ProbeResponse(uuid, ProbeResponse::new_error(e.to_string()))))).await??;
+                                        ProbeResponse(uuid, session_id, ProbeResponse::new_error(e.to_string()))))).await??;
                         }
                     }
                     else {
@@ -173,7 +173,8 @@ async fn main() -> Result<(), ProbeError> {
             } => {
                 result?;
             },
-            Some(NetworkAppPacket::Command(NetworkCommandPacket::ReconnectThisProbe)) = command_receiver.recv() => {
+            Some(NetworkAppPacket::Command(NetworkCommandPacket::ReconnectThisProbe(id))) = command_receiver.recv() => {
+                session_id = id;
                 warn!("Reconnect signal received. Canceling tasks.");
                 cancellation_token.cancel();
                 info!("Reconnecting...");
@@ -184,7 +185,7 @@ async fn main() -> Result<(), ProbeError> {
                     tx,
                     NetworkAppPacket::Status(
                         NetworkStatusPacket::
-                        ProbeResponse(uuid, ProbeResponse::new_ok_with_value("Reconnected"))))).await;
+                        ProbeResponse(uuid, id, ProbeResponse::new_ok_with_value("Reconnected"))))).await;
             }
         }
     }

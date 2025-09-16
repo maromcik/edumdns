@@ -173,8 +173,8 @@ async fn main() -> Result<(), ProbeError> {
             } => {
                 result?;
             },
-            Some(NetworkAppPacket::Command(NetworkCommandPacket::ReconnectThisProbe(id))) = command_receiver.recv() => {
-                session_id = id;
+            Some(NetworkAppPacket::Command(NetworkCommandPacket::ReconnectThisProbe(ses_id))) = command_receiver.recv() => {
+                session_id = ses_id;
                 warn!("Reconnect signal received. Canceling tasks.");
                 cancellation_token.cancel();
                 info!("Reconnecting...");
@@ -185,7 +185,7 @@ async fn main() -> Result<(), ProbeError> {
                     tx,
                     NetworkAppPacket::Status(
                         NetworkStatusPacket::
-                        ProbeResponse(uuid, id, ProbeResponse::new_ok_with_value("Reconnected"))))).await;
+                        ProbeResponse(uuid, ses_id, ProbeResponse::new_ok_with_value("Reconnected"))))).await;
             }
         }
     }

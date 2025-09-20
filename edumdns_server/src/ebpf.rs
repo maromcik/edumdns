@@ -16,6 +16,7 @@ impl EbpfUpdater {
         let ebpf_dir = env::var("EDUMDNS_SERVER_EBPF_PIN_LOCATION").unwrap_or("/sys/fs/bpf/edumdns".to_string());
         let map_path_v4 = format!("{ebpf_dir}/edumdns_proxy_rewrite_v4");
         let map_path_v6 = format!("{ebpf_dir}/edumdns_proxy_rewrite_v6");
+        info!("Trying to pin eBPF maps at: {} and {} ", map_path_v4, map_path_v6);
         let map_data_v4 = MapData::from_pin(Path::new(map_path_v4.as_str()))?;
         let map_data_v6 = MapData::from_pin(Path::new(map_path_v6.as_str()))?;
         let rewrite_map_v4: HashMap<MapData, u32, u32> =

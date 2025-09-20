@@ -1,7 +1,7 @@
-FROM rust:1.89 as base
+FROM rust:1.90 as base
 
 RUN apt-get update
-RUN apt-get install -y postgresql-client zip build-essential autoconf libtool pkg-config libpq-dev libpcap-dev libssl-dev
+RUN apt-get install -y postgresql-client zip build-essential autoconf libtool pkg-config libpq-dev libpcap-dev libssl-dev libxdp-dev clang
 
 RUN cargo install cargo-chef --version 0.1.72
 
@@ -54,7 +54,7 @@ RUN cargo build --release --bin edumdns
 
 FROM debian:bookworm-slim AS runtime
 RUN apt-get update
-RUN apt-get install -y zip pkg-config libpq-dev libpcap-dev libssl-dev
+RUN apt-get install -y zip pkg-config libpq-dev libpcap-dev libssl-dev libxdp-dev clang
 
 WORKDIR /usr/src/edumdns
 COPY --from=builder /usr/src/edumdns/target/release/edumdns /usr/local/bin
@@ -65,7 +65,7 @@ COPY ./edumdns_web/webroot ./edumdns_web/webroot
 
 EXPOSE 8000
 
-ENTRYPOINT ["/usr/bin/mount -t bpf none /usr/src/edumdns/bpf && /usr/local/bin/edumdns"]
+ENTRYPOINT ["/usr/local/bin/edumdns"]
 
 
 

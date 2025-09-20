@@ -14,11 +14,16 @@ services:
     build: .
     container_name: edumdns-app
     ports:
-      - "8000:8000"
+      - "8002:8000"
     env_file:
       - ./.env-docker
+    cap_add:
+      - CAP_BPF
+      - CAP_NET_ADMIN
     depends_on:
       - edumdns-db
+    volumes:
+      - /var/local/bpf/edumdns:/sys/fs/bpf
   edumdns-nginx:
     build: ./nginx
     container_name: edumdns-nginx

@@ -20,7 +20,8 @@ pub struct Config {
     /// Stored in network‑byte order (big endian) – exactly the same layout
     /// as the `src_addr` field of `Ipv4Hdr`.
     pub proxy_ip: [u8; 4],
-
+    pub proxy_ip6: [u8; 16],
+    
     /// MAC address that will become the new Ethernet source.
     pub src_mac: [u8; 6],
 
@@ -46,6 +47,9 @@ struct Cli {
     /// New source IP that the program will use (e.g. 192.168.0.32)
     #[clap(long, required = true, value_name="PROXY_IP")]
     proxy_ip: std::net::Ipv4Addr,
+
+    #[clap(long, required = true, value_name="PROXY_IP6")]
+    proxy_ip6: std::net::Ipv6Addr,
 
     /// New Ethernet source MAC (e.g. e4:1d:82:72:43:c6)
     #[clap(long, required = true, value_name="NEW_SRC_MAC")]
@@ -106,6 +110,7 @@ async fn main() -> Result<(), ProxyError> {
 
         let cfg = Config {
             proxy_ip: cli.proxy_ip.octets(),
+            proxy_ip6: cli.proxy_ip6.octets(),
             src_mac: cli.src_mac.octets(),
             dst_mac: cli.dst_mac.octets(),
         };
@@ -120,13 +125,13 @@ async fn main() -> Result<(), ProxyError> {
     let pin_dir = cli.pin_path.as_str();
     std::fs::create_dir_all(pin_dir)?;
     if let Some(map_v4) = ebpf.map_mut("REWRITE_MAP_V4") {
-        map_v4.pin(Path::new(&format!("{}/rewrite_v4", pin_dir)))?;
-        info!("pinned map_v4 to: {}/rewrite_v4", pin_dir);
+        map_v4.pin(Path::new(&format!("{}/edumdns_proxy_rewrite_v4", pin_dir)))?;
+        info!("pinned map_v4 to: {}/edumdns_proxy_rewrite_v4", pin_dir);
     }
 
     if let Some(map_v6) = ebpf.map_mut("REWRITE_MAP_V6") {
-        map_v6.pin(Path::new(&format!("{}/rewrite_v6", pin_dir)))?;
-        info!("pinned map_v6 to: {}/rewrite_v6", pin_dir);
+        map_v6.pin(Path::new(&format!("{}/edumdns_proxy_rewrite_v6", pin_dir)))?;
+        info!("pinned map_v6 to: {}/edumdns_proxy_rewrite_v4", pin_dir);
     }
 
     let ctrl_c = signal::ctrl_c();

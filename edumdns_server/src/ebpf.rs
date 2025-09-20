@@ -14,8 +14,8 @@ pub struct EbpfUpdater {
 impl EbpfUpdater {
     pub fn new() -> Result<Self, ServerError> {
         let ebpf_dir = env::var("EDUMDNS_SERVER_EBPF_PIN_LOCATION").unwrap_or("/sys/fs/bpf/edumdns".to_string());
-        let map_path_v4 = format!("{ebpf_dir}/rewrite_v4");
-        let map_path_v6 = format!("{ebpf_dir}/rewrite_v6");
+        let map_path_v4 = format!("{ebpf_dir}/edumdns_proxy_rewrite_v4");
+        let map_path_v6 = format!("{ebpf_dir}/edumdns_proxy_rewrite_v6");
         let map_data_v4 = MapData::from_pin(Path::new(map_path_v4.as_str()))?;
         let map_data_v6 = MapData::from_pin(Path::new(map_path_v6.as_str()))?;
         let rewrite_map_v4: HashMap<MapData, u32, u32> =
@@ -31,10 +31,10 @@ impl EbpfUpdater {
 
     pub fn add_ip(&mut self, a: IpNetwork, b: IpNetwork) -> Result<(), ServerError> {
         // TODO remove this
-        // let wg1: u32 = Ipv4Addr::new(192, 168, 0, 17).into();
-        // let cctv1: u32 = Ipv4Addr::new(192, 168, 0, 21).into();
-        // self.rewrite_map_v4.insert(wg1, cctv1, 0)?;
-        // self.rewrite_map_v4.insert(cctv1, wg1, 0)?;
+        let wg1: u32 = Ipv4Addr::new(192, 168, 0, 17).into();
+        let cctv1: u32 = Ipv4Addr::new(192, 168, 0, 21).into();
+        self.rewrite_map_v4.insert(wg1, cctv1, 0)?;
+        self.rewrite_map_v4.insert(cctv1, wg1, 0)?;
         match (a.ip(), b.ip()) {
             (IpAddr::V4(a), IpAddr::V4(b)) => {
                 let a: u32 = a.into();
@@ -42,7 +42,12 @@ impl EbpfUpdater {
                 self.rewrite_map_v4.insert(a, b, 0)?;
                 self.rewrite_map_v4.insert(b, a, 0)?;
             }
-            (IpAddr::V6(a), IpAddr::V6(b)) => {}
+            (IpAddr::V6(a), IpAddr::V6(b)) => {
+                let a: [u8; 16] = a.octets();
+                let b: [u8; 16] = b.octets();
+                self.rewrite_map_v6.insert(a, b, 0)?;
+                self.rewrite_map_v6.insert(b, a, 0)?;
+            }
             _ => {}
         }
         Ok(())
@@ -50,10 +55,10 @@ impl EbpfUpdater {
 
     pub fn remove_ip(&mut self, a: IpNetwork, b: IpNetwork) -> Result<(), ServerError> {
         // TODO remove this
-        // let wg1: u32 = Ipv4Addr::new(192, 168, 0, 17).into();
-        // let cctv1: u32 = Ipv4Addr::new(192, 168, 0, 21).into();
-        // self.rewrite_map_v4.remove(&wg1)?;
-        // self.rewrite_map_v4.remove(&cctv1)?;
+        let wg1: u32 = Ipv4Addr::new(192, 168, 0, 17).into();
+        let cctv1: u32 = Ipv4Addr::new(192, 168, 0, 21).into();
+        self.rewrite_map_v4.remove(&wg1)?;
+        self.rewrite_map_v4.remove(&cctv1)?;
         match (a.ip(), b.ip()) {
             (IpAddr::V4(a), IpAddr::V4(b)) => {
                 let a: u32 = a.into();
@@ -61,7 +66,12 @@ impl EbpfUpdater {
                 self.rewrite_map_v4.remove(&a)?;
                 self.rewrite_map_v4.remove(&b)?;
             }
-            (IpAddr::V6(a), IpAddr::V6(b)) => {}
+            (IpAddr::V6(a), IpAddr::V6(b)) => {
+                let a: [u8; 16] = a.octets();
+                let b: [u8; 16] = b.octets();
+                self.rewrite_map_v6.remove(&a)?;
+                self.rewrite_map_v6.remove(&b)?;
+            }
             _ => {}
         }
         Ok(())

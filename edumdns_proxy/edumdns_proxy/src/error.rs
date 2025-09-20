@@ -33,14 +33,14 @@ pub struct ProxyError {
 
 impl Display for ProxyError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-            write!(f, "ProbeError: {}: {}", self.error_kind, self.message)
+            write!(f, "ProxyError: {}: {}", self.error_kind, self.message)
     }
 }
 
 impl Debug for ProxyError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 
-         write!(f, "ProbeError: {}: {}", self.error_kind, self.message)
+         write!(f, "ProxyError: {}: {}", self.error_kind, self.message)
 
     }
 }

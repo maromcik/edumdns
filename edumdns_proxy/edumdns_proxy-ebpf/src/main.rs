@@ -8,7 +8,7 @@ use aya_ebpf::{bindings::xdp_action, macros::xdp, programs::XdpContext};
 use aya_log_ebpf::{debug, info};
 use core::mem;
 use network_types::eth::{EthHdr, EtherType};
-use network_types::ip::{IpProto, Ipv4Hdr};
+use network_types::ip::{IpProto, Ipv4Hdr, Ipv6Hdr};
 use network_types::tcp::TcpHdr;
 use network_types::udp::UdpHdr;
 
@@ -21,7 +21,7 @@ pub struct Config {
     /// Stored in network‑byte order (big endian) – exactly the same layout
     /// as the `src_addr` field of `Ipv4Hdr`.
     pub proxy_ip: [u8; 4],
-
+    pub proxy_ip6: [u8; 16],
     /// MAC address that will become the new Ethernet source.
     pub src_mac: [u8; 6],
 
@@ -57,10 +57,13 @@ fn try_edumdns_proxy(ctx: XdpContext) -> Result<u32, ()> {
     let ethhdr: *mut EthHdr = ptr_at(&ctx, 0)?; //
 
     match unsafe { (*ethhdr).ether_type() } {
-        Ok(EtherType::Ipv4) => {}
-        _ => return Ok(xdp_action::XDP_PASS),
+        Ok(EtherType::Ipv4) => handle_ipv4(&ctx, ethhdr, cfg),
+        Ok(EtherType::Ipv6) => handle_ipv6(&ctx, ethhdr, cfg),
+        _ => Ok(xdp_action::XDP_PASS),
     }
+}
 
+fn handle_ipv4(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32, ()> {
     let ipv4hdr: *mut Ipv4Hdr = unsafe { ptr_at(&ctx, EthHdr::LEN)? };
     let source = u32::from_be_bytes(unsafe { (*ipv4hdr).src_addr });
 
@@ -95,7 +98,16 @@ fn try_edumdns_proxy(ctx: XdpContext) -> Result<u32, ()> {
             match unsafe { (*ipv4hdr).proto } {
                 IpProto::Tcp => {
                     let tcphdr: *mut TcpHdr = ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
-                    info!(&ctx,"Rewriting packet; old_src: {:i}; new_src {:i}; old_dst: {:i}; new_dst {:i}; src tcp: {}; dst tcp: {}", source, proxy_ip, old_dst_u32, *new_dst, u16::from_be_bytes((*tcphdr).source), u16::from_be_bytes((*tcphdr).dest));
+                    info!(
+                        &ctx,
+                        "Rewriting packet; old_src: {:i}; new_src {:i}; old_dst: {:i}; new_dst {:i}; src tcp: {}; dst tcp: {}",
+                        source,
+                        proxy_ip,
+                        old_dst_u32,
+                        *new_dst,
+                        u16::from_be_bytes((*tcphdr).source),
+                        u16::from_be_bytes((*tcphdr).dest)
+                    );
                     let old_checksum = u16::from_be_bytes((*tcphdr).check);
                     (*tcphdr).check = u16::to_be_bytes(
                         ChecksumUpdate::new(old_checksum)
@@ -108,7 +120,16 @@ fn try_edumdns_proxy(ctx: XdpContext) -> Result<u32, ()> {
                 }
                 IpProto::Udp => {
                     let udphdr: *mut UdpHdr = ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
-                    info!(&ctx,"Rewriting packet; old_src: {:i}; new_src {:i}; old_dst: {:i}; new_dst {:i}; src udp: {}; dst udp: {}", source, proxy_ip, old_dst_u32, *new_dst, u16::from_be_bytes((*udphdr).src), u16::from_be_bytes((*udphdr).dst));
+                    info!(
+                        &ctx,
+                        "Rewriting packet; old_src: {:i}; new_src {:i}; old_dst: {:i}; new_dst {:i}; src udp: {}; dst udp: {}",
+                        source,
+                        proxy_ip,
+                        old_dst_u32,
+                        *new_dst,
+                        u16::from_be_bytes((*udphdr).src),
+                        u16::from_be_bytes((*udphdr).dst)
+                    );
                     let old_checksum = u16::from_be_bytes((*udphdr).check);
                     (*udphdr).check = u16::to_be_bytes(
                         ChecksumUpdate::new(old_checksum)
@@ -125,6 +146,55 @@ fn try_edumdns_proxy(ctx: XdpContext) -> Result<u32, ()> {
             return Ok(xdp_action::XDP_TX);
         }
     }
+    Ok(xdp_action::XDP_PASS)
+}
+
+fn handle_ipv6(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32, ()> {
+    let ipv6hdr: *mut Ipv6Hdr = unsafe { ptr_at(ctx, EthHdr::LEN)? };
+
+    let old_src = unsafe { (*ipv6hdr).src_addr };
+    let old_dst = unsafe { (*ipv6hdr).dst_addr };
+
+    unsafe {
+        if let Some(new_dst) = REWRITE_MAP_V6.get(&old_src) {
+            (*ethhdr).src_addr = cfg.src_mac;
+            (*ethhdr).dst_addr = cfg.dst_mac;
+
+            (*ipv6hdr).src_addr = cfg.proxy_ip6;
+            (*ipv6hdr).dst_addr = *new_dst;
+
+            match (*ipv6hdr).next_hdr {
+                IpProto::Tcp => {
+                    let tcphdr: *mut TcpHdr = ptr_at(ctx, EthHdr::LEN + Ipv6Hdr::LEN)?;
+                    let old_checksum = u16::from_be_bytes((*tcphdr).check);
+                    (*tcphdr).check = u16::to_be_bytes(
+                        ChecksumUpdate::new(old_checksum)
+                            .remove_u128(u128::from_be_bytes(old_src))
+                            .remove_u128(u128::from_be_bytes(old_dst))
+                            .add_u128(u128::from_be_bytes(cfg.proxy_ip6))
+                            .add_u128(u128::from_be_bytes(*new_dst))
+                            .into_tcp_checksum(),
+                    );
+                }
+                IpProto::Udp => {
+                    let udphdr: *mut UdpHdr = ptr_at(ctx, EthHdr::LEN + Ipv6Hdr::LEN)?;
+                    let old_checksum = u16::from_be_bytes((*udphdr).check);
+                    (*udphdr).check = u16::to_be_bytes(
+                        ChecksumUpdate::new(old_checksum)
+                            .remove_u128(u128::from_be_bytes(old_src))
+                            .remove_u128(u128::from_be_bytes(old_dst))
+                            .add_u128(u128::from_be_bytes(cfg.proxy_ip6))
+                            .add_u128(u128::from_be_bytes(*new_dst))
+                            .into_udp_checksum(),
+                    );
+                }
+                _ => return Err(()),
+            }
+
+            return Ok(xdp_action::XDP_TX);
+        }
+    }
+
     Ok(xdp_action::XDP_PASS)
 }
 

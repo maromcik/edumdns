@@ -3,7 +3,7 @@ use aya::maps::{HashMap, Map, MapData};
 use ipnetwork::IpNetwork;
 use log::{error, info};
 use std::env;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr};
 use std::path::Path;
 
 pub struct EbpfUpdater {
@@ -35,15 +35,6 @@ impl EbpfUpdater {
     }
 
     pub fn add_ip(&mut self, a: IpNetwork, b: IpNetwork) -> Result<(), ServerError> {
-        // TODO remove this
-        for el in self.rewrite_map_v4.iter() {
-            error!("BEFORE {:?}", el);
-        }
-        let wg1: u32 = Ipv4Addr::new(192, 168, 0, 17).into();
-        let cctv1: u32 = Ipv4Addr::new(192, 168, 0, 21).into();
-        self.rewrite_map_v4.insert(wg1, cctv1, 0)?;
-        self.rewrite_map_v4.insert(cctv1, wg1, 0)?;
-
         match (a.ip(), b.ip()) {
             (IpAddr::V4(a), IpAddr::V4(b)) => {
                 let a: u32 = a.into();
@@ -67,15 +58,6 @@ impl EbpfUpdater {
     }
 
     pub fn remove_ip(&mut self, a: IpNetwork, b: IpNetwork) -> Result<(), ServerError> {
-        // TODO remove this
-        for el in self.rewrite_map_v4.iter() {
-            error!("BEFORE {:?}", el);
-        }
-        let wg1: u32 = Ipv4Addr::new(192, 168, 0, 17).into();
-        let cctv1: u32 = Ipv4Addr::new(192, 168, 0, 21).into();
-        self.rewrite_map_v4.remove(&wg1)?;
-        self.rewrite_map_v4.remove(&cctv1)?;
-
         match (a.ip(), b.ip()) {
             (IpAddr::V4(a), IpAddr::V4(b)) => {
                 let a: u32 = a.into();

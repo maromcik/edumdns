@@ -33,11 +33,11 @@ pub struct Config {
 static CONFIG: Array<Config> = Array::with_max_entries(1, 0);
 
 // IPv4 redirect map: key = original source IPv4, value = new destination IPv4
-#[map(name = "REWRITE_MAP_V4")]
+#[map(name = "EDUMDNS_PROXY_REWRITE_MAP_V4")]
 static REWRITE_MAP_V4: HashMap<u32, u32> = HashMap::<u32, u32>::with_max_entries(4096, 0);
 
 // IPv6 redirect map: key = original source IPv6, value = new destination IPv6
-#[map(name = "REWRITE_MAP_V6")]
+#[map(name = "EDUMDNS_PROXY_REWRITE_MAP_V6")]
 static REWRITE_MAP_V6: HashMap<[u8; 16], [u8; 16]> =
     HashMap::<[u8; 16], [u8; 16]>::with_max_entries(4096, 0);
 

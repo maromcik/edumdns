@@ -124,12 +124,12 @@ async fn main() -> Result<(), ProxyError> {
 
     let pin_dir = cli.pin_path.as_str();
     std::fs::create_dir_all(pin_dir)?;
-    if let Some(map_v4) = ebpf.map_mut("REWRITE_MAP_V4") {
+    if let Some(map_v4) = ebpf.map_mut("EDUMDNS_PROXY_REWRITE_MAP_V4") {
         map_v4.pin(Path::new(&format!("{}/edumdns_proxy_rewrite_v4", pin_dir)))?;
         info!("pinned map_v4 to: {}/edumdns_proxy_rewrite_v4", pin_dir);
     }
 
-    if let Some(map_v6) = ebpf.map_mut("REWRITE_MAP_V6") {
+    if let Some(map_v6) = ebpf.map_mut("EDUMDNS_PROXY_REWRITE_MAP_V6") {
         map_v6.pin(Path::new(&format!("{}/edumdns_proxy_rewrite_v6", pin_dir)))?;
         info!("pinned map_v6 to: {}/edumdns_proxy_rewrite_v6", pin_dir);
     }

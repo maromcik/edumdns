@@ -12,6 +12,7 @@ use crate::error::{ProxyError, ProxyErrorKind};
 use log::info;
 use pnet::datalink::MacAddr;
 use tokio::signal;
+use tokio::signal::unix::{signal, SignalKind};
 
 #[repr(C)]
 #[derive(Zeroable, Clone, Copy, Debug, Default)]
@@ -134,9 +135,17 @@ async fn main() -> Result<(), ProxyError> {
         info!("pinned map_v6 to: {}/edumdns_proxy_rewrite_v6", pin_dir);
     }
 
-    let ctrl_c = signal::ctrl_c();
-    info!("Waiting for Ctrl-C...");
-    ctrl_c.await?;
+    info!("Waiting for shutdown");
+    let mut sigterm = signal(SignalKind::terminate())?;
+    let mut sigint = signal(SignalKind::interrupt())?;
+    tokio::select! {
+        _ = sigterm.recv() => {
+            info!("Received SIGTERM, shutting down...");
+        }
+        _ = sigint.recv() => {
+            info!("Received SIGINT (Ctrl-C), shutting down...");
+        }
+    }
     info!("Exiting...");
 
     std::fs::remove_dir_all(pin_dir)?;

@@ -52,7 +52,8 @@ pub async fn get_probes(
         .read_many_auth(&params, &parse_user_id(&i)?)
         .await?;
 
-    let probes_parsed = probes.data
+    let probes_parsed = probes
+        .data
         .into_iter()
         .map(|(l, p)| (l, ProbeDisplay::from(p)))
         .collect();
@@ -71,7 +72,7 @@ pub async fn get_probes(
         probes: probes_parsed,
         page_info: PageInfo::new(page, total_pages),
         filters: query,
-        query_string
+        query_string,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -144,7 +145,7 @@ pub async fn get_probe(
         admin: probe.admin,
         page_info: PageInfo::new(page, total_pages),
         filters: query,
-        query_string
+        query_string,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

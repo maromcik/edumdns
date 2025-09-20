@@ -1,10 +1,10 @@
-use std::env;
 use crate::error::ServerError;
 use aya::maps::{HashMap, Map, MapData};
 use ipnetwork::IpNetwork;
+use log::info;
+use std::env;
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::Path;
-use log::info;
 
 pub struct EbpfUpdater {
     pub rewrite_map_v4: HashMap<MapData, u32, u32>,
@@ -13,10 +13,14 @@ pub struct EbpfUpdater {
 
 impl EbpfUpdater {
     pub fn new() -> Result<Self, ServerError> {
-        let ebpf_dir = env::var("EDUMDNS_SERVER_EBPF_PIN_LOCATION").unwrap_or("/sys/fs/bpf/edumdns".to_string());
+        let ebpf_dir = env::var("EDUMDNS_SERVER_EBPF_PIN_LOCATION")
+            .unwrap_or("/sys/fs/bpf/edumdns".to_string());
         let map_path_v4 = format!("{ebpf_dir}/edumdns_proxy_rewrite_v4");
         let map_path_v6 = format!("{ebpf_dir}/edumdns_proxy_rewrite_v6");
-        info!("Trying to pin eBPF maps at: {} and {} ", map_path_v4, map_path_v6);
+        info!(
+            "Trying to pin eBPF maps at: {} and {} ",
+            map_path_v4, map_path_v6
+        );
         let map_data_v4 = MapData::from_pin(Path::new(map_path_v4.as_str()))?;
         let map_data_v6 = MapData::from_pin(Path::new(map_path_v6.as_str()))?;
         let rewrite_map_v4: HashMap<MapData, u32, u32> =

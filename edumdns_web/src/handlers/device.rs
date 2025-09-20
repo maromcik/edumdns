@@ -1,6 +1,8 @@
 use crate::authorized;
 use crate::error::{WebError, WebErrorKind};
-use crate::forms::device::{DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest, DeviceQuery, UpdateDeviceForm};
+use crate::forms::device::{
+    DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest, DeviceQuery, UpdateDeviceForm,
+};
 use crate::forms::packet::PacketQuery;
 use crate::handlers::helpers::{get_template_name, parse_user_id, request_packet_transmit_helper};
 use crate::templates::PageInfo;
@@ -21,8 +23,8 @@ use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices,
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
-use std::collections::HashMap;
 use edumdns_db::repositories::utilities::verify_password_hash;
+use std::collections::HashMap;
 
 #[get("")]
 pub async fn get_devices(
@@ -60,7 +62,7 @@ pub async fn get_devices(
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
         page_info: PageInfo::new(page, total_pages),
         filters: query,
-        query_string
+        query_string,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -119,7 +121,7 @@ pub async fn get_device(
         is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
         page_info: PageInfo::new(page, total_pages),
         filters: query.into_inner(),
-        query_string
+        query_string,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -134,7 +136,9 @@ pub async fn update_device(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request.path());
     let params = form.into_inner().to_db_params()?;
-    device_repo.update_auth(&params, &parse_user_id(&i)?).await?;
+    device_repo
+        .update_auth(&params, &parse_user_id(&i)?)
+        .await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/device/{}", params.id)))
         .finish())

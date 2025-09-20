@@ -4,17 +4,23 @@ use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
     DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission,
 };
-use crate::repositories::device::models::{CreateDevice, CreatePacketTransmitRequest, DeviceUpdatePassword, SelectManyDevices, SelectSingleDevice, UpdateDevice};
+use crate::repositories::device::models::{
+    CreateDevice, CreatePacketTransmitRequest, DeviceUpdatePassword, SelectManyDevices,
+    SelectSingleDevice, UpdateDevice,
+};
 use crate::repositories::utilities::{generate_salt, hash_password, validate_permissions};
 use crate::schema::device::BoxedQuery;
 use crate::schema::{
     device, group_probe_permission, group_user, packet, packet_transmit_request, probe, user,
 };
 use diesel::pg::Pg;
-use diesel::{ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl, SelectableHelper};
+use diesel::{
+    ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl,
+    SelectableHelper,
+};
+use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
-use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 use std::collections::HashSet;
 
@@ -99,7 +105,7 @@ impl PgDeviceRepository {
             .transaction::<_, DbError, _>(|c| {
                 async move {
                     let d = device::table.find(&params.id).first::<Device>(c).await?;
-                    
+
                     let salt = generate_salt();
                     let password_hash = hash_password(params.new_password.clone(), &salt)?;
 
@@ -113,7 +119,7 @@ impl PgDeviceRepository {
 
                     Ok::<Device, DbError>(d)
                 }
-                    .scope_boxed()
+                .scope_boxed()
             })
             .await?;
         Ok(device)

@@ -1,5 +1,5 @@
-use std::env;
 use crate::templates::error::GenericError;
+use std::env;
 
 use actix_web::http::StatusCode;
 use actix_web::http::header::ContentType;
@@ -48,8 +48,7 @@ pub enum WebErrorKind {
     #[error("parse error")]
     ParseError,
     #[error("device packet transmit request denied")]
-    DeviceTransmitRequestDenied
-
+    DeviceTransmitRequestDenied,
 }
 
 // impl From<askama::Error> for AppError {
@@ -168,12 +167,12 @@ impl From<ipnetwork::IpNetworkError> for WebError {
     }
 }
 
-
-
 impl ResponseError for WebError {
     fn status_code(&self) -> StatusCode {
         match self.error_kind {
-            WebErrorKind::BadRequest | WebErrorKind::EmailAddressError | WebErrorKind::DeviceTransmitRequestDenied => StatusCode::BAD_REQUEST,
+            WebErrorKind::BadRequest
+            | WebErrorKind::EmailAddressError
+            | WebErrorKind::DeviceTransmitRequestDenied => StatusCode::BAD_REQUEST,
             WebErrorKind::NotFound => StatusCode::NOT_FOUND,
             WebErrorKind::Conflict => StatusCode::CONFLICT,
             WebErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
@@ -200,13 +199,14 @@ impl ResponseError for WebError {
         }
     }
 
-    fn error_response(&self) -> HttpResponse { render_generic(self) }
+    fn error_response(&self) -> HttpResponse {
+        render_generic(self)
+    }
 }
 
 fn render_generic(error: &WebError) -> HttpResponse {
     let mut env = Environment::new();
-    let files_dir = env::var("EDUMDNS_FILES_DIR")
-        .unwrap_or("edumdns_web".to_string());
+    let files_dir = env::var("EDUMDNS_FILES_DIR").unwrap_or("edumdns_web".to_string());
     env.set_loader(path_loader(format!("{files_dir}/templates")));
     let template = env
         .get_template("error.html")

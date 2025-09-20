@@ -1,4 +1,3 @@
-
 use crate::ebpf::EbpfUpdater;
 use crate::error::{ServerError, ServerErrorKind};
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
@@ -10,25 +9,25 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
+use edumdns_core::network_packet::{ApplicationPacket, ApplicationPacketType};
 use edumdns_db::repositories::common::{DbCreate, DbReadMany, DbReadOne};
 use edumdns_db::repositories::device::models::{CreateDevice, SelectSingleDevice};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
+use hickory_proto::op::Message;
+use hickory_proto::rr::RData;
+use hickory_proto::serialize::binary::{BinDecodable, BinEncodable};
 use log::{debug, error, info, warn};
+use pnet::packet::PrimitiveValues;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 use std::time::Duration;
-use hickory_proto::op::Message;
-use hickory_proto::rr::RData;
-use hickory_proto::serialize::binary::{BinDecodable, BinEncodable};
-use pnet::packet::PrimitiveValues;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
-use edumdns_core::network_packet::{ApplicationPacket, ApplicationPacketType};
 
 #[derive(Clone)]
 pub struct Proxy {
@@ -61,15 +60,24 @@ impl PacketManager {
             .parse::<bool>()
             .unwrap_or(false);
 
-        let proxy_ipv4 = env::var("EDUMDNS_SERVER_PROXY_IPV4").unwrap_or("127.0.0.1".to_string()).parse::<Ipv4Addr>()?;
+        let proxy_ipv4 = env::var("EDUMDNS_SERVER_PROXY_IPV4")
+            .unwrap_or("127.0.0.1".to_string())
+            .parse::<Ipv4Addr>()?;
+        let proxy_ipv6 = env::var("EDUMDNS_SERVER_PROXY_IPV6")
+            .unwrap_or("::1".to_string())
+            .parse::<Ipv6Addr>()?;
         let proxy = if use_proxy {
-            Some(
-                Proxy {
+            match EbpfUpdater::new() {
+                Ok(updater) => Some(Proxy {
                     proxy_ipv4,
-                    proxy_ipv6: Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0),
-                    ebpf_updater: Arc::new(Mutex::new(EbpfUpdater::new()?)),
+                    proxy_ipv6,
+                    ebpf_updater: Arc::new(Mutex::new(updater)),
+                }),
+                Err(e) => {
+                    error!("Could not create ebpf updater: {}", e);
+                    None
                 }
-            )
+            }
         } else {
             None
         };
@@ -138,7 +146,8 @@ impl PacketManager {
                     let Some(proxy) = &self.proxy else {
                         return;
                     };
-                    if let Err(e) = proxy.ebpf_updater
+                    if let Err(e) = proxy
+                        .ebpf_updater
                         .lock()
                         .await
                         .remove_ip(target.device_ip, target.target_ip)
@@ -150,8 +159,12 @@ impl PacketManager {
                     if let Err(e) = self.send_reconnect(id, session_id).await {
                         error!("Could not reconnect probe: {}", e);
                         self.probe_handles.write().await.remove(&id);
-                        self.send_response_to_ws(id, session_id, ProbeResponse::new_error(e.to_string()))
-                            .await;
+                        self.send_response_to_ws(
+                            id,
+                            session_id,
+                            ProbeResponse::new_error(e.to_string()),
+                        )
+                        .await;
                     }
                 }
             },
@@ -220,13 +233,19 @@ impl PacketManager {
         }
     }
 
-    pub async fn send_reconnect(&self, id: Uuid, session_id: Option<Uuid>) -> Result<(), ServerError> {
+    pub async fn send_reconnect(
+        &self,
+        id: Uuid,
+        session_id: Option<Uuid>,
+    ) -> Result<(), ServerError> {
         if let Some(handle) = self.probe_handles.read().await.get(&id) {
             handle
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
                         tx,
-                        NetworkAppPacket::Command(NetworkCommandPacket::ReconnectThisProbe(session_id)),
+                        NetworkAppPacket::Command(NetworkCommandPacket::ReconnectThisProbe(
+                            session_id,
+                        )),
                     )
                 })
                 .await
@@ -318,7 +337,12 @@ impl PacketManager {
         });
     }
 
-    pub async fn send_response_to_ws(&self, id: Uuid, session_id: Option<Uuid>, response: ProbeResponse) {
+    pub async fn send_response_to_ws(
+        &self,
+        id: Uuid,
+        session_id: Option<Uuid>,
+        response: ProbeResponse,
+    ) {
         if let Some(handles) = self.probe_ws_handles.get(&id.0) {
             match session_id {
                 None => {
@@ -342,7 +366,6 @@ impl PacketManager {
                     }
                 }
             }
-
         }
     }
 
@@ -393,35 +416,45 @@ impl PacketManager {
 
             info!("Packets found for target: {}", transmit_request);
 
-
-            let payloads = if let Some(proxy) = proxy
-            {
-                 match proxy.ebpf_updater
-                .lock()
-                .await
-                .add_ip(device.ip, transmit_request.target_ip) {
-                     Ok(_) => {
-                         let mut payloads = HashSet::new();
-                         for packet in packets {
-                             let Ok(mut message) = Message::from_bytes(packet.payload.as_slice()) else {
-                                 continue;
-                             };
-                             for ans in message.answers_mut() {
-                                 if ans.data().is_a() {
-                                     ans.set_data(RData::A(hickory_proto::rr::rdata::a::A::from(proxy.proxy_ipv4)));
-                                 }
-                             }
-                             if let Ok(bytes) = message.to_vec() {
-                                 payloads.insert(bytes);
-                             }
-                         }
-                         payloads
-                     }
-                     Err(e) => {
-                         error!("Could not add IP to an ebpf map for proxy: {}", e);
-                         return;
-                     }
-                 }
+            let payloads = if let Some(proxy) = proxy {
+                match proxy
+                    .ebpf_updater
+                    .lock()
+                    .await
+                    .add_ip(device.ip, transmit_request.target_ip)
+                {
+                    Ok(_) => {
+                        let mut payloads = HashSet::new();
+                        for packet in packets {
+                            let Ok(mut message) = Message::from_bytes(packet.payload.as_slice())
+                            else {
+                                continue;
+                            };
+                            for ans in message.answers_mut() {
+                                if ans.data().is_a() {
+                                    ans.set_data(RData::A(hickory_proto::rr::rdata::a::A::from(
+                                        proxy.proxy_ipv4,
+                                    )));
+                                }
+                                if ans.data().is_aaaa() {
+                                    ans.set_data(RData::AAAA(
+                                        hickory_proto::rr::rdata::aaaa::AAAA::from(
+                                            proxy.proxy_ipv6,
+                                        ),
+                                    ));
+                                }
+                            }
+                            if let Ok(bytes) = message.to_vec() {
+                                payloads.insert(bytes);
+                            }
+                        }
+                        payloads
+                    }
+                    Err(e) => {
+                        error!("Could not add IP to an ebpf map for proxy: {}", e);
+                        return;
+                    }
+                }
             } else {
                 packets.into_iter().map(|p| p.payload).collect()
             };

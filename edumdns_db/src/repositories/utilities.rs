@@ -1,5 +1,3 @@
-use std::str::FromStr;
-use serde::{Deserialize, Deserializer};
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::{GroupProbePermission, User};
 use crate::repositories::common::{DbResult, Id, Permission};
@@ -11,10 +9,12 @@ use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
-use std::ops::DerefMut;
-use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
 use pbkdf2::Pbkdf2;
+use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
 use rand_core::OsRng;
+use serde::{Deserialize, Deserializer};
+use std::ops::DerefMut;
+use std::str::FromStr;
 use uuid::Uuid;
 
 pub async fn validate_permissions(
@@ -117,7 +117,6 @@ pub fn verify_password_hash(
     let bytes = password_candidate.bytes().collect::<Vec<u8>>();
     Ok(Pbkdf2.verify_password(&bytes, &parsed_hash).is_ok())
 }
-
 
 pub fn empty_string_is_none<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where

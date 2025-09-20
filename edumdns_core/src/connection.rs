@@ -52,7 +52,7 @@ async fn run_tcp_connection_send_loop(mut actor: TcpConnectionSender) -> Result<
                         )
                     })?;
             }
-            TcpConnectionMessage::Close { } => {
+            TcpConnectionMessage::Close {} => {
                 actor.framed_sink.close().await.map_err(CoreError::from)?;
                 return Ok(());
             }
@@ -72,12 +72,8 @@ async fn run_message_multiplexer(
             TcpConnectionMessage::SendPacket { .. } => send_channel.send(msg).await?,
             TcpConnectionMessage::ReceivePacket { .. } => recv_channel.send(msg).await?,
             TcpConnectionMessage::Close => {
-                send_channel
-                    .send(TcpConnectionMessage::Close)
-                    .await?;
-                recv_channel
-                    .send(TcpConnectionMessage::Close)
-                    .await?;
+                send_channel.send(TcpConnectionMessage::Close).await?;
+                recv_channel.send(TcpConnectionMessage::Close).await?;
                 return Ok(());
             }
         }

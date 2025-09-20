@@ -1,6 +1,7 @@
 use crate::connection::{ConnectionManager, ReceivePacketTargets};
 use crate::error::{ProbeError, ProbeErrorKind};
 use crate::probe::ProbeCapture;
+use clap::Parser;
 use edumdns_core::app_packet::{
     NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeResponse,
 };
@@ -14,7 +15,6 @@ use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::net::IpAddr;
 use std::time::Duration;
-use clap::Parser;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::EnvFilter;

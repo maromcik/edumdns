@@ -100,7 +100,9 @@ pub async fn reconnect_probe(
     probe_id: uuid::Uuid,
     session: Session,
 ) -> Result<(), WebError> {
-    let uuid = session.get::<uuid::Uuid>("session_id")?.map(|uuid| Uuid(uuid));
+    let uuid = session
+        .get::<uuid::Uuid>("session_id")?
+        .map(|uuid| Uuid(uuid));
     command_channel
         .send(AppPacket::Local(LocalAppPacket::Command(
             LocalCommandPacket::ReconnectProbe(Uuid(probe_id), uuid),

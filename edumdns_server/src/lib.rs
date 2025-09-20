@@ -8,11 +8,11 @@ use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 
 mod connection;
-pub mod error;
-pub mod manager;
-pub mod listen;
-mod transmitter;
 mod ebpf;
+pub mod error;
+pub mod listen;
+pub mod manager;
+mod transmitter;
 
 const DEFAULT_HOSTNAME: &str = "localhost";
 const DEFAULT_PORT: &str = "5000";

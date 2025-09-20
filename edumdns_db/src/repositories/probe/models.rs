@@ -1,11 +1,11 @@
 use crate::models::Probe;
 use crate::repositories::common::{Id, Pagination, Permission};
+use crate::repositories::utilities::empty_string_is_none;
 use diesel::{AsChangeset, Identifiable, Insertable};
 use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::repositories::utilities::empty_string_is_none;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SelectManyProbes {

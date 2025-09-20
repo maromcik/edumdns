@@ -1,13 +1,13 @@
-use edumdns_db::repositories::utilities::empty_string_is_none;
+use crate::error::WebError;
 use edumdns_core::bincode_types::MacAddr;
 use edumdns_db::repositories::common::{Id, Pagination};
 use edumdns_db::repositories::device::models::{SelectManyDevices, UpdateDevice};
+use edumdns_db::repositories::utilities::empty_string_is_none;
+use edumdns_db::repositories::utilities::{generate_salt, hash_password};
 use ipnetwork::IpNetwork;
 use log::error;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use edumdns_db::repositories::utilities::{generate_salt, hash_password};
-use crate::error::WebError;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct DeviceQuery {
@@ -55,7 +55,6 @@ impl DeviceCustomPacketTransmitRequest {
     }
 }
 
-
 #[derive(Serialize, Deserialize)]
 pub struct DevicePacketTransmitRequest {
     #[serde(default)]
@@ -102,7 +101,7 @@ impl UpdateDeviceForm {
             acl_src_cidr: self.acl_src_cidr,
             acl_ap_hostname_regex: self.acl_ap_hostname_regex,
             acl_pwd_hash: hash,
-            acl_pwd_salt: salt
+            acl_pwd_salt: salt,
         })
     }
 }

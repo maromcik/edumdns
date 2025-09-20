@@ -111,7 +111,6 @@ pub struct CreatePacketTransmitRequest {
     pub permanent: bool,
 }
 
-
 #[derive(Serialize, Deserialize, AsChangeset, Identifiable, Debug)]
 #[diesel(table_name = crate::schema::device)]
 pub struct UpdateDevice {

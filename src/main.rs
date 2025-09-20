@@ -1,5 +1,5 @@
-use clap::Parser;
 use crate::error::AppError;
+use clap::Parser;
 use edumdns_db::db_init;
 use edumdns_server::server_init;
 use edumdns_web::web_init;

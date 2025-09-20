@@ -9,14 +9,14 @@ use crate::error::BackendErrorKind::UserPasswordDoesNotMatch;
 use crate::repositories::user::models::{
     SelectManyUsers, UserLogin, UserUpdate, UserUpdatePassword,
 };
+use crate::repositories::utilities::{generate_salt, hash_password, verify_password_hash};
 use crate::schema::user;
 use crate::schema::user::{admin, deleted_at, email, name, surname};
 use diesel::{ExpressionMethods, QueryDsl};
+use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
-use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
-use crate::repositories::utilities::{generate_salt, hash_password, verify_password_hash};
 
 #[derive(Clone)]
 pub struct PgUserRepository {

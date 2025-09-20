@@ -45,8 +45,7 @@ pub async fn web_init(
     let host = parse_host();
     let host2 = host.clone();
 
-    let files_dir = env::var("EDUMDNS_FILES_DIR")
-        .unwrap_or("edumdns_web".to_string());
+    let files_dir = env::var("EDUMDNS_FILES_DIR").unwrap_or("edumdns_web".to_string());
 
     let jinja = Arc::new(create_reloader(format!("{files_dir}/templates")));
 
@@ -73,7 +72,6 @@ pub async fn web_init(
     //     .build_and_init()
     //     .await
     //     .unwrap();
-
 
     let use_secure_cookie = env::var("EDUMDNS_USE_SECURE_COOKIE")
         .unwrap_or("false".to_string())
@@ -116,7 +114,11 @@ pub async fn web_init(
             )
             .wrap(Logger::default())
             // .configure(openid.configure_open_id())
-            .configure(configure_webapp(&pool, app_state.clone(), files_dir.clone()))
+            .configure(configure_webapp(
+                &pool,
+                app_state.clone(),
+                files_dir.clone(),
+            ))
     })
     .bind(host2)?
     .run()

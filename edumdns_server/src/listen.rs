@@ -43,7 +43,6 @@ pub async fn listen(
                 error!("Could not initialize packet manager: {e}");
             }
         }
-
     });
     info!("Packet storage initialized");
 

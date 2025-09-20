@@ -9,7 +9,6 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
-use edumdns_core::network_packet::{ApplicationPacket, ApplicationPacketType};
 use edumdns_db::repositories::common::{DbCreate, DbReadMany, DbReadOne};
 use edumdns_db::repositories::device::models::{CreateDevice, SelectSingleDevice};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
@@ -17,9 +16,8 @@ use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use hickory_proto::op::Message;
 use hickory_proto::rr::RData;
-use hickory_proto::serialize::binary::{BinDecodable, BinEncodable};
+use hickory_proto::serialize::binary::BinDecodable;
 use log::{debug, error, info, warn};
-use pnet::packet::PrimitiveValues;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -415,49 +413,53 @@ impl PacketManager {
             };
 
             info!("Packets found for target: {}", transmit_request);
+            let payloads = if let Some(p) = &proxy {
+                let mut payloads = HashSet::new();
+                for packet in packets {
+                    let Ok(mut message) = Message::from_bytes(packet.payload.as_slice()) else {
+                        continue;
+                    };
+                    for ans in message.answers_mut() {
+                        if ans.data().is_a() {
+                            ans.set_data(RData::A(hickory_proto::rr::rdata::a::A::from(
+                                p.proxy_ipv4,
+                            )));
+                        }
+                        if ans.data().is_aaaa() {
+                            ans.set_data(RData::AAAA(hickory_proto::rr::rdata::aaaa::AAAA::from(
+                                p.proxy_ipv6,
+                            )));
+                        }
+                    }
+                    if let Ok(bytes) = message.to_vec() {
+                        payloads.insert(bytes);
+                    }
+                }
+                payloads
+            } else {
+                packets.into_iter().map(|p| p.payload).collect()
+            };
 
-            let payloads = if let Some(proxy) = proxy {
-                match proxy
+            if payloads.is_empty() {
+                warn!("No packets left after processing for target: {transmit_request}");
+                return;
+            }
+
+            if let Some(p) = proxy {
+                match p
                     .ebpf_updater
                     .lock()
                     .await
                     .add_ip(device.ip, transmit_request.target_ip)
                 {
                     Ok(_) => {
-                        let mut payloads = HashSet::new();
-                        for packet in packets {
-                            let Ok(mut message) = Message::from_bytes(packet.payload.as_slice())
-                            else {
-                                continue;
-                            };
-                            for ans in message.answers_mut() {
-                                if ans.data().is_a() {
-                                    ans.set_data(RData::A(hickory_proto::rr::rdata::a::A::from(
-                                        proxy.proxy_ipv4,
-                                    )));
-                                }
-                                if ans.data().is_aaaa() {
-                                    ans.set_data(RData::AAAA(
-                                        hickory_proto::rr::rdata::aaaa::AAAA::from(
-                                            proxy.proxy_ipv6,
-                                        ),
-                                    ));
-                                }
-                            }
-                            if let Ok(bytes) = message.to_vec() {
-                                payloads.insert(bytes);
-                            }
-                        }
-                        payloads
+                        info!("IP added to an ebpf map");
                     }
                     Err(e) => {
-                        error!("Could not add IP to an ebpf map for proxy: {}", e);
-                        return;
+                        error!("Could not add IP to an ebpf map: {e}");
                     }
                 }
-            } else {
-                packets.into_iter().map(|p| p.payload).collect()
-            };
+            }
 
             let transmitter = PacketTransmitter::new(
                 payloads,
@@ -472,11 +474,13 @@ impl PacketManager {
                 return;
             };
             let task = PacketTransmitterTask::new(transmitter);
+            info!("Transmitter task created for target: {}", transmit_request);
             transmitter_tasks
                 .lock()
                 .await
                 .entry(transmit_request)
                 .or_insert(task);
+            info!("Transmitter task inserted for target");
         });
     }
 }

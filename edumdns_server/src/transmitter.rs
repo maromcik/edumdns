@@ -2,12 +2,13 @@ use crate::error::ServerError;
 use edumdns_core::app_packet::{NetworkCommandPacket, PacketTransmitRequestPacket, ProbePacket};
 use edumdns_core::connection::UdpConnection;
 
-use log::{debug, error};
+use log::{debug, error, info};
 use std::collections::HashSet;
 
 use std::time::Duration;
 
 use tokio::task::JoinHandle;
+use crate::DEFAULT_INTERVAL_MULTIPLICATOR;
 
 pub struct PacketTransmitterTask {
     pub transmitter_task: JoinHandle<()>,
@@ -15,7 +16,10 @@ pub struct PacketTransmitterTask {
 
 impl PacketTransmitterTask {
     pub fn new(transmitter: PacketTransmitter) -> Self {
-        let transmitter_task = tokio::task::spawn(async move { transmitter.transmit().await });
+        let transmitter_task = tokio::task::spawn(async move {
+            transmitter.transmit().await;
+            info!("Transmitter task finished")
+        });
         Self { transmitter_task }
     }
 }
@@ -50,7 +54,7 @@ impl PacketTransmitter {
             self.transmit_request.target_ip.ip(),
             self.transmit_request.target_port
         );
-
+        info!("Initiating packet transmission to: {}", host);
         loop {
             for payload in self.payloads.iter() {
                 match self
@@ -70,6 +74,9 @@ impl PacketTransmitter {
                 );
                 tokio::time::sleep(self.interval).await;
             }
+            debug!("All packets sent; waiting for: {:?}", self.interval * DEFAULT_INTERVAL_MULTIPLICATOR);
+            tokio::time::sleep(self.interval * DEFAULT_INTERVAL_MULTIPLICATOR).await;
+            debug!("Repeating packet transmission...");
         }
     }
 }

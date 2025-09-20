@@ -17,6 +17,8 @@ mod transmitter;
 const DEFAULT_HOSTNAME: &str = "localhost";
 const DEFAULT_PORT: &str = "5000";
 
+const DEFAULT_INTERVAL_MULTIPLICATOR: u32 = 5;
+
 pub async fn server_init(
     pool: Pool<AsyncPgConnection>,
     command_channel: (Sender<AppPacket>, Receiver<AppPacket>),

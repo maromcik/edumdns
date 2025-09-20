@@ -131,7 +131,7 @@ async fn main() -> Result<(), ProxyError> {
 
     if let Some(map_v6) = ebpf.map_mut("REWRITE_MAP_V6") {
         map_v6.pin(Path::new(&format!("{}/edumdns_proxy_rewrite_v6", pin_dir)))?;
-        info!("pinned map_v6 to: {}/edumdns_proxy_rewrite_v4", pin_dir);
+        info!("pinned map_v6 to: {}/edumdns_proxy_rewrite_v6", pin_dir);
     }
 
     let ctrl_c = signal::ctrl_c();

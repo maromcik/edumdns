@@ -143,6 +143,7 @@ async fn main() -> Result<(), ProbeError> {
             handle_local,
             pinger_receive_receiver,
             command_transmitter.clone(),
+            uuid,
             retry_interval,
             cancellation_token.clone(),
         )

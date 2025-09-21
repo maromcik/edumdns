@@ -1,6 +1,8 @@
 use crate::error::{ServerError, ServerErrorKind};
-use diesel_async::AsyncPgConnection;
+use crate::listen::ProbeHandles;
+use crate::probe_tracker::{ProbeTracker, SharedProbeLastSeen};
 use diesel_async::pooled_connection::deadpool::Pool;
+use diesel_async::AsyncPgConnection;
 use edumdns_core::app_packet::{
     AppPacket, NetworkAppPacket, NetworkStatusPacket, ProbeConfigElement, ProbeConfigPacket,
 };
@@ -13,18 +15,17 @@ use edumdns_db::repositories::common::DbCreate;
 use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use ipnetwork::IpNetwork;
-use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpStream;
-use tokio::sync::RwLock;
 use tokio::sync::mpsc::Sender;
+use tokio::time::Instant;
 
 pub struct ConnectionManager {
     handle: TcpConnectionHandle,
     pg_probe_repository: PgProbeRepository,
     tx: Sender<AppPacket>,
-    handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
+    probe_handles: ProbeHandles,
+    probe_last_seen: SharedProbeLastSeen,
     global_timeout: Duration,
 }
 
@@ -33,14 +34,16 @@ impl ConnectionManager {
         stream: TcpStream,
         pool: Pool<AsyncPgConnection>,
         tx: Sender<AppPacket>,
-        handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
+        handles: ProbeHandles,
+        probe_last_seen: SharedProbeLastSeen,
         global_timeout: Duration,
     ) -> Result<Self, ServerError> {
         Ok(Self {
             handle: TcpConnectionHandle::stream_to_framed(stream, global_timeout)?,
             pg_probe_repository: PgProbeRepository::new(pool.clone()),
             tx,
-            handles,
+            probe_handles: handles,
+            probe_last_seen,
             global_timeout,
         })
     }
@@ -104,7 +107,7 @@ impl ConnectionManager {
             })
             .await??;
 
-        self.handles
+        self.probe_handles
             .write()
             .await
             .insert(config_metadata.id, self.handle.clone());
@@ -152,8 +155,8 @@ impl ConnectionManager {
                         }
                         NetworkAppPacket::Status(status) => {
                             match status {
-                                NetworkStatusPacket::PingRequest => {
-                                    // TODO log time since last ping, threshold for considering a probe dead.
+                                NetworkStatusPacket::PingRequest(uuid) => {
+                                    self.probe_last_seen.write().await.insert(*uuid, ProbeTracker::new(*uuid));
                                     self.handle
                                         .send_message_with_response(|tx| {
                                             TcpConnectionMessage::send_packet(

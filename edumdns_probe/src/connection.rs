@@ -11,6 +11,7 @@ use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
+use edumdns_core::bincode_types::Uuid;
 
 // TODO switch to probe manager
 // TODO spawn all tasks as tokio selects, when reconnect comes in, select dies and forces reconnect in probe manager's thread
@@ -271,6 +272,7 @@ impl ConnectionManager {
         handle: TcpConnectionHandle,
         packet_receiver: mpsc::Receiver<NetworkAppPacket>,
         command_sender: mpsc::Sender<NetworkAppPacket>,
+        uuid: Uuid,
         interval: Duration,
         cancellation_token: CancellationToken,
     ) -> Result<(), ProbeError> {
@@ -279,7 +281,7 @@ impl ConnectionManager {
                 _ = cancellation_token.cancelled() => {
                     warn!("Pinger task cancelled");
                 }
-                result = ConnectionManager::pinger_worker(handle, packet_receiver, command_sender, interval) => {
+                result = ConnectionManager::pinger_worker(handle, packet_receiver, command_sender, uuid, interval) => {
                     result.map_err(|e| {
                         error!("Pinger task exited with error: {e}");
                         e
@@ -296,6 +298,7 @@ impl ConnectionManager {
         handle: TcpConnectionHandle,
         mut packet_receiver: mpsc::Receiver<NetworkAppPacket>,
         command_sender: mpsc::Sender<NetworkAppPacket>,
+        uuid: Uuid,
         interval: Duration,
     ) -> Result<(), ProbeError> {
         debug!("Starting pinger");
@@ -304,7 +307,7 @@ impl ConnectionManager {
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
                         tx,
-                        NetworkAppPacket::Status(NetworkStatusPacket::PingRequest),
+                        NetworkAppPacket::Status(NetworkStatusPacket::PingRequest(uuid)),
                     )
                 })
                 .await??;

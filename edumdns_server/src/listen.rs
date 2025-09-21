@@ -14,6 +14,11 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::time::Instant;
+use crate::ordered_map::OrderedMap;
+use crate::probe_tracker::{watchdog, SharedProbeLastSeen};
+
+pub type ProbeHandles = Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>;
 
 async fn handle_connection(mut connection_manager: ConnectionManager) -> Result<Uuid, ServerError> {
     let uuid = connection_manager.connection_init_server().await?;
@@ -32,9 +37,10 @@ pub async fn listen(
     let listener = TcpListener::bind(host).await?;
     info!("Listening on {}", listener.local_addr()?);
 
+    let probe_handles: ProbeHandles = Arc::new(RwLock::new(HashMap::new()));
+    let tracker: SharedProbeLastSeen =  Arc::new(RwLock::new(OrderedMap::new()));
+
     let pool_local = pool.clone();
-    let probe_handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>> =
-        Arc::new(RwLock::new(HashMap::new()));
     let probe_handles_local = probe_handles.clone();
     let _packet_storage_task = tokio::task::spawn(async move {
         match PacketManager::new(rx, pool_local, probe_handles_local, global_timeout) {
@@ -44,8 +50,14 @@ pub async fn listen(
             }
         }
     });
-    info!("Packet storage initialized");
 
+
+    let tracker_local: SharedProbeLastSeen =  Arc::new(RwLock::new(OrderedMap::new()));
+    let probe_handles_local = probe_handles.clone();
+    let _probe_watchdog_task = tokio::task::spawn(async move {
+        watchdog(tracker_local, probe_handles_local, global_timeout).await;
+    });
+    info!("Packet storage initialized");
     loop {
         let (stream, addr) = listener.accept().await?;
         info!("Connection from {addr}");
@@ -54,6 +66,7 @@ pub async fn listen(
             pool.clone(),
             tx.clone(),
             probe_handles.clone(),
+            tracker.clone(),
             global_timeout,
         )?;
         let probe_handles_local = probe_handles.clone();

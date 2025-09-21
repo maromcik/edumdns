@@ -59,7 +59,7 @@ pub enum NetworkCommandPacket {
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub enum NetworkStatusPacket {
-    PingRequest,
+    PingRequest(Uuid),
     PingResponse,
     ProbeHello(ProbeMetadata),
     ProbeAdopted,

@@ -23,10 +23,18 @@
         };
 
         ws.onmessage = (event) => {
-            console.log("Update:", event.data);
-            const msg = event.data;
-            const isError = msg.startsWith("Error:");
-            showNotification(msg, isError ? "error" : "success");
+            let data = event.data;
+            console.log("Update:", data);
+            // Normalize booleans
+            if (data === "true" || data === "false") {
+                const isAlive = data === "true";
+                updateProbeStatusDot(isAlive);
+                return;
+            }
+
+            // Fallback: notifications for errors/other events
+            const isError = data.startsWith("Error:");
+            showNotification(data, isError ? "error" : "success");
         };
 
         ws.onclose = () => {
@@ -76,6 +84,19 @@
             notif.classList.add("hide");
             notif.addEventListener("transitionend", () => notif.remove(), { once: true });
         }, lifetime);
+    }
+
+    function updateProbeStatusDot(isAlive) {
+        const dot = document.getElementById("probe-status-dot");
+        if (!dot) return;
+
+        if (isAlive) {
+            dot.classList.remove("bg-red-500", "bg-gray-400");
+            dot.classList.add("bg-green-500");
+        } else {
+            dot.classList.remove("bg-green-500", "bg-gray-400");
+            dot.classList.add("bg-red-500");
+        }
     }
 
     // Initial connect

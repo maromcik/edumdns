@@ -1,4 +1,4 @@
-use crate::authorized;
+use crate::{authorized, PING_INTERVAL};
 use crate::error::WebError;
 use crate::forms::device::DeviceQuery;
 use crate::forms::probe::{ProbeConfigForm, ProbePermissionForm, ProbeQuery};
@@ -11,7 +11,7 @@ use actix_session::Session;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, rt, web};
 use actix_ws::AggregatedMessage;
-use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket};
+use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket};
 use edumdns_core::error::CoreError;
 use edumdns_db::models::{Group, Probe};
 use edumdns_db::repositories::common::{
@@ -28,10 +28,11 @@ use edumdns_db::repositories::probe::models::{
 };
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use itertools;
-use log::{debug, warn};
+use log::{debug, info, warn};
 use std::collections::{HashMap, HashSet};
 use strum::IntoEnumIterator;
 use tokio::sync::mpsc;
+use tokio::sync::mpsc::error::SendError;
 use uuid::{Timestamp, Uuid};
 
 #[get("")]
@@ -365,44 +366,42 @@ pub async fn get_probe_ws(
     let probe_id = path.0;
 
     let ts = Timestamp::now(uuid::NoContext);
-    let session_uuid = Uuid::new_v7(ts);
+    let session_id = Uuid::new_v7(ts);
 
     let (res, mut ws_session, stream) = actix_ws::handle(&request, stream)?;
     let mut stream = stream
         .aggregate_continuations()
         .max_continuation_size(2_usize.pow(20));
-
     let mut channel = mpsc::channel(100);
-    let unregister_packet = AppPacket::Local(LocalAppPacket::Command(
-        LocalCommandPacket::UnregisterFromEvents {
+    let unregister_packet = LocalCommandPacket::UnregisterFromEvents {
             probe_id,
-            session_id: session_uuid,
-        },
-    ));
+            session_id,
+        };
     let sender = channel.0.clone();
     state
         .command_channel
         .send(AppPacket::Local(LocalAppPacket::Command(
             LocalCommandPacket::RegisterForEvents {
                 probe_id,
-                session_id: session_uuid,
+                session_id,
                 respond_to: sender,
             },
         )))
         .await
         .map_err(CoreError::from)?;
-    let command_channel_local = state.command_channel.clone();
+    let command_channel = state.command_channel.clone();
     let unregister_packet_local = unregister_packet.clone();
-    session.insert("session_id", session_uuid.to_string())?;
+    session.insert("session_id", session_id.to_string())?;
+    let mut ws_session_local = ws_session.clone();
     rt::spawn(async move {
         while let Some(packet) = channel.1.recv().await {
-            let Err(_) = ws_session.text(packet.to_string()).await else {
+            let Err(_) = ws_session_local.text(packet.to_string()).await else {
                 continue;
             };
-            debug!("WebSocket closed, probe_id: {probe_id}, session_id: {session_uuid}");
+            warn!("WebSocket closed, probe_id: {probe_id}, session_id: {session_id}");
 
-            let Err(e) = command_channel_local
-                .send(unregister_packet_local.clone())
+            let Err(e) = command_channel
+                .send(AppPacket::Local(LocalAppPacket::Command(unregister_packet_local.clone())))
                 .await
             else {
                 continue;
@@ -411,15 +410,43 @@ pub async fn get_probe_ws(
         }
     });
     let command_channel = state.command_channel.clone();
+    let unregister_packet_local = unregister_packet.clone();
     rt::spawn(async move {
         while let Some(msg) = stream.recv().await {
             match msg {
                 Ok(AggregatedMessage::Close(_)) | Err(_) => {
-                    let _ = command_channel.send(unregister_packet).await;
+                    let _ = command_channel.send(AppPacket::Local(LocalAppPacket::Command(unregister_packet_local))).await;
                     break;
                 }
                 _ => {}
             }
+        }
+    });
+    let command_channel = state.command_channel.clone();
+    let mut ws_session_local = ws_session.clone();
+    rt::spawn(async move {
+        loop {
+            let respond_to_channel = tokio::sync::oneshot::channel();
+            if let Err(e) = command_channel.send(AppPacket::Local(LocalAppPacket::Status(LocalStatusPacket::IsProbeLive { probe_id, respond_to: respond_to_channel.0} ))).await {
+                    warn!("Error sending request for checking probe liveness: {e}");
+                    continue;
+                }
+            let response = respond_to_channel.1.await.ok();
+            match response {
+                None => {
+                    if ws_session_local.text("false").await.is_err() {
+                        info!("WebSocket closed, probe_id: {probe_id}, session_id: {session_id}");
+                        return;
+                    };
+                },
+                Some(is_alive) => {
+                    if ws_session_local.text(is_alive.to_string()).await.is_err() {
+                        info!("WebSocket closed, probe_id: {probe_id}, session_id: {session_id}");
+                        return;
+                    };
+                },
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(PING_INTERVAL)).await;
         }
     });
     Ok(res)

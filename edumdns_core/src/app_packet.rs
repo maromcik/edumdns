@@ -6,9 +6,9 @@ use bincode::{Decode, Encode};
 use sha2::{Digest, Sha256};
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum AppPacket {
     Network(NetworkAppPacket),
     Local(LocalAppPacket),
@@ -21,9 +21,10 @@ pub enum NetworkAppPacket {
     Status(NetworkStatusPacket),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum LocalAppPacket {
     Command(LocalCommandPacket),
+    Status(LocalStatusPacket),
 }
 #[derive(Debug, Clone)]
 pub enum LocalCommandPacket {
@@ -39,6 +40,16 @@ pub enum LocalCommandPacket {
     ReconnectProbe(Uuid, Option<Uuid>),
     TransmitDevicePackets(PacketTransmitRequestPacket),
     StopTransmitDevicePackets(PacketTransmitRequestPacket),
+
+}
+
+#[derive(Debug)]
+pub enum LocalStatusPacket {
+    GetLiveProbes,
+    IsProbeLive {
+        probe_id: uuid::Uuid,
+        respond_to: oneshot::Sender<bool>,
+    },
 }
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]

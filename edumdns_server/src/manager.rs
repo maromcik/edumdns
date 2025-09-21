@@ -4,8 +4,9 @@ use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::{
-    AppPacket, LocalAppPacket, LocalCommandPacket, NetworkAppPacket, NetworkCommandPacket,
-    NetworkStatusPacket, PacketTransmitRequestPacket, ProbePacket, ProbeResponse,
+    AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket, NetworkAppPacket,
+    NetworkCommandPacket, NetworkStatusPacket, PacketTransmitRequestPacket, ProbePacket,
+    ProbeResponse,
 };
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
@@ -163,6 +164,23 @@ impl PacketManager {
                             ProbeResponse::new_error(e.to_string()),
                         )
                         .await;
+                    }
+                }
+            },
+            LocalAppPacket::Status(status) => match status {
+                LocalStatusPacket::GetLiveProbes => {}
+                LocalStatusPacket::IsProbeLive {
+                    probe_id,
+                    respond_to,
+                } => {
+                    if self
+                        .probe_handles
+                        .read()
+                        .await
+                        .contains_key(&Uuid(probe_id))
+                        && let Err(e) = respond_to.send(true)
+                    {
+                        error!("Could not send a response to probe {}: {}", probe_id, e);
                     }
                 }
             },

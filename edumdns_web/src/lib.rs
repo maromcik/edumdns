@@ -36,6 +36,8 @@ const PAYLOAD_LIMIT: usize = 16 * 1024 * 1024 * 1024; // 16GiB
 const FORM_LIMIT: usize = 16 * 1024 * 1024; // 16MiB
 const MIN_PASS_LEN: usize = 6;
 
+const PING_INTERVAL: u64 = 1;
+
 pub async fn web_init(
     pool: Pool<AsyncPgConnection>,
     command_channel: Sender<AppPacket>,

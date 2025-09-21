@@ -69,6 +69,9 @@ pub async fn watchdog(
                 let id = first.id;
                 tracker.ord.remove(&first);
                 tracker.map.remove(&id);
+                if let Some(handle) = probe_handles.read().await.get(&id) {
+                    let _ = handle.close().await;
+                }
                 probe_handles.write().await.remove(&id);
                 info!("Probe {id} considered dead, older than {:?}", max_age);
             } else {

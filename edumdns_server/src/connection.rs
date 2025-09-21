@@ -1,8 +1,8 @@
 use crate::error::{ServerError, ServerErrorKind};
 use crate::listen::ProbeHandles;
 use crate::probe_tracker::{ProbeTracker, SharedProbeLastSeen};
-use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
+use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::{
     AppPacket, NetworkAppPacket, NetworkStatusPacket, ProbeConfigElement, ProbeConfigPacket,
 };
@@ -15,8 +15,8 @@ use edumdns_db::repositories::common::DbCreate;
 use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use ipnetwork::IpNetwork;
+use log::trace;
 use std::time::Duration;
-use log::{trace};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
 
@@ -139,48 +139,45 @@ impl ConnectionManager {
                 .await??;
             match packet {
                 None => return Ok(()),
-                Some(app_packet) => {
-                    match &app_packet {
-                        NetworkAppPacket::Command(_) => {
-                            self.tx
-                                .send(AppPacket::Network(app_packet))
-                                .await
-                                .map_err(CoreError::from)?;
-                        }
-                        NetworkAppPacket::Data(_) => {
-                            self.tx
-                                .send(AppPacket::Network(app_packet))
-                                .await
-                                .map_err(CoreError::from)?;
-                        }
-                        NetworkAppPacket::Status(status) => {
-                            match status {
-                                NetworkStatusPacket::PingRequest(uuid) => {
-                                    let tracker = ProbeTracker::new(*uuid);
-                                    trace!("Received ping request from probe {:?}, adding to the last seen tracker", tracker);
-                                    self.probe_last_seen.write().await.replace(*uuid, tracker);
-                                    self.handle
-                                        .send_message_with_response(|tx| {
-                                            TcpConnectionMessage::send_packet(
-                                                tx,
-                                                NetworkAppPacket::Status(
-                                                    NetworkStatusPacket::PingResponse,
-                                                ),
-                                            )
-                                        })
-                                        .await??;
-                                }
-                                NetworkStatusPacket::ProbeResponse(_, _, _) => {
-                                    self.tx
-                                        .send(AppPacket::Network(app_packet))
-                                        .await
-                                        .map_err(CoreError::from)?;
-                                }
-                                _ => {}
-                            }
-                        }
+                Some(app_packet) => match &app_packet {
+                    NetworkAppPacket::Command(_) => {
+                        self.tx
+                            .send(AppPacket::Network(app_packet))
+                            .await
+                            .map_err(CoreError::from)?;
                     }
-                }
+                    NetworkAppPacket::Data(_) => {
+                        self.tx
+                            .send(AppPacket::Network(app_packet))
+                            .await
+                            .map_err(CoreError::from)?;
+                    }
+                    NetworkAppPacket::Status(status) => match status {
+                        NetworkStatusPacket::PingRequest(uuid) => {
+                            let tracker = ProbeTracker::new(*uuid);
+                            trace!(
+                                "Received ping request from probe {:?}, adding to the last seen tracker",
+                                tracker
+                            );
+                            self.probe_last_seen.write().await.replace(*uuid, tracker);
+                            self.handle
+                                .send_message_with_response(|tx| {
+                                    TcpConnectionMessage::send_packet(
+                                        tx,
+                                        NetworkAppPacket::Status(NetworkStatusPacket::PingResponse),
+                                    )
+                                })
+                                .await??;
+                        }
+                        NetworkStatusPacket::ProbeResponse(_, _, _) => {
+                            self.tx
+                                .send(AppPacket::Network(app_packet))
+                                .await
+                                .map_err(CoreError::from)?;
+                        }
+                        _ => {}
+                    },
+                },
             }
         }
     }

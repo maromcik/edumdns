@@ -2,6 +2,7 @@ use crate::error::{ProbeError, ProbeErrorKind};
 use edumdns_core::app_packet::{
     NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeConfigPacket,
 };
+use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_core::retry;
@@ -11,7 +12,6 @@ use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
-use edumdns_core::bincode_types::Uuid;
 
 // TODO switch to probe manager
 // TODO spawn all tasks as tokio selects, when reconnect comes in, select dies and forces reconnect in probe manager's thread

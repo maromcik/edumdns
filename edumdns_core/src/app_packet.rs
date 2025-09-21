@@ -40,7 +40,6 @@ pub enum LocalCommandPacket {
     ReconnectProbe(Uuid, Option<Uuid>),
     TransmitDevicePackets(PacketTransmitRequestPacket),
     StopTransmitDevicePackets(PacketTransmitRequestPacket),
-
 }
 
 #[derive(Debug)]

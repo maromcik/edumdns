@@ -1,12 +1,12 @@
+use crate::listen::ProbeHandles;
+use crate::ordered_map::OrderedMap;
+use edumdns_core::bincode_types::Uuid;
+use log::{debug, error, info, trace, warn};
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use std::time::Duration;
-use log::{debug, error, info, trace, warn};
 use tokio::sync::RwLock;
 use tokio::time::Instant;
-use edumdns_core::bincode_types::Uuid;
-use crate::listen::ProbeHandles;
-use crate::ordered_map::OrderedMap;
 
 pub type SharedProbeLastSeen = Arc<RwLock<OrderedMap<Uuid, ProbeTracker>>>;
 
@@ -54,7 +54,11 @@ impl ProbeTracker {
     }
 }
 
-pub async fn watchdog(tracker: SharedProbeLastSeen, probe_handles: ProbeHandles, max_age: Duration) {
+pub async fn watchdog(
+    tracker: SharedProbeLastSeen,
+    probe_handles: ProbeHandles,
+    max_age: Duration,
+) {
     loop {
         tokio::time::sleep(max_age).await;
         trace!("Checking for dead probes");

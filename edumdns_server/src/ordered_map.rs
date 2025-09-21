@@ -45,8 +45,10 @@ where
     pub fn get_first(&self) -> Option<Arc<V>> {
         self.ord.first().cloned()
     }
-    
-    pub fn get_last(&self) -> Option<Arc<V>> { self.ord.last().cloned() }
+
+    pub fn get_last(&self) -> Option<Arc<V>> {
+        self.ord.last().cloned()
+    }
 
     pub fn replace(&mut self, key: K, value: V) {
         self.map.remove(&key).map(|v| self.ord.remove(&v));

@@ -7,8 +7,8 @@ use std::collections::HashSet;
 
 use std::time::Duration;
 
-use tokio::task::JoinHandle;
 use crate::DEFAULT_INTERVAL_MULTIPLICATOR;
+use tokio::task::JoinHandle;
 
 pub struct PacketTransmitterTask {
     pub transmitter_task: JoinHandle<()>,
@@ -74,7 +74,10 @@ impl PacketTransmitter {
                 );
                 tokio::time::sleep(self.interval).await;
             }
-            debug!("All packets sent; waiting for: {:?}", self.interval * DEFAULT_INTERVAL_MULTIPLICATOR);
+            debug!(
+                "All packets sent; waiting for: {:?}",
+                self.interval * DEFAULT_INTERVAL_MULTIPLICATOR
+            );
             tokio::time::sleep(self.interval * DEFAULT_INTERVAL_MULTIPLICATOR).await;
             debug!("Repeating packet transmission...");
         }

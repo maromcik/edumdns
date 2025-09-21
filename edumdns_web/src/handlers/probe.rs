@@ -1,4 +1,3 @@
-use crate::{authorized, PING_INTERVAL};
 use crate::error::WebError;
 use crate::forms::device::DeviceQuery;
 use crate::forms::probe::{ProbeConfigForm, ProbePermissionForm, ProbeQuery};
@@ -6,6 +5,7 @@ use crate::handlers::helpers::{get_template_name, parse_user_id, reconnect_probe
 use crate::templates::PageInfo;
 use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
+use crate::{PING_INTERVAL, authorized};
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
@@ -374,9 +374,9 @@ pub async fn get_probe_ws(
         .max_continuation_size(2_usize.pow(20));
     let mut channel = mpsc::channel(100);
     let unregister_packet = LocalCommandPacket::UnregisterFromEvents {
-            probe_id,
-            session_id,
-        };
+        probe_id,
+        session_id,
+    };
     let sender = channel.0.clone();
     state
         .command_channel
@@ -401,7 +401,9 @@ pub async fn get_probe_ws(
             warn!("WebSocket closed, probe_id: {probe_id}, session_id: {session_id}");
 
             let Err(e) = command_channel
-                .send(AppPacket::Local(LocalAppPacket::Command(unregister_packet_local.clone())))
+                .send(AppPacket::Local(LocalAppPacket::Command(
+                    unregister_packet_local.clone(),
+                )))
                 .await
             else {
                 continue;
@@ -415,7 +417,11 @@ pub async fn get_probe_ws(
         while let Some(msg) = stream.recv().await {
             match msg {
                 Ok(AggregatedMessage::Close(_)) | Err(_) => {
-                    let _ = command_channel.send(AppPacket::Local(LocalAppPacket::Command(unregister_packet_local))).await;
+                    let _ = command_channel
+                        .send(AppPacket::Local(LocalAppPacket::Command(
+                            unregister_packet_local,
+                        )))
+                        .await;
                     break;
                 }
                 _ => {}
@@ -427,10 +433,18 @@ pub async fn get_probe_ws(
     rt::spawn(async move {
         loop {
             let respond_to_channel = tokio::sync::oneshot::channel();
-            if let Err(e) = command_channel.send(AppPacket::Local(LocalAppPacket::Status(LocalStatusPacket::IsProbeLive { probe_id, respond_to: respond_to_channel.0} ))).await {
-                    warn!("Error sending request for checking probe liveness: {e}");
-                    continue;
-                }
+            if let Err(e) = command_channel
+                .send(AppPacket::Local(LocalAppPacket::Status(
+                    LocalStatusPacket::IsProbeLive {
+                        probe_id,
+                        respond_to: respond_to_channel.0,
+                    },
+                )))
+                .await
+            {
+                warn!("Error sending request for checking probe liveness: {e}");
+                continue;
+            }
             let response = respond_to_channel.1.await.ok();
             match response {
                 None => {
@@ -438,13 +452,13 @@ pub async fn get_probe_ws(
                         info!("WebSocket closed, probe_id: {probe_id}, session_id: {session_id}");
                         return;
                     };
-                },
+                }
                 Some(is_alive) => {
                     if ws_session_local.text(is_alive.to_string()).await.is_err() {
                         info!("WebSocket closed, probe_id: {probe_id}, session_id: {session_id}");
                         return;
                     };
-                },
+                }
             }
             tokio::time::sleep(std::time::Duration::from_secs(PING_INTERVAL)).await;
         }

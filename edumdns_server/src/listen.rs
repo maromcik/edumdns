@@ -1,7 +1,9 @@
 use crate::connection::ConnectionManager;
 use crate::error::{ServerError, ServerErrorKind};
 use crate::manager::PacketManager;
+use crate::ordered_map::OrderedMap;
 use crate::parse_host;
+use crate::probe_tracker::{SharedProbeLastSeen, watchdog};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::AppPacket;
@@ -15,8 +17,6 @@ use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::time::Instant;
-use crate::ordered_map::OrderedMap;
-use crate::probe_tracker::{watchdog, SharedProbeLastSeen};
 
 pub type ProbeHandles = Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>;
 
@@ -38,7 +38,7 @@ pub async fn listen(
     info!("Listening on {}", listener.local_addr()?);
 
     let probe_handles: ProbeHandles = Arc::new(RwLock::new(HashMap::new()));
-    let tracker: SharedProbeLastSeen =  Arc::new(RwLock::new(OrderedMap::new()));
+    let tracker: SharedProbeLastSeen = Arc::new(RwLock::new(OrderedMap::new()));
 
     let pool_local = pool.clone();
     let probe_handles_local = probe_handles.clone();
@@ -50,7 +50,6 @@ pub async fn listen(
             }
         }
     });
-
 
     let tracker_local: SharedProbeLastSeen = tracker.clone();
     let probe_handles_local = probe_handles.clone();

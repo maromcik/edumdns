@@ -1,5 +1,6 @@
 use crate::ebpf::EbpfUpdater;
 use crate::error::{ServerError, ServerErrorKind};
+use crate::ordered_map::OrderedMap;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -27,7 +28,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
-use crate::ordered_map::OrderedMap;
 
 #[derive(Clone)]
 pub struct Proxy {

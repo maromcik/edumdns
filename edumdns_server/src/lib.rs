@@ -12,9 +12,9 @@ mod ebpf;
 pub mod error;
 pub mod listen;
 pub mod manager;
-mod transmitter;
 mod ordered_map;
 mod probe_tracker;
+mod transmitter;
 
 const DEFAULT_HOSTNAME: &str = "localhost";
 const DEFAULT_PORT: &str = "5000";

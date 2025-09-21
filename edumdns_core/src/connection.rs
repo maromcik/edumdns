@@ -311,6 +311,7 @@ impl TcpConnection {
         let socket = TcpSocket::new_v4()?;
         let bind_ip = bind_ip.parse()?;
         socket.bind(bind_ip)?;
+        socket.set_keepalive(true)?;
         let stream = tokio::time::timeout(global_timeout, socket.connect(addr.parse()?))
             .await
             .map_err(|_| {

@@ -47,10 +47,10 @@ pub async fn listen(
     info!("Packet storage initialized");
 
     loop {
-        let (socket, addr) = listener.accept().await?;
+        let (stream, addr) = listener.accept().await?;
         info!("Connection from {addr}");
         let connection_manager = ConnectionManager::new(
-            socket,
+            stream,
             pool.clone(),
             tx.clone(),
             probe_handles.clone(),

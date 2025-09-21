@@ -1,5 +1,7 @@
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use std::time::Duration;
+use log::{debug, error, info, trace, warn};
 use tokio::sync::RwLock;
 use tokio::time::Instant;
 use edumdns_core::bincode_types::Uuid;
@@ -8,14 +10,31 @@ use crate::ordered_map::OrderedMap;
 
 pub type SharedProbeLastSeen = Arc<RwLock<OrderedMap<Uuid, ProbeTracker>>>;
 
-#[derive(Eq, PartialEq)]
+#[derive(Debug)]
 pub struct ProbeTracker {
     pub id: Uuid,
     pub last_seen: Instant,
 }
 
+impl Eq for ProbeTracker {}
+
+impl PartialEq for ProbeTracker {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Hash for ProbeTracker {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
 impl Ord for ProbeTracker {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        if self.id == other.id {
+            return std::cmp::Ordering::Equal;
+        }
         self.last_seen.cmp(&other.last_seen)
     }
 }
@@ -37,21 +56,21 @@ impl ProbeTracker {
 
 pub async fn watchdog(tracker: SharedProbeLastSeen, probe_handles: ProbeHandles, max_age: Duration) {
     loop {
-        tokio::time::sleep(Duration::from_secs(10)).await;
-
+        tokio::time::sleep(max_age).await;
+        trace!("Checking for dead probes");
         let mut tracker = tracker.write().await;
         let now = Instant::now();
-
-        while let Some(last) = tracker.get_last() {
-            if now.duration_since(last.last_seen) > max_age {
-                let id = last.id;
-                tracker.ord.remove(&last);
+        while let Some(first) = tracker.get_first() {
+            if now.duration_since(first.last_seen) > max_age {
+                let id = first.id;
+                tracker.ord.remove(&first);
                 tracker.map.remove(&id);
                 probe_handles.write().await.remove(&id);
-                println!("Probe {id} considered dead");
+                info!("Probe {id} considered dead, older than {:?}", max_age);
             } else {
                 break;
             }
         }
+        trace!("Done checking for dead probes");
     }
 }

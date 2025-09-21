@@ -52,9 +52,10 @@ pub async fn listen(
     });
 
 
-    let tracker_local: SharedProbeLastSeen =  Arc::new(RwLock::new(OrderedMap::new()));
+    let tracker_local: SharedProbeLastSeen = tracker.clone();
     let probe_handles_local = probe_handles.clone();
     let _probe_watchdog_task = tokio::task::spawn(async move {
+        info!("Starting the probe watchdog");
         watchdog(tracker_local, probe_handles_local, global_timeout).await;
     });
     info!("Packet storage initialized");

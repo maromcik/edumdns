@@ -16,9 +16,9 @@ use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use ipnetwork::IpNetwork;
 use std::time::Duration;
+use log::{trace};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
-use tokio::time::Instant;
 
 pub struct ConnectionManager {
     handle: TcpConnectionHandle,
@@ -156,7 +156,9 @@ impl ConnectionManager {
                         NetworkAppPacket::Status(status) => {
                             match status {
                                 NetworkStatusPacket::PingRequest(uuid) => {
-                                    self.probe_last_seen.write().await.insert(*uuid, ProbeTracker::new(*uuid));
+                                    let tracker = ProbeTracker::new(*uuid);
+                                    trace!("Received ping request from probe {:?}, adding to the last seen tracker", tracker);
+                                    self.probe_last_seen.write().await.replace(*uuid, tracker);
                                     self.handle
                                         .send_message_with_response(|tx| {
                                             TcpConnectionMessage::send_packet(

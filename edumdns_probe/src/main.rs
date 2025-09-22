@@ -237,12 +237,6 @@ fn determine_mac(bind_ip: &str) -> Result<MacAddr, ProbeError> {
             .as_str(),
         ));
     };
-    let Some(mac) = interface.mac else {
-        return Err(ProbeError::new(
-            ProbeErrorKind::ArgumentError,
-            format!("No MAC address found for interface with IP: {}", bind_ip).as_str(),
-        ));
-    };
 
-    Ok(MacAddr(mac))
+    Ok(MacAddr(interface.mac.unwrap_or_default()))
 }

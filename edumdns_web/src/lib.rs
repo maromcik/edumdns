@@ -66,8 +66,11 @@ pub async fn web_init(
     let issuer = env::var("EDUMDNS_OIDC_ISSUER")?;
 
     let should_auth = |req: &ServiceRequest| {
-        !req.path().starts_with("/no_auth") && req.method() != actix_web::http::Method::OPTIONS
+        let path = req.path();
+        !(path.starts_with("/oidc") || path.starts_with("/no_auth")
+            || req.method() == actix_web::http::Method::OPTIONS)
     };
+
 
     let openid = ActixWebOpenId::builder(client_id, callback, issuer)
         .client_secret(client_secret)
@@ -97,7 +100,6 @@ pub async fn web_init(
             .app_data(FormConfig::default().limit(FORM_LIMIT))
             .app_data(PayloadConfig::new(PAYLOAD_LIMIT))
             .wrap(Logger::default())
-            .wrap(openid.get_middleware())
             .wrap(
                 SessionMiddleware::builder(CookieSessionStore::default(), key.clone())
                     .cookie_secure(use_secure_cookie)
@@ -110,13 +112,14 @@ pub async fn web_init(
             .wrap(IdentityMiddleware::default())
             .wrap(
                 Cors::default()
-                    .allowed_origin(format!("http://{}", host).as_str())
+                    .allowed_origin("https://edumdns-dev.priv.ics.muni.cz")
                     .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "PATCH"])
                     .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
                     .allowed_header(header::CONTENT_TYPE)
                     .supports_credentials()
                     .max_age(3600),
             )
+            .wrap(openid.get_middleware())
             .configure(openid.configure_open_id())
             .configure(configure_webapp(
                 &pool,

@@ -27,11 +27,12 @@ services:
     cap_add:
       - CAP_BPF
       - CAP_NET_ADMIN
+      - CAP_SYS_ADMIN
     depends_on:
       edumdns-db:
         condition: service_healthy
     volumes:
-      - /sys/fs/bpf/edumdns:/sys/fs/bpf
+      - /sys/fs/bpf:/sys/fs/bpf:shared
   edumdns-nginx:
     build: ./nginx
     container_name: edumdns-nginx

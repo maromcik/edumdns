@@ -474,9 +474,7 @@ impl PacketManager {
                     .await
                     .add_ip(device.ip, transmit_request.target_ip)
                 {
-                    Ok(_) => {
-                        info!("IP added to an ebpf map");
-                    }
+                    Ok(_) => {}
                     Err(e) => {
                         error!("Could not add IP to an ebpf map: {e}");
                     }

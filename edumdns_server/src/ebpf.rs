@@ -50,9 +50,6 @@ impl EbpfUpdater {
             }
             _ => {}
         }
-        for el in self.rewrite_map_v4.iter() {
-            error!("AFTER {:?}", el);
-        }
         info!("Added IPs to eBPF maps: {} and {} ", a, b);
         Ok(())
     }
@@ -72,9 +69,6 @@ impl EbpfUpdater {
                 self.rewrite_map_v6.remove(&b)?;
             }
             _ => {}
-        }
-        for el in self.rewrite_map_v4.iter() {
-            error!("AFTER {:?}", el);
         }
         info!("Removed IPs from eBPF maps: {} and {} ", a, b);
         Ok(())

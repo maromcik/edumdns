@@ -65,6 +65,17 @@ impl PgDeviceRepository {
         query
     }
 
+    pub async fn get_all_packet_transmit_requests(
+        &self,
+    ) -> DbResultMultiple<(Device, PacketTransmitRequest)> {
+        let mut conn = self.pg_pool.get().await?;
+        device::table
+            .inner_join(packet_transmit_request::table)
+            .load::<(Device, PacketTransmitRequest)>(&mut conn)
+            .await
+            .map_err(DbError::from)
+    }
+
     pub async fn read_packet_transmit_requests(
         &self,
         device_id: &Id,

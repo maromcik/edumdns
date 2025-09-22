@@ -60,20 +60,22 @@ pub async fn web_init(
             .collect::<Vec<u8>>(),
     );
 
-    let should_auth = |req: &ServiceRequest| {
-        !req.path().starts_with("/no_auth") && req.method() != actix_web::http::Method::OPTIONS
-    };
-    let openid = ActixWebOpenId::builder(
-        "c6827485-d58f-424a-af4e-ac07a7738002".to_string(),
-        "http://edumdns-dev.priv.ics.muni.cz/oidc/callback/".to_string(),
-        "https://id.muni.cz/oidc/".to_string(),
-    )
-        .client_secret("test_client_secret".to_string())
-        .should_auth(|_| true)
-        .scopes(vec!["openid".to_string()])
-        .build_and_init()
-        .await
-        .unwrap();
+    // let client_id = env::var("EDUMDNS_OIDC_CLIENT_ID")?;
+    // let client_secret = env::var("EDUMDNS_OIDC_CLIENT_SECRET")?;
+    // let callback = env::var("EDUMDNS_OIDC_CALLBACK_URL")?;
+    // let issuer = env::var("EDUMDNS_OIDC_ISSUER")?;
+    //
+    // let should_auth = |req: &ServiceRequest| {
+    //     !req.path().starts_with("/no_auth") && req.method() != actix_web::http::Method::OPTIONS
+    // };
+    //
+    // let openid = ActixWebOpenId::builder(client_id, callback, issuer)
+    //     .client_secret(client_secret)
+    //     .should_auth(|_| true)
+    //     .scopes(vec!["openid".to_string()])
+    //     .build_and_init()
+    //     .await
+    //     .unwrap();
 
     let use_secure_cookie = env::var("EDUMDNS_USE_SECURE_COOKIE")
         .unwrap_or("false".to_string())
@@ -94,7 +96,7 @@ pub async fn web_init(
             )
             .app_data(FormConfig::default().limit(FORM_LIMIT))
             .app_data(PayloadConfig::new(PAYLOAD_LIMIT))
-            .wrap(openid.get_middleware())
+            // .wrap(openid.get_middleware())
             .wrap(IdentityMiddleware::default())
             .wrap(
                 SessionMiddleware::builder(CookieSessionStore::default(), key.clone())
@@ -115,7 +117,7 @@ pub async fn web_init(
                     .max_age(3600),
             )
             .wrap(Logger::default())
-            .configure(openid.configure_open_id())
+            // .configure(openid.configure_open_id())
             .configure(configure_webapp(
                 &pool,
                 app_state.clone(),

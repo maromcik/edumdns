@@ -1,6 +1,5 @@
 use crate::templates::error::GenericError;
 use std::env;
-
 use actix_web::http::StatusCode;
 use actix_web::http::header::ContentType;
 use actix_web::{HttpResponse, ResponseError};
@@ -49,6 +48,8 @@ pub enum WebErrorKind {
     ParseError,
     #[error("device packet transmit request denied")]
     DeviceTransmitRequestDenied,
+    #[error("Environment variable could not be loaded")]
+    EnvVarError,
 }
 
 // impl From<askama::Error> for AppError {
@@ -167,6 +168,12 @@ impl From<ipnetwork::IpNetworkError> for WebError {
     }
 }
 
+impl From<env::VarError> for WebError {
+    fn from(value: env::VarError) -> Self {
+        Self::new(WebErrorKind::EnvVarError, value.to_string().as_str())
+    }
+}
+
 impl ResponseError for WebError {
     fn status_code(&self) -> StatusCode {
         match self.error_kind {
@@ -195,7 +202,8 @@ impl ResponseError for WebError {
             | WebErrorKind::EmailError
             | WebErrorKind::FileError
             | WebErrorKind::ZipError
-            | WebErrorKind::ParseError => StatusCode::INTERNAL_SERVER_ERROR,
+            | WebErrorKind::ParseError
+            | WebErrorKind::EnvVarError => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 

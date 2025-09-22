@@ -5,7 +5,10 @@ use std::fmt::{Display, Formatter};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable)]
+
+#[derive(
+    Serialize, Deserialize, Queryable, Selectable, Identifiable, Eq, PartialEq, Hash, Debug,
+)]
 #[diesel(table_name = crate::schema::group)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Group {

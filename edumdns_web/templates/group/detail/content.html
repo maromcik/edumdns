@@ -21,34 +21,61 @@
   </div>
 
     <!-- Group Card -->
+    <!-- Editable Group Settings -->
     <div class="rounded-lg border border-base bg-cards p-6 mb-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- ID -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
-                <span class="font-mono text-code">{{ group.id }}</span>
-            </div>
+        <h3 class="text-2xl font-medium mb-4 text-sat-l">Group Settings</h3>
+        <form
+                method="post"
+                hx-post="/group/update"
+                hx-target="#content-area"
+                hx-target-error="#content-area"
+                class="grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
+            <input type="hidden" id="group_id" name="id" value="{{ group.id }}"/>
 
             <!-- Name -->
             <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Name</span>
-                <span class="text-sat-l">{{ group.name }}</span>
+                <label for="name" class="text-xs uppercase tracking-wide text-sat-m">Name</label>
+                <input
+                        id="name"
+                        name="name"
+                        type="text"
+                        value="{% if group.name is none %}{% else %}{{ group.name }}{% endif %}"
+                        placeholder="Group name"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                />
+                <p class="text-xs text-sat-m mt-1">Optional name for the group.</p>
             </div>
 
             <!-- Description -->
             <div class="flex flex-col md:col-span-2">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Description</span>
-                {% if group.description %}
-                <div class="rounded-lg border border-base bg-panes p-4 text-sat-l">
-                    {{ group.description }}
-                </div>
-                {% else %}
-                <div class="rounded-lg border border-base bg-panes p-4 text-sat-m">
-                    — No description —
-                </div>
-                {% endif %}
+                <label for="description" class="text-xs uppercase tracking-wide text-sat-m">Description</label>
+                <textarea
+                        id="description"
+                        name="description"
+                        placeholder="Group description"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        rows="3"
+                >{% if group.description is none %}{% else %}{{ group.description }}{% endif %}</textarea>
+                <p class="text-xs text-sat-m mt-1">Optional description of this group.</p>
             </div>
-        </div>
+
+            <!-- Actions -->
+            <div class="md:col-span-2 flex items-center gap-2 pt-2">
+                <button
+                        type="submit"
+                        class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                >
+                    Save
+                </button>
+                <button
+                        type="reset"
+                        class="inline-flex items-center rounded-md border border-base bg-cards px-4 py-2 text-sm font-medium text-sat-l hover:bg-panes transition-colors"
+                >
+                    Reset
+                </button>
+            </div>
+        </form>
     </div>
 
     <!-- Add Users to Group -->

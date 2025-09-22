@@ -1,10 +1,7 @@
 use crate::error::DbError;
 use crate::models::{Group, User};
-use crate::repositories::common::{
-    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
-    DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, Id,
-};
-use crate::repositories::group::models::{CreateGroup, SelectManyGroups};
+use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id};
+use crate::repositories::group::models::{CreateGroup, SelectManyGroups, UpdateGroup};
 use std::ops::DerefMut;
 
 use crate::repositories::utilities::{validate_admin, validate_admin_transaction};
@@ -114,6 +111,23 @@ impl DbDelete<Id, Group> for PgGroupRepository {
     async fn delete_auth(&self, params: &Id, user_id: &Id) -> DbResultMultiple<Group> {
         validate_admin(&self.pg_pool, user_id).await?;
         self.delete(params).await
+    }
+}
+
+impl DbUpdate<UpdateGroup, Group> for PgGroupRepository {
+    async fn update(&self, params: &UpdateGroup, ) -> DbResultMultiple<Group> {
+        let mut conn = self.pg_pool.get().await?;
+        let groups = diesel::update(group::table.find(&params.id))
+            .set(params)
+            .get_results(&mut conn)
+            .await?;
+
+        Ok(groups)
+    }
+
+    async fn update_auth(&self, params: &UpdateGroup, user_id: &Id) -> DbResultMultiple<Group> {
+        validate_admin(&self.pg_pool, user_id).await?;
+        self.update(params).await
     }
 }
 

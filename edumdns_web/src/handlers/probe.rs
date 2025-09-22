@@ -368,7 +368,7 @@ pub async fn get_probe_ws(
     let ts = Timestamp::now(uuid::NoContext);
     let session_id = Uuid::new_v7(ts);
 
-    let (res, mut ws_session, stream) = actix_ws::handle(&request, stream)?;
+    let (res, ws_session, stream) = actix_ws::handle(&request, stream)?;
     let mut stream = stream
         .aggregate_continuations()
         .max_continuation_size(2_usize.pow(20));

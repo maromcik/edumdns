@@ -1,5 +1,5 @@
 use crate::bincode_types::Uuid;
-use crate::bincode_types::{IpNetwork, MacAddr};
+use crate::bincode_types::MacAddr;
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};
 use crate::network_packet::{DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};

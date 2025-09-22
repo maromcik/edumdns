@@ -1,4 +1,6 @@
+use diesel::{AsChangeset, Identifiable};
 use crate::repositories::common::{Id, Pagination};
+use crate::repositories::utilities::empty_string_is_none;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -13,10 +15,11 @@ impl SelectManyGroups {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CreateGroup {
     pub user_id: Id,
     pub name: String,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
     pub description: Option<String>,
 }
 
@@ -28,4 +31,16 @@ impl CreateGroup {
             description: description.map(|s| s.to_string()),
         }
     }
+}
+
+
+#[derive(Serialize, Deserialize, AsChangeset, Identifiable, Debug)]
+#[diesel(table_name = crate::schema::group)]
+pub struct UpdateGroup {
+    pub id: Id,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
+    pub name: Option<String>,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
+    #[diesel(treat_none_as_null = true)]
+    pub description: Option<String>,
 }

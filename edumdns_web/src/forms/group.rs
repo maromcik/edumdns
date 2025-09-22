@@ -1,6 +1,7 @@
 use edumdns_db::repositories::common::Id;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashSet;
+use edumdns_db::repositories::utilities::empty_string_is_none;
 
 #[derive(Serialize, Deserialize)]
 pub struct GroupQuery {
@@ -12,6 +13,7 @@ pub struct GroupQuery {
 #[derive(Serialize, Deserialize)]
 pub struct CreateGroupForm {
     pub name: String,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
     pub description: Option<String>,
 }
 

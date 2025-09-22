@@ -1,6 +1,6 @@
 use crate::authorized;
 use crate::error::WebError;
-use crate::forms::group::{AddGroupUsersForm, CreateGroupForm, GroupQuery, SearchUsersQuery};
+use crate::forms::group::{AddGroupUsersForm, CreateGroupForm, GroupQuery, SearchUsersQuery,};
 use crate::handlers::helpers::{get_template_name, parse_user_id};
 use crate::templates::group::{GroupDetailTemplate, GroupDetailUsersTemplate, GroupTemplate};
 use crate::utils::AppState;
@@ -8,9 +8,9 @@ use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
-use edumdns_db::repositories::common::{DbCreate, DbDelete};
+use edumdns_db::repositories::common::{DbCreate, DbDelete, DbUpdate};
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
-use edumdns_db::repositories::group::models::{CreateGroup, SelectManyGroups};
+use edumdns_db::repositories::group::models::{CreateGroup, SelectManyGroups, UpdateGroup};
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 
 #[get("")]
@@ -205,4 +205,20 @@ pub async fn search_group_users(
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
+}
+
+#[post("update")]
+pub async fn update_group(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    group_repo: web::Data<PgGroupRepository>,
+    form: web::Form<UpdateGroup>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request.path());
+    let params = form.into_inner();
+    group_repo.update_auth(&params, &parse_user_id(&i)?).await?;
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/group/{}", params.id)))
+        .finish())
+
 }

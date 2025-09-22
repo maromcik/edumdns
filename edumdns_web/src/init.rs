@@ -2,10 +2,7 @@ use crate::handlers::device::{
     delete_device, delete_request_packet_transmit, get_device, get_device_for_transmit,
     get_devices, request_custom_packet_transmit, request_packet_transmit, update_device,
 };
-use crate::handlers::group::{
-    add_group_users, create_group, delete_group, delete_group_user, get_group, get_group_users,
-    get_groups, search_group_users,
-};
+use crate::handlers::group::{add_group_users, create_group, delete_group, delete_group_user, get_group, get_group_users, get_groups, search_group_users, update_group};
 use crate::handlers::index::index;
 use crate::handlers::packet::{delete_packet, get_packet, get_packets};
 use crate::handlers::probe::{
@@ -50,7 +47,8 @@ pub fn configure_webapp(
         .service(get_group_users)
         .service(add_group_users)
         .service(search_group_users)
-        .service(delete_group_user);
+        .service(delete_group_user)
+        .service(update_group);
 
     let user_scope = web::scope("user")
         .app_data(web::Data::new(user_repo.clone()))

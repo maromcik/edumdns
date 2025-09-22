@@ -10,6 +10,12 @@ services:
       - POSTGRES_DB=edumdns
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d edumdns" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
   edumdns:
     build: .
     container_name: edumdns-app
@@ -22,7 +28,8 @@ services:
       - CAP_BPF
       - CAP_NET_ADMIN
     depends_on:
-      - edumdns-db
+      edumdns-db:
+        condition: service_healthy
     volumes:
       - /var/local/bpf/edumdns:/sys/fs/bpf
   edumdns-nginx:

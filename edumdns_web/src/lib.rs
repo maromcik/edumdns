@@ -1,6 +1,6 @@
 use crate::error::WebError;
 use crate::init::configure_webapp;
-use crate::utils::{AppState, create_reloader};
+use crate::utils::{AppState, create_reloader, DeviceAclApDatabase};
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_multipart::form::MultipartFormConfig;
@@ -15,7 +15,7 @@ use actix_web_openidconnect::ActixWebOpenId;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::AppPacket;
-use log::{info, warn};
+use log::{error, info, warn};
 use std::env;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
@@ -51,7 +51,12 @@ pub async fn web_init(
 
     let jinja = Arc::new(create_reloader(format!("{files_dir}/templates")));
 
-    let app_state = AppState::new(jinja.clone(), command_channel.clone());
+    let device_acl_ap_database = DeviceAclApDatabase {
+        connection_string: env::var("EDUMDNS_ACL_AP_DATABASE_CONNECTION_STRING").unwrap_or_default(),
+        query: env::var("EDUMDNS_ACL_AP_DATABASE_QUERY").unwrap_or_default(),
+    };
+
+    let app_state = AppState::new(jinja.clone(), command_channel.clone(), device_acl_ap_database);
 
     let key = Key::from(
         &env::var("EDUMDNS_COOKIE_SESSION_KEY")

@@ -1,11 +1,11 @@
 use crate::templates::error::GenericError;
-use std::env;
 use actix_web::http::StatusCode;
 use actix_web::http::header::ContentType;
 use actix_web::{HttpResponse, ResponseError};
 use edumdns_core::error::CoreError;
 use edumdns_db::error::{BackendErrorKind, DbError, DbErrorKind};
 use minijinja::{Environment, path_loader};
+use std::env;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::Error;
 use std::num::ParseIntError;
@@ -50,6 +50,8 @@ pub enum WebErrorKind {
     DeviceTransmitRequestDenied,
     #[error("Environment variable could not be loaded")]
     EnvVarError,
+    #[error("AP Database error")]
+    ApDatabaseError,
 }
 
 // impl From<askama::Error> for AppError {
@@ -174,6 +176,18 @@ impl From<env::VarError> for WebError {
     }
 }
 
+impl From<regex::Error> for WebError {
+    fn from(value: regex::Error) -> Self {
+        Self::new(WebErrorKind::ParseError, value.to_string().as_str())
+    }
+}
+
+impl From<tokio_postgres::Error> for WebError {
+    fn from(value: tokio_postgres::Error) -> Self {
+        Self::new(WebErrorKind::ApDatabaseError, value.to_string().as_str())
+    }
+}
+
 impl ResponseError for WebError {
     fn status_code(&self) -> StatusCode {
         match self.error_kind {
@@ -203,7 +217,8 @@ impl ResponseError for WebError {
             | WebErrorKind::FileError
             | WebErrorKind::ZipError
             | WebErrorKind::ParseError
-            | WebErrorKind::EnvVarError => StatusCode::INTERNAL_SERVER_ERROR,
+            | WebErrorKind::EnvVarError
+            | WebErrorKind::ApDatabaseError => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 

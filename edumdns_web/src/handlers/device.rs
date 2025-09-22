@@ -5,21 +5,22 @@ use crate::forms::device::{
 };
 use crate::forms::packet::PacketQuery;
 use crate::handlers::helpers::{get_template_name, parse_user_id, request_packet_transmit_helper};
-use crate::templates::PageInfo;
+use crate::handlers::utilities::verify_transmit_request_client_ap;
 use crate::templates::device::{DeviceDetailTemplate, DeviceTemplate, DeviceTransmitTemplate};
+use crate::templates::PageInfo;
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
+use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
 use edumdns_core::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
 use edumdns_core::error::CoreError;
 use edumdns_db::repositories::common::{
-    DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE, Pagination,
+    DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination, PAGINATION_ELEMENTS_PER_PAGE,
 };
-use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices, UpdateDevice};
+use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
@@ -262,13 +263,13 @@ pub async fn request_packet_transmit(
     ))?;
 
     let target_ip = target_ip.parse::<ipnetwork::IpNetwork>()?;
-    if let Some(acl_src_cidr) = device.acl_src_cidr {
-        if !acl_src_cidr.contains(target_ip.ip()) {
-            return Err(WebError::new(
+    if let Some(acl_src_cidr) = device.acl_src_cidr
+        && !acl_src_cidr.contains(target_ip.ip())
+    {
+        return Err(WebError::new(
                 WebErrorKind::DeviceTransmitRequestDenied,
                 format!("Target IP is not allowed to request packets from this device. Allowed subnet is {acl_src_cidr}").as_str(),
             ));
-        }
     }
 
     if let Some(acl_pwd_hash) = &device.acl_pwd_hash {
@@ -286,8 +287,17 @@ pub async fn request_packet_transmit(
         }
     }
 
-    if let Some(acl_ap_hostname_regex) = &device.acl_ap_hostname_regex {
-        // TODO
+    if let Some(acl_ap_hostname_regex) = &device.acl_ap_hostname_regex
+        && !verify_transmit_request_client_ap(
+            &state.device_acl_ap_database,
+            acl_ap_hostname_regex,
+            target_ip.ip().to_string().as_str(),
+        ).await?
+    {
+        return Err(WebError::new(
+            WebErrorKind::DeviceTransmitRequestDenied,
+            "AP hostname that you are connected to does not match allowed APs",
+        ));
     }
 
     let form = DeviceCustomPacketTransmitRequest::new(target_ip, device.port as u16, false);

@@ -1365,10 +1365,12 @@ dependencies = [
  "log",
  "minijinja",
  "minijinja-autoreload",
+ "regex",
  "serde",
  "strum",
  "thiserror 2.0.12",
  "tokio",
+ "tokio-postgres",
  "uuid",
 ]
 

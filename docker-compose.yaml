@@ -14,7 +14,7 @@ services:
     build: .
     container_name: edumdns-app
     ports:
-      - "8002:8000"
+      - "8000:8000"
     env_file:
       - ./.env-docker
     cap_add:
@@ -33,5 +33,5 @@ services:
       - ./static/:/var/www/static:z
       - ./media/:/var/www/media:z
     ports:
-      - "8080:80"
-      - "8443:443"
+      - "80:80"
+      - "443:443"

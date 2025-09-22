@@ -31,7 +31,7 @@ services:
       edumdns-db:
         condition: service_healthy
     volumes:
-      - /var/local/bpf/edumdns:/sys/fs/bpf
+      - /sys/fs/bpf/edumdns:/sys/fs/bpf
   edumdns-nginx:
     build: ./nginx
     container_name: edumdns-nginx

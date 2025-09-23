@@ -8,7 +8,7 @@ use actix_session::config::PersistentSession;
 use actix_session::{SessionMiddleware, storage::CookieSessionStore};
 use actix_web::dev::ServiceRequest;
 use actix_web::http::header;
-use actix_web::middleware::Logger;
+use actix_web::middleware::{Logger, NormalizePath, TrailingSlash};
 use actix_web::web::{FormConfig, PayloadConfig};
 use actix_web::{App, HttpServer, cookie::Key};
 use actix_web_openidconnect::ActixWebOpenId;
@@ -80,7 +80,7 @@ pub async fn web_init(
     let openid = ActixWebOpenId::builder(client_id, callback, issuer)
         .client_secret(client_secret)
         .should_auth(should_auth)
-        .scopes(vec!["openid".to_string()])
+        .scopes(vec!["openid".to_string(), "profile".to_string(), "email".to_string()])
         .build_and_init()
         .await
         .unwrap();
@@ -88,7 +88,7 @@ pub async fn web_init(
     let use_secure_cookie = env::var("EDUMDNS_USE_SECURE_COOKIE")
         .unwrap_or("false".to_string())
         .parse::<bool>()?;
-    
+
     info!("EDUMDNS_USE_SECURE_COOKIE: {}", use_secure_cookie);
 
     if let Err(e) = dotenvy::dotenv() {
@@ -104,7 +104,8 @@ pub async fn web_init(
                     .memory_limit(PAYLOAD_LIMIT),
             )
             .app_data(FormConfig::default().limit(FORM_LIMIT))
-            .app_data(PayloadConfig::new(PAYLOAD_LIMIT))
+            .app_data(PayloadConfig::new(PAYLOAD_LIMIT)) // <- important
+            .wrap(NormalizePath::new(TrailingSlash::Trim))
             .wrap(Logger::default())
             .wrap(
                 SessionMiddleware::builder(CookieSessionStore::default(), key.clone())

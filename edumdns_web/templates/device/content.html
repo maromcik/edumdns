@@ -175,7 +175,7 @@
 </div>
 
 <script>
-    document.getElementById("filter-button").addEventListener("click", () => {
+    function runSearch() {
         const params = new URLSearchParams();
 
         ["probe_id","name","mac","ip","port"].forEach(field => {
@@ -189,11 +189,24 @@
         params.delete("page");
 
         window.location.search = params.toString();
-    });
+    }
 
+    // Search button
+    document.getElementById("filter-button").addEventListener("click", runSearch);
+
+    // Reset button
     document.getElementById("reset-button").addEventListener("click", () => {
-        // Reload without query params
         window.location.href = window.location.pathname;
     });
-</script>
 
+    // Trigger search on Enter in any filter input
+    ["filter-probe_id","filter-name","filter-mac","filter-ip","filter-port"].forEach(id => {
+        const input = document.getElementById(id);
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault(); // prevent form-like submit
+                runSearch();
+            }
+        });
+    });
+</script>

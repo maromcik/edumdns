@@ -495,11 +495,14 @@
 </div>
 
 <script>
-    document.getElementById("filter-button").addEventListener("click", () => {
+    function runSearch() {
         const params = new URLSearchParams();
 
-        ["src_mac", "dst_mac", "src_addr", "dst_addr", "src_port", "dst_port"].forEach(field => {
-            const value = document.getElementById(`filter-${field}`).value.trim();
+        ["src_mac","dst_mac","src_addr","dst_addr","src_port","dst_port"].forEach(field => {
+            const el = document.getElementById(`filter-${field}`);
+            if (!el) return;
+
+            const value = el.value.trim();
             if (value) {
                 params.set(field, value);
             }
@@ -509,10 +512,24 @@
         params.delete("page");
 
         window.location.search = params.toString();
+    }
+
+    // Search button
+    document.getElementById("filter-button").addEventListener("click", runSearch);
+
+    // Reset button
+    document.getElementById("reset-button").addEventListener("click", () => {
+        window.location.href = window.location.pathname;
     });
 
-    document.getElementById("reset-button").addEventListener("click", () => {
-        // Reload without query params
-        window.location.href = window.location.pathname;
+    // Trigger search on Enter in any filter input
+    ["filter-src_mac","filter-dst_mac","filter-src_addr","filter-dst_addr","filter-src_port","filter-dst_port"].forEach(id => {
+        const input = document.getElementById(id);
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault(); // prevent form-like submit
+                runSearch();
+            }
+        });
     });
 </script>

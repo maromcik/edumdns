@@ -1,6 +1,7 @@
 use crate::repositories::common::{Id, Pagination};
-use diesel::{AsChangeset, Identifiable};
+use diesel::{AsChangeset, Identifiable, Insertable};
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyUsers {
@@ -73,6 +74,32 @@ impl UserUpdate {
             email: email.and_then(change_to_owned),
             name: name.and_then(change_to_owned),
             surname: surname.and_then(change_to_owned),
+            admin,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, AsChangeset, Insertable, Debug)]
+#[diesel(table_name = crate::schema::user)]
+pub struct UserCreate {
+    pub id: Id,
+    pub email: String,
+    pub name: String,
+    pub surname: String,
+    pub password_hash: Option<String>,
+    pub password_salt: Option<String>,
+    pub admin: bool,
+}
+
+impl UserCreate {
+    pub fn new_from_oidc(id: Id, email: &str, name: &str, surname: &str, password_hash: Option<&str>, password_salt: Option<&str>, admin: bool) -> Self {
+        Self {
+            id,
+            email: email.to_owned(),
+            name: name.to_owned(),
+            surname: surname.to_owned(),
+            password_hash: password_hash.map(|v| v.to_owned()),
+            password_salt: password_salt.map(|v| v.to_owned()),
             admin,
         }
     }

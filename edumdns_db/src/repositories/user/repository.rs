@@ -1,18 +1,17 @@
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::User;
 use crate::repositories::common::{
-    DbDataPerm, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm, DbResultSingle,
-    DbResultSinglePerm, DbUpdate, Id,
+    DbCreate, DbDataPerm, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
+    DbResultSingle, DbResultSinglePerm, DbUpdate, Id,
 };
 
 use crate::error::BackendErrorKind::UserPasswordDoesNotMatch;
 use crate::repositories::user::models::{
-    SelectManyUsers, UserLogin, UserUpdate, UserUpdatePassword,
+    SelectManyUsers, UserCreate, UserLogin, UserUpdate, UserUpdatePassword,
 };
 use crate::repositories::utilities::{generate_salt, hash_password, verify_password_hash};
 use crate::schema::user;
-use crate::schema::user::{admin, deleted_at, email, name, surname};
-use diesel::{ExpressionMethods, QueryDsl};
+use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
@@ -31,7 +30,7 @@ impl PgUserRepository {
     pub async fn login(&self, params: &UserLogin) -> DbResultSingle<User> {
         let mut conn = self.pg_pool.get().await?;
         let u = user::table
-            .filter(email.eq(&params.email))
+            .filter(user::email.eq(&params.email))
             .first::<User>(&mut conn)
             .await?;
         if u.deleted_at.is_some() {
@@ -47,7 +46,13 @@ impl PgUserRepository {
     }
 
     pub fn verify_password(u: User, given_password: &str) -> DbResultSingle<User> {
-        match verify_password_hash(&u.password_hash, given_password) {
+        let Some(hash) = &u.password_hash else {
+            return Err(DbError::from(BackendError::new(
+                UserPasswordDoesNotMatch,
+                "",
+            )));
+        };
+        match verify_password_hash(hash, given_password) {
             Ok(ret) => {
                 if ret {
                     return Ok(u);
@@ -109,26 +114,26 @@ impl DbReadMany<SelectManyUsers, User> for PgUserRepository {
         let mut query = user::table.into_boxed();
 
         if let Some(n) = &params.name {
-            query = query.filter(name.eq(n));
+            query = query.filter(user::name.eq(n));
         }
 
         if let Some(s) = &params.surname {
-            query = query.filter(surname.eq(s));
+            query = query.filter(user::surname.eq(s));
         }
 
         if let Some(e) = &params.email {
-            query = query.filter(email.eq(e));
+            query = query.filter(user::email.eq(e));
         }
 
         if let Some(a) = &params.admin {
-            query = query.filter(admin.eq(a));
+            query = query.filter(user::admin.eq(a));
         }
 
         if let Some(d) = &params.deleted {
             if *d {
-                query = query.filter(deleted_at.is_not_null());
+                query = query.filter(user::deleted_at.is_not_null());
             } else {
-                query = query.filter(deleted_at.is_null());
+                query = query.filter(user::deleted_at.is_null());
             }
         }
 
@@ -165,5 +170,24 @@ impl DbUpdate<UserUpdate, User> for PgUserRepository {
 
     async fn update_auth(&self, params: &UserUpdate, user_id: &Id) -> DbResultMultiple<User> {
         self.update(params).await
+    }
+}
+
+impl DbCreate<UserCreate, User> for PgUserRepository {
+    async fn create(&self, data: &UserCreate) -> DbResultSingle<User> {
+        let mut conn = self.pg_pool.get().await?;
+        diesel::insert_into(user::table)
+            .values(data)
+            .returning(User::as_returning())
+            .on_conflict(user::id)
+            .do_update()
+            .set((
+                user::email.eq(&data.email),
+                user::name.eq(&data.name),
+                user::surname.eq(&data.surname),
+            ))
+            .get_result(&mut conn)
+            .await
+            .map_err(DbError::from)
     }
 }

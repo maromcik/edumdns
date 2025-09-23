@@ -39,8 +39,7 @@ services:
     depends_on:
       - edumdns
     volumes:
-      - ./static/:/var/www/static:z
-      - ./media/:/var/www/media:z
+      - /etc/ssl/certs-ics/edumdms:/etc/letsencrypt/edumdns
     ports:
       - "80:80"
       - "443:443"

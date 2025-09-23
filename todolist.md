@@ -3,7 +3,4 @@
   - config
   - data
 ## Web
-- access control (modules - allow loading auth function - traits)
-  - 3 nullable fields any of them should suffice
-    - regex over AP hostname - get from radius active sessions
 - OIDC

@@ -1,6 +1,7 @@
 use crate::authorized;
 use crate::error::WebError;
-use crate::forms::group::{AddGroupUsersForm, CreateGroupForm, GroupQuery, SearchUsersQuery,};
+use crate::forms::group::{AddGroupUsersForm, CreateGroupForm, GroupQuery, SearchUsersQuery};
+use crate::handlers::utilities::{get_template_name, parse_user_id};
 use crate::templates::group::{GroupDetailTemplate, GroupDetailUsersTemplate, GroupTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
@@ -11,7 +12,7 @@ use edumdns_db::repositories::common::{DbCreate, DbDelete, DbUpdate};
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
 use edumdns_db::repositories::group::models::{CreateGroup, SelectManyGroups, UpdateGroup};
 use edumdns_db::repositories::group::repository::PgGroupRepository;
-use crate::handlers::utilities::{get_template_name, parse_user_id};
+use log::debug;
 
 #[get("")]
 pub async fn get_groups(
@@ -22,7 +23,7 @@ pub async fn get_groups(
     query: web::Query<GroupQuery>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let groups = group_repo
         .read_many_auth(
             &SelectManyGroups::new(
@@ -56,7 +57,7 @@ pub async fn get_group(
     path: web::Path<(Id,)>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let group = group_repo
         .read_one_auth(&path.0, &parse_user_id(&i)?)
         .await?;
@@ -81,7 +82,7 @@ pub async fn create_group(
     group_repo: web::Data<PgGroupRepository>,
     form: web::Form<CreateGroupForm>,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let _ = group_repo
         .create(&CreateGroup::new(
             parse_user_id(&i)?,
@@ -101,7 +102,7 @@ pub async fn delete_group(
     group_repo: web::Data<PgGroupRepository>,
     path: web::Path<(Id,)>,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let _ = group_repo.delete_auth(&path.0, &parse_user_id(&i)?).await?;
 
     Ok(HttpResponse::SeeOther()
@@ -117,7 +118,7 @@ pub async fn get_group_users(
     state: web::Data<AppState>,
     path: web::Path<(Id,)>,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     let users = group_repo.read_users(&path.0, &user_id).await?;
     let template_name = "group/users/content.html";
@@ -140,7 +141,7 @@ pub async fn add_group_users(
     path: web::Path<(Id,)>,
     form: web::Form<AddGroupUsersForm>,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let group_id = path.0;
     let admin_id = parse_user_id(&i)?;
     if !form.user_ids.is_empty() {
@@ -166,7 +167,7 @@ pub async fn delete_group_user(
     state: web::Data<AppState>,
     path: web::Path<(Id, Id)>,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let group_id = path.0;
     let user_id = path.1;
     let admin_id = parse_user_id(&i)?;
@@ -192,7 +193,7 @@ pub async fn search_group_users(
     path: web::Path<(Id,)>,
     query: web::Query<SearchUsersQuery>,
 ) -> Result<impl Responder, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let users = group_repo
         .search_group_users(&query.q, &parse_user_id(&i)?, &path.0)
         .await?;
@@ -214,11 +215,10 @@ pub async fn update_group(
     group_repo: web::Data<PgGroupRepository>,
     form: web::Form<UpdateGroup>,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let params = form.into_inner();
     group_repo.update_auth(&params, &parse_user_id(&i)?).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/group/{}", params.id)))
         .finish())
-
 }

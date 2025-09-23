@@ -51,29 +51,36 @@ where
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let cookie = req.cookie("id");
         match &cookie {
-            Some(i) => { info!("identity: {:?}", i.value()); }
-            None => { error!("identity error"); }
+            Some(i) => {
+                info!("identity: {:?}", i.value());
+            }
+            None => {
+                error!("identity error");
+            }
         }
 
         let path = req.path();
         println!("PATH: {}", path);
-        if (path.starts_with("/login") || path.starts_with("/logout") || path.starts_with("/oidc") || path.starts_with("/static")) || cookie.is_some() {
+        if (path.starts_with("/login")
+            || path.starts_with("/logout")
+            || path.starts_with("/oidc")
+            || path.starts_with("/static"))
+            || cookie.is_some()
+        {
             let fut = self.service.call(req);
             Box::pin(async move {
                 let res = fut.await?;
                 Ok(res.map_into_boxed_body())
             })
-        }
-        else {
+        } else {
             Box::pin(async move {
                 let res = HttpResponse::SeeOther()
-                    .insert_header((LOCATION, format!("/login?ret={}", req.path())))
+                    .insert_header((LOCATION, format!("/login/oidc?ret={}", req.path())))
                     .finish();
                 let srv_res: ServiceResponse<BoxBody> = req.into_response(res);
 
                 Ok(srv_res)
             })
-
         }
     }
 }

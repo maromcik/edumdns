@@ -1,6 +1,6 @@
-use diesel::{AsChangeset, Identifiable};
 use crate::repositories::common::{Id, Pagination};
 use crate::repositories::utilities::empty_string_is_none;
+use diesel::{AsChangeset, Identifiable};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -32,7 +32,6 @@ impl CreateGroup {
         }
     }
 }
-
 
 #[derive(Serialize, Deserialize, AsChangeset, Identifiable, Debug)]
 #[diesel(table_name = crate::schema::group)]

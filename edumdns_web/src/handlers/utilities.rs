@@ -1,23 +1,28 @@
-use std::collections::HashMap;
-use actix_identity::Identity;
-use actix_session::Session;
 use crate::MIN_PASS_LEN;
 use crate::error::WebError;
 use crate::utils::DeviceAclApDatabase;
+use actix_identity::Identity;
+use actix_session::Session;
 use actix_web::HttpRequest;
-use log::error;
-use tokio_postgres::{NoTls};
-use regex::Regex;
-use serde_json::Value;
 use edumdns_db::repositories::common::Id;
 use edumdns_db::repositories::user::models::UserCreate;
+use log::error;
+use regex::Regex;
+use serde_json::Value;
+use std::collections::HashMap;
+use tokio_postgres::NoTls;
 
 #[macro_export]
 macro_rules! authorized {
-    ($e:expr, $p:expr) => {{
-        match $e {
+    ($identity:expr, $req:expr ) => {{
+        match $identity {
             None => {
-                let path = format!("/login/oidc?ret={}", $p);
+                let path = if let Some(_) = $req.cookie("id_token") {
+                    format!("/login/oidc/?ret={}", $req.path())
+                } else {
+                    format!("/login?ret={}", $req.path())
+                };
+                debug!("Redirecting to {}", path);
                 return Ok(HttpResponse::SeeOther()
                     .insert_header((LOCATION, path))
                     .finish());
@@ -55,17 +60,18 @@ pub async fn verify_transmit_request_client_ap(
     client_ip: &str,
 ) -> Result<bool, WebError> {
     let regex = Regex::new(ap_hostname_regex)?;
-    let (client, connection) = tokio_postgres::connect(
-        database_config.connection_string.as_str(),
-        NoTls,
-    ).await?;
+    let (client, connection) =
+        tokio_postgres::connect(database_config.connection_string.as_str(), NoTls).await?;
 
     tokio::spawn(async move {
         if let Err(e) = connection.await {
             error!("AP database connection error: {}", e);
         }
     });
-    for row in client.query(database_config.query.as_str(), &[&client_ip]).await? {
+    for row in client
+        .query(database_config.query.as_str(), &[&client_ip])
+        .await?
+    {
         let ap: String = row.get(0);
         if regex.is_match(&ap) {
             return Ok(true);
@@ -74,21 +80,13 @@ pub async fn verify_transmit_request_client_ap(
     Ok(false)
 }
 
-pub fn parse_user_from_oidc(request: &HttpRequest,) -> Option<UserCreate> {
+pub fn parse_user_from_oidc(request: &HttpRequest) -> Option<UserCreate> {
     let cookie = request.cookie("user_info")?.value().to_string();
     let parsed_cookie: HashMap<String, Value> = serde_json::from_str(cookie.as_str()).ok()?;
-    let id = parsed_cookie
-        .get("preferred_username")?
-        .as_str()?;
-    let email = parsed_cookie
-        .get("email")?
-        .as_str()?;
-    let name = parsed_cookie
-        .get("given_name")?
-        .as_str()?;
-    let surname = parsed_cookie
-        .get("family_name")?
-        .as_str()?;
+    let id = parsed_cookie.get("preferred_username")?.as_str()?;
+    let email = parsed_cookie.get("email")?.as_str()?;
+    let name = parsed_cookie.get("given_name")?.as_str()?;
+    let surname = parsed_cookie.get("family_name")?.as_str()?;
     Some(UserCreate::new_from_oidc(
         id.parse::<Id>().ok()?,
         email,
@@ -96,7 +94,7 @@ pub fn parse_user_from_oidc(request: &HttpRequest,) -> Option<UserCreate> {
         surname,
         None,
         None,
-        false
+        false,
     ))
 }
 

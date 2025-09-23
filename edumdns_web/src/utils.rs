@@ -10,22 +10,26 @@ use tokio::sync::mpsc::Sender;
 #[derive(Clone)]
 pub struct DeviceAclApDatabase {
     pub connection_string: String,
-    pub query: String
+    pub query: String,
 }
 
 #[derive(Clone)]
 pub struct AppState {
     pub jinja: Arc<AutoReloader>,
     pub command_channel: Sender<AppPacket>,
-    pub device_acl_ap_database: DeviceAclApDatabase
+    pub device_acl_ap_database: DeviceAclApDatabase,
 }
 
 impl AppState {
-    pub fn new(jinja: Arc<AutoReloader>, command_channel: Sender<AppPacket>, device_acl_ap_database: DeviceAclApDatabase) -> Self {
+    pub fn new(
+        jinja: Arc<AutoReloader>,
+        command_channel: Sender<AppPacket>,
+        device_acl_ap_database: DeviceAclApDatabase,
+    ) -> Self {
         AppState {
             jinja,
             command_channel,
-            device_acl_ap_database
+            device_acl_ap_database,
         }
     }
 }

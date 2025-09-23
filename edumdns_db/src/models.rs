@@ -5,7 +5,6 @@ use std::fmt::{Display, Formatter};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-
 #[derive(
     Serialize, Deserialize, Queryable, Selectable, Identifiable, Eq, PartialEq, Hash, Debug,
 )]

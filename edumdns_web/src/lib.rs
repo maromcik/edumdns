@@ -79,32 +79,24 @@ pub async fn web_init(
 
     let should_auth = |req: &ServiceRequest| {
         let path = req.path();
-        println!("KOKOT: {}", path);
         if path.starts_with("/static") {
-            println!("picovina zacina");
             return false;
         }
         if path.starts_with("/login") {
-            println!("picovina zacina");
             return false;
         }
         if path.starts_with("/logout") {
-            println!("picovina zacina");
             return false;
         }
 
         if let Some(cookie) = req.request().cookie("auth") {
-            println!("KURVA cookie: {}", cookie.value().to_string());
             if cookie.value() == "local" {
-                println!("picovina local");
                 return false;
             }
             if cookie.value() == "oidc" {
-                println!("picovina oidc");
                 return true;
             }
         }
-        println!("NIC");
         true
     };
 

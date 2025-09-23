@@ -4,27 +4,30 @@ use crate::forms::device::{
     DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest, DeviceQuery, UpdateDeviceForm,
 };
 use crate::forms::packet::PacketQuery;
-use crate::handlers::helpers::{request_packet_transmit_helper};
-use crate::handlers::utilities::{get_template_name, parse_user_id, verify_transmit_request_client_ap};
-use crate::templates::device::{DeviceDetailTemplate, DeviceTemplate, DeviceTransmitTemplate};
+use crate::handlers::helpers::request_packet_transmit_helper;
+use crate::handlers::utilities::{
+    get_template_name, parse_user_id, verify_transmit_request_client_ap,
+};
 use crate::templates::PageInfo;
+use crate::templates::device::{DeviceDetailTemplate, DeviceTemplate, DeviceTransmitTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
 use edumdns_core::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
 use edumdns_core::error::CoreError;
 use edumdns_db::repositories::common::{
-    DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination, PAGINATION_ELEMENTS_PER_PAGE,
+    DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE, Pagination,
 };
 use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::utilities::verify_password_hash;
+use log::debug;
 use std::collections::HashMap;
 
 #[get("")]
@@ -36,7 +39,7 @@ pub async fn get_devices(
     query: web::Query<DeviceQuery>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let page = query.page.unwrap_or(1);
     let query = query.into_inner();
     let params = SelectManyDevices::from(query.clone());
@@ -80,7 +83,7 @@ pub async fn get_device(
     query: web::Query<PacketQuery>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let device = device_repo
         .read_one_auth(&path.0, &parse_user_id(&i)?)
         .await?;
@@ -135,7 +138,7 @@ pub async fn update_device(
     device_repo: web::Data<PgDeviceRepository>,
     form: web::Form<UpdateDeviceForm>,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let params = form.into_inner().to_db_params()?;
     device_repo
         .update_auth(&params, &parse_user_id(&i)?)
@@ -153,7 +156,7 @@ pub async fn delete_device(
     path: web::Path<(Id,)>,
     query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
 
     let return_url = query
         .get("return_url")
@@ -177,7 +180,7 @@ pub async fn request_custom_packet_transmit(
     state: web::Data<AppState>,
     form: web::Form<DeviceCustomPacketTransmitRequest>,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let device = device_repo
         .read_one_auth(&path.0, &parse_user_id(&i)?)
         .await?;
@@ -205,7 +208,7 @@ pub async fn delete_request_packet_transmit(
 ) -> Result<HttpResponse, WebError> {
     let device_id = path.0;
     let request_id = path.1;
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let device = device_repo
         .read_one_auth(&path.0, &parse_user_id(&i)?)
         .await?;
@@ -250,7 +253,7 @@ pub async fn request_packet_transmit(
     state: web::Data<AppState>,
     form: web::Form<DevicePacketTransmitRequest>,
 ) -> Result<HttpResponse, WebError> {
-    let _ = authorized!(identity, request.path());
+    let _ = authorized!(identity, request);
     let device = device_repo.read_one(&path.0).await?;
 
     let target_ip = request
@@ -292,7 +295,8 @@ pub async fn request_packet_transmit(
             &state.device_acl_ap_database,
             acl_ap_hostname_regex,
             target_ip.ip().to_string().as_str(),
-        ).await?
+        )
+        .await?
     {
         return Err(WebError::new(
             WebErrorKind::DeviceTransmitRequestDenied,
@@ -322,7 +326,7 @@ pub async fn get_device_for_transmit(
     path: web::Path<(Id,)>,
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
-    let _ = authorized!(identity, request.path());
+    let _ = authorized!(identity, request);
     let device = device_repo.read_one(&path.0).await?;
 
     let target_ip = request

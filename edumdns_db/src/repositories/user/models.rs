@@ -92,7 +92,15 @@ pub struct UserCreate {
 }
 
 impl UserCreate {
-    pub fn new_from_oidc(id: Id, email: &str, name: &str, surname: &str, password_hash: Option<&str>, password_salt: Option<&str>, admin: bool) -> Self {
+    pub fn new_from_oidc(
+        id: Id,
+        email: &str,
+        name: &str,
+        surname: &str,
+        password_hash: Option<&str>,
+        password_salt: Option<&str>,
+        admin: bool,
+    ) -> Self {
         Self {
             id,
             email: email.to_owned(),

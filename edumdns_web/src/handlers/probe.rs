@@ -1,7 +1,8 @@
 use crate::error::WebError;
 use crate::forms::device::DeviceQuery;
 use crate::forms::probe::{ProbeConfigForm, ProbePermissionForm, ProbeQuery};
-use crate::handlers::helpers::{reconnect_probe};
+use crate::handlers::helpers::reconnect_probe;
+use crate::handlers::utilities::{get_template_name, parse_user_id};
 use crate::templates::PageInfo;
 use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
@@ -34,7 +35,6 @@ use strum::IntoEnumIterator;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::SendError;
 use uuid::{Timestamp, Uuid};
-use crate::handlers::utilities::{get_template_name, parse_user_id};
 
 #[get("")]
 pub async fn get_probes(
@@ -45,7 +45,7 @@ pub async fn get_probes(
     query: web::Query<ProbeQuery>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let page = query.page.unwrap_or(1);
 
     let query = query.into_inner();
@@ -92,7 +92,7 @@ pub async fn get_probe(
     query: web::Query<DeviceQuery>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let probe_id = path.0;
     let page = query.page.unwrap_or(1);
     let probe = probe_repo
@@ -162,7 +162,7 @@ pub async fn adopt(
     path: web::Path<(Uuid,)>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     probe_repo.adopt(&path.0, &parse_user_id(&i)?).await?;
     reconnect_probe(state.command_channel.clone(), path.0, session).await?;
     Ok(HttpResponse::SeeOther()
@@ -179,7 +179,7 @@ pub async fn forget(
     path: web::Path<(Uuid,)>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     probe_repo.forget(&path.0, &parse_user_id(&i)?).await?;
     reconnect_probe(state.command_channel.clone(), path.0, session).await?;
     Ok(HttpResponse::SeeOther()
@@ -196,7 +196,7 @@ pub async fn restart(
     path: web::Path<(Uuid,)>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     probe_repo
         .check_permissions_for_restart(&path.0, &parse_user_id(&i)?)
         .await?;
@@ -218,7 +218,7 @@ pub async fn create_config(
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let probe_id = path.0;
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     probe_repo
         .create_probe_config(
@@ -245,7 +245,7 @@ pub async fn save_config(
 ) -> Result<HttpResponse, WebError> {
     let probe_id = path.0;
     let config_id = path.1;
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     probe_repo
         .delete_probe_config(&SelectSingleProbeConfig::new(user_id, config_id, probe_id))
@@ -275,7 +275,7 @@ pub async fn delete_config(
 ) -> Result<HttpResponse, WebError> {
     let probe_id = path.0;
     let config_id = path.1;
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     probe_repo
         .delete_probe_config(&SelectSingleProbeConfig::new(
             parse_user_id(&i)?,
@@ -298,7 +298,7 @@ pub async fn change_probe_permission(
     path: web::Path<(Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
     let probe_id = path.0;
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
 
     probe_repo
         .alter_permission(AlterProbePermission::new(
@@ -322,7 +322,7 @@ pub async fn update_probe(
     probe_repo: web::Data<PgProbeRepository>,
     form: web::Form<UpdateProbe>,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     probe_repo.update_auth(&form, &parse_user_id(&i)?).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", form.id)))
@@ -339,7 +339,7 @@ pub async fn delete_probe(
     query: web::Query<HashMap<String, String>>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
 
     let return_url = query
@@ -363,7 +363,7 @@ pub async fn get_probe_ws(
     stream: web::Payload,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    let _ = authorized!(identity, request.path());
+    let _ = authorized!(identity, request);
     let probe_id = path.0;
 
     let ts = Timestamp::now(uuid::NoContext);

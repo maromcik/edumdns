@@ -18,7 +18,7 @@ use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
 use edumdns_db::repositories::common::{DbReadOne, DbUpdate};
 use edumdns_db::repositories::user::models::{UserLogin, UserUpdate, UserUpdatePassword};
 use edumdns_db::repositories::user::repository::PgUserRepository;
-
+use log::debug;
 
 #[get("/manage")]
 pub async fn user_manage_form_page(
@@ -28,7 +28,7 @@ pub async fn user_manage_form_page(
     state: web::Data<AppState>,
     session: Session,
 ) -> Result<impl Responder, WebError> {
-    let u = authorized!(identity, request.path());
+    let u = authorized!(identity, request);
     let user = user_repo.read_one(&parse_user_id(&u)?).await?;
 
     let template_name = get_template_name(&request, "user/manage/profile");
@@ -51,7 +51,7 @@ pub async fn user_manage_password_form(
     identity: Option<Identity>,
     state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
-    authorized!(identity, request.path());
+    authorized!(identity, request);
 
     let template_name = "user/manage/password/content.html";
     let env = state.jinja.acquire_env()?;
@@ -72,7 +72,7 @@ pub async fn user_manage_profile_form(
     user_repo: web::Data<PgUserRepository>,
     state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
-    let u = authorized!(identity, request.path());
+    let u = authorized!(identity, request);
     let user = user_repo.read_one(&parse_user_id(&u)?).await?;
 
     let template_name = get_template_name(&request, "user/manage/profile");
@@ -96,7 +96,7 @@ pub async fn user_manage(
     form: web::Form<UserUpdateForm>,
     state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
-    let u = authorized!(identity, request.path());
+    let u = authorized!(identity, request);
     let user_update = UserUpdate::new(
         &parse_user_id(&u)?,
         Some(&form.email),
@@ -135,7 +135,7 @@ pub async fn user_manage_password(
     form: web::Form<UserUpdatePasswordForm>,
     state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
-    let u = authorized!(identity, request.path());
+    let u = authorized!(identity, request);
 
     let template_name = "user/manage/password/content.html";
     let env = state.jinja.acquire_env()?;

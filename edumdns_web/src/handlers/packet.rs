@@ -1,6 +1,7 @@
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::packet::PacketQuery;
+use crate::handlers::utilities::{get_template_name, parse_user_id};
 use crate::header::LOCATION;
 use crate::templates::PageInfo;
 use crate::templates::packet::{PacketDetailTemplate, PacketTemplate};
@@ -16,7 +17,7 @@ use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use std::collections::HashMap;
-use crate::handlers::utilities::{get_template_name, parse_user_id};
+use log::debug;
 
 #[get("")]
 pub async fn get_packets(
@@ -27,7 +28,7 @@ pub async fn get_packets(
     query: web::Query<PacketQuery>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let page = query.page.unwrap_or(1);
     let query = query.into_inner();
     let params = SelectManyPackets::from(query.clone());
@@ -70,7 +71,7 @@ pub async fn get_packet(
     path: web::Path<(Id,)>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     let packet = packet_repo.read_one_auth(&path.0, &user_id).await?;
 
@@ -102,7 +103,7 @@ pub async fn delete_packet(
     path: web::Path<(Id,)>,
     query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request.path());
+    let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
 
     let return_url = query

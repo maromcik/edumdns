@@ -1,7 +1,7 @@
 use edumdns_db::repositories::common::Id;
+use edumdns_db::repositories::utilities::empty_string_is_none;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashSet;
-use edumdns_db::repositories::utilities::empty_string_is_none;
 
 #[derive(Serialize, Deserialize)]
 pub struct GroupQuery {

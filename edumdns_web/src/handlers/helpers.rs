@@ -19,7 +19,6 @@ use ipnetwork::IpNetwork;
 use log::warn;
 use tokio::sync::mpsc::Sender;
 
-
 pub async fn request_packet_transmit_helper(
     device_repo: web::Data<PgDeviceRepository>,
     device: &Device,

@@ -1,6 +1,9 @@
 use crate::error::DbError;
 use crate::models::{Group, User};
-use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id};
+use crate::repositories::common::{
+    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
+    DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id,
+};
 use crate::repositories::group::models::{CreateGroup, SelectManyGroups, UpdateGroup};
 use std::ops::DerefMut;
 
@@ -115,7 +118,7 @@ impl DbDelete<Id, Group> for PgGroupRepository {
 }
 
 impl DbUpdate<UpdateGroup, Group> for PgGroupRepository {
-    async fn update(&self, params: &UpdateGroup, ) -> DbResultMultiple<Group> {
+    async fn update(&self, params: &UpdateGroup) -> DbResultMultiple<Group> {
         let mut conn = self.pg_pool.get().await?;
         let groups = diesel::update(group::table.find(&params.id))
             .set(params)

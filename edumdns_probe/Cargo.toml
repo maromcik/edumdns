@@ -5,21 +5,15 @@ edition = "2024"
 
 [dependencies]
 edumdns_core = { path = "../edumdns_core" }
-pcap = {  version = "2.2.0", features = ["tokio", "lending-iter", "futures"]}
+pcap = {  version = "2.3.0", features = ["tokio", "lending-iter", "futures"]}
 pnet = "0.35.0"
 clap = { version = "4.5.38", features = ["derive"] }
-thiserror = "2.0.12"
-dns-parser = "0.8.0"
-serde = { version = "1.0.219", features = ["derive"] }
-serde_bytes = "0.11.17"
-tokio = { version = "1.44.2", features = ["net", "bytes", "time"] }
+thiserror = "2.0.16"
+tokio = { version = "1.47.1", features = ["net", "bytes", "time"] }
 bincode = "2.0.1"
-bytes = "1.10.1"
-tokio-util = { version = "0.7.14", features = ["codec"] }
-futures = "0.3.31"
-log = "0.4.27"
-uuid = { version = "1.18.0", features = ["v7", "std"]}
-tokio-stream = "0.1.17"
+tokio-util = { version = "0.7.16", features = ["codec"] }
+log = "0.4.28"
+uuid = { version = "1.18.1", features = ["v7", "std"]}
 dotenvy = "0.15.7"
 tracing = { version = "0.1.41", features = ["async-await"]}
-tracing-subscriber = { version = "0.3.19", features = ["env-filter", "local-time", "time"] }
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "local-time", "time"] }

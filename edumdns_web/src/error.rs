@@ -32,6 +32,8 @@ pub enum WebErrorKind {
     IdentityError,
     #[error("session error")]
     SessionError,
+    #[error("cookie error")]
+    CookieError,
     #[error("conflict")]
     Conflict,
     #[error("file error")]
@@ -188,6 +190,12 @@ impl From<tokio_postgres::Error> for WebError {
     }
 }
 
+impl From<serde_json::Error> for WebError {
+    fn from(value: serde_json::Error) -> Self {
+        Self::new(WebErrorKind::ParseError, value.to_string().as_str())
+    }
+}
+
 impl ResponseError for WebError {
     fn status_code(&self) -> StatusCode {
         match self.error_kind {
@@ -213,6 +221,7 @@ impl ResponseError for WebError {
             | WebErrorKind::InternalServerError
             | WebErrorKind::IdentityError
             | WebErrorKind::SessionError
+            | WebErrorKind::CookieError
             | WebErrorKind::EmailError
             | WebErrorKind::FileError
             | WebErrorKind::ZipError

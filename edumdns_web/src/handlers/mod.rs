@@ -2,7 +2,6 @@ pub mod device;
 pub mod group;
 pub mod helpers;
 pub mod index;
-pub mod location;
 pub mod packet;
 pub mod probe;
 pub mod user;

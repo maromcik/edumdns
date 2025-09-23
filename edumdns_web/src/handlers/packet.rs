@@ -1,7 +1,6 @@
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::packet::PacketQuery;
-use crate::handlers::helpers::{get_template_name, parse_user_id};
 use crate::header::LOCATION;
 use crate::templates::PageInfo;
 use crate::templates::packet::{PacketDetailTemplate, PacketTemplate};
@@ -17,6 +16,7 @@ use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use std::collections::HashMap;
+use crate::handlers::utilities::{get_template_name, parse_user_id};
 
 #[get("")]
 pub async fn get_packets(

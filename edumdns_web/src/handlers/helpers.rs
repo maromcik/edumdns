@@ -19,17 +19,6 @@ use ipnetwork::IpNetwork;
 use log::warn;
 use tokio::sync::mpsc::Sender;
 
-pub fn get_template_name(request: &HttpRequest, path: &str) -> String {
-    if is_htmx(request) {
-        format!("{path}/content.html")
-    } else {
-        format!("{path}/page.html")
-    }
-}
-
-pub fn parse_user_id(identity: &Identity) -> Result<Id, WebError> {
-    Ok(identity.id()?.parse::<i64>()?)
-}
 
 pub async fn request_packet_transmit_helper(
     device_repo: web::Data<PgDeviceRepository>,

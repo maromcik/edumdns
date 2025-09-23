@@ -1,7 +1,7 @@
 use crate::error::WebError;
 use crate::forms::device::DeviceQuery;
 use crate::forms::probe::{ProbeConfigForm, ProbePermissionForm, ProbeQuery};
-use crate::handlers::helpers::{get_template_name, parse_user_id, reconnect_probe};
+use crate::handlers::helpers::{reconnect_probe};
 use crate::templates::PageInfo;
 use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
@@ -34,6 +34,7 @@ use strum::IntoEnumIterator;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::SendError;
 use uuid::{Timestamp, Uuid};
+use crate::handlers::utilities::{get_template_name, parse_user_id};
 
 #[get("")]
 pub async fn get_probes(

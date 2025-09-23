@@ -1,7 +1,6 @@
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::group::{AddGroupUsersForm, CreateGroupForm, GroupQuery, SearchUsersQuery,};
-use crate::handlers::helpers::{get_template_name, parse_user_id};
 use crate::templates::group::{GroupDetailTemplate, GroupDetailUsersTemplate, GroupTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
@@ -12,6 +11,7 @@ use edumdns_db::repositories::common::{DbCreate, DbDelete, DbUpdate};
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
 use edumdns_db::repositories::group::models::{CreateGroup, SelectManyGroups, UpdateGroup};
 use edumdns_db::repositories::group::repository::PgGroupRepository;
+use crate::handlers::utilities::{get_template_name, parse_user_id};
 
 #[get("")]
 pub async fn get_groups(

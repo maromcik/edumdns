@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use actix_identity::Identity;
+use actix_session::Session;
 use crate::MIN_PASS_LEN;
 use crate::error::WebError;
 use crate::utils::DeviceAclApDatabase;
@@ -5,13 +8,16 @@ use actix_web::HttpRequest;
 use log::error;
 use tokio_postgres::{NoTls};
 use regex::Regex;
+use serde_json::Value;
+use edumdns_db::repositories::common::Id;
+use edumdns_db::repositories::user::models::UserCreate;
 
 #[macro_export]
 macro_rules! authorized {
     ($e:expr, $p:expr) => {{
         match $e {
             None => {
-                let path = format!("/user/login?ret={}", $p);
+                let path = format!("/login?ret={}", $p);
                 return Ok(HttpResponse::SeeOther()
                     .insert_header((LOCATION, path))
                     .finish());
@@ -66,4 +72,49 @@ pub async fn verify_transmit_request_client_ap(
         }
     }
     Ok(false)
+}
+
+pub fn parse_user_from_oidc(request: &HttpRequest,) -> Option<UserCreate> {
+    let cookie = request.cookie("user_info")?.value().to_string();
+    let parsed_cookie: HashMap<String, Value> = serde_json::from_str(cookie.as_str()).ok()?;
+    let id = parsed_cookie
+        .get("preferred_username")?
+        .as_str()?;
+    let email = parsed_cookie
+        .get("email")?
+        .as_str()?;
+    let name = parsed_cookie
+        .get("given_name")?
+        .as_str()?;
+    let surname = parsed_cookie
+        .get("family_name")?
+        .as_str()?;
+    Some(UserCreate::new_from_oidc(
+        id.parse::<Id>().ok()?,
+        email,
+        name,
+        surname,
+        None,
+        None,
+        false
+    ))
+}
+
+pub fn get_template_name(request: &HttpRequest, path: &str) -> String {
+    if is_htmx(request) {
+        format!("{path}/content.html")
+    } else {
+        format!("{path}/page.html")
+    }
+}
+
+pub fn parse_user_id(identity: &Identity) -> Result<Id, WebError> {
+    Ok(identity.id()?.parse::<i64>()?)
+}
+
+pub fn destroy_session(session: Session, identity: Option<Identity>) {
+    if let Some(u) = identity {
+        u.logout();
+    }
+    session.purge();
 }

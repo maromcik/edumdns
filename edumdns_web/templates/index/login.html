@@ -3,10 +3,10 @@
 {% include "head.html" %}
 <body class="h-screen flex justify-center items-center bg-page">
 <div id="login_box" class="w-full h-full flex justify-center items-center">
-    <form action="/user/login" method="post" class="bg-forms shadow-lg
+    <form action="/login" method="post" class="bg-forms shadow-lg
     rounded-lg p-5 flex flex-col items-center
     max-w-full w-96 mx-4 md:w-96 sm:w-96 lg:w-96 xl:w-1/4">
-        <h2 class="text-forms text-2xl mb-6">Admin</h2>
+        <h2 class="text-forms text-2xl mb-6">Login</h2>
         <div id="error-area" class="text-error mb-3">
             {{ message }}
         </div>
@@ -15,8 +15,17 @@
             <input type="password" name="password" placeholder="Heslo" class="p-2.5 rounded">
             <input type="hidden" name="return_url" value="{{ return_url }}">
         </div>
-        <button type="submit"
-                class="bg-acc  rounded-md p-3 px-6 text-button text-lg shadow-md">Login</button>
+        <div class="flex gap-4 mt-4">
+            <button type="submit"
+                    class="bg-acc rounded-md p-3 px-6 text-button text-lg shadow-md">
+                Login
+            </button>
+            <button type="button"
+                    onclick="window.location.href='/'"
+                    class="bg-acc rounded-md p-3 px-6 text-button text-lg shadow-md">
+                Login with OIDC
+            </button>
+        </div>
         <!-- <p class="text-white">Are you new here? <a href="/user/register" class="text-stone-600 hover:text-stone-400">Create an account</a>.</p> -->
     </form>
 </div>

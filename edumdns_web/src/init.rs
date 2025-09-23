@@ -3,14 +3,13 @@ use crate::handlers::device::{
     get_devices, request_custom_packet_transmit, request_packet_transmit, update_device,
 };
 use crate::handlers::group::{add_group_users, create_group, delete_group, delete_group_user, get_group, get_group_users, get_groups, search_group_users, update_group};
-use crate::handlers::index::index;
+use crate::handlers::index::{index, login, login_base, login_oidc, logout_oidc, logout_oidc_cleanup, logout_base,};
 use crate::handlers::packet::{delete_packet, get_packet, get_packets};
 use crate::handlers::probe::{
     adopt, change_probe_permission, create_config, delete_config, delete_probe, forget, get_probe,
     get_probe_ws, get_probes, restart, save_config, update_probe,
 };
-use crate::handlers::user::{
-    login, login_user, logout_user, user_manage, user_manage_form_page, user_manage_password,
+use crate::handlers::user::{user_manage, user_manage_form_page, user_manage_password,
     user_manage_password_form, user_manage_profile_form,
 };
 use crate::utils::AppState;
@@ -52,9 +51,6 @@ pub fn configure_webapp(
 
     let user_scope = web::scope("user")
         .app_data(web::Data::new(user_repo.clone()))
-        .service(login)
-        .service(login_user)
-        .service(logout_user)
         .service(user_manage_form_page)
         .service(user_manage_password_form)
         .service(user_manage_profile_form)
@@ -99,7 +95,14 @@ pub fn configure_webapp(
 
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.app_data(web::Data::new(app_state))
+            .app_data(web::Data::new(user_repo.clone()))
             .service(index)
+            .service(login_oidc)
+            .service(login)
+            .service(login_base)
+            .service(logout_oidc)
+            .service(logout_oidc_cleanup)
+            .service(logout_base)
             .service(user_scope)
             .service(probe_scope)
             .service(device_scope)

@@ -68,7 +68,7 @@
     <!-- Login/Logout -->
     <div class="hidden lg:flex lg:items-center">
         {% if logged_in %}
-        <a href="/user/logout"
+        <a href="/logout/cleanup"
            class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
                  stroke="currentColor"
@@ -79,7 +79,7 @@
             Log out
         </a>
         {% else %}
-        <a href="/user/login"
+        <a href="/login"
            class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
                  stroke="currentColor"
@@ -87,7 +87,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round"
                       d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/>
             </svg>
-            Admin
+            Log in
         </a>
         {% endif %}
     </div>
@@ -133,14 +133,14 @@
            class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Profile
         </a>
-        <a href="/user/logout"
+        <a href="/logout/cleanup"
            class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Log out
         </a>
         {% else %}
-        <a href="/user/login"
+        <a href="/login"
            class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
-            Admin
+            Log in
         </a>
         {% endif %}
     </div>

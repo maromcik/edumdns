@@ -17,7 +17,7 @@ macro_rules! authorized {
     ($e:expr, $p:expr) => {{
         match $e {
             None => {
-                let path = format!("/login?ret={}", $p);
+                let path = format!("/login/oidc?ret={}", $p);
                 return Ok(HttpResponse::SeeOther()
                     .insert_header((LOCATION, path))
                     .finish());

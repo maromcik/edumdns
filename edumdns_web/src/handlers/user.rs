@@ -2,8 +2,7 @@ use crate::error::WebError;
 use crate::forms::user::{
     UserLoginForm, UserLoginReturnURL, UserUpdateForm, UserUpdatePasswordForm,
 };
-use crate::handlers::helpers::{get_template_name, parse_user_id};
-use crate::handlers::utilities::validate_password;
+use crate::handlers::utilities::{get_template_name, parse_user_id, validate_password};
 use crate::templates::user::{
     LoginTemplate, UserManagePasswordTemplate, UserManageProfileTemplate,
     UserManageProfileUserFormTemplate,
@@ -20,79 +19,6 @@ use edumdns_db::repositories::common::{DbReadOne, DbUpdate};
 use edumdns_db::repositories::user::models::{UserLogin, UserUpdate, UserUpdatePassword};
 use edumdns_db::repositories::user::repository::PgUserRepository;
 
-#[get("/login")]
-pub async fn login(
-    request: HttpRequest,
-    identity: Option<Identity>,
-    query: web::Query<UserLoginReturnURL>,
-    state: web::Data<AppState>,
-) -> Result<HttpResponse, WebError> {
-    let referer = request
-        .headers()
-        .get(actix_web::http::header::REFERER)
-        .map_or("/", |header_value| header_value.to_str().unwrap_or("/"));
-
-    let return_url = query.ret.clone().unwrap_or(referer.to_string());
-    if identity.is_some() {
-        return Ok(HttpResponse::SeeOther()
-            .insert_header((LOCATION, return_url))
-            .finish());
-    }
-
-    let template_name = "user/login.html";
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(template_name)?;
-    let body = template.render(LoginTemplate {
-        message: String::new(),
-        return_url,
-    })?;
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
-}
-
-#[post("/login")]
-pub async fn login_user(
-    request: HttpRequest,
-    user_repo: web::Data<PgUserRepository>,
-    form: web::Form<UserLoginForm>,
-    session: Session,
-    state: web::Data<AppState>,
-) -> Result<impl Responder, WebError> {
-    match user_repo
-        .login(&UserLogin::new(&form.email, &form.password))
-        .await
-    {
-        Ok(user) => {
-            Identity::login(&request.extensions(), user.id.to_string())?;
-            session.insert("is_admin", user.admin)?;
-            Ok(HttpResponse::SeeOther()
-                .insert_header((LOCATION, form.return_url.clone()))
-                .finish())
-        }
-        Err(db_error) => {
-            if let edumdns_db::error::DbErrorKind::BackendError(err) = db_error.error_kind {
-                let template_name = "user/login.html";
-                let env = state.jinja.acquire_env()?;
-                let template = env.get_template(template_name)?;
-                let body = template.render(LoginTemplate {
-                    message: err.to_string(),
-                    return_url: form.return_url.clone(),
-                })?;
-
-                return Ok(HttpResponse::Ok().content_type("text/html").body(body));
-            }
-
-            Err(WebError::from(db_error))
-        }
-    }
-}
-
-#[get("/logout")]
-pub async fn logout_user(identity: Option<Identity>) -> Result<impl Responder, WebError> {
-    if let Some(u) = identity {
-        u.logout();
-    }
-    Ok(Redirect::to("/").using_status_code(StatusCode::FOUND))
-}
 
 #[get("/manage")]
 pub async fn user_manage_form_page(

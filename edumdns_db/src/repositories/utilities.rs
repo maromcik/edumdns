@@ -5,17 +5,34 @@ use crate::schema::group_probe_permission;
 use crate::schema::group_user;
 use crate::schema::user;
 use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
-use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
+use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
-use pbkdf2::Pbkdf2;
 use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
+use pbkdf2::Pbkdf2;
 use rand_core::OsRng;
 use serde::{Deserialize, Deserializer};
 use std::ops::DerefMut;
 use std::str::FromStr;
 use uuid::Uuid;
+
+pub fn validate_user(user: &User) -> Result<(), DbError> {
+    if user.disabled  {
+        return Err(DbError::from(BackendError::new(
+            BackendErrorKind::PermissionDenied,
+            "User is disabled",
+        )));
+    }
+
+    if user.deleted_at.is_some() {
+        return Err(DbError::from(BackendError::new(
+            BackendErrorKind::PermissionDenied,
+            "User has been deleted",
+        )));
+    }
+    Ok(())
+}
 
 pub async fn validate_permissions(
     pool: &Pool<AsyncPgConnection>,
@@ -30,6 +47,8 @@ pub async fn validate_permissions(
         .select(User::as_select())
         .first(&mut conn)
         .await?;
+
+    validate_user(&user_entry)?;
 
     if user_entry.admin {
         return Ok((true, vec![GroupProbePermission::full()]));
@@ -83,6 +102,18 @@ pub async fn validate_admin_transaction(
             "User is not admin",
         )));
     }
+    if user_entry.disabled  {
+        return Err(DbError::from(BackendError::new(
+            BackendErrorKind::PermissionDenied,
+            "User is disabled",
+        )));
+    }
+    if user_entry.deleted_at.is_some() {
+        return Err(DbError::from(BackendError::new(
+            BackendErrorKind::PermissionDenied,
+            "User has been deleted",
+        )));
+    }
     Ok(())
 }
 
@@ -130,5 +161,19 @@ where
         Some(s) if s.trim().is_empty() => Ok(None),
         Some(s) => s.parse::<T>().map(Some).map_err(serde::de::Error::custom),
         None => Ok(None),
+    }
+}
+
+pub fn empty_string_is_false<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(deserializer)?;
+    match opt {
+        Some(s) if s.trim().is_empty() => Ok(Some(false)),
+        Some(s) if s.eq_ignore_ascii_case("true") => Ok(Some(true)),
+        Some(s) if s.eq_ignore_ascii_case("false") => Ok(Some(false)),
+        Some(s) => Err(serde::de::Error::custom("invalid bool")),
+        None => Ok(Some(false)), // now it works!
     }
 }

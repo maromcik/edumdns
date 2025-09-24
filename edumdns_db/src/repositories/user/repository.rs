@@ -112,6 +112,7 @@ impl DbReadOne<Id, User> for PgUserRepository {
     }
 
     async fn read_one_auth(&self, params: &Id, user_id: &Id) -> DbResultSinglePerm<User> {
+        validate_admin(&self.pg_pool, user_id).await?;
         let u = self.read_one(params).await?;
         Ok(DbDataPerm::new(u, (false, vec![])))
     }

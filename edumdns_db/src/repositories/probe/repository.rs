@@ -8,7 +8,7 @@ use crate::repositories::probe::models::{
     AlterProbePermission, CreateProbe, CreateProbeConfig, SelectManyProbes,
     SelectSingleProbeConfig, UpdateProbe,
 };
-use crate::repositories::utilities::{validate_admin, validate_permissions};
+use crate::repositories::utilities::{validate_admin, validate_permissions, validate_user};
 use crate::schema::group_probe_permission;
 use crate::schema::group_user;
 use crate::schema::probe;
@@ -129,6 +129,8 @@ impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeReposito
             .select(User::as_select())
             .first(&mut conn)
             .await?;
+
+        validate_user(&user_entry)?;
 
         if user_entry.admin {
             let probes = self.read_many(params).await?;

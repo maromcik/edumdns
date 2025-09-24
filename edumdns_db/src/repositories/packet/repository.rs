@@ -7,7 +7,7 @@ use crate::repositories::common::{
 use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSinglePacket};
 use std::collections::HashSet;
 
-use crate::repositories::utilities::validate_permissions;
+use crate::repositories::utilities::{validate_permissions, validate_user};
 use crate::schema;
 use crate::schema::packet::BoxedQuery;
 use crate::schema::{group_probe_permission, group_user, probe, user};
@@ -155,6 +155,8 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
             ));
         }
 
+        validate_user(&user_entry)?;
+        
         let packets = self.read_many(params).await?;
 
         let ids: Vec<Id> = packets.iter().map(|p| p.id).collect();

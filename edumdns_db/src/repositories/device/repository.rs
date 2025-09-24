@@ -5,7 +5,7 @@ use crate::repositories::device::models::{
     CreateDevice, CreatePacketTransmitRequest, DeviceUpdatePassword, SelectManyDevices,
     SelectSingleDevice, UpdateDevice,
 };
-use crate::repositories::utilities::{generate_salt, hash_password, validate_permissions};
+use crate::repositories::utilities::{generate_salt, hash_password, validate_permissions, validate_user};
 use crate::schema::device::BoxedQuery;
 use crate::schema::{
     device, group_probe_permission, group_user, packet, packet_transmit_request, probe, user,
@@ -215,6 +215,9 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
                 (true, vec![GroupProbePermission::full()]),
             ));
         }
+
+        validate_user(&user_entry)?;
+
         let query = PgDeviceRepository::build_select_many_query(params);
         let ids = query
             .inner_join(probe::table)

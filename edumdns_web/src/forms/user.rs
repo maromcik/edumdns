@@ -1,8 +1,8 @@
 use edumdns_db::repositories::common::{Id, Pagination};
-use edumdns_db::repositories::user::models::SelectManyUsers;
+use edumdns_db::repositories::user::models::{SelectManyUsers, UserUpdate};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-
+use edumdns_db::repositories::utilities::empty_string_is_none;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct UserQuery {
@@ -35,6 +35,33 @@ impl From<UserQuery> for SelectManyUsers {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct UserUpdateFormAdmin {
+    pub id: Id,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
+    pub email: Option<String>,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
+    pub name: Option<String>,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
+    pub surname: Option<String>,
+    #[serde(default)]
+    pub admin: bool,
+    #[serde(default)]
+    pub disabled: bool,
+}
+
+impl From<UserUpdateFormAdmin> for UserUpdate {
+    fn from(value: UserUpdateFormAdmin) -> Self {
+        Self {
+            id: value.id,
+            email: value.email,
+            name: value.name,
+            surname: value.surname,
+            admin: Some(value.admin),
+            disabled: Some(value.disabled),
+        }
+    }
+}
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct UserCreateForm {

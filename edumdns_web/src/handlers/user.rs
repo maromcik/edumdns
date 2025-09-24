@@ -1,21 +1,15 @@
 use crate::error::WebError;
-use crate::forms::user::{UserCreateForm, UserQuery, UserUpdateForm, UserUpdatePasswordForm};
+use crate::forms::user::{UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm};
 use crate::handlers::utilities::{get_template_name, parse_user_id, validate_password};
 use crate::templates::user::{UserDetailTemplate, UserManagePasswordTemplate, UserManageProfileTemplate, UserManageProfileUserFormTemplate, UserTemplate};
 use crate::{authorized, AppState};
 use actix_identity::Identity;
-use actix_session::Session;
-use actix_web::{delete, get, post, web, HttpRequest, HttpResponse, Responder};
 use actix_web::http::header::LOCATION;
+use actix_web::{delete, get, post, web, HttpRequest, HttpResponse, Responder};
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
 use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id};
-use edumdns_db::repositories::group::models::{CreateGroup, UpdateGroup};
-use edumdns_db::repositories::group::repository::PgGroupRepository;
-use edumdns_db::repositories::probe::models::SelectManyProbes;
 use edumdns_db::repositories::user::models::{SelectManyUsers, UserCreate, UserUpdate, UserUpdatePassword};
 use edumdns_db::repositories::user::repository::PgUserRepository;
-use crate::forms::group::CreateGroupForm;
-use crate::templates::group::GroupDetailTemplate;
 
 #[get("")]
 pub async fn get_users(
@@ -122,13 +116,14 @@ pub async fn update_user(
     request: HttpRequest,
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
-    form: web::Form<UserUpdate>,
+    form: web::Form<UserUpdateFormAdmin>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
+    let target_user_id = form.0.id;
     let params = form.into_inner();
-    user_repo.update_auth(&params, &parse_user_id(&i)?).await?;
+    user_repo.update_auth(&UserUpdate::from(params), &parse_user_id(&i)?).await?;
     Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/user/{}", params.id)))
+        .insert_header((LOCATION, format!("/user/{}", target_user_id)))
         .finish())
 }
 

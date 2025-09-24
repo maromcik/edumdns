@@ -1,5 +1,7 @@
 use crate::repositories::common::{Id, Pagination};
 use crate::repositories::utilities::empty_string_is_none;
+use crate::repositories::utilities::empty_string_is_false;
+
 use diesel::{AsChangeset, Identifiable, Insertable};
 use serde::{Deserialize, Serialize};
 
@@ -58,9 +60,7 @@ pub struct UserUpdate {
     pub name: Option<String>,
     #[serde(default, deserialize_with = "empty_string_is_none")]
     pub surname: Option<String>,
-    #[serde(default)]
     pub admin: Option<bool>,
-    #[serde(default)]
     pub disabled: Option<bool>,
 }
 

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-actix_web_openidconnect = { path = "../ActixWeb_openIDConnect" }
+actix_web_openidconnect = { path = "../actix-oidc-connect" }
 edumdns_core = { path = "../edumdns_core" }
 edumdns_db = { path = "../edumdns_db" }
 actix-files = { version = "0.6.7" }

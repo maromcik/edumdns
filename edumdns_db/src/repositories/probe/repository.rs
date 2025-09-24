@@ -23,6 +23,7 @@ use diesel::{
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -37,6 +38,10 @@ impl PgProbeRepository {
 
     pub fn build_select_many_query<'a>(params: &'a SelectManyProbes) -> BoxedQuery<'a, Pg> {
         let mut query = probe::table.into_boxed();
+
+        if let Some(q) = &params.id {
+            query = query.filter(probe::id.eq(q));
+        }
 
         if let Some(q) = &params.adopted {
             query = query.filter(probe::adopted.eq(q));
@@ -163,7 +168,7 @@ impl DbCreate<CreateProbe, Probe> for PgProbeRepository {
             .returning(Probe::as_returning())
             .on_conflict(probe::id)
             .do_update()
-            .set((probe::mac.eq(data.mac), probe::ip.eq(data.ip)))
+            .set((probe::mac.eq(data.mac), probe::ip.eq(data.ip), probe::last_connected_at.eq(OffsetDateTime::now_utc())))
             .get_result(&mut conn)
             .await
             .map_err(DbError::from)

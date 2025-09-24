@@ -104,6 +104,7 @@ impl PgUserRepository {
             .await?;
         Ok(maps)
     }
+
 }
 
 impl DbReadOne<Id, User> for PgUserRepository {

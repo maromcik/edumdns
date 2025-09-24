@@ -31,6 +31,10 @@ impl PgPacketRepository {
     pub fn build_select_many_query<'a>(params: &'a SelectManyPackets) -> BoxedQuery<'a, Pg> {
         let mut query = packet::table.into_boxed();
 
+        if let Some(q) = &params.id {
+            query = query.filter(packet::id.eq(q));
+        }
+
         if let Some(q) = &params.probe_id {
             query = query.filter(packet::probe_id.eq(q));
         }

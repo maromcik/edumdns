@@ -22,7 +22,7 @@ use edumdns_core::error::CoreError;
 use edumdns_db::repositories::common::{
     DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE, Pagination,
 };
-use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
+use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices, UpdateDevice};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
@@ -92,6 +92,7 @@ pub async fn get_device(
         .await?;
     let page = query.page.unwrap_or(1);
     let params = SelectManyPackets::new(
+        query.id,
         Some(device.data.probe_id),
         Some(device.data.mac),
         query.dst_mac.map(|mac| mac.to_octets()),
@@ -257,9 +258,11 @@ pub async fn request_packet_transmit(
     state: web::Data<AppState>,
     form: web::Form<DevicePacketTransmitRequest>,
 ) -> Result<HttpResponse, WebError> {
-    let _ = authorized!(identity, request);
+    let i = authorized!(identity, request);
     let device = device_repo.read_one(&path.0).await?;
-
+    if !device.published {
+        device_repo.read_one_auth(&path.0, &parse_user_id(&i)?).await?;
+    }
     let target_ip = request
         .connection_info()
         .realip_remote_addr()
@@ -343,9 +346,11 @@ pub async fn get_device_for_transmit(
     path: web::Path<(Id,)>,
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
-    let _ = authorized!(identity, request);
+    let i = authorized!(identity, request);
     let device = device_repo.read_one(&path.0).await?;
-
+    if !device.published {
+        device_repo.read_one_auth(&path.0, &parse_user_id(&i)?).await?;
+    }
     let target_ip = request
         .connection_info()
         .realip_remote_addr()
@@ -370,4 +375,38 @@ pub async fn get_device_for_transmit(
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
+}
+
+#[get("{id}/publish")]
+pub async fn publish_device(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    device_repo: web::Data<PgDeviceRepository>,
+    path: web::Path<(Id,)>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
+    let device_id = path.0;
+
+    device_repo.update_auth(&UpdateDevice::toggle_publicity(&device_id, true), &user_id).await?;
+
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/device/{}", device_id)))
+        .finish())
+}
+
+#[get("{id}/hide")]
+pub async fn hide_device(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    device_repo: web::Data<PgDeviceRepository>,
+    path: web::Path<(Id,)>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
+    let device_id = path.0;
+    device_repo.update_auth(&UpdateDevice::toggle_publicity(&device_id, false), &user_id).await?;
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/device/{}", device_id)))
+        .finish())
 }

@@ -1,26 +1,50 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-6">
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
-        <h1 class="text-4xl font-semibold text-sat-xl">Device {% if device.name is not none %} {{ device.name }} {% else
-            %} {{ device.id }} {% endif %}</h1>
+        <h1 class="text-4xl font-semibold text-sat-xl">
+            Device {% if device.name is not none %} {{ device.name }} {% else %} {{ device.id }} {% endif %}
+        </h1>
         <div class="flex items-center gap-2">
+            <!-- Back -->
             <a href="/device"
-               class="inline-flex items-center rounded-md border border-base bg-cards px-3 py-1.5 text-sm font-medium text-acc hover:text-acc-xl transition-colors">
+               class="flex items-center justify-center w-10 h-10 rounded-md border border-base bg-cards text-sm font-medium text-acc hover:text-acc-xl transition-colors">
                 ←
             </a>
+
+            {% if permissions|has_perm("Update") %}
+            {% if device.published %}
+            <!-- Hide -->
+            <button hx-get="/device/{{ device.id }}/hide"
+                    hx-target="#content-area"
+                    hx-target-error="#content-area"
+                    class="flex items-center justify-center w-10 h-10 bg-fuchsia-400 hover:bg-fuchsia-500 rounded-md text-button shadow-md">
+                <i class="fa-solid fa-eye-slash"></i>
+            </button>
+            {% else %}
+            <!-- Publish -->
+            <button hx-get="/device/{{ device.id }}/publish"
+                    hx-target="#content-area"
+                    hx-target-error="#content-area"
+                    class="flex items-center justify-center w-10 h-10 bg-lime-500 hover:bg-lime-600 rounded-md text-button shadow-md">
+                <i class="fa-solid fa-eye"></i>
+            </button>
+            {% endif %}
+            {% endif %}
+
             {% if permissions|has_perm("Delete") %}
+            <!-- Delete -->
             <button
-                    class="ml-2 bg-red-600 hover:bg-red-700 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
                     hx-delete="/device/{{ device.id }}/delete"
                     hx-target="#content-area"
                     hx-target-error="#content-area"
                     hx-push-url="/device"
-            >
-                Delete
+                    class="flex items-center justify-center w-10 h-10 bg-red-600 hover:bg-red-700 rounded-md text-button shadow-md">
+                <i class="fa-solid fa-trash"></i>
             </button>
             {% endif %}
         </div>
     </div>
+
 
     <!-- Device Card -->
     <div class="rounded-lg border border-base bg-cards p-6 mb-8">
@@ -49,6 +73,12 @@
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">IP</span>
                 <span class="font-mono text-code"><code>{{ device.ip }}</code></span>
+            </div>
+
+            <!-- TIME -->
+            <div class="flex flex-col">
+                <span class="text-xs uppercase tracking-wide text-sat-m">Discovered At</span>
+                <span class="text-sat-l">{{ device.discovered_at }}</span>
             </div>
 
         </div>
@@ -337,11 +367,17 @@
                 </th>
                 <th scope="col"
                     class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Captured At
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
                     Actions
                 </th>
             </tr>
             <tr>
-                <td class="px-4 py-2"></td>
+                <td class="px-4 py-2"><input type="text" id="filter-id"
+                                             value="{{ filters.id  | default('') }}"
+                                             class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-src_mac"
                                              value="{{ filters.src_mac  | default('') }}"
                                              class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
@@ -360,6 +396,7 @@
                 <td class="px-4 py-2"><input type="text" id="filter-dst_port"
                                              value="{{ filters.dst_port  | default('') }}"
                                              class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2"></td>
                 <td class="px-4 py-2 flex gap-2">
                     <button type="button" id="filter-button"
                             class="px-3 py-1 rounded-md border border-base bg-acc text-sm bg-primary text-black hover:bg-primary/90 transition-colors">
@@ -386,6 +423,9 @@
                 <td class="px-4 py-3 text-sm text-sat-l">{{ packet.dst_addr }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ packet.src_port }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ packet.dst_port }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">
+                    <span class="font-mono">{{ packet.captured_at }}</span>
+                </td>
                 {% if permissions|has_perm("Delete") %}
                 <td class="px-4 py-3 text-sm text-sat-l">
                     <button
@@ -498,7 +538,7 @@
     function runSearch() {
         const params = new URLSearchParams();
 
-        ["src_mac","dst_mac","src_addr","dst_addr","src_port","dst_port"].forEach(field => {
+        ["id", "src_mac","dst_mac","src_addr","dst_addr","src_port","dst_port"].forEach(field => {
             const el = document.getElementById(`filter-${field}`);
             if (!el) return;
 
@@ -523,7 +563,7 @@
     });
 
     // Trigger search on Enter in any filter input
-    ["filter-src_mac","filter-dst_mac","filter-src_addr","filter-dst_addr","filter-src_port","filter-dst_port"].forEach(id => {
+    ["filter-id", "filter-src_mac","filter-dst_mac","filter-src_addr","filter-dst_addr","filter-src_port","filter-dst_port"].forEach(id => {
         const input = document.getElementById(id);
         input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {

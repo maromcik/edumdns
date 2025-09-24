@@ -1,9 +1,6 @@
 use crate::error::DbError;
 use crate::models::{Device, GroupProbePermission, PacketTransmitRequest, Probe, User};
-use crate::repositories::common::{
-    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
-    DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission,
-};
+use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission};
 use crate::repositories::device::models::{
     CreateDevice, CreatePacketTransmitRequest, DeviceUpdatePassword, SelectManyDevices,
     SelectSingleDevice, UpdateDevice,
@@ -36,6 +33,10 @@ impl PgDeviceRepository {
 
     pub fn build_select_many_query<'a>(params: &'a SelectManyDevices) -> BoxedQuery<'a, Pg> {
         let mut query = device::table.into_boxed();
+
+        if let Some(q) = &params.id {
+            query = query.filter(device::id.eq(q));
+        }
 
         if let Some(q) = &params.probe_id {
             query = query.filter(device::probe_id.eq(q));

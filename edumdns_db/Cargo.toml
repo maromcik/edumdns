@@ -11,7 +11,7 @@ diesel = { version = "2.2.12", features = ["postgres", "time", "r2d2", "uuid", "
 diesel-async = { version = "0.6.1", features = ["tokio-postgres", "postgres", "deadpool"] }
 diesel_migrations = { version = "2.2.0", features = ["postgres"] }
 serde = { version = "1.0.226", features = ["derive", "std"] }
-time = { version = "0.3.44", features = ["serde"] }
+time = { version = "0.3.44", features = ["serde", "local-offset", "parsing", "formatting"] }
 uuid = { version = "1.18.1", features = ["v7", "serde"] }
 ipnetwork = { version = "0.21.1", features = ["serde"] }
 pbkdf2 = { version = "0.12.2", features = ["simple"] }

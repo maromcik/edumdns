@@ -32,17 +32,22 @@
                     Port
                 </th>
                 <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Discovered At
+                </th>
+                <th scope="col"
                     class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
                     Actions
                 </th>
             </tr>
             <tr>
-                <td class="px-4 py-2"></td>
+                <td class="px-4 py-2"><input type="text" id="filter-id" value="{{ filters.id | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-probe_id" value="{{ filters.probe_id | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-name"  value="{{ filters.name  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-mac"   value="{{ filters.mac   | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-ip"    value="{{ filters.ip    | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-port"  value="{{ filters.port  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2"></td>
                 <td class="px-4 py-2 flex gap-2">
                     <button type="button" id="filter-button"
                             class="px-3 py-1 rounded-md border border-base bg-acc text-sm bg-primary text-black hover:bg-primary/90 transition-colors">
@@ -81,6 +86,7 @@
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].mac }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].ip }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].port }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].discovered_at }}</td>
                 {% if permissions|has_perm("Delete") %}
                 <td class="px-4 py-3 text-sm text-sat-l">
                     <button
@@ -178,7 +184,7 @@
     function runSearch() {
         const params = new URLSearchParams();
 
-        ["probe_id","name","mac","ip","port"].forEach(field => {
+        ["id", "probe_id","name","mac","ip","port"].forEach(field => {
             const value = document.getElementById(`filter-${field}`).value.trim();
             if (value) {
                 params.set(field, value);
@@ -200,7 +206,7 @@
     });
 
     // Trigger search on Enter in any filter input
-    ["filter-probe_id","filter-name","filter-mac","filter-ip","filter-port"].forEach(id => {
+    ["filter-id", "filter-probe_id","filter-name","filter-mac","filter-ip","filter-port"].forEach(id => {
         const input = document.getElementById(id);
         input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {

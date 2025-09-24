@@ -13,6 +13,8 @@ use uuid::Uuid;
 pub struct DeviceQuery {
     pub page: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub id: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub probe_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub mac: Option<MacAddr>,
@@ -27,6 +29,7 @@ pub struct DeviceQuery {
 impl From<DeviceQuery> for SelectManyDevices {
     fn from(value: DeviceQuery) -> Self {
         Self {
+            id: value.id,
             probe_id: value.probe_id,
             mac: value.mac.map(|addr| addr.to_octets()),
             ip: value.ip,
@@ -98,6 +101,7 @@ impl UpdateDeviceForm {
             port: self.port,
             duration: self.duration,
             interval: self.interval,
+            published: None,
             acl_src_cidr: self.acl_src_cidr,
             acl_ap_hostname_regex: self.acl_ap_hostname_regex,
             acl_pwd_hash: hash,

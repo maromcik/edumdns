@@ -3,10 +3,13 @@ use edumdns_db::repositories::common::{Id, Pagination, Permission};
 use edumdns_db::repositories::probe::models::SelectManyProbes;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProbeQuery {
     pub page: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub owner_id: Option<Id>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -24,6 +27,7 @@ pub struct ProbeQuery {
 impl From<ProbeQuery> for SelectManyProbes {
     fn from(value: ProbeQuery) -> Self {
         Self::new(
+            value.id,
             value.owner_id,
             value.location_id,
             value.adopted,

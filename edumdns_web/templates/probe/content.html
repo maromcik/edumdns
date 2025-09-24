@@ -31,9 +31,18 @@
                     class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
                     Adopted
                 </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    First Connected At
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Last Connected At
+                </th>
             </tr>
             <tr>
-                <td class="px-4 py-2"></td>
+                <td class="px-4 py-2"><input type="text" id="filter-id" value="{{ filters.id  | default('') }}"
+                                             class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-name" value="{{ filters.name  | default('') }}"
                                              class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"></td>
@@ -51,6 +60,8 @@
                         </option>
                     </select>
                 </td>
+                <td class="px-4 py-2"></td>
+                <td class="px-4 py-2"></td>
                 <td class="px-4 py-2 flex gap-2">
                     <button type="button" id="filter-button"
                             class="px-3 py-1 rounded-md border border-base bg-acc text-sm bg-primary text-black hover:bg-primary/90 transition-colors">
@@ -92,6 +103,8 @@
                     <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
                     {% endif %}
                 </td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ probe[1].first_connected_at }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ probe[1].last_connected_at }}</td>
 
 
             </tr>
@@ -177,7 +190,7 @@
     function runSearch() {
         const params = new URLSearchParams();
 
-        ["name", "mac", "ip", "adopted"].forEach(field => {
+        ["id", "name", "mac", "ip", "adopted"].forEach(field => {
             const el = document.getElementById(`filter-${field}`);
             if (!el) return;
 
@@ -205,7 +218,7 @@
     });
 
     // Trigger search on Enter in text inputs
-    ["filter-name","filter-mac","filter-ip"].forEach(id => {
+    ["filter-id", "filter-name","filter-mac","filter-ip"].forEach(id => {
         const input = document.getElementById(id);
         input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {

@@ -5,10 +5,12 @@ use diesel::{AsChangeset, Identifiable, Insertable};
 use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
+use time::{format_description, OffsetDateTime};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SelectManyProbes {
+    pub id: Option<Uuid>,
     pub owner_id: Option<Id>,
     pub location_id: Option<Id>,
     pub adopted: Option<bool>,
@@ -20,6 +22,7 @@ pub struct SelectManyProbes {
 
 impl SelectManyProbes {
     pub fn new(
+        id: Option<Uuid>,
         owner_id: Option<Id>,
         location_id: Option<Id>,
         adopted: Option<bool>,
@@ -29,6 +32,7 @@ impl SelectManyProbes {
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
+            id,
             owner_id,
             location_id,
             adopted,
@@ -71,10 +75,13 @@ pub struct ProbeDisplay {
     pub mac: MacAddr,
     pub ip: IpNetwork,
     pub name: Option<String>,
+    pub first_connected_at: Option<String>,
+    pub last_connected_at: Option<String>,
 }
 
 impl From<Probe> for ProbeDisplay {
     fn from(value: Probe) -> Self {
+        let format = format_description::parse("[day]. [month]. [year] [hour]:[minute]:[second]").unwrap_or_default();
         Self {
             id: value.id,
             owner_id: value.owner_id,
@@ -83,6 +90,8 @@ impl From<Probe> for ProbeDisplay {
             mac: MacAddr::from_octets(value.mac),
             ip: value.ip,
             name: value.name,
+            first_connected_at: value.first_connected_at.map(|t| t.format(&format).unwrap_or_default()),
+            last_connected_at: value.last_connected_at.map(|t| t.format(&format).unwrap_or_default()),
         }
     }
 }

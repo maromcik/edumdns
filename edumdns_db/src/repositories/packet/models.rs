@@ -7,10 +7,12 @@ use edumdns_core::network_packet::ApplicationPacket;
 use ipnetwork::IpNetwork;
 use log::warn;
 use serde::{Deserialize, Serialize};
+use time::{format_description, OffsetDateTime};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyPackets {
+    pub id: Option<Id>,
     pub probe_id: Option<Uuid>,
     pub src_mac: Option<[u8; 6]>,
     pub dst_mac: Option<[u8; 6]>,
@@ -23,6 +25,7 @@ pub struct SelectManyPackets {
 
 impl SelectManyPackets {
     pub fn new(
+        id: Option<Id>,
         probe_id: Option<Uuid>,
         src_mac: Option<[u8; 6]>,
         dst_mac: Option<[u8; 6]>,
@@ -33,6 +36,7 @@ impl SelectManyPackets {
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
+            id,
             probe_id,
             src_mac,
             dst_mac,
@@ -113,6 +117,7 @@ pub struct PacketDisplay {
     pub src_port: i32,
     pub dst_port: i32,
     pub payload: String,
+    pub captured_at: Option<String>
 }
 
 impl PacketDisplay {
@@ -124,6 +129,7 @@ impl PacketDisplay {
                 return Err(e);
             }
         };
+        let format = format_description::parse("[day]. [month]. [year] [hour]:[minute]:[second]").unwrap_or_default();
         Ok(Self {
             id: value.id,
             probe_id: value.probe_id,
@@ -134,6 +140,7 @@ impl PacketDisplay {
             src_port: value.src_port,
             dst_port: value.dst_port,
             payload: payload.read_content(),
+            captured_at: value.captured_at.map(|t| t.format(&format).unwrap_or_default()),
         })
     }
 }

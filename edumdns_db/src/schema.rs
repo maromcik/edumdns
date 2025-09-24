@@ -10,10 +10,12 @@ diesel::table! {
         name -> Nullable<Text>,
         duration -> Int8,
         interval -> Int8,
+        published -> Bool,
         acl_src_cidr -> Nullable<Cidr>,
         acl_pwd_hash -> Nullable<Text>,
         acl_pwd_salt -> Nullable<Text>,
         acl_ap_hostname_regex -> Nullable<Text>,
+        discovered_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -65,6 +67,7 @@ diesel::table! {
         dst_port -> Int4,
         payload -> Bytea,
         payload_hash -> Text,
+        captured_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -87,6 +90,8 @@ diesel::table! {
         mac -> Macaddr,
         ip -> Cidr,
         name -> Nullable<Text>,
+        first_connected_at -> Nullable<Timestamptz>,
+        last_connected_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -108,6 +113,7 @@ diesel::table! {
         password_hash -> Nullable<Text>,
         password_salt -> Nullable<Text>,
         admin -> Bool,
+        disabled -> Bool,
         created_at -> Timestamptz,
         edited_at -> Timestamptz,
         deleted_at -> Nullable<Timestamptz>,

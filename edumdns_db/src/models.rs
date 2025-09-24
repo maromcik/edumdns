@@ -78,6 +78,8 @@ pub struct Probe {
     pub mac: [u8; 6],
     pub ip: ipnetwork::IpNetwork,
     pub name: Option<String>,
+    pub first_connected_at: Option<OffsetDateTime>,
+    pub last_connected_at: Option<OffsetDateTime>,
 }
 
 #[derive(Serialize, Deserialize, Queryable, Selectable, Associations)]
@@ -104,10 +106,12 @@ pub struct Device {
     pub name: Option<String>,
     pub duration: i64,
     pub interval: i64,
+    pub published: bool,
     pub acl_src_cidr: Option<ipnetwork::IpNetwork>,
     pub acl_pwd_hash: Option<String>,
     pub acl_pwd_salt: Option<String>,
     pub acl_ap_hostname_regex: Option<String>,
+    pub discovered_at: Option<OffsetDateTime>,
 }
 
 #[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable, Associations, Debug)]
@@ -125,6 +129,7 @@ pub struct Packet {
     pub dst_port: i32,
     pub payload: Vec<u8>,
     pub payload_hash: String,
+    pub captured_at: Option<OffsetDateTime>,
 }
 
 #[derive(
@@ -152,6 +157,7 @@ pub struct User {
     pub password_hash: Option<String>,
     pub password_salt: Option<String>,
     pub admin: bool,
+    pub disabled: bool,
     pub created_at: OffsetDateTime,
     pub edited_at: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,

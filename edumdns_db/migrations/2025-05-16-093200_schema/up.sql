@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS "user"
     password_hash   text,
     password_salt   text,
     admin           bool        NOT NULL DEFAULT false,
+    disabled        bool        NOT NULL DEFAULT false,
     created_at      timestamptz NOT NULL DEFAULT now(),
     edited_at       timestamptz NOT NULL DEFAULT now(),
     deleted_at      timestamptz
@@ -38,14 +39,16 @@ CREATE TABLE IF NOT EXISTS "user"
 
 CREATE TABLE IF NOT EXISTS "probe"
 (
-    id             uuid         PRIMARY KEY,
+    id                  uuid         PRIMARY KEY,
     ------------------------------  ---------------
-    owner_id       bigint,
-    location_id    bigint,
-    adopted        bool         NOT NULL DEFAULT FALSE,
-    mac            macaddr      NOT NULL,
-    ip             cidr         NOT NULL,
-    name           text,
+    owner_id            bigint,
+    location_id         bigint,
+    adopted             bool         NOT NULL DEFAULT FALSE,
+    mac                 macaddr      NOT NULL,
+    ip                  cidr         NOT NULL,
+    name                text,
+    first_connected_at  timestamptz  DEFAULT now(),
+    last_connected_at   timestamptz  DEFAULT now(),
 
     FOREIGN KEY (owner_id) REFERENCES "user" (id) ON DELETE SET NULL,
     FOREIGN KEY (location_id) REFERENCES "location" (id) ON DELETE SET NULL
@@ -96,10 +99,12 @@ CREATE TABLE IF NOT EXISTS "device"
     name                   text,
     duration               bigint       NOT NULL DEFAULT 120,
     interval               bigint       NOT NULL DEFAULT 100,
+    published              bool         NOT NULL DEFAULT FALSE,
     acl_src_cidr           cidr,
     acl_pwd_hash           text,
     acl_pwd_salt           text,
     acl_ap_hostname_regex  text,
+    discovered_at          timestamptz  DEFAULT now(),
 
     UNIQUE (probe_id, mac, ip),
     FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE
@@ -118,6 +123,7 @@ CREATE TABLE IF NOT EXISTS "packet"
     dst_port       int          NOT NULL,
     payload        bytea        NOT NULL,
     payload_hash   text         NOT NULL,
+    captured_at    timestamptz  DEFAULT now(),
 
     UNIQUE (probe_id, src_mac, src_addr, dst_addr, dst_port, payload_hash),
     FOREIGN KEY (probe_id) REFERENCES "probe" (id) ON DELETE CASCADE

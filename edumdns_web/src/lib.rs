@@ -79,6 +79,9 @@ pub async fn web_init(
 
     let should_auth = |req: &ServiceRequest| {
         let path = req.path();
+        println!("Path from should auth {}", path);
+
+        // always allow static assets, logout, and the landing login page itself
         if path.starts_with("/static") {
             return false;
         }
@@ -89,19 +92,24 @@ pub async fn web_init(
             return false;
         }
 
+        // If you use an "auth" cookie to mark local logins (set it on local oauth)
         if let Some(cookie) = req.request().cookie("auth") {
             if cookie.value() == "local" {
-                return false;
+                return false; // local auth -> do not force OIDC
             }
             if cookie.value() == "oidc" {
-                return true;
+                return true; // user wants OIDC -> allow OIDC middleware to act
             }
         }
+
+        // Fallthrough: treat as protected (let openid middleware decide)
         true
     };
 
+
     let openid = ActixWebOpenId::builder(client_id, callback, issuer)
         .client_secret(client_secret)
+        .logout_path("/logout/oidc")
         .should_auth(should_auth)
         .scopes(vec![
             "openid".to_string(),
@@ -136,7 +144,6 @@ pub async fn web_init(
             .app_data(FormConfig::default().limit(FORM_LIMIT))
             .app_data(PayloadConfig::new(PAYLOAD_LIMIT)) // <- important
             .wrap(NormalizePath::new(TrailingSlash::Trim))
-            .wrap(Logger::default())
             .wrap(
                 IdentityMiddleware::builder()
                     .logout_behavior(actix_identity::config::LogoutBehavior::PurgeSession)
@@ -165,8 +172,9 @@ pub async fn web_init(
                     .supports_credentials()
                     .max_age(3600),
             )
-            // .wrap(middleware::RedirectToSelector)
             .wrap(openid.get_middleware())
+            .wrap(middleware::RedirectToLogin)
+            .wrap(Logger::default())
             .configure(openid.configure_open_id())
             .configure(configure_webapp(
                 &pool,

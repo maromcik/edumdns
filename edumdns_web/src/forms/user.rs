@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use edumdns_db::repositories::common::Pagination;
 use edumdns_db::repositories::user::models::SelectManyUsers;
 use serde::{Deserialize, Serialize};
@@ -28,6 +29,12 @@ pub struct UserUpdatePasswordForm {
 #[derive(Deserialize)]
 pub struct UserLoginReturnURL {
     pub ret: Option<String>,
+}
+
+impl Display for UserLoginReturnURL {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ret={}", self.ret.as_ref().unwrap_or(&String::from("/")))
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

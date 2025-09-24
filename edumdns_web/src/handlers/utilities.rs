@@ -17,20 +17,17 @@ macro_rules! authorized {
     ($identity:expr, $req:expr ) => {{
         match $identity {
             None => {
-                let path = if let Some(_) = $req.cookie("id_token") {
-                    format!("/login/oidc/?ret={}", $req.path())
-                } else {
-                    format!("/login?ret={}", $req.path())
-                };
-                debug!("Redirecting to {}", path);
-                return Ok(HttpResponse::SeeOther()
-                    .insert_header((LOCATION, path))
+                let path = format!("/login?ret={}", $req.path());
+                log::debug!("Redirecting to {}", path);
+                return Ok(actix_web::HttpResponse::SeeOther()
+                    .insert_header((actix_web::http::header::LOCATION, path))
                     .finish());
             }
             Some(v) => v,
         }
     }};
 }
+
 
 pub fn validate_password(password: &str) -> bool {
     let (lower, upper, numeric, special) =

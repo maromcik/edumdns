@@ -6,9 +6,7 @@ use crate::handlers::group::{
     add_group_users, create_group, delete_group, delete_group_user, get_group, get_group_users,
     get_groups, search_group_users, update_group,
 };
-use crate::handlers::index::{
-    index, login, login_base, login_oidc, logout_base, logout_oidc, logout_oidc_cleanup,
-};
+use crate::handlers::index::{index, login, login_base, login_oidc, login_oidc_redirect, logout_base, logout_oidc_cleanup};
 use crate::handlers::packet::{delete_packet, get_packet, get_packets};
 use crate::handlers::probe::{
     adopt, change_probe_permission, create_config, delete_config, delete_probe, forget, get_probe,
@@ -106,7 +104,7 @@ pub fn configure_webapp(
             .service(login_oidc)
             .service(login)
             .service(login_base)
-            .service(logout_oidc)
+            .service(login_oidc_redirect)
             .service(logout_oidc_cleanup)
             .service(logout_base)
             .service(user_scope)

@@ -1,44 +1,36 @@
-use actix_identity::error::GetIdentityError;
-use actix_identity::{Identity, IdentityExt};
-use actix_web::FromRequest;
-use actix_web::body::BoxBody;
-use actix_web::http::header::LOCATION;
-use actix_web::{
-    Error, HttpMessage, HttpResponse,
-    dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready},
-};
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready};
+use actix_web::{Error, HttpResponse};
 use futures_util::future::LocalBoxFuture;
-use log::{error, info};
-use std::future::{Ready, ready};
-use std::ops::Deref;
-use std::rc::Rc;
+use std::future::{ready, Ready};
+use actix_web::body::BoxBody;
+use futures_util::FutureExt;
 
-pub struct RedirectToSelector;
+pub struct RedirectToLogin;
 
-impl<S, B> Transform<S, ServiceRequest> for RedirectToSelector
+impl<S, B> Transform<S, ServiceRequest> for RedirectToLogin
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
     S::Future: 'static,
     B: 'static + actix_web::body::MessageBody,
 {
-    type Response = ServiceResponse<BoxBody>; // use BoxBody here
+    type Response = ServiceResponse<BoxBody>;
     type Error = Error;
     type InitError = ();
-    type Transform = RedirectToSelectorMiddleware<S>;
+    type Transform = RedirectToLoginMiddleware<S>;
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ready(Ok(RedirectToSelectorMiddleware { service }))
+        ready(Ok(RedirectToLoginMiddleware { service }))
     }
 }
 
-pub struct RedirectToSelectorMiddleware<S> {
+pub struct RedirectToLoginMiddleware<S> {
     service: S,
 }
 
-impl<S, B> Service<ServiceRequest> for RedirectToSelectorMiddleware<S>
+impl<S, B> Service<ServiceRequest> for RedirectToLoginMiddleware<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
     S::Future: 'static,
     B: 'static + actix_web::body::MessageBody,
 {
@@ -48,39 +40,39 @@ where
 
     forward_ready!(service);
 
-    fn call(&self, req: ServiceRequest) -> Self::Future {
-        let cookie = req.cookie("id");
-        match &cookie {
-            Some(i) => {
-                info!("identity: {:?}", i.value());
-            }
-            None => {
-                error!("identity error");
-            }
-        }
-
-        let path = req.path();
-        println!("PATH: {}", path);
-        if (path.starts_with("/login")
+    fn call(&self, mut req: ServiceRequest) -> Self::Future {
+        // Paths that should bypass the redirect to login
+        let path = req.path().to_string();
+        println!("Path from custom: {}", path);
+        if path.starts_with("/static")
+            || path.starts_with("/login")
+            || path.starts_with("/auth_callback")
             || path.starts_with("/logout")
             || path.starts_with("/oidc")
-            || path.starts_with("/static"))
-            || cookie.is_some()
+            || path.starts_with("/sracka")
         {
             let fut = self.service.call(req);
-            Box::pin(async move {
-                let res = fut.await?;
-                Ok(res.map_into_boxed_body())
-            })
-        } else {
-            Box::pin(async move {
-                let res = HttpResponse::SeeOther()
-                    .insert_header((LOCATION, format!("/login/oidc?ret={}", req.path())))
-                    .finish();
-                let srv_res: ServiceResponse<BoxBody> = req.into_response(res);
-
-                Ok(srv_res)
-            })
+            return fut.map(|res| res.map(|r| r.map_into_boxed_body())).boxed_local();
         }
+
+        // Check the "auth" cookie presence (local or oidc) OR an OIDC cookie you use (e.g. id_token)
+        let has_auth_cookie = req.cookie("auth").is_some();
+        let has_id_token = req.cookie("id_token").is_some(); // if your OIDC crate writes id_token cookie
+
+        if has_auth_cookie || has_id_token {
+            // user *may* be logged in — let other middleware decide
+            let fut = self.service.call(req);
+            return fut.map(|res| res.map(|r| r.map_into_boxed_body())).boxed_local();
+        }
+
+        // Not logged in — redirect to landing page
+        // Capture the requested path for ret param
+        let ret = urlencoding::encode(&path);
+        let redirect = HttpResponse::SeeOther()
+            .insert_header((actix_web::http::header::LOCATION, format!("/login?ret={}", ret)))
+            .finish();
+
+        let srv_res = req.into_response(redirect.map_into_boxed_body());
+        async { Ok(srv_res) }.boxed_local()
     }
 }

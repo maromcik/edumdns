@@ -13,6 +13,8 @@
       <sourceFolder url="file://$MODULE_DIR$/edumdns_proxy/edumdns_proxy-common/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/edumdns_proxy/edumdns_proxy-ebpf/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/edumdns_proxy/edumdns_proxy/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/ActixWeb_openIDConnect/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/ActixWeb_openIDConnect/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/edumdns_proxy/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>

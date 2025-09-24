@@ -15,17 +15,28 @@
             <input type="password" name="password" placeholder="Heslo" class="p-2.5 rounded">
             <input type="hidden" name="return_url" value="{{ return_url }}">
         </div>
-        <div class="flex gap-4 mt-4">
-            <button type="submit"
-                    class="bg-acc rounded-md p-3 px-6 text-button text-lg shadow-md">
-                Login
-            </button>
-            <button type="button"
-                    onclick="window.location.href='/login/oidc'"
-                    class="bg-acc rounded-md p-3 px-6 text-button text-lg shadow-md">
-                Login with OIDC
-            </button>
+
+        <!-- Local login button -->
+        <button type="submit"
+                class="w-full bg-acc rounded-md p-3 text-button text-lg shadow-md">
+            Login
+        </button>
+
+        <!-- Divider -->
+        <div class="flex items-center my-4 w-full">
+            <div class="flex-grow border-t border-gray-300"></div>
+            <span class="mx-2 text-gray-500 text-sm">OR</span>
+            <div class="flex-grow border-t border-gray-300"></div>
         </div>
+
+        <!-- OIDC login button -->
+        <button type="button"
+                onclick="window.location.href='/oidc/redirect?ret={{ return_url }}'"
+                class="w-full flex items-center justify-center gap-2 bg-blue-700 rounded-md p-3 text-lg shadow-md text-white">
+            <span>Login with </span>
+            <img src="/static/images/muni-lg-white.png" alt="MUNI" class="h-10">
+        </button>
+
         <!-- <p class="text-white">Are you new here? <a href="/user/register" class="text-stone-600 hover:text-stone-400">Create an account</a>.</p> -->
     </form>
 </div>

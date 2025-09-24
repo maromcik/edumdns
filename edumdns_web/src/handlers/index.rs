@@ -71,6 +71,13 @@ pub async fn login_oidc(
     Ok(resp.insert_header((LOCATION, return_url)).finish())
 }
 
+#[get("/oidc/redirect")]
+pub async fn login_oidc_redirect(
+    query: web::Query<UserLoginReturnURL>,
+) -> Result<HttpResponse, WebError> {
+    Ok(HttpResponse::SeeOther().insert_header((LOCATION, format!("/login/oidc?{}", query.0))).finish())
+}
+
 #[get("/login")]
 pub async fn login(
     request: HttpRequest,
@@ -145,22 +152,27 @@ pub async fn login_base(
     }
 }
 
-#[get("/oidc/logout")]
-pub async fn logout_oidc(
-    session: Session,
-    identity: Option<Identity>,
-) -> Result<impl Responder, WebError> {
-    destroy_session(session, identity);
-    Ok(Redirect::to("/logout").using_status_code(StatusCode::FOUND))
-}
 
-#[get("/logout/local")]
+#[get("/logout")]
 pub async fn logout_base(
+    request: HttpRequest,
     session: Session,
     identity: Option<Identity>,
 ) -> Result<impl Responder, WebError> {
     destroy_session(session, identity);
-    Ok(Redirect::to("/login").using_status_code(StatusCode::FOUND))
+    let path = if let Some(cookie) = request.cookie("auth") {
+        if cookie.value() == "oidc" {
+            "/logout/oidc"
+        }
+        else {
+            "/login"
+        }
+    }
+    else {
+        "/login"
+    };
+    println!("PATH: {path}");
+    Ok(Redirect::to(path).using_status_code(StatusCode::FOUND))
 }
 
 #[get("/logout/cleanup")]

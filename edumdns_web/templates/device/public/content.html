@@ -1,8 +1,6 @@
-<div class="max-w-7xl mx-auto mb-10 md:mb-5">
+<div id="transmit-form" class="max-w-7xl mx-auto mb-10 md:mb-5">
     <section class="text-center py-12 mb-3">
-
-        <h1 class="text-3xl md:text-5xl font-extrabold text-sat-xl mb-8">eduMDNS</h1>
-        <h2 class="text-2xl md:text-3xl font-extrabold text-sat-xl mb-8">Connecting discoverable devices</h2>
+        <h2 class="text-2xl md:text-3xl font-extrabold text-sat-xl mb-8">Transmit</h2>
 
         <!-- Card -->
         <div class="rounded-lg border border-base bg-cards p-6 shadow-md mb-8">
@@ -84,20 +82,20 @@
                 <form
                         method="post"
                         hx-post="/device/{{ device.id }}/transmit"
-                        hx-target="#content-area"
+                        hx-target="#transmit-form"
                         hx-target-error="#transmit-result"
                         class="space-y-4 mb-6"
                 >
                     {% if device.acl_pwd_hash is not none %}
                     <div class="flex flex-col text-left">
-                        <label for="acl_pwd" class="text-xs uppercase tracking-wide text-sat-m mb-1">
+                        <label for="acl_pwd" class="text-xs uppercase tracking-wide text-sat-l mb-1">
                             Password
                         </label>
                         <input
                                 id="acl_pwd"
                                 name="acl_pwd"
                                 type="password"
-                                class="rounded-md border border-base bg-bg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-acc"
+                                class="rounded-md border border-base bg-bg px-3 py-2 text-code focus:outline-none focus:ring-2 focus:ring-acc"
                                 placeholder="Enter password"
                         >
                     </div>
@@ -107,7 +105,7 @@
                     <div class="mt-6">
                         <button
                                 type="submit"
-                                class="inline-flex items-center rounded-md border border-base bg-acc px-6 py-3 text-lg font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                                class="inline-flex items-center rounded-md border border-base bg-acc px-6 py-3 text-lg font-medium text-button hover:bg-acc-xl transition-colors"
                         >
                             Transmit to your device
                         </button>

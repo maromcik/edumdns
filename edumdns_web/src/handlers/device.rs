@@ -317,9 +317,22 @@ pub async fn request_packet_transmit(
     )
     .await?;
 
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}/transmit", device.id)))
-        .finish())
+    let packet_transmit_requests = device_repo
+        .read_packet_transmit_requests(&device.id)
+        .await?;
+
+
+    let template_name = get_template_name(&request, "device/public");
+    let env = state.jinja.acquire_env()?;
+    let template = env.get_template(&template_name)?;
+    let body = template.render(DeviceTransmitTemplate {
+        logged_in: true,
+        device: DeviceDisplay::from(device),
+        client_ip: target_ip.to_string(),
+        packet_transmit_requests,
+    })?;
+
+    Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
 #[get("{id}/transmit")]

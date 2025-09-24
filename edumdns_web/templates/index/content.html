@@ -1,16 +1,72 @@
-<div class="max-w-7xl mx-auto px-4 sm:px-8 mb-8">
-    <section class="text-center py-12 mb-3">
+<!DOCTYPE html>
+<html lang="en">
+{% include "head.html" %}
+<body class="min-h-screen flex flex-col bg-page text-sat-xl">
 
-        <h1 class="text-3xl md:text-5xl font-extrabold text-sat-xl mb-8">eduMDNS</h1>
-        <h2 class="text-2xl md:text-3xl font-extrabold text-sat-xl mb-8">Connecting discoverable devices</h2>
+<div class="max-w-7xl mx-auto px-4 sm:px-8 py-12 flex-1">
 
-        <div class="bg-panes rounded-lg p-6 shadow-md">
-            <h2 class="text-xl font-extrabold text-sat-xl mb-10">heading 2</h2>
-
-            <h3 class="text-sat-l mt-10">Info Notice</h3>
-            <p class="text-lg text-sat-m">
-            </p>
-        </div>
+    <!-- Hero -->
+    <section class="text-center mb-16">
+        <h1 class="text-5xl md:text-6xl font-extrabold text-acc mb-4">eduMDNS</h1>
+        <h2 class="text-2xl md:text-3xl font-medium text-sat-l">
+            Connecting Discoverable Devices
+        </h2>
     </section>
 
+    <!-- Info Box -->
+    <section class="bg-panes rounded-2xl p-8 shadow-lg mb-12">
+        <h2 class="text-3xl font-semibold text-sat-xl mb-6">What is eduMDNS?</h2>
+        <p class="text-sat-m text-lg text-center">
+            eduMDNS enables seamless discovery, management, and connection of devices in educational environments.
+            Designed for scalability and simplicity, it helps students and administrators explore and manage devices securely.
+        </p>
+    </section>
+
+    <!-- Device Search -->
+    <section class="bg-panes rounded-2xl p-8 shadow-lg">
+        <h2 class="text-2xl font-semibold text-sat-xl mb-4 text-center">Find a Device</h2>
+        <form
+                id="device-search-form"
+                class="flex flex-col sm:flex-row gap-4 items-center justify-center"
+                onsubmit="return false;"
+        >
+            <input
+                    id="device-id-input"
+                    type="number"
+                    name="device_id"
+                    placeholder="Enter Device ID"
+                    class="p-3 rounded-lg border border-base bg-forms-fields text-forms-input w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-acc"
+                    required
+            >
+            <button
+                    type="button"
+                    class="bg-acc hover:bg-acc-l text-button font-semibold px-6 py-3 rounded-lg shadow-md transition-colors"
+                    onclick="searchDevice()"
+            >
+                Search
+            </button>
+        </form>
+
+        <div id="device-result" class="mt-6 text-center text-sat-m">
+            <!-- Results or errors load here -->
+        </div>
+    </section>
 </div>
+
+<script>
+    function searchDevice() {
+        const input = document.getElementById("device-id-input");
+        if (!input.value) return;
+
+        htmx.ajax('GET', `/device/${input.value}/transmit`, {
+            target: "#device-result",
+            swap: "innerHTML"
+        }).catch(() => {
+            document.getElementById("device-result").innerHTML =
+                "<p class='text-error font-semibold'>Device not found or unavailable.</p>";
+        });
+    }
+</script>
+
+</body>
+</html>

@@ -104,9 +104,7 @@ pub async fn user_manage(
         Some(&form.surname),
         None,
     );
-    println!("{:?}", user_update);
     let user = user_repo.update(&user_update).await?;
-
     let Some(user_valid) = user.into_iter().next() else {
         return Err(WebError::from(DbError::from(BackendError::new(
             BackendErrorKind::UpdateParametersEmpty,

@@ -129,7 +129,6 @@ pub async fn login_base(
                 .path("/")
                 .finish();
             resp.cookie(c);
-            println!("Cookie set to local");
             Ok(resp
                 .insert_header((LOCATION, form.return_url.clone()))
                 .finish())
@@ -171,7 +170,6 @@ pub async fn logout_base(
     else {
         "/login"
     };
-    println!("PATH: {path}");
     Ok(Redirect::to(path).using_status_code(StatusCode::FOUND))
 }
 

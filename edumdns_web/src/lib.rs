@@ -79,9 +79,6 @@ pub async fn web_init(
 
     let should_auth = |req: &ServiceRequest| {
         let path = req.path();
-        println!("Path from should auth {}", path);
-
-        // always allow static assets, logout, and the landing login page itself
         if path.starts_with("/static") {
             return false;
         }
@@ -92,17 +89,14 @@ pub async fn web_init(
             return false;
         }
 
-        // If you use an "auth" cookie to mark local logins (set it on local oauth)
         if let Some(cookie) = req.request().cookie("auth") {
             if cookie.value() == "local" {
-                return false; // local auth -> do not force OIDC
+                return false;
             }
             if cookie.value() == "oidc" {
-                return true; // user wants OIDC -> allow OIDC middleware to act
+                return true;
             }
         }
-
-        // Fallthrough: treat as protected (let openid middleware decide)
         true
     };
 

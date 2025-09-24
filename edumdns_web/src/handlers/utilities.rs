@@ -18,7 +18,6 @@ macro_rules! authorized {
         match $identity {
             None => {
                 let path = format!("/login?ret={}", $req.path());
-                log::debug!("Redirecting to {}", path);
                 return Ok(actix_web::HttpResponse::SeeOther()
                     .insert_header((actix_web::http::header::LOCATION, path))
                     .finish());

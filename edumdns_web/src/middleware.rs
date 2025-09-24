@@ -40,10 +40,9 @@ where
 
     forward_ready!(service);
 
-    fn call(&self, mut req: ServiceRequest) -> Self::Future {
+    fn call(&self, req: ServiceRequest) -> Self::Future {
         // Paths that should bypass the redirect to login
         let path = req.path().to_string();
-        println!("Path from custom: {}", path);
         if path.starts_with("/static")
             || path.starts_with("/login")
             || path.starts_with("/auth_callback")

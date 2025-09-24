@@ -57,7 +57,9 @@
     function searchDevice() {
         const input = document.getElementById("device-id-input");
         if (!input.value) return;
-
+        htmx.config.responseHandling = [
+            {code:"...", swap: true, error: false}
+        ]
         htmx.ajax('GET', `/device/${input.value}/transmit`, {
             target: "#device-result",
             swap: "innerHTML"

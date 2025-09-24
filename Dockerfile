@@ -11,6 +11,7 @@ FROM base AS planner
 WORKDIR /usr/src/edumdns
 
 COPY ./.env ./.env
+COPY ./actix-oidc-connect ./actix-oidc-connect
 COPY ./edumdns_core ./edumdns_core
 COPY ./edumdns_core/Cargo.toml ./edumdns_core/Cargo.toml
 COPY ./edumdns_probe ./edumdns_probe
@@ -35,6 +36,7 @@ COPY --from=planner /usr/src/edumdns/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY ./.env ./.env
+COPY ./actix-oidc-connect ./actix-oidc-connect
 COPY ./edumdns_core ./edumdns_core
 COPY ./edumdns_core/Cargo.toml ./edumdns_core/Cargo.toml
 COPY ./edumdns_probe ./edumdns_probe

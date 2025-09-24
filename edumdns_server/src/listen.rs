@@ -33,7 +33,6 @@ pub async fn listen(
     global_timeout: Duration,
 ) -> Result<(), ServerError> {
     let host = parse_host();
-    info!("Starting on {host}");
     let listener = TcpListener::bind(host).await?;
     info!("Listening on {}", listener.local_addr()?);
 

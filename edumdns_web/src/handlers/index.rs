@@ -40,6 +40,7 @@ pub async fn login_oidc(
     request: HttpRequest,
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
+    session: Session,
     query: web::Query<UserLoginReturnURL>,
 ) -> Result<HttpResponse, WebError> {
     let referer = request
@@ -67,7 +68,8 @@ pub async fn login_oidc(
         "Cookie or some of its fields were not found or invalid",
     ))?;
     Identity::login(&request.extensions(), user_create.id.to_string())?;
-    user_repo.create(&user_create).await?;
+    let user = user_repo.create(&user_create).await?;
+    session.insert("is_admin", user.admin)?;
     Ok(resp.insert_header((LOCATION, return_url)).finish())
 }
 

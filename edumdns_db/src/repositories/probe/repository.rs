@@ -173,6 +173,9 @@ impl DbCreate<CreateProbe, Probe> for PgProbeRepository {
             .await
             .map_err(DbError::from)
     }
+    async fn create_auth(&self, data: &CreateProbe, user_id: &Id) -> DbResultSingle<Probe> {
+        self.create(data).await
+    }
 }
 
 impl DbDelete<Uuid, Probe> for PgProbeRepository {

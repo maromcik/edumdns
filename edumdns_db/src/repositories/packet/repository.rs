@@ -213,6 +213,9 @@ impl DbCreate<CreatePacket, Packet> for PgPacketRepository {
             .await
             .map_err(DbError::from)
     }
+    async fn create_auth(&self, data: &CreatePacket, user_id: &Id) -> DbResultSingle<Packet> {
+        self.create(data).await
+    }
 }
 
 impl DbDelete<Id, Packet> for PgPacketRepository {

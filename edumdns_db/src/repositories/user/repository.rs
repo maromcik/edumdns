@@ -1,20 +1,17 @@
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::{GroupUser, User};
-use crate::repositories::common::{
-    DbCreate, DbDataPerm, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
-    DbResultSingle, DbResultSinglePerm, DbUpdate, Id,
-};
+use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id};
 
 use crate::error::BackendErrorKind::UserPasswordDoesNotMatch;
 use crate::repositories::user::models::{
     SelectManyUsers, UserCreate, UserLogin, UserUpdate, UserUpdatePassword,
 };
-use crate::repositories::utilities::{generate_salt, hash_password, verify_password_hash};
+use crate::repositories::utilities::{generate_salt, hash_password, validate_admin, verify_password_hash};
 use crate::schema::{group_user, user};
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
-use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
+use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 
 #[derive(Clone)]
@@ -124,6 +121,10 @@ impl DbReadMany<SelectManyUsers, User> for PgUserRepository {
     async fn read_many(&self, params: &SelectManyUsers) -> DbResultMultiple<User> {
         let mut query = user::table.into_boxed();
 
+        if let Some(id) = &params.id {
+            query = query.filter(user::id.eq(id));
+        }
+
         if let Some(n) = &params.name {
             query = query.filter(user::name.eq(n));
         }
@@ -140,12 +141,8 @@ impl DbReadMany<SelectManyUsers, User> for PgUserRepository {
             query = query.filter(user::admin.eq(a));
         }
 
-        if let Some(d) = &params.deleted {
-            if *d {
-                query = query.filter(user::deleted_at.is_not_null());
-            } else {
-                query = query.filter(user::deleted_at.is_null());
-            }
+        if let Some(d) = &params.disabled {
+            query = query.filter(user::disabled.eq(d));
         }
 
         if let Some(pagination) = params.pagination {
@@ -164,6 +161,7 @@ impl DbReadMany<SelectManyUsers, User> for PgUserRepository {
         params: &SelectManyUsers,
         user_id: &Id,
     ) -> DbResultMultiplePerm<User> {
+        validate_admin(&self.pg_pool, user_id).await?;
         let users = self.read_many(params).await?;
         Ok(DbDataPerm::new(users, (false, vec![])))
     }
@@ -180,6 +178,7 @@ impl DbUpdate<UserUpdate, User> for PgUserRepository {
     }
 
     async fn update_auth(&self, params: &UserUpdate, user_id: &Id) -> DbResultMultiple<User> {
+        validate_admin(&self.pg_pool, user_id).await?;
         self.update(params).await
     }
 }
@@ -200,5 +199,25 @@ impl DbCreate<UserCreate, User> for PgUserRepository {
             .get_result(&mut conn)
             .await
             .map_err(DbError::from)
+    }
+
+    async fn create_auth(&self, data: &UserCreate, user_id: &Id) -> DbResultSingle<User> {
+        validate_admin(&self.pg_pool, user_id).await?;
+        self.create(data).await
+    }
+}
+
+impl DbDelete<Id, User> for PgUserRepository {
+    async fn delete(&self, params: &Id) -> DbResultMultiple<User> {
+        let mut conn = self.pg_pool.get().await?;
+        diesel::delete(user::table.find(params))
+            .get_results(&mut conn)
+            .await
+            .map_err(DbError::from)
+    }
+
+    async fn delete_auth(&self, params: &Id, user_id: &Id) -> DbResultMultiple<User> {
+        validate_admin(&self.pg_pool, user_id).await?;
+        self.delete(params).await
     }
 }

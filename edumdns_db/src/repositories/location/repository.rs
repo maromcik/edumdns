@@ -78,6 +78,9 @@ impl DbCreate<CreateLocation, Location> for PgLocationRepository {
             .await
             .map_err(DbError::from)
     }
+    async fn create_auth(&self, data: &CreateLocation, user_id: &Id) -> DbResultSingle<Location> {
+        self.create(data).await
+    }
 }
 
 impl DbDelete<Id, Location> for PgLocationRepository {

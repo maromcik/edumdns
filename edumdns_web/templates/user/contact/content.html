@@ -1,9 +1,0 @@
-<div id="bike-contact" class="container mx-auto p-6 max-w-5xl">
-  <form hx-post="/user/contact/bike" hx-target="#success-area" hx-target-error="#error-area" class="bg-forms shadow-md rounded px-8 pt-6 pb-8 mb-4">
-    <h2 class="block text-forms text-xl font-bold mb-2 text-center">Contact Us</h2>
-    <label>
-      <input class="hidden" name="bike_id" type="text" value="{{ bike.id }}">
-    </label>
-    {% include "components/form.html" %}
-  </form>
-</div>

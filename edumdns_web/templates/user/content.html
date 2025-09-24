@@ -1,0 +1,232 @@
+<div class="max-w-7xl mx-auto mb-10 md:mb-5">
+    <!-- Header Section -->
+    <div class="flex flex-col justify-center items-center py-6">
+        <h2 class="text-4xl font-bold text-sat-xl">Users</h2>
+    </div>
+
+    <!-- New User -->
+    <div class="rounded-lg border border-base bg-cards p-6 mb-6">
+        <h3 class="text-2xl font-semibold text-sat-l mb-4">New User</h3>
+        <form action="/user/create" method="post" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="flex flex-col">
+                <label for="email" class="text-xs uppercase tracking-wide text-sat-m">Email</label>
+                <input
+                        id="email"
+                        name="email"
+                        type="text"
+                        required
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        placeholder="Enter email"
+                />
+            </div>
+            <div class="flex flex-col">
+                <label for="name" class="text-xs uppercase tracking-wide text-sat-m">Name</label>
+                <input
+                        id="name"
+                        name="name"
+                        type="text"
+                        required
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        placeholder="Enter name"
+                />
+            </div>
+            <div class="flex flex-col">
+                <label for="surname" class="text-xs uppercase tracking-wide text-sat-m">Surname</label>
+                <input
+                        id="surname"
+                        name="surname"
+                        type="text"
+                        required
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        placeholder="Enter surname"
+                />
+            </div>
+            <div class="flex flex-col">
+                <label for="admin" class="text-xs uppercase tracking-wide text-sat-m">Admin</label>
+            <input
+                    id="admin"
+                    name="admin"
+                    type="checkbox"
+                    value="true"
+                    class="h-4 w-4 rounded border-base bg-panes text-acc focus:ring-2 focus:ring-acc"
+            />
+            </div>
+            <div class="md:col-span-2">
+                <button
+                        type="submit"
+                        class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-cards hover:bg-acc-xl transition-colors"
+                >
+                    Create User
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards">
+        <table class="w-full divide-y divide-base">
+            <thead class="bg-muted/10">
+            <tr>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    ID
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Email
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Name
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Surname
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Admin
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Disabled
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Actions
+                </th>
+            </tr>
+            <tr>
+                <td class="px-4 py-2"><input type="text" id="filter-id"  value="{{ filters.id  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2"><input type="text" id="filter-email"  value="{{ filters.email  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2"><input type="text" id="filter-name"  value="{{ filters.name  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2"><input type="text" id="filter-surname"  value="{{ filters.surname  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2">
+                    <select id="filter-admin" class="w-full rounded-md border border-base px-2 py-1 text-sm">
+                        <option value="" {% if filters.admin is none %} selected {% endif %}>All</option>
+                        <option value="true" {% if filters.admin is sameas true %} selected {% endif %}>Admin</option>
+                        <option value="false" {% if filters.admin is sameas false %} selected {% endif %}>Not Admin</option>
+                    </select>
+                </td>
+                <td class="px-4 py-2">
+                    <select id="filter-disabled" class="w-full rounded-md border border-base px-2 py-1 text-sm">
+                        <option value="" {% if filters.disabled is none %} selected {% endif %}>All</option>
+                        <option value="true" {% if filters.disabled is sameas true %} selected {% endif %}>Disabled</option>
+                        <option value="false" {% if filters.disabled is sameas false %} selected {% endif %}>Enabled</option>
+                    </select>
+                </td>
+                <td class="px-4 py-2 flex gap-2">
+                    <button type="button" id="filter-button"
+                            class="px-3 py-1 rounded-md border border-base bg-acc text-sm bg-primary text-black hover:bg-primary/90 transition-colors">
+                        Search
+                    </button>
+                    <button type="button" id="reset-button"
+                            class="px-3 py-1 rounded-md border border-base text-sm bg-acc-l hover:bg-muted/20 transition-colors">
+                        Reset
+                    </button>
+                </td>
+            </tr>
+            </thead>
+
+            <tbody class="divide-y divide-base">
+            {% for user in users %}
+            <tr class="hover:bg-muted/5 transition-colors">
+                <td class="px-4 py-3 font-mono text-sm text-sat-l">
+                    <a href="/user/{{ user.id }}" class="text-primary hover:underline">
+                        {{ user.id }}
+                    </a>
+                </td>
+                <td class="px-4 py-3 text-sm text-sat-l">
+                    {{ user.email }}
+                </td>
+                <td class="px-4 py-3 text-sm text-sat-l">
+                    {{ user.name }}
+                </td>
+                <td class="px-4 py-3 text-sm text-sat-l">
+                    {{ user.surname }}
+                </td>
+                <td class="px-4 py-3 text-sm">
+                    {% if user.admin %}
+                    <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
+                    {% else %}
+                    <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-sm">
+                    {% if not user.disabled %}
+                    <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">No</span>
+                    {% else %}
+                    <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">Yes</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-sm text-sat-l">
+                    <button
+                            hx-delete="/user/{{ user.id }}"
+                            hx-confirm="Are you sure you want to delete this user?"
+                            hx-target="#content-area"
+                            hx-target-error="#content-area"
+                            hx-push-url="/user"
+                            class="inline-flex items-center rounded-md border border-base px-3 py-1 text-sm text-red-400 hover:bg-muted/20 transition-colors"
+                            title="Delete user"
+
+                    >
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        {% if users|length == 0 %}
+        <div class="p-6 text-center text-muted-foreground">
+            No users found.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function runSearch() {
+        const params = new URLSearchParams();
+
+        ["id", "email", "name", "surname", "admin", "disabled"].forEach(field => {
+            const el = document.getElementById(`filter-${field}`);
+            if (!el) return;
+
+            let value = el.value;
+            if (el.tagName === "INPUT") {
+                value = value.trim();
+            }
+            if (value) {
+                params.set(field, value);
+            }
+        });
+
+        // Reset to first page when filtering
+        params.delete("page");
+
+        window.location.search = params.toString();
+    }
+
+    // Search button
+    document.getElementById("filter-button").addEventListener("click", runSearch);
+
+    // Reset button
+    document.getElementById("reset-button").addEventListener("click", () => {
+        window.location.href = window.location.pathname;
+    });
+
+    // Trigger search on Enter in text inputs
+    ["id", "email", "name", "surname"].forEach(field => {
+        const input = document.getElementById(`filter-${field}`);
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                runSearch();
+            }
+        });
+    });
+
+    document.getElementById("filter-admin").addEventListener("change", runSearch);
+    document.getElementById("filter-disabled").addEventListener("change", runSearch);
+</script>

@@ -1,15 +1,16 @@
 use crate::repositories::common::{Id, Pagination};
+use crate::repositories::utilities::empty_string_is_none;
 use diesel::{AsChangeset, Identifiable, Insertable};
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyUsers {
+    pub id: Option<Id>,
     pub email: Option<String>,
     pub name: Option<String>,
     pub surname: Option<String>,
     pub admin: Option<bool>,
-    pub deleted: Option<bool>,
+    pub disabled: Option<bool>,
     pub pagination: Option<Pagination>,
 }
 
@@ -47,14 +48,20 @@ impl UserUpdatePassword {
     }
 }
 
-#[derive(Debug, Clone, Default, AsChangeset, Identifiable)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, AsChangeset, Identifiable)]
 #[diesel(table_name = crate::schema::user)]
 pub struct UserUpdate {
     pub id: Id,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
     pub email: Option<String>,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
     pub name: Option<String>,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
     pub surname: Option<String>,
+    #[serde(default)]
     pub admin: Option<bool>,
+    #[serde(default)]
+    pub disabled: Option<bool>,
 }
 
 impl UserUpdate {
@@ -67,6 +74,7 @@ impl UserUpdate {
         name: Option<&str>,
         surname: Option<&str>,
         admin: Option<bool>,
+        disabled: Option<bool>,
     ) -> Self {
         let change_to_owned = |value: &str| Some(value.to_owned());
         Self {
@@ -75,6 +83,7 @@ impl UserUpdate {
             name: name.and_then(change_to_owned),
             surname: surname.and_then(change_to_owned),
             admin,
+            disabled
         }
     }
 }
@@ -108,6 +117,18 @@ impl UserCreate {
             surname: surname.to_owned(),
             password_hash: password_hash.map(|v| v.to_owned()),
             password_salt: password_salt.map(|v| v.to_owned()),
+            admin,
+        }
+    }
+
+    pub fn new_from_admin(email: &str, name: &str, surname: &str, admin: bool) -> Self {
+        Self {
+            id: 0,
+            email: email.to_owned(),
+            name: name.to_owned(),
+            surname: surname.to_owned(),
+            password_hash: None,
+            password_salt: None,
             admin,
         }
     }

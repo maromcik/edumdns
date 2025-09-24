@@ -100,6 +100,10 @@ impl DbCreate<CreateGroup, Group> for PgGroupRepository {
             .await?;
         Ok(g)
     }
+    async fn create_auth(&self, data: &CreateGroup, user_id: &Id) -> DbResultSingle<Group> {
+        validate_admin(&self.pg_pool, user_id).await?;
+        self.create(data).await
+    }
 }
 
 impl DbDelete<Id, Group> for PgGroupRepository {

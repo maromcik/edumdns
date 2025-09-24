@@ -11,10 +11,7 @@ use crate::handlers::probe::{
     adopt, change_probe_permission, create_config, delete_config, delete_probe, forget, get_probe,
     get_probe_ws, get_probes, restart, save_config, update_probe,
 };
-use crate::handlers::user::{
-    user_manage, user_manage_form_page, user_manage_password, user_manage_password_form,
-    user_manage_profile_form,
-};
+use crate::handlers::user::{create_user, update_user, delete_user, get_user, get_users, user_manage, user_manage_form_page, user_manage_password, user_manage_password_form, user_manage_profile_form};
 use crate::utils::AppState;
 use actix_files::Files;
 use actix_web::web;
@@ -58,7 +55,12 @@ pub fn configure_webapp(
         .service(user_manage_password_form)
         .service(user_manage_profile_form)
         .service(user_manage)
-        .service(user_manage_password);
+        .service(user_manage_password)
+        .service(get_users)
+        .service(create_user)
+        .service(delete_user)
+        .service(get_user)
+        .service(update_user);
 
     let probe_scope = web::scope("probe")
         .app_data(web::Data::new(probe_repo.clone()))

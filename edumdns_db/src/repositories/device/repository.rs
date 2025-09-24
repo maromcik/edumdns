@@ -270,6 +270,9 @@ impl DbCreate<CreateDevice, Device> for PgDeviceRepository {
             .await
             .map_err(DbError::from)
     }
+    async fn create_auth(&self, data: &CreateDevice, user_id: &Id) -> DbResultSingle<Device> {
+        self.create(data).await
+    }
 }
 
 impl DbUpdate<UpdateDevice, Device> for PgDeviceRepository {
@@ -341,5 +344,13 @@ impl DbCreate<CreatePacketTransmitRequest, PacketTransmitRequest> for PgDeviceRe
             .get_result(&mut conn)
             .await
             .map_err(DbError::from)
+    }
+
+    async fn create_auth(
+        &self,
+        data: &CreatePacketTransmitRequest,
+        user_id: &Id,
+    ) -> DbResultSingle<PacketTransmitRequest> {
+        self.create(data).await
     }
 }

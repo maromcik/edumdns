@@ -1,0 +1,150 @@
+<!-- User Detail Content -->
+<div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-3xl font-bold text-sat-xl">
+            {{ user.name }} {{ user.surname }}
+        </h2>
+        <button
+                hx-delete="/user/{{ user.id }}"
+                hx-confirm="Are you sure you want to delete this user?"
+                class="inline-flex items-center gap-2 rounded-md border border-base px-3 py-2 text-sm text-sat-l font-medium text-red-400 hover:bg-muted/20 transition-colors"
+                title="Delete user"
+                aria-label="Delete user"
+                hx-target="#content-area"
+                hx-target-error="#content-area"
+                hx-push-url="/user"
+        >
+            <i class="fa-solid fa-trash"></i>
+            Delete
+        </button>
+    </div>
+
+    <!-- User Card -->
+    <!-- Editable User Settings -->
+    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
+        <h3 class="text-2xl font-medium mb-4 text-sat-l">User Settings</h3>
+        <form
+                method="post"
+                hx-post="/user/update"
+                hx-target="#content-area"
+                hx-target-error="#content-area"
+                class="grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
+            <input type="hidden" id="user_id" name="id" value="{{ user.id }}"/>
+
+            <!-- Name -->
+            <div class="flex flex-col">
+                <label for="name" class="text-xs uppercase tracking-wide text-sat-m">Name</label>
+                <input
+                        id="name"
+                        name="name"
+                        type="text"
+                        value="{{ user.name }}"
+                        placeholder="First name"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                />
+            </div>
+
+            <!-- Surname -->
+            <div class="flex flex-col">
+                <label for="surname" class="text-xs uppercase tracking-wide text-sat-m">Surname</label>
+                <input
+                        id="surname"
+                        name="surname"
+                        type="text"
+                        value="{{ user.surname }}"
+                        placeholder="Surname"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                />
+            </div>
+
+            <!-- Email -->
+            <div class="flex flex-col md:col-span-2">
+                <label for="email" class="text-xs uppercase tracking-wide text-sat-m">Email</label>
+                <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value="{{ user.email }}"
+                        placeholder="user@example.com"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                />
+            </div>
+
+            <!-- Admin + Disabled -->
+            <div class="flex items-center gap-4 md:col-span-2 mt-2">
+                <label class="inline-flex items-center">
+                    <input
+                            type="checkbox"
+                            name="admin"
+                            value="true"
+                            class="rounded border-gray-300 text-acc focus:ring-acc"
+                            {% if user.admin %}checked{% endif %}
+                    />
+                    <span class="ml-2 text-sat-m">Admin</span>
+                </label>
+
+                <label class="inline-flex items-center">
+                    <input
+                            type="checkbox"
+                            name="disabled"
+                            value="true"
+                            class="rounded border-gray-300 text-acc focus:ring-acc"
+                            {% if user.disabled %}checked{% endif %}
+                    />
+                    <span class="ml-2 text-sat-m">Disabled</span>
+                </label>
+            </div>
+
+            <!-- Actions -->
+            <div class="md:col-span-2 flex items-center gap-2 pt-2">
+                <button
+                        type="submit"
+                        class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                >
+                    Save
+                </button>
+                <button
+                        type="reset"
+                        class="inline-flex items-center rounded-md border border-base bg-cards px-4 py-2 text-sm font-medium text-sat-l hover:bg-panes transition-colors"
+                >
+                    Reset
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- User Metadata -->
+<!--    <div class="rounded-lg border border-base bg-cards p-6 mb-8">-->
+<!--        <h3 class="text-2xl font-semibold text-sat-l mb-4">Account Information</h3>-->
+<!--        <ul class="space-y-2 text-sat-m">-->
+<!--            <li><strong>Created:</strong> {{ user.created_at }}</li>-->
+<!--            <li><strong>Last Edited:</strong> {{ user.edited_at }}</li>-->
+<!--            {% if user.deleted_at is not none %}-->
+<!--            <li><strong>Deleted:</strong> {{ user.deleted_at }}</li>-->
+<!--            {% endif %}-->
+<!--        </ul>-->
+<!--    </div>-->
+
+    <!-- User Groups -->
+    {% if has_groups %}
+    <div
+            id="user-groups"
+            class="rounded-lg border border-base bg-cards p-6"
+            hx-get="/user/{{ user.id }}/groups"
+            hx-trigger="load"
+            hx-swap="innerHTML"
+    >
+        <h3 class="text-2xl font-semibold text-sat-l mb-4">Groups for this user</h3>
+
+        <!-- Loading placeholder -->
+        <div class="space-y-2 text-sat-m">
+            <div class="h-4 w-40 bg-muted/20 rounded animate-pulse"></div>
+            <div class="h-28 w-full bg-muted/10 rounded animate-pulse"></div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>

@@ -27,7 +27,6 @@ macro_rules! authorized {
     }};
 }
 
-
 pub fn validate_password(password: &str) -> bool {
     let (lower, upper, numeric, special) =
         password
@@ -111,4 +110,13 @@ pub fn destroy_session(session: Session, identity: Option<Identity>) {
         u.logout();
     }
     session.purge();
+}
+
+pub fn extract_referrer(request: &HttpRequest) -> String {
+    request
+        .headers()
+        .get(actix_web::http::header::REFERER)
+        .map_or("/".to_string(), |header_value| {
+            header_value.to_str().unwrap_or("/").to_string()
+        })
 }

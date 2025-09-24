@@ -1,9 +1,9 @@
+use actix_web::body::BoxBody;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready};
 use actix_web::{Error, HttpResponse};
-use futures_util::future::LocalBoxFuture;
-use std::future::{ready, Ready};
-use actix_web::body::BoxBody;
 use futures_util::FutureExt;
+use futures_util::future::LocalBoxFuture;
+use std::future::{Ready, ready};
 
 pub struct RedirectToLogin;
 
@@ -51,7 +51,9 @@ where
             || path.starts_with("/sracka")
         {
             let fut = self.service.call(req);
-            return fut.map(|res| res.map(|r| r.map_into_boxed_body())).boxed_local();
+            return fut
+                .map(|res| res.map(|r| r.map_into_boxed_body()))
+                .boxed_local();
         }
 
         // Check the "auth" cookie presence (local or oidc) OR an OIDC cookie you use (e.g. id_token)
@@ -61,14 +63,19 @@ where
         if has_auth_cookie || has_id_token {
             // user *may* be logged in — let other middleware decide
             let fut = self.service.call(req);
-            return fut.map(|res| res.map(|r| r.map_into_boxed_body())).boxed_local();
+            return fut
+                .map(|res| res.map(|r| r.map_into_boxed_body()))
+                .boxed_local();
         }
 
         // Not logged in — redirect to landing page
         // Capture the requested path for ret param
         let ret = urlencoding::encode(&path);
         let redirect = HttpResponse::SeeOther()
-            .insert_header((actix_web::http::header::LOCATION, format!("/login?ret={}", ret)))
+            .insert_header((
+                actix_web::http::header::LOCATION,
+                format!("/login?ret={}", ret),
+            ))
             .finish();
 
         let srv_res = req.into_response(redirect.map_into_boxed_body());

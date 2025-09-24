@@ -1,9 +1,7 @@
 use crate::error::{WebError, WebErrorKind};
 use crate::forms::device::DeviceCustomPacketTransmitRequest;
-use crate::handlers::utilities::is_htmx;
-use actix_identity::Identity;
 use actix_session::Session;
-use actix_web::{HttpRequest, web};
+use actix_web::web;
 use edumdns_core::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
@@ -11,11 +9,8 @@ use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
 use edumdns_db::models::Device;
 use edumdns_db::repositories::common::DbCreate;
-use edumdns_db::repositories::common::Id;
 use edumdns_db::repositories::device::models::CreatePacketTransmitRequest;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
-
-use ipnetwork::IpNetwork;
 use log::warn;
 use tokio::sync::mpsc::Sender;
 
@@ -88,9 +83,7 @@ pub async fn reconnect_probe(
     probe_id: uuid::Uuid,
     session: Session,
 ) -> Result<(), WebError> {
-    let uuid = session
-        .get::<uuid::Uuid>("session_id")?
-        .map(|uuid| Uuid(uuid));
+    let uuid = session.get::<uuid::Uuid>("session_id")?.map(Uuid);
     command_channel
         .send(AppPacket::Local(LocalAppPacket::Command(
             LocalCommandPacket::ReconnectProbe(Uuid(probe_id), uuid),

@@ -1,11 +1,13 @@
 use crate::error::{WebError, WebErrorKind};
 use crate::forms::user::{UserLoginForm, UserLoginReturnURL};
-use crate::handlers::utilities::{destroy_session, get_template_name, parse_user_from_oidc};
+use crate::handlers::utilities::{
+    destroy_session, extract_referrer, get_template_name, parse_user_from_oidc,
+};
 use crate::templates::index::IndexTemplate;
 use crate::templates::user::LoginTemplate;
 use crate::{AppState, authorized};
 use actix_identity::Identity;
-use actix_session::{Session, SessionExt};
+use actix_session::Session;
 use actix_web::http::StatusCode;
 use actix_web::http::header::LOCATION;
 use actix_web::web::Redirect;
@@ -13,7 +15,6 @@ use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, get, post, we
 use edumdns_db::repositories::common::DbCreate;
 use edumdns_db::repositories::user::models::UserLogin;
 use edumdns_db::repositories::user::repository::PgUserRepository;
-use log::debug;
 
 #[get("/")]
 pub async fn index(
@@ -35,51 +36,6 @@ pub async fn index(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
-#[get("/login/oidc")]
-pub async fn login_oidc(
-    request: HttpRequest,
-    identity: Option<Identity>,
-    user_repo: web::Data<PgUserRepository>,
-    session: Session,
-    query: web::Query<UserLoginReturnURL>,
-) -> Result<HttpResponse, WebError> {
-    let referer = request
-        .headers()
-        .get(actix_web::http::header::REFERER)
-        .map_or("/".to_string(), |header_value| {
-            header_value.to_str().unwrap_or("/").to_string()
-        });
-
-    let return_url = query.ret.clone().unwrap_or(referer);
-    if identity.is_some() {
-        return Ok(HttpResponse::SeeOther()
-            .insert_header((LOCATION, return_url))
-            .finish());
-    }
-
-    let mut resp = HttpResponse::SeeOther();
-    let c = actix_web::cookie::Cookie::build("auth", "oidc")
-        .path("/")
-        .finish();
-    resp.cookie(c);
-
-    let user_create = parse_user_from_oidc(&request).ok_or(WebError::new(
-        WebErrorKind::CookieError,
-        "Cookie or some of its fields were not found or invalid",
-    ))?;
-    Identity::login(&request.extensions(), user_create.id.to_string())?;
-    let user = user_repo.create(&user_create).await?;
-    session.insert("is_admin", user.admin)?;
-    Ok(resp.insert_header((LOCATION, return_url)).finish())
-}
-
-#[get("/oidc/redirect")]
-pub async fn login_oidc_redirect(
-    query: web::Query<UserLoginReturnURL>,
-) -> Result<HttpResponse, WebError> {
-    Ok(HttpResponse::SeeOther().insert_header((LOCATION, format!("/login/oidc?{}", query.0))).finish())
-}
-
 #[get("/login")]
 pub async fn login(
     request: HttpRequest,
@@ -87,14 +43,7 @@ pub async fn login(
     query: web::Query<UserLoginReturnURL>,
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
-    let referer = request
-        .headers()
-        .get(actix_web::http::header::REFERER)
-        .map_or("/".to_string(), |header_value| {
-            header_value.to_str().unwrap_or("/").to_string()
-        });
-
-    let return_url = query.ret.clone().unwrap_or(referer.to_string());
+    let return_url = query.ret.clone().unwrap_or(extract_referrer(&request));
     if identity.is_some() {
         return Ok(HttpResponse::SeeOther()
             .insert_header((LOCATION, return_url))
@@ -153,9 +102,48 @@ pub async fn login_base(
     }
 }
 
+#[get("/login/oidc")]
+pub async fn login_oidc(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    user_repo: web::Data<PgUserRepository>,
+    session: Session,
+    query: web::Query<UserLoginReturnURL>,
+) -> Result<HttpResponse, WebError> {
+    let return_url = query.ret.clone().unwrap_or(extract_referrer(&request));
+    if identity.is_some() {
+        return Ok(HttpResponse::SeeOther()
+            .insert_header((LOCATION, return_url))
+            .finish());
+    }
+
+    let mut resp = HttpResponse::SeeOther();
+    let c = actix_web::cookie::Cookie::build("auth", "oidc")
+        .path("/")
+        .finish();
+    resp.cookie(c);
+
+    let user_create = parse_user_from_oidc(&request).ok_or(WebError::new(
+        WebErrorKind::CookieError,
+        "Cookie or some of its fields were not found or invalid",
+    ))?;
+    Identity::login(&request.extensions(), user_create.id.to_string())?;
+    let user = user_repo.create(&user_create).await?;
+    session.insert("is_admin", user.admin)?;
+    Ok(resp.insert_header((LOCATION, return_url)).finish())
+}
+
+#[get("/oidc/redirect")]
+pub async fn login_oidc_redirect(
+    query: web::Query<UserLoginReturnURL>,
+) -> Result<HttpResponse, WebError> {
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/login/oidc?{}", query.0)))
+        .finish())
+}
 
 #[get("/logout")]
-pub async fn logout_base(
+pub async fn logout(
     request: HttpRequest,
     session: Session,
     identity: Option<Identity>,
@@ -164,19 +152,17 @@ pub async fn logout_base(
     let path = if let Some(cookie) = request.cookie("auth") {
         if cookie.value() == "oidc" {
             "/logout/oidc"
-        }
-        else {
+        } else {
             "/login"
         }
-    }
-    else {
+    } else {
         "/login"
     };
     Ok(Redirect::to(path).using_status_code(StatusCode::FOUND))
 }
 
 #[get("/logout/cleanup")]
-pub async fn logout_oidc_cleanup(
+pub async fn logout_cleanup(
     session: Session,
     identity: Option<Identity>,
 ) -> Result<impl Responder, WebError> {

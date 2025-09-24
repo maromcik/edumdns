@@ -3,4 +3,5 @@
   - config
   - data
 ## Web
-- OIDC
+- user management
+- if any groups - display navbar

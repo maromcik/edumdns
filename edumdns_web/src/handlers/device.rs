@@ -27,7 +27,6 @@ use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::utilities::verify_password_hash;
-use log::debug;
 use std::collections::HashMap;
 
 #[get("")]

@@ -94,10 +94,16 @@ impl error::ResponseError for AuthError {
                 nonce,
                 pkce_verifier,
             } => {
-                resp.add_cookie(&Cookie::build(AuthCookies::Nonce.to_string(), nonce).path("/").finish())
-                    .unwrap();
                 resp.add_cookie(
-                    &Cookie::build(AuthCookies::PkceVerifier.to_string(), pkce_verifier).path("/").finish(),
+                    &Cookie::build(AuthCookies::Nonce.to_string(), nonce)
+                        .path("/")
+                        .finish(),
+                )
+                .unwrap();
+                resp.add_cookie(
+                    &Cookie::build(AuthCookies::PkceVerifier.to_string(), pkce_verifier)
+                        .path("/")
+                        .finish(),
                 )
                 .unwrap();
                 resp.headers_mut()

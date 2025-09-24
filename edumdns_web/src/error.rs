@@ -6,8 +6,8 @@ use edumdns_core::error::CoreError;
 use edumdns_db::error::{BackendErrorKind, DbError, DbErrorKind};
 use minijinja::{Environment, path_loader};
 use std::env;
+use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
-use std::io::Error;
 use std::num::ParseIntError;
 use std::str::ParseBoolError;
 use thiserror::Error;
@@ -50,10 +50,12 @@ pub enum WebErrorKind {
     ParseError,
     #[error("device packet transmit request denied")]
     DeviceTransmitRequestDenied,
-    #[error("Environment variable could not be loaded")]
+    #[error("env var error")]
     EnvVarError,
-    #[error("AP Database error")]
+    #[error("AP database error")]
     ApDatabaseError,
+    #[error("oidc error")]
+    OidcError,
 }
 
 // impl From<askama::Error> for AppError {
@@ -134,7 +136,7 @@ impl From<minijinja::Error> for WebError {
     }
 }
 impl From<std::io::Error> for WebError {
-    fn from(value: Error) -> Self {
+    fn from(value: std::io::Error) -> Self {
         Self::new(WebErrorKind::FileError, value.to_string().as_str())
     }
 }
@@ -227,7 +229,8 @@ impl ResponseError for WebError {
             | WebErrorKind::ZipError
             | WebErrorKind::ParseError
             | WebErrorKind::EnvVarError
-            | WebErrorKind::ApDatabaseError => StatusCode::INTERNAL_SERVER_ERROR,
+            | WebErrorKind::ApDatabaseError
+            | WebErrorKind::OidcError => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 

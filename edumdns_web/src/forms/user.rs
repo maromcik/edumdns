@@ -1,7 +1,7 @@
-use std::fmt::Display;
 use edumdns_db::repositories::common::Pagination;
 use edumdns_db::repositories::user::models::SelectManyUsers;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 #[derive(Deserialize, Debug, Clone)]
 #[allow(dead_code)]

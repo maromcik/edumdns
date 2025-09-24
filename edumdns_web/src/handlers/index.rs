@@ -124,6 +124,7 @@ pub async fn login_oidc(
         "Cookie or some of its fields were not found or invalid",
     ))?;
     Identity::login(&request.extensions(), user_create.id.to_string())?;
+    user_repo.create(&user_create).await?;
     Ok(resp.insert_header((LOCATION, return_url)).finish())
 }
 

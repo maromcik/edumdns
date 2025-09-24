@@ -188,7 +188,6 @@ impl DbCreate<UserCreate, User> for PgUserRepository {
         let mut conn = self.pg_pool.get().await?;
         diesel::insert_into(user::table)
             .values(data)
-            .returning(User::as_returning())
             .on_conflict(user::id)
             .do_update()
             .set((
@@ -196,6 +195,7 @@ impl DbCreate<UserCreate, User> for PgUserRepository {
                 user::name.eq(&data.name),
                 user::surname.eq(&data.surname),
             ))
+            .returning(User::as_returning())
             .get_result(&mut conn)
             .await
             .map_err(DbError::from)

@@ -35,23 +35,24 @@ use strum::IntoEnumIterator;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::SendError;
 use uuid::{Timestamp, Uuid};
+use edumdns_db::repositories::user::repository::PgUserRepository;
 
 #[get("")]
 pub async fn get_probes(
     request: HttpRequest,
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
+    user_repo: web::Data<PgUserRepository>,
     state: web::Data<AppState>,
     query: web::Query<ProbeQuery>,
-    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let page = query.page.unwrap_or(1);
-
+    let user_id = parse_user_id(&i)?;
     let query = query.into_inner();
     let params = SelectManyProbes::from(query.clone());
     let probes = probe_repo
-        .read_many_auth(&params, &parse_user_id(&i)?)
+        .read_many_auth(&params, &user_id)
         .await?;
 
     let probes_parsed = probes
@@ -69,7 +70,8 @@ pub async fn get_probes(
     let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(ProbeTemplate {
         logged_in: true,
-        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
+        is_admin: user_repo.read_one(&user_id).await?.admin,
+        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
         permissions: probes.permissions,
         probes: probes_parsed,
         page_info: PageInfo::new(page, total_pages),
@@ -87,16 +89,17 @@ pub async fn get_probe(
     probe_repo: web::Data<PgProbeRepository>,
     group_repo: web::Data<PgGroupRepository>,
     device_repo: web::Data<PgDeviceRepository>,
+    user_repo: web::Data<PgUserRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
     query: web::Query<DeviceQuery>,
-    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
     let probe_id = path.0;
     let page = query.page.unwrap_or(1);
     let probe = probe_repo
-        .read_one_auth(&probe_id, &parse_user_id(&i)?)
+        .read_one_auth(&probe_id, &user_id)
         .await?;
 
     let granted: HashSet<(Id, Permission)> = probe_repo
@@ -135,7 +138,8 @@ pub async fn get_probe(
     let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(ProbeDetailTemplate {
         logged_in: true,
-        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
+        is_admin: user_repo.read_one(&user_id).await?.admin,
+        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
         permissions: probe.permissions,
         permission_matrix: matrix,
         probe: ProbeDisplay::from(probe.data.0),

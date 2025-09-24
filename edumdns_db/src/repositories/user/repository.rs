@@ -1,5 +1,5 @@
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
-use crate::models::User;
+use crate::models::{GroupUser, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
     DbResultSingle, DbResultSinglePerm, DbUpdate, Id,
@@ -10,7 +10,7 @@ use crate::repositories::user::models::{
     SelectManyUsers, UserCreate, UserLogin, UserUpdate, UserUpdatePassword,
 };
 use crate::repositories::utilities::{generate_salt, hash_password, verify_password_hash};
-use crate::schema::user;
+use crate::schema::{group_user, user};
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -93,6 +93,16 @@ impl PgUserRepository {
             })
             .await?;
         Ok(user)
+    }
+
+    pub async fn get_groups(&self, user_id: &Id) -> DbResultMultiple<GroupUser> {
+        let mut conn = self.pg_pool.get().await?;
+        let maps = group_user::table
+            .filter(group_user::user_id.eq(user_id))
+            .select(GroupUser::as_select())
+            .load::<GroupUser>(&mut conn)
+            .await?;
+        Ok(maps)
     }
 }
 

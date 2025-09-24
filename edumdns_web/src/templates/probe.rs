@@ -11,6 +11,7 @@ use serde::Serialize;
 pub struct ProbeTemplate {
     pub logged_in: bool,
     pub is_admin: bool,
+    pub has_groups: bool,
     pub permissions: Permissions,
     pub probes: Vec<(Option<Location>, ProbeDisplay)>,
     pub page_info: PageInfo,
@@ -22,6 +23,7 @@ pub struct ProbeTemplate {
 pub struct ProbeDetailTemplate {
     pub logged_in: bool,
     pub is_admin: bool,
+    pub has_groups: bool,
     pub permissions: Permissions,
     pub permission_matrix: Vec<(Vec<(Permission, bool)>, Group)>,
     pub probe: ProbeDisplay,

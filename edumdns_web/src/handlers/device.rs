@@ -28,22 +28,24 @@ use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets}
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::utilities::verify_password_hash;
 use std::collections::HashMap;
+use edumdns_db::repositories::user::repository::PgUserRepository;
 
 #[get("")]
 pub async fn get_devices(
     request: HttpRequest,
     identity: Option<Identity>,
     device_repo: web::Data<PgDeviceRepository>,
+    user_repo: web::Data<PgUserRepository>,
     state: web::Data<AppState>,
     query: web::Query<DeviceQuery>,
-    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
     let page = query.page.unwrap_or(1);
     let query = query.into_inner();
     let params = SelectManyDevices::from(query.clone());
     let devices = device_repo
-        .read_many_auth(&params, &parse_user_id(&i)?)
+        .read_many_auth(&params, &user_id)
         .await?;
     let devices_parsed = devices
         .data
@@ -62,7 +64,8 @@ pub async fn get_devices(
         logged_in: true,
         permissions: devices.permissions,
         devices: devices_parsed,
-        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
+        is_admin: user_repo.read_one(&user_id).await?.admin,
+        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
         page_info: PageInfo::new(page, total_pages),
         filters: query,
         query_string,
@@ -77,14 +80,15 @@ pub async fn get_device(
     identity: Option<Identity>,
     device_repo: web::Data<PgDeviceRepository>,
     packet_repo: web::Data<PgPacketRepository>,
+    user_repo: web::Data<PgUserRepository>,
     path: web::Path<(Id,)>,
     state: web::Data<AppState>,
     query: web::Query<PacketQuery>,
-    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
     let device = device_repo
-        .read_one_auth(&path.0, &parse_user_id(&i)?)
+        .read_one_auth(&path.0, &user_id)
         .await?;
     let page = query.page.unwrap_or(1);
     let params = SelectManyPackets::new(
@@ -121,7 +125,8 @@ pub async fn get_device(
         device: DeviceDisplay::from(device.data),
         packets,
         packet_transmit_requests,
-        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
+        is_admin: user_repo.read_one(&user_id).await?.admin,
+        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
         page_info: PageInfo::new(page, total_pages),
         filters: query.into_inner(),
         query_string,

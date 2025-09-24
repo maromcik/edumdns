@@ -8,6 +8,7 @@ use serde::Serialize;
 pub struct PacketTemplate<'a> {
     pub logged_in: bool,
     pub is_admin: bool,
+    pub has_groups: bool,
     pub permissions: Permissions,
     pub packets: &'a Vec<PacketDisplay>,
     pub page_info: PageInfo,
@@ -19,6 +20,7 @@ pub struct PacketTemplate<'a> {
 pub struct PacketDetailTemplate<'a> {
     pub logged_in: bool,
     pub is_admin: bool,
+    pub has_groups: bool,
     pub permissions: Permissions,
     pub packet: &'a PacketDisplay,
     pub device_id: Id,

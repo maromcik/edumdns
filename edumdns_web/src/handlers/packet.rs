@@ -3,12 +3,11 @@ use crate::error::WebError;
 use crate::forms::packet::PacketQuery;
 use crate::handlers::utilities::{get_template_name, parse_user_id};
 use crate::header::LOCATION;
-use crate::templates::PageInfo;
 use crate::templates::packet::{PacketDetailTemplate, PacketTemplate};
+use crate::templates::PageInfo;
 use crate::utils::AppState;
 use actix_identity::Identity;
-use actix_session::Session;
-use actix_web::{HttpRequest, HttpResponse, delete, get, web};
+use actix_web::{delete, get, web, HttpRequest, HttpResponse};
 use edumdns_db::repositories::common::{
     DbDelete, DbReadMany, DbReadOne, Id, PAGINATION_ELEMENTS_PER_PAGE,
 };
@@ -17,22 +16,24 @@ use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use std::collections::HashMap;
+use edumdns_db::repositories::user::repository::PgUserRepository;
 
 #[get("")]
 pub async fn get_packets(
     request: HttpRequest,
     identity: Option<Identity>,
     packet_repo: web::Data<PgPacketRepository>,
+    user_repo: web::Data<PgUserRepository>,
     state: web::Data<AppState>,
     query: web::Query<PacketQuery>,
-    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
     let page = query.page.unwrap_or(1);
     let query = query.into_inner();
     let params = SelectManyPackets::from(query.clone());
     let packets = packet_repo
-        .read_many_auth(&params, &parse_user_id(&i)?)
+        .read_many_auth(&params, &user_id)
         .await?;
     let packet_count = packet_repo.get_packet_count(params).await?;
     let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
@@ -51,7 +52,8 @@ pub async fn get_packets(
         logged_in: true,
         permissions: packets.permissions,
         packets: &packets_parsed,
-        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
+        is_admin: user_repo.read_one(&user_id).await?.admin,
+        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
         page_info: PageInfo::new(page, total_pages),
         filters: query,
         query_string,
@@ -66,9 +68,9 @@ pub async fn get_packet(
     identity: Option<Identity>,
     packet_repo: web::Data<PgPacketRepository>,
     device_repo: web::Data<PgDeviceRepository>,
+    user_repo: web::Data<PgUserRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Id,)>,
-    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
@@ -88,7 +90,8 @@ pub async fn get_packet(
         permissions: packet.permissions,
         packet: &PacketDisplay::from(packet.data)?,
         device_id: device.data.id,
-        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
+        is_admin: user_repo.read_one(&user_id).await?.admin,
+        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

@@ -29,6 +29,7 @@
             </svg>
             Home
         </a>
+        {% if has_groups or is_admin %}
         {% if is_admin %}
         <a href="/group"
            class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer">
@@ -51,6 +52,10 @@
             <i class="fa-solid fa-archive text-3l w-6 h-6 mr-2 lg:mt-2 xl:mt-1"></i>
             Packets
         </a>
+        {% endif %}
+    </div>
+    <!-- Login/Logout -->
+    <div class="hidden lg:flex lg:items-center lg:space-x-10 xl:space-x-16 xl:text-xl">
         {% if logged_in %}
         <a href="/user/manage"
            class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer">
@@ -62,12 +67,6 @@
             </svg>
             Profile
         </a>
-        {% endif %}
-    </div>
-
-    <!-- Login/Logout -->
-    <div class="hidden lg:flex lg:items-center">
-        {% if logged_in %}
         <a href="/logout/cleanup"
            class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"

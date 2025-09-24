@@ -12,24 +12,27 @@ use edumdns_db::repositories::common::{DbCreate, DbDelete, DbUpdate};
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
 use edumdns_db::repositories::group::models::{CreateGroup, SelectManyGroups, UpdateGroup};
 use edumdns_db::repositories::group::repository::PgGroupRepository;
+use edumdns_db::repositories::user::repository::PgUserRepository;
 
 #[get("")]
 pub async fn get_groups(
     request: HttpRequest,
     identity: Option<Identity>,
     group_repo: web::Data<PgGroupRepository>,
+    user_repo: web::Data<PgUserRepository>,
     state: web::Data<AppState>,
     query: web::Query<GroupQuery>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
     let groups = group_repo
         .read_many_auth(
             &SelectManyGroups::new(
                 query.name.clone(),
                 Some(Pagination::default_pagination(query.page)),
             ),
-            &parse_user_id(&i)?,
+            &user_id,
         )
         .await?;
 
@@ -40,7 +43,8 @@ pub async fn get_groups(
         logged_in: true,
         permissions: groups.permissions,
         groups: groups.data,
-        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
+        is_admin: user_repo.read_one(&user_id).await?.admin,
+        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
         filters: query.into_inner(),
     })?;
 
@@ -52,13 +56,15 @@ pub async fn get_group(
     request: HttpRequest,
     identity: Option<Identity>,
     group_repo: web::Data<PgGroupRepository>,
+    user_repo: web::Data<PgUserRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Id,)>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
     let group = group_repo
-        .read_one_auth(&path.0, &parse_user_id(&i)?)
+        .read_one_auth(&path.0, &user_id)
         .await?;
 
     let template_name = get_template_name(&request, "group/detail");
@@ -68,7 +74,8 @@ pub async fn get_group(
         logged_in: true,
         permissions: group.permissions,
         group: group.data,
-        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
+        is_admin: user_repo.read_one(&user_id).await?.admin,
+        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

@@ -7,6 +7,7 @@ use serde::Serialize;
 pub struct GroupTemplate {
     pub logged_in: bool,
     pub is_admin: bool,
+    pub has_groups: bool,
     pub permissions: Permissions,
     pub groups: Vec<Group>,
     pub filters: GroupQuery,
@@ -16,6 +17,7 @@ pub struct GroupTemplate {
 pub struct GroupDetailTemplate {
     pub logged_in: bool,
     pub is_admin: bool,
+    pub has_groups: bool,
     pub permissions: Permissions,
     pub group: Group,
 }

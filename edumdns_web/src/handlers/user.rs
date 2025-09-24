@@ -1,24 +1,20 @@
 use crate::error::WebError;
 use crate::forms::user::{
-    UserLoginForm, UserLoginReturnURL, UserUpdateForm, UserUpdatePasswordForm,
+    UserUpdateForm, UserUpdatePasswordForm,
 };
 use crate::handlers::utilities::{get_template_name, parse_user_id, validate_password};
 use crate::templates::user::{
-    LoginTemplate, UserManagePasswordTemplate, UserManageProfileTemplate,
+    UserManagePasswordTemplate, UserManageProfileTemplate,
     UserManageProfileUserFormTemplate,
 };
-use crate::{AppState, authorized};
+use crate::{authorized, AppState};
 use actix_identity::Identity;
 use actix_session::Session;
-use actix_web::http::StatusCode;
-use actix_web::http::header::LOCATION;
-use actix_web::web::Redirect;
-use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, get, post, web};
+use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
 use edumdns_db::repositories::common::{DbReadOne, DbUpdate};
-use edumdns_db::repositories::user::models::{UserLogin, UserUpdate, UserUpdatePassword};
+use edumdns_db::repositories::user::models::{UserUpdate, UserUpdatePassword};
 use edumdns_db::repositories::user::repository::PgUserRepository;
-use log::debug;
 
 #[get("/manage")]
 pub async fn user_manage_form_page(
@@ -26,10 +22,10 @@ pub async fn user_manage_form_page(
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
     state: web::Data<AppState>,
-    session: Session,
 ) -> Result<impl Responder, WebError> {
-    let u = authorized!(identity, request);
-    let user = user_repo.read_one(&parse_user_id(&u)?).await?;
+    let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
+    let user = user_repo.read_one(&user_id).await?;
 
     let template_name = get_template_name(&request, "user/manage/profile");
     let env = state.jinja.acquire_env()?;
@@ -39,7 +35,8 @@ pub async fn user_manage_form_page(
         message: String::new(),
         success: true,
         logged_in: true,
-        is_admin: session.get::<bool>("is_admin")?.unwrap_or(false),
+        is_admin: user_repo.read_one(&user_id).await?.admin,
+        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

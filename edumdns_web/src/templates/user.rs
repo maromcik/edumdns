@@ -33,6 +33,7 @@ pub struct UserManageProfileTemplate<'a> {
     pub success: bool,
     pub logged_in: bool,
     pub is_admin: bool,
+    pub has_groups: bool,
 }
 
 #[derive(Serialize)]

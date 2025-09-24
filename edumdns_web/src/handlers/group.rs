@@ -22,7 +22,6 @@ pub async fn get_groups(
     user_repo: web::Data<PgUserRepository>,
     state: web::Data<AppState>,
     query: web::Query<GroupQuery>,
-    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
@@ -59,7 +58,6 @@ pub async fn get_group(
     user_repo: web::Data<PgUserRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Id,)>,
-    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;

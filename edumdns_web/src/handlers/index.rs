@@ -76,6 +76,8 @@ pub async fn login_base(
             let mut resp = HttpResponse::SeeOther();
             let c = actix_web::cookie::Cookie::build("auth", "local")
                 .path("/")
+                .secure(true)
+                .expires(OffsetDateTime::now_utc() + Duration::days(SESSION_EXPIRY))
                 .finish();
             resp.cookie(c);
             Ok(resp

@@ -3,13 +3,14 @@ use crate::forms::user::{UserLoginForm, UserLoginReturnURL};
 use crate::handlers::utilities::{destroy_session, extract_referrer, get_template_name, parse_user_from_oidc, parse_user_id};
 use crate::templates::index::IndexTemplate;
 use crate::templates::user::LoginTemplate;
-use crate::{AppState, authorized};
+use crate::{AppState, authorized, SESSION_EXPIRY};
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::StatusCode;
 use actix_web::http::header::LOCATION;
 use actix_web::web::Redirect;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, get, post, web};
+use time::{Duration, OffsetDateTime};
 use edumdns_db::repositories::common::{DbCreate, DbReadOne};
 use edumdns_db::repositories::user::models::UserLogin;
 use edumdns_db::repositories::user::repository::PgUserRepository;
@@ -115,6 +116,8 @@ pub async fn login_oidc(
 
     let mut resp = HttpResponse::SeeOther();
     let c = actix_web::cookie::Cookie::build("auth", "oidc")
+        .secure(true)
+        .expires(OffsetDateTime::now_utc() + Duration::days(SESSION_EXPIRY))
         .path("/")
         .finish();
     resp.cookie(c);

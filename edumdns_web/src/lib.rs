@@ -34,6 +34,7 @@ mod utils;
 
 const DEFAULT_HOSTNAME: &str = "localhost";
 const DEFAULT_PORT: &str = "8000";
+pub const SESSION_EXPIRY: i64 = 30; // days
 const SECS_IN_MONTH: i64 = 60 * 60 * 24 * 30;
 const SECS_IN_WEEK: u64 = 60 * 60 * 24 * 7;
 const PAYLOAD_LIMIT: usize = 16 * 1024 * 1024 * 1024; // 16GiB

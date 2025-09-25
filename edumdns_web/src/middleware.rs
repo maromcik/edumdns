@@ -58,9 +58,10 @@ where
 
         // Check the "auth" cookie presence (local or oidc) OR an OIDC cookie you use (e.g. id_token)
         let has_auth_cookie = req.cookie("auth").is_some();
+        let has_id_cookie = req.cookie("id").is_some();
         let has_id_token = req.cookie("id_token").is_some(); // if your OIDC crate writes id_token cookie
 
-        if has_auth_cookie || has_id_token {
+        if has_auth_cookie || has_id_token || has_id_cookie {
             // user *may* be logged in — let other middleware decide
             let fut = self.service.call(req);
             return fut

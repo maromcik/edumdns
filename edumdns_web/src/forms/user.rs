@@ -68,7 +68,10 @@ pub struct UserCreateForm {
     pub email: String,
     pub name: String,
     pub surname: String,
+    #[serde(default)]
     pub admin: bool,
+    pub password: String,
+    pub confirm_password: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]

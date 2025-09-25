@@ -16,6 +16,9 @@ use serde::{Deserialize, Deserializer};
 use std::ops::DerefMut;
 use std::str::FromStr;
 use uuid::Uuid;
+use crate::repositories::MIN_PASS_LEN;
+
+pub const WEAK_PASSWORD_MESSAGE: &str = "Weak Password! Must contain at least one char from: {lower, upper, number, special} and be at least 6 characters long.";
 
 pub fn validate_user(user: &User) -> Result<(), DbError> {
     if user.disabled  {
@@ -176,4 +179,19 @@ where
         Some(s) => Err(serde::de::Error::custom("invalid bool")),
         None => Ok(Some(false)), // now it works!
     }
+}
+
+pub fn validate_password(password: &str) -> bool {
+    let (lower, upper, numeric, special) =
+        password
+            .chars()
+            .fold((false, false, false, false), |(l, u, n, s), c| {
+                (
+                    { if c.is_lowercase() { true } else { l } },
+                    { if c.is_uppercase() { true } else { u } },
+                    { if c.is_numeric() { true } else { n } },
+                    { if !c.is_alphanumeric() { true } else { s } },
+                )
+            });
+    lower && upper && numeric && special && password.len() >= MIN_PASS_LEN
 }

@@ -1,4 +1,3 @@
-use crate::MIN_PASS_LEN;
 use crate::error::WebError;
 use crate::utils::DeviceAclApDatabase;
 use actix_identity::Identity;
@@ -25,21 +24,6 @@ macro_rules! authorized {
             Some(v) => v,
         }
     }};
-}
-
-pub fn validate_password(password: &str) -> bool {
-    let (lower, upper, numeric, special) =
-        password
-            .chars()
-            .fold((false, false, false, false), |(l, u, n, s), c| {
-                (
-                    { if c.is_lowercase() { true } else { l } },
-                    { if c.is_uppercase() { true } else { u } },
-                    { if c.is_numeric() { true } else { n } },
-                    { if !c.is_alphanumeric() { true } else { s } },
-                )
-            });
-    lower && upper && numeric && special && password.len() >= MIN_PASS_LEN
 }
 
 pub fn is_htmx(request: &HttpRequest) -> bool {
@@ -75,22 +59,20 @@ pub async fn verify_transmit_request_client_ap(
     Ok(false)
 }
 
-pub fn parse_user_from_oidc(request: &HttpRequest) -> Option<UserCreate> {
+pub fn parse_user_from_oidc(request: &HttpRequest) -> Option<(UserCreate, Id)> {
     let cookie = request.cookie("user_info")?.value().to_string();
     let parsed_cookie: HashMap<String, Value> = serde_json::from_str(cookie.as_str()).ok()?;
     let id = parsed_cookie.get("preferred_username")?.as_str()?;
+    let id = id.parse::<Id>().ok()?;
     let email = parsed_cookie.get("email")?.as_str()?;
     let name = parsed_cookie.get("given_name")?.as_str()?;
     let surname = parsed_cookie.get("family_name")?.as_str()?;
-    Some(UserCreate::new_from_oidc(
-        id.parse::<Id>().ok()?,
+    Some((UserCreate::new_from_oidc(
+        id,
         email,
         name,
         surname,
-        None,
-        None,
-        false,
-    ))
+        false), id))
 }
 
 pub fn get_template_name(request: &HttpRequest, path: &str) -> String {

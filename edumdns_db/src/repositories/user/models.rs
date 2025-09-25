@@ -1,9 +1,10 @@
 use crate::repositories::common::{Id, Pagination};
-use crate::repositories::utilities::empty_string_is_none;
+use crate::repositories::utilities::{empty_string_is_none, generate_salt, hash_password, validate_password};
 use crate::repositories::utilities::empty_string_is_false;
 
 use diesel::{AsChangeset, Identifiable, Insertable};
 use serde::{Deserialize, Serialize};
+use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyUsers {
@@ -91,7 +92,7 @@ impl UserUpdate {
 #[derive(Serialize, Deserialize, AsChangeset, Insertable, Debug)]
 #[diesel(table_name = crate::schema::user)]
 pub struct UserCreate {
-    pub id: Id,
+    pub id: Option<Id>,
     pub email: String,
     pub name: String,
     pub surname: String,
@@ -106,24 +107,10 @@ impl UserCreate {
         email: &str,
         name: &str,
         surname: &str,
-        password_hash: Option<&str>,
-        password_salt: Option<&str>,
         admin: bool,
     ) -> Self {
         Self {
-            id,
-            email: email.to_owned(),
-            name: name.to_owned(),
-            surname: surname.to_owned(),
-            password_hash: password_hash.map(|v| v.to_owned()),
-            password_salt: password_salt.map(|v| v.to_owned()),
-            admin,
-        }
-    }
-
-    pub fn new_from_admin(email: &str, name: &str, surname: &str, admin: bool) -> Self {
-        Self {
-            id: 0,
+            id: Some(id),
             email: email.to_owned(),
             name: name.to_owned(),
             surname: surname.to_owned(),
@@ -131,5 +118,25 @@ impl UserCreate {
             password_salt: None,
             admin,
         }
+    }
+
+    pub fn new_from_admin(email: &str, name: &str, surname: &str, admin: bool, password: &str, confirm_password: &str) -> Result<Self, DbError> {
+        if password != confirm_password {
+            return Err(DbError::new(DbErrorKind::BackendError(BackendError::new(BackendErrorKind::UserPasswordVerificationFailed, "Provided passwords do not match")), ""));
+        }
+        if !validate_password(password) {
+            return Err(DbError::new(DbErrorKind::BackendError(BackendError::new(BackendErrorKind::UserPasswordVerificationFailed, "Provided password is not strong enough")), ""));
+        }
+        let password_salt = generate_salt();
+        let password_hash = hash_password(password.to_owned(), &password_salt)?;
+        Ok(Self {
+            id: None,
+            email: email.to_owned(),
+            name: name.to_owned(),
+            surname: surname.to_owned(),
+            password_hash: Some(password_hash),
+            password_salt: Some(password_salt.to_string()),
+            admin,
+        })
     }
 }

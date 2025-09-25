@@ -119,11 +119,11 @@ pub async fn login_oidc(
         .finish();
     resp.cookie(c);
 
-    let user_create = parse_user_from_oidc(&request).ok_or(WebError::new(
+    let (user_create, id) = parse_user_from_oidc(&request).ok_or(WebError::new(
         WebErrorKind::CookieError,
         "Cookie or some of its fields were not found or invalid",
     ))?;
-    Identity::login(&request.extensions(), user_create.id.to_string())?;
+    Identity::login(&request.extensions(), id.to_string())?;
     user_repo.create(&user_create).await?;
     Ok(resp.insert_header((LOCATION, return_url)).finish())
 }

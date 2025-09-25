@@ -1,6 +1,6 @@
 use crate::error::WebError;
 use crate::forms::user::{UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm};
-use crate::handlers::utilities::{get_template_name, parse_user_id, validate_password};
+use crate::handlers::utilities::{get_template_name, parse_user_id};
 use crate::templates::user::{UserDetailTemplate, UserManagePasswordTemplate, UserManageProfileTemplate, UserManageProfileUserFormTemplate, UserTemplate};
 use crate::{authorized, AppState};
 use actix_identity::Identity;
@@ -10,6 +10,7 @@ use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
 use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id};
 use edumdns_db::repositories::user::models::{SelectManyUsers, UserCreate, UserUpdate, UserUpdatePassword};
 use edumdns_db::repositories::user::repository::PgUserRepository;
+use edumdns_db::repositories::utilities::validate_password;
 
 #[get("")]
 pub async fn get_users(
@@ -87,8 +88,10 @@ pub async fn create_user(
             &form.email,
             &form.name,
             &form.surname,
-            form.admin
-        ),
+            form.admin,
+            &form.password,
+            &form.confirm_password,
+        )?,
         &user_id)
         .await?;
     Ok(HttpResponse::SeeOther()

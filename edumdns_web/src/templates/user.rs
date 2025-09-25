@@ -1,10 +1,8 @@
-use edumdns_db::models::{Group, User};
-use serde::Serialize;
-use edumdns_db::repositories::common::Permissions;
-use crate::forms::group::GroupQuery;
 use crate::forms::user::UserQuery;
-
-const WEAK_PASSWORD_MESSAGE: &str = "Weak Password! Must contain at least one char from: {lower, upper, number, special} and be at least 6 characters long.";
+use edumdns_db::models::User;
+use edumdns_db::repositories::common::Permissions;
+use serde::Serialize;
+use edumdns_db::repositories::utilities::WEAK_PASSWORD_MESSAGE;
 
 #[derive(Serialize)]
 pub struct UserTemplate {

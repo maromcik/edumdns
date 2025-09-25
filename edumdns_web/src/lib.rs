@@ -39,7 +39,6 @@ const SECS_IN_WEEK: u64 = 60 * 60 * 24 * 7;
 const PAYLOAD_LIMIT: usize = 16 * 1024 * 1024 * 1024; // 16GiB
 
 const FORM_LIMIT: usize = 16 * 1024 * 1024; // 16MiB
-const MIN_PASS_LEN: usize = 6;
 
 const PING_INTERVAL: u64 = 1;
 

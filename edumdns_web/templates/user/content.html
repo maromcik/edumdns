@@ -7,7 +7,7 @@
     <!-- New User -->
     <div class="rounded-lg border border-base bg-cards p-6 mb-6">
         <h3 class="text-2xl font-semibold text-sat-l mb-4">New User</h3>
-        <form action="/user/create" method="post" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form action="/user/create" method="post" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
             <div class="flex flex-col">
                 <label for="email" class="text-xs uppercase tracking-wide text-sat-m">Email</label>
                 <input
@@ -42,14 +42,36 @@
                 />
             </div>
             <div class="flex flex-col">
+                <label for="password" class="text-xs uppercase tracking-wide text-sat-m">Password</label>
+                <input
+                        id="password"
+                        name="password"
+                        type="password"
+                        required
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        placeholder="Enter password"
+                />
+            </div>
+            <div class="flex flex-col">
+                <label for="confirm_password" class="text-xs uppercase tracking-wide text-sat-m">Confirm Password</label>
+                <input
+                        id="confirm_password"
+                        name="confirm_password"
+                        type="password"
+                        required
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        placeholder="Enter password again"
+                />
+            </div>
+            <div class="flex flex-col">
                 <label for="admin" class="text-xs uppercase tracking-wide text-sat-m">Admin</label>
-            <input
-                    id="admin"
-                    name="admin"
-                    type="checkbox"
-                    value="true"
-                    class="h-4 w-4 rounded border-base bg-panes text-acc focus:ring-2 focus:ring-acc"
-            />
+                <input
+                        id="admin"
+                        name="admin"
+                        type="checkbox"
+                        value="true"
+                        class="h-4 w-4 rounded border-base bg-panes text-acc focus:ring-2 focus:ring-acc"
+                />
             </div>
             <div class="md:col-span-2">
                 <button

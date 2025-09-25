@@ -1,9 +1,18 @@
 <div id="navbar"
      class="bg-ui-components p-2 sm:p-4 flex shadow-md fixed w-full z-10 top-0 h-16 sm:h-20 justify-between items-center">
     <!-- Logo -->
-    <a id="navbar-image" href="/" class="flex items-center">
+    <a href="/" class="flex items-center text-navbar-buttons hover:scale-110 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
+             stroke="currentColor"
+             class="w-6 h-6 mr-2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
+        </svg>
+        Home
+    </a>
+    <!--    <a id="navbar-image" href="/" class="flex items-center">-->
         <!-- Desktop Image -->
-        edumdns
+<!--        edumdns-->
         <!--        <picture>-->
 <!--            <source srcset="/static/images/export/alema-white.png" media="(prefers-color-scheme:dark)">-->
 <!--            <img src="/static/images/export/alema-black.png"-->
@@ -16,19 +25,10 @@
         <!--        <img src="/static/images/export/alema-icon-black.png"-->
         <!--             alt="Logo"-->
         <!--             class="block sm:hidden w-full h-16 py-2">-->
-    </a>
+<!--    </a>-->
 
     <!-- Navigation Links Laptop View -->
     <div id="laptop-menu" class="hidden lg:flex lg:items-center lg:space-x-10 xl:space-x-16 xl:text-xl">
-        <a href="/" class="flex items-center text-navbar-buttons hover:scale-110 cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
-                 stroke="currentColor"
-                 class="w-6 h-6 mr-2">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
-            </svg>
-            Home
-        </a>
         {% if has_groups or is_admin %}
         {% if is_admin %}
         <a href="/group"
@@ -118,11 +118,12 @@
         <a href="/" class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Home
         </a>
+        {% if has_groups or is_admin %}
         {% if is_admin %}
         <a href="/group" class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Groups
         </a>
-        <a href="/group" class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
+        <a href="/user" class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Users
         </a>
         {% endif %}
@@ -135,6 +136,7 @@
         <a href="/packet" class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Packets
         </a>
+        {% endif %}
         {% if logged_in %}
         <a href="/user/manage"
            class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">

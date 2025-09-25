@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use crate::error::{ProbeError, ProbeErrorKind};
 use edumdns_core::app_packet::{
     NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeConfigPacket,
@@ -8,6 +7,7 @@ use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_core::retry;
 use log::{debug, error, info, trace, warn};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
@@ -30,29 +30,43 @@ pub struct ConnectionManager {
 }
 
 impl ConnectionManager {
-
-    pub async fn connect(server_connection_string: &str,
-                         bind_ip: &str,
-                         domain: Option<&String>,
-                         max_retries: usize,
-                         retry_interval: Duration,
-                         global_timeout: Duration,
+    pub async fn connect(
+        server_connection_string: &str,
+        bind_ip: &str,
+        domain: Option<&String>,
+        max_retries: usize,
+        retry_interval: Duration,
+        global_timeout: Duration,
     ) -> Result<TcpConnectionHandle, ProbeError> {
-        let mut root_cert_store = rustls::RootCertStore::empty();
-        root_cert_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-        let config = rustls::ClientConfig::builder()
-            .with_root_certificates(root_cert_store)
-            .with_no_client_auth();
-
         let handle = match domain {
             None => retry!(
-            TcpConnectionHandle::connect(server_connection_string, bind_ip, global_timeout).await,
-            max_retries,
-            retry_interval)?,
-            Some(d) => retry!(
-            TcpConnectionHandle::connect_tls(server_connection_string, bind_ip, d, Arc::new(config.clone()), global_timeout).await,
-            max_retries,
-            retry_interval)?
+                TcpConnectionHandle::connect(server_connection_string, bind_ip, global_timeout)
+                    .await,
+                max_retries,
+                retry_interval
+            )?,
+            Some(d) => {
+                rustls::crypto::ring::default_provider()
+                    .install_default()
+                    .expect("Failed to install rustls crypto provider");
+                let mut root_cert_store = rustls::RootCertStore::empty();
+                root_cert_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+                let config = rustls::ClientConfig::builder()
+                    .with_root_certificates(root_cert_store)
+                    .with_no_client_auth();
+                retry!(
+                    TcpConnectionHandle::connect_tls(
+                        server_connection_string,
+                        bind_ip,
+                        d,
+                        Arc::new(config.clone()),
+                        global_timeout
+                    )
+                    .await,
+                    max_retries,
+                    retry_interval
+                )?
+            }
         };
         Ok(handle)
     }
@@ -66,7 +80,15 @@ impl ConnectionManager {
         retry_interval: Duration,
         global_timeout: Duration,
     ) -> Result<Self, ProbeError> {
-        let handle = Self::connect(server_connection_string, bind_ip, domain, max_retries, retry_interval, global_timeout).await?;
+        let handle = Self::connect(
+            server_connection_string,
+            bind_ip,
+            domain,
+            max_retries,
+            retry_interval,
+            global_timeout,
+        )
+        .await?;
         Ok(Self {
             probe_metadata,
             server_connection_string: server_connection_string.to_owned(),

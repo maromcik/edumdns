@@ -16,7 +16,7 @@ use edumdns_db::repositories::common::DbCreate;
 use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use ipnetwork::IpNetwork;
-use log::trace;
+use log::{trace, warn};
 use std::time::Duration;
 use rustls::ServerConfig;
 use tokio::net::TcpStream;
@@ -34,7 +34,6 @@ pub struct ConnectionManager {
 impl ConnectionManager {
     pub async fn new(
         stream: TcpStream,
-        domain: Option<&String>,
         config: Option<ServerConfig>,
         pool: Pool<AsyncPgConnection>,
         tx: Sender<AppPacket>,
@@ -42,9 +41,9 @@ impl ConnectionManager {
         probe_last_seen: SharedProbeLastSeen,
         global_timeout: Duration,
     ) -> Result<Self, ServerError> {
-        let handle = match (config, domain) {
-            (Some(config), Some(domain)) => TcpConnectionHandle::stream_to_framed_tls_server(stream, domain, Arc::new(config), global_timeout).await?,
-            (_, _) => TcpConnectionHandle::stream_to_framed(stream, global_timeout)?,
+        let handle = match config {
+            Some(config) => TcpConnectionHandle::stream_to_framed_tls_server(stream, Arc::new(config), global_timeout).await?,
+            _ => TcpConnectionHandle::stream_to_framed(stream, global_timeout)?,
         };
         Ok(Self {
             handle,

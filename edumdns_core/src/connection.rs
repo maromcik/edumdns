@@ -16,7 +16,7 @@ use tokio_util::codec::{Framed, LengthDelimitedCodec};
 use rustls::{ClientConfig, ServerConfig};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_rustls::{TlsAcceptor, TlsConnector};
-use rustls_pki_types::{DnsName, ServerName};
+use rustls_pki_types::{ServerName};
 
 
 // ---------- Message Multiplexers & Run loops (generic over stream S) ----------
@@ -38,7 +38,7 @@ where
                     .map_err(|e| {
                         CoreError::new(
                             CoreErrorKind::TokioOneshotChannelError,
-                            format!("Could not send value {e:?}").as_str(),
+                            format!("Could not receive value {e:?}").as_str(),
                         )
                     })?;
             }
@@ -262,7 +262,6 @@ impl TcpConnectionHandle {
 
     pub async fn stream_to_framed_tls_server(
         stream: TcpStream,
-        domain: &str,
         server_config: Arc<ServerConfig>,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
@@ -274,7 +273,6 @@ impl TcpConnectionHandle {
             send_channel.1,
             recv_channel.1,
             stream,
-            domain,
             server_config,
             global_timeout,
         )
@@ -505,7 +503,6 @@ impl TcpConnection {
         message_channel_sender: mpsc::Receiver<TcpConnectionMessage>,
         message_channel_receiver: mpsc::Receiver<TcpConnectionMessage>,
         stream: TcpStream,
-        domain: &str,
         server_config: Arc<ServerConfig>,
         global_timeout: Duration,
     ) -> Result<
@@ -516,7 +513,6 @@ impl TcpConnection {
         CoreError,
     > {
         let connector = TlsAcceptor::from(server_config);
-        let dnsname = ServerName::try_from(domain)?.to_owned();
         let tls_stream = timeout(
             global_timeout,
             connector.accept(stream),

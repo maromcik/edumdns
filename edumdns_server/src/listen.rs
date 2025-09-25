@@ -61,8 +61,7 @@ pub async fn listen(
         watchdog(tracker_local, probe_handles_local, global_timeout).await;
     });
     info!("Packet storage initialized");
-
-    let domain = config.as_ref().map(|c| c.domain.clone());
+    
     let server_config = match config {
         None => None,
         Some(config) => {
@@ -76,16 +75,21 @@ pub async fn listen(
     loop {
         let (stream, addr) = listener.accept().await?;
         info!("Connection from {addr}");
-        let connection_manager = ConnectionManager::new(
+        let connection_manager = match ConnectionManager::new(
             stream,
-            domain.as_ref(),
             server_config.clone(),
             pool.clone(),
             tx.clone(),
             probe_handles.clone(),
             tracker.clone(),
             global_timeout,
-        ).await?;
+        ).await {
+            Ok(c) => c,
+            Err(e) => {
+                warn!("Invalid connection from {addr}: {e}");
+                continue;
+            }
+        };
         let probe_handles_local = probe_handles.clone();
         tokio::spawn(async move {
             match handle_connection(connection_manager).await {

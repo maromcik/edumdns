@@ -24,6 +24,8 @@ pub enum ServerErrorKind {
     ParseError,
     #[error("ebpf map error")]
     EbpfMapError,
+    #[error("tls error")]
+    TlsError
 }
 
 #[derive(Error, Debug, Clone)]
@@ -84,5 +86,17 @@ impl From<aya::maps::MapError> for ServerError {
 impl From<AddrParseError> for ServerError {
     fn from(value: AddrParseError) -> Self {
         ServerError::new(ServerErrorKind::ParseError, &value.to_string())
+    }
+}
+
+impl From<rustls::Error> for ServerError {
+    fn from(value: rustls::Error) -> Self {
+        ServerError::new(ServerErrorKind::TlsError, &value.to_string())
+    }
+}
+
+impl From<rustls_pki_types::pem::Error> for ServerError {
+    fn from(value: rustls_pki_types::pem::Error) -> Self {
+        ServerError::new(ServerErrorKind::TlsError, &value.to_string())
     }
 }

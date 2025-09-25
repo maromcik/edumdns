@@ -45,6 +45,8 @@ pub enum CoreErrorKind {
     TokioMpscChannelError,
     #[error("dns packet manipulation error")]
     DnsPacketManipulationError,
+    #[error("dns error")]
+    DnsError
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -166,5 +168,11 @@ impl From<hickory_proto::ProtoError> for CoreError {
             CoreErrorKind::DnsPacketManipulationError,
             value.to_string().as_str(),
         )
+    }
+}
+
+impl From<rustls_pki_types::InvalidDnsNameError> for CoreError {
+    fn from(value: rustls_pki_types::InvalidDnsNameError) -> Self {
+        Self::new(CoreErrorKind::DnsError, value.to_string().as_str())
     }
 }

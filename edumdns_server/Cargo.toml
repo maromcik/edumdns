@@ -14,3 +14,7 @@ ipnetwork = "0.21.1"
 uuid = "1.18.1"
 aya = "0.13.1"
 hickory-proto = "0.25.2"
+rustls = "0.23.32"
+tokio-rustls = "0.26.3"
+webpki = { version = "0.22.4"}
+rustls-pki-types = "1.12.0"

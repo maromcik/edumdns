@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use crate::error::{ProbeError, ProbeErrorKind};
 use edumdns_core::app_packet::{
     NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeConfigPacket,
@@ -13,8 +14,6 @@ use tokio::task::JoinSet;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
-// TODO switch to probe manager
-// TODO spawn all tasks as tokio selects, when reconnect comes in, select dies and forces reconnect in probe manager's thread
 pub struct ReceivePacketTargets {
     pub pinger: mpsc::Sender<NetworkAppPacket>,
 }
@@ -23,6 +22,7 @@ pub struct ConnectionManager {
     probe_metadata: ProbeMetadata,
     server_connection_string: String,
     bind_ip: String,
+    domain: Option<String>,
     pub handle: TcpConnectionHandle,
     max_retries: usize,
     retry_interval: Duration,
@@ -30,24 +30,48 @@ pub struct ConnectionManager {
 }
 
 impl ConnectionManager {
+
+    pub async fn connect(server_connection_string: &str,
+                         bind_ip: &str,
+                         domain: Option<&String>,
+                         max_retries: usize,
+                         retry_interval: Duration,
+                         global_timeout: Duration,
+    ) -> Result<TcpConnectionHandle, ProbeError> {
+        let mut root_cert_store = rustls::RootCertStore::empty();
+        root_cert_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+        let config = rustls::ClientConfig::builder()
+            .with_root_certificates(root_cert_store)
+            .with_no_client_auth();
+
+        let handle = match domain {
+            None => retry!(
+            TcpConnectionHandle::connect(server_connection_string, bind_ip, global_timeout).await,
+            max_retries,
+            retry_interval)?,
+            Some(d) => retry!(
+            TcpConnectionHandle::connect_tls(server_connection_string, bind_ip, d, Arc::new(config.clone()), global_timeout).await,
+            max_retries,
+            retry_interval)?
+        };
+        Ok(handle)
+    }
+
     pub async fn new(
         probe_metadata: ProbeMetadata,
         server_connection_string: &str,
         bind_ip: &str,
+        domain: Option<&String>,
         max_retries: usize,
         retry_interval: Duration,
         global_timeout: Duration,
     ) -> Result<Self, ProbeError> {
-        let handle = retry!(
-            TcpConnectionHandle::connect(server_connection_string, bind_ip, global_timeout).await,
-            max_retries,
-            retry_interval
-        )?;
-
+        let handle = Self::connect(server_connection_string, bind_ip, domain, max_retries, retry_interval, global_timeout).await?;
         Ok(Self {
             probe_metadata,
             server_connection_string: server_connection_string.to_owned(),
             bind_ip: bind_ip.to_owned(),
+            domain: domain.map(|d| d.to_owned()),
             handle,
             max_retries,
             retry_interval,
@@ -115,10 +139,13 @@ impl ConnectionManager {
     pub async fn reconnect(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
         self.handle.close().await?;
         match retry!(
-            TcpConnectionHandle::connect(
-                &self.server_connection_string,
-                &self.bind_ip,
-                self.global_timeout
+            Self::connect(
+                self.server_connection_string.as_str(),
+                self.bind_ip.as_str(),
+                self.domain.as_ref(),
+                self.max_retries,
+                self.retry_interval,
+                self.global_timeout,
             )
             .await,
             self.max_retries,

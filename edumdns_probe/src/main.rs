@@ -56,6 +56,7 @@ async fn main() -> Result<(), ProbeError> {
     let bind_ip = env::var("EDUMDNS_PROBE_BIND_IP")?;
     let bind_port = env::var("EDUMDNS_PROBE_BIND_PORT").unwrap_or("0".to_string());
     let server_host = env::var("EDUMDNS_SERVER_HOST")?;
+    let server_domain = env::var("EDUMDNS_SERVER_DOMAIN").ok();
     let server_port = env::var("EDUMDNS_SERVER_PORT")?;
     let retry_interval = Duration::from_secs(
         env::var("EDUMDNS_PROBE_RETRY_INTERVAL")
@@ -75,7 +76,7 @@ async fn main() -> Result<(), ProbeError> {
 
     info!("Starting probe with id: {}", uuid);
     info!("Binding to IP: {}:{}", bind_ip, bind_port);
-    info!("Connecting to server: {}:{}", server_host, server_port);
+    info!("Connecting to server {:?}: {}:{}", server_domain, server_host, server_port);
 
     let probe_metadata = ProbeMetadata {
         id: uuid,
@@ -87,6 +88,7 @@ async fn main() -> Result<(), ProbeError> {
         probe_metadata.clone(),
         format!("{}:{}", server_host, server_port).as_str(),
         format!("{}:{}", bind_ip, bind_port).as_str(),
+        server_domain.as_ref(),
         max_retries,
         retry_interval,
         global_timeout,

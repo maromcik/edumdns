@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use crate::error::{ServerError, ServerErrorKind};
 use crate::listen::ProbeHandles;
 use crate::probe_tracker::{ProbeTracker, SharedProbeLastSeen};
@@ -17,6 +18,7 @@ use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use ipnetwork::IpNetwork;
 use log::trace;
 use std::time::Duration;
+use rustls::ServerConfig;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
 
@@ -30,16 +32,22 @@ pub struct ConnectionManager {
 }
 
 impl ConnectionManager {
-    pub fn new(
+    pub async fn new(
         stream: TcpStream,
+        domain: Option<&String>,
+        config: Option<ServerConfig>,
         pool: Pool<AsyncPgConnection>,
         tx: Sender<AppPacket>,
         handles: ProbeHandles,
         probe_last_seen: SharedProbeLastSeen,
         global_timeout: Duration,
     ) -> Result<Self, ServerError> {
+        let handle = match (config, domain) {
+            (Some(config), Some(domain)) => TcpConnectionHandle::stream_to_framed_tls_server(stream, domain, Arc::new(config), global_timeout).await?,
+            (_, _) => TcpConnectionHandle::stream_to_framed(stream, global_timeout)?,
+        };
         Ok(Self {
-            handle: TcpConnectionHandle::stream_to_framed(stream, global_timeout)?,
+            handle,
             pg_probe_repository: PgProbeRepository::new(pool.clone()),
             tx,
             probe_handles: handles,

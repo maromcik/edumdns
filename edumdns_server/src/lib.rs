@@ -25,6 +25,12 @@ const DEFAULT_PORT: &str = "5000";
 
 const DEFAULT_INTERVAL_MULTIPLICATOR: u32 = 5;
 
+pub struct ServerTlsConfig {
+    pub domain: String,
+    pub cert_path: String,
+    pub key_path: String,
+}
+
 pub async fn server_init(
     pool: Pool<AsyncPgConnection>,
     (tx, rx): (Sender<AppPacket>, Receiver<AppPacket>),
@@ -34,8 +40,23 @@ pub async fn server_init(
             .unwrap_or("10".to_string())
             .parse::<u64>()?,
     );
+    let domain = env::var("EDUMDNS_SERVER_DOMAIN").ok();
+    let cert = env::var("EDUMDNS_SERVER_DOMAIN").ok();
+    let key = env::var("EDUMDNS_SERVER_DOMAIN").ok();
+    let config = match (domain, cert, key) {
+        (Some(d), Some(c), Some(k)) => {
+            Some(
+                ServerTlsConfig {
+                    domain: d,
+                    cert_path: c,
+                    key_path: k,
+                }
+            )
+        }
+        (_, _, _, ) => None
+    };
     load_all_packet_transmit_requests(pool.clone(), tx.clone()).await?;
-    listen(pool, (tx, rx), global_timeout).await?;
+    listen(pool, (tx, rx), config, global_timeout).await?;
     Ok(())
 }
 

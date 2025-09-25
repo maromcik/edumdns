@@ -49,7 +49,8 @@ pub async fn get_probes(
     let page = query.page.unwrap_or(1);
     let user_id = parse_user_id(&i)?;
     let has_groups = !user_repo.get_groups(&user_id).await?.is_empty();
-    if !has_groups {
+    let is_admin = user_repo.read_one(&user_id).await?.admin;
+    if !has_groups && !is_admin {
         return Err(DbError::new(DbErrorKind::BackendError(BackendError::new(BackendErrorKind::PermissionDenied, "User is not assigned to any group")), ""))?;
     }
     let query = query.into_inner();
@@ -73,7 +74,7 @@ pub async fn get_probes(
     let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(ProbeTemplate {
         logged_in: true,
-        is_admin: user_repo.read_one(&user_id).await?.admin,
+        is_admin,
         has_groups,
         permissions: probes.permissions,
         probes: probes_parsed,

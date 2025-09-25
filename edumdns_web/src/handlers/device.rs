@@ -43,7 +43,8 @@ pub async fn get_devices(
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     let has_groups = !user_repo.get_groups(&user_id).await?.is_empty();
-    if !has_groups {
+    let is_admin = user_repo.read_one(&user_id).await?.admin;
+    if !has_groups && !is_admin {
         return Err(DbError::new(DbErrorKind::BackendError(BackendError::new(BackendErrorKind::PermissionDenied, "User is not assigned to any group")), ""))?;
     }
     let page = query.page.unwrap_or(1);
@@ -69,7 +70,7 @@ pub async fn get_devices(
         logged_in: true,
         permissions: devices.permissions,
         devices: devices_parsed,
-        is_admin: user_repo.read_one(&user_id).await?.admin,
+        is_admin,
         has_groups,
         page_info: PageInfo::new(page, total_pages),
         filters: query,

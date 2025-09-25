@@ -19,6 +19,6 @@ tokio-util = { version = "0.7.16", features = ["codec"] }
 hickory-proto = "0.25.2"
 sha2 = "0.11.0-rc.2"
 hex = "0.4.3"
-rustls = "0.23.32"
+rustls = { version = "0.23.32", features = ["ring"] }
 tokio-rustls = "0.26.3"
 rustls-pki-types = "1.12.0"

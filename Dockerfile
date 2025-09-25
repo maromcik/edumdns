@@ -54,7 +54,7 @@ COPY ./Cargo.toml ./Cargo.toml
 RUN cargo build --release --bin edumdns
 
 
-FROM debian:bookworm-slim AS runtime
+FROM debian:trixie-slim AS runtime
 RUN apt-get update
 RUN apt-get install -y zip pkg-config libpq-dev libpcap-dev libssl-dev libxdp-dev clang
 

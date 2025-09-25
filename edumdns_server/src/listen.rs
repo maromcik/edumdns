@@ -68,6 +68,7 @@ pub async fn listen(
         Some(config) => {
             let certs = CertificateDer::pem_file_iter(&config.cert_path)?.collect::<Result<Vec<_>, _>>()?;
             let key = PrivateKeyDer::from_pem_file(&config.key_path)?;
+            rustls::crypto::ring::default_provider().install_default().expect("Failed to install rustls crypto provider");
             Some(ServerConfig::builder().with_no_client_auth().with_single_cert(certs, key)?)
         }
     };

@@ -78,7 +78,10 @@ async fn main() -> Result<(), ProbeError> {
 
     info!("Starting probe with id: {}", uuid);
     info!("Binding to IP: {}:{}", bind_ip, bind_port);
-    info!("Connecting to server {:?}: {}:{}", server_domain, server_host, server_port);
+    info!(
+        "Connecting to server {:?}: {}:{}",
+        server_domain, server_host, server_port
+    );
 
     let probe_metadata = ProbeMetadata {
         id: uuid,
@@ -171,7 +174,17 @@ async fn main() -> Result<(), ProbeError> {
                         }
                     }
                     else {
-                        res.1?;
+                        match res.1 {
+                            Ok(_) => {}
+                            Err(e) => {
+                                error!("{e}");
+                                command_transmitter
+                    .send(NetworkAppPacket::Command(
+                        NetworkCommandPacket::ReconnectThisProbe(None),
+                    ))
+                    .await?
+                            }
+                        }
                     }
             }
                 Ok::<_, ProbeError>(())

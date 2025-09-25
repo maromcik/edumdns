@@ -52,7 +52,9 @@ async fn main() -> Result<(), ProbeError> {
         .with_target(true)
         .with_env_filter(env)
         .init();
-
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
     let bind_ip = env::var("EDUMDNS_PROBE_BIND_IP")?;
     let bind_port = env::var("EDUMDNS_PROBE_BIND_PORT").unwrap_or("0".to_string());
     let server_host = env::var("EDUMDNS_SERVER_HOST")?;

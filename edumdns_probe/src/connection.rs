@@ -46,9 +46,6 @@ impl ConnectionManager {
                 retry_interval
             )?,
             Some(d) => {
-                rustls::crypto::ring::default_provider()
-                    .install_default()
-                    .expect("Failed to install rustls crypto provider");
                 let mut root_cert_store = rustls::RootCertStore::empty();
                 root_cert_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
                 let config = rustls::ClientConfig::builder()

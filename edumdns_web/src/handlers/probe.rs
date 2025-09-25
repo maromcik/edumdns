@@ -14,9 +14,9 @@ use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, rt, web};
 use actix_ws::AggregatedMessage;
 use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket};
 use edumdns_core::error::CoreError;
-use edumdns_db::models::{Group, Probe};
+use edumdns_db::models::{Group};
 use edumdns_db::repositories::common::{
-    DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE, Pagination,
+    DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE,
     Permission,
 };
 use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
@@ -28,13 +28,12 @@ use edumdns_db::repositories::probe::models::{
     SelectSingleProbeConfig, UpdateProbe,
 };
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
-use itertools;
-use log::{debug, info, warn};
+use log::{info, warn};
 use std::collections::{HashMap, HashSet};
 use strum::IntoEnumIterator;
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::error::SendError;
 use uuid::{Timestamp, Uuid};
+use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use edumdns_db::repositories::user::repository::PgUserRepository;
 
 #[get("")]
@@ -49,6 +48,10 @@ pub async fn get_probes(
     let i = authorized!(identity, request);
     let page = query.page.unwrap_or(1);
     let user_id = parse_user_id(&i)?;
+    let has_groups = !user_repo.get_groups(&user_id).await?.is_empty();
+    if !has_groups {
+        return Err(DbError::new(DbErrorKind::BackendError(BackendError::new(BackendErrorKind::PermissionDenied, "User is not assigned to any group")), ""))?;
+    }
     let query = query.into_inner();
     let params = SelectManyProbes::from(query.clone());
     let probes = probe_repo
@@ -71,7 +74,7 @@ pub async fn get_probes(
     let body = template.render(ProbeTemplate {
         logged_in: true,
         is_admin: user_repo.read_one(&user_id).await?.admin,
-        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
+        has_groups,
         permissions: probes.permissions,
         probes: probes_parsed,
         page_info: PageInfo::new(page, total_pages),

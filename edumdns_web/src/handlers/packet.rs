@@ -16,6 +16,7 @@ use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use std::collections::HashMap;
+use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use edumdns_db::repositories::user::repository::PgUserRepository;
 
 #[get("")]
@@ -29,6 +30,10 @@ pub async fn get_packets(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
+    let has_groups = !user_repo.get_groups(&user_id).await?.is_empty();
+    if !has_groups {
+        return Err(DbError::new(DbErrorKind::BackendError(BackendError::new(BackendErrorKind::PermissionDenied, "User is not assigned to any group")), ""))?;
+    }
     let page = query.page.unwrap_or(1);
     let query = query.into_inner();
     let params = SelectManyPackets::from(query.clone());
@@ -53,7 +58,7 @@ pub async fn get_packets(
         permissions: packets.permissions,
         packets: &packets_parsed,
         is_admin: user_repo.read_one(&user_id).await?.admin,
-        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
+        has_groups,
         page_info: PageInfo::new(page, total_pages),
         filters: query,
         query_string,

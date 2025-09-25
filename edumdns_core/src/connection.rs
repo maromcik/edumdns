@@ -69,7 +69,7 @@ where
                         )
                     })?;
             }
-            TcpConnectionMessage::Close {} => {
+            TcpConnectionMessage::Close => {
                 actor
                     .framed_sink
                     .close()

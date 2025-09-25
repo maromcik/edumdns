@@ -41,8 +41,8 @@ pub async fn server_init(
             .parse::<u64>()?,
     );
     let domain = env::var("EDUMDNS_SERVER_DOMAIN").ok();
-    let cert = env::var("EDUMDNS_SERVER_DOMAIN").ok();
-    let key = env::var("EDUMDNS_SERVER_DOMAIN").ok();
+    let cert = env::var("EDUMDNS_SERVER_CERT").ok();
+    let key = env::var("EDUMDNS_SERVER_KEY").ok();
     let config = match (domain, cert, key) {
         (Some(d), Some(c), Some(k)) => {
             Some(

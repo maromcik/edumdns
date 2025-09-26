@@ -19,6 +19,7 @@ pub mod manager;
 mod ordered_map;
 mod probe_tracker;
 mod transmitter;
+mod utilities;
 
 const DEFAULT_HOSTNAME: &str = "localhost";
 const DEFAULT_PORT: &str = "5000";

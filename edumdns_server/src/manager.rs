@@ -1,6 +1,5 @@
 use crate::ebpf::EbpfUpdater;
 use crate::error::{ServerError, ServerErrorKind};
-use crate::ordered_map::OrderedMap;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -16,9 +15,6 @@ use edumdns_db::repositories::device::models::{CreateDevice, SelectSingleDevice}
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
-use hickory_proto::op::Message;
-use hickory_proto::rr::RData;
-use hickory_proto::serialize::binary::BinDecodable;
 use log::{debug, error, info, warn};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
@@ -28,6 +24,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
+use crate::utilities::rewrite_payloads;
 
 #[derive(Clone)]
 pub struct Proxy {
@@ -201,14 +198,6 @@ impl PacketManager {
                     .src_mac;
 
                 let src_ip = probe_packet.packet_metadata.ip_metadata.src_ip;
-
-                // self
-                //     .packets
-                //     .entry(probe_packet.probe_metadata.id)
-                //     .or_default()
-                //     .entry((src_mac, src_ip))
-                //     .or_default()
-                //     .insert(probe_packet.clone());
                 match self.packets.entry(probe_packet.probe_metadata.id) {
                     Entry::Occupied(mut probe_entry) => {
                         match probe_entry.get_mut().entry((src_mac, src_ip)) {
@@ -430,28 +419,7 @@ impl PacketManager {
 
             info!("Packets found for target: {}", transmit_request);
             let payloads = if let Some(p) = &proxy && device.proxy {
-                let mut payloads = HashSet::new();
-                for packet in packets {
-                    let Ok(mut message) = Message::from_bytes(packet.payload.as_slice()) else {
-                        continue;
-                    };
-                    for ans in message.answers_mut() {
-                        if ans.data().is_a() {
-                            ans.set_data(RData::A(hickory_proto::rr::rdata::a::A::from(
-                                p.proxy_ipv4,
-                            )));
-                        }
-                        if ans.data().is_aaaa() {
-                            ans.set_data(RData::AAAA(hickory_proto::rr::rdata::aaaa::AAAA::from(
-                                p.proxy_ipv6,
-                            )));
-                        }
-                    }
-                    if let Ok(bytes) = message.to_vec() {
-                        payloads.insert(bytes);
-                    }
-                }
-                payloads
+                rewrite_payloads(packets, p.proxy_ipv4, p.proxy_ipv6)
             } else {
                 packets.into_iter().map(|p| p.payload).collect()
             };

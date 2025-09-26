@@ -10,7 +10,12 @@
                class="flex items-center justify-center w-10 h-10 rounded-md border border-base bg-cards text-sm font-medium text-acc hover:text-acc-xl transition-colors">
                 ←
             </a>
-
+            <button hx-get="/device/{{ device.id }}/transmit"
+                    hx-target="#content-area"
+                    hx-target-error="#content-area"
+                    class="flex items-center justify-center w-10 h-10 bg-blue-400 hover:bg-blue-500 rounded-md text-button shadow-md">
+                <i class="fa-solid fa-rss"></i>
+            </button>
             {% if permissions|has_perm("Update") %}
             {% if device.published %}
             <!-- Hide -->

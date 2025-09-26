@@ -24,6 +24,10 @@ pub struct DeviceQuery {
     pub port: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub published: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub proxy: Option<bool>,
 }
 
 impl From<DeviceQuery> for SelectManyDevices {
@@ -35,6 +39,8 @@ impl From<DeviceQuery> for SelectManyDevices {
             ip: value.ip,
             port: value.port,
             name: value.name,
+            published: value.published,
+            proxy: value.proxy,
             pagination: Some(Pagination::default_pagination(value.page)),
         }
     }
@@ -81,6 +87,10 @@ pub struct UpdateDeviceForm {
     pub acl_ap_hostname_regex: Option<String>,
     #[serde(default, deserialize_with = "empty_string_is_none")]
     pub acl_password: Option<String>,
+    #[serde(default)]
+    pub published: bool,
+    #[serde(default)]
+    pub proxy: bool,
 }
 
 impl UpdateDeviceForm {
@@ -106,6 +116,7 @@ impl UpdateDeviceForm {
             acl_ap_hostname_regex: self.acl_ap_hostname_regex,
             acl_pwd_hash: hash,
             acl_pwd_salt: salt,
+            proxy: Some(self.proxy),
         })
     }
 }

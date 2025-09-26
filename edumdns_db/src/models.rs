@@ -107,6 +107,7 @@ pub struct Device {
     pub duration: i64,
     pub interval: i64,
     pub published: bool,
+    pub proxy: bool,
     pub acl_src_cidr: Option<ipnetwork::IpNetwork>,
     pub acl_pwd_hash: Option<String>,
     pub acl_pwd_salt: Option<String>,

@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS "device"
     duration               bigint       NOT NULL DEFAULT 120,
     interval               bigint       NOT NULL DEFAULT 100,
     published              bool         NOT NULL DEFAULT FALSE,
+    proxy                  bool         NOT NULL DEFAULT TRUE,
     acl_src_cidr           cidr,
     acl_pwd_hash           text,
     acl_pwd_salt           text,

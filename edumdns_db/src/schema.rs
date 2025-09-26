@@ -11,6 +11,7 @@ diesel::table! {
         duration -> Int8,
         interval -> Int8,
         published -> Bool,
+        proxy -> Bool,
         acl_src_cidr -> Nullable<Cidr>,
         acl_pwd_hash -> Nullable<Text>,
         acl_pwd_salt -> Nullable<Text>,

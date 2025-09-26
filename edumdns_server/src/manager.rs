@@ -55,17 +55,11 @@ impl PacketManager {
         handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
         global_timeout: Duration,
     ) -> Result<Self, ServerError> {
-        let proxy_ipv4 = env::var("EDUMDNS_SERVER_PROXY_IPV4")
-            .unwrap_or("127.0.0.1".to_string())
-            .parse::<Ipv4Addr>()
-            .ok();
-        let proxy_ipv6 = env::var("EDUMDNS_SERVER_PROXY_IPV6")
-            .unwrap_or("::1".to_string())
-            .parse::<Ipv6Addr>()
-            .ok();
+        let proxy_ipv4 = env::var("EDUMDNS_SERVER_PROXY_IPV4").map(|ip| ip.parse::<Ipv4Addr>().ok()).ok();
+        let proxy_ipv6 = env::var("EDUMDNS_SERVER_PROXY_IPV6").map(|ip| ip.parse::<Ipv6Addr>().ok()).ok();
 
         let proxy = match (proxy_ipv4, proxy_ipv6) {
-            (Some(ipv4), Some(ipv6)) => {
+            (Some(Some(ipv4)), Some(Some(ipv6))) => {
                 match EbpfUpdater::new() {
                     Ok(updater) => Some(Proxy {
                         proxy_ipv4: ipv4,
@@ -435,7 +429,7 @@ impl PacketManager {
             };
 
             info!("Packets found for target: {}", transmit_request);
-            let payloads = if let Some(p) = &proxy {
+            let payloads = if let Some(p) = &proxy && device.proxy {
                 let mut payloads = HashSet::new();
                 for packet in packets {
                     let Ok(mut message) = Message::from_bytes(packet.payload.as_slice()) else {
@@ -467,7 +461,7 @@ impl PacketManager {
                 return;
             }
 
-            if let Some(p) = proxy {
+            if let Some(p) = proxy && device.proxy {
                 match p
                     .ebpf_updater
                     .lock()

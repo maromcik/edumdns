@@ -4,7 +4,7 @@ use diesel::{AsChangeset, Identifiable, Insertable};
 use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
-use time::{format_description, OffsetDateTime};
+use time::{OffsetDateTime, format_description};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
@@ -15,6 +15,8 @@ pub struct SelectManyDevices {
     pub ip: Option<IpNetwork>,
     pub port: Option<i32>,
     pub name: Option<String>,
+    pub published: Option<bool>,
+    pub proxy: Option<bool>,
     pub pagination: Option<Pagination>,
 }
 
@@ -26,6 +28,8 @@ impl SelectManyDevices {
         ip: Option<IpNetwork>,
         port: Option<i32>,
         name: Option<&String>,
+        published: Option<bool>,
+        proxy: Option<bool>,
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
@@ -35,6 +39,8 @@ impl SelectManyDevices {
             ip,
             port,
             name: name.map(|s| s.to_string()),
+            published,
+            proxy,
             pagination,
         }
     }
@@ -84,16 +90,17 @@ pub struct DeviceDisplay {
     pub duration: i64,
     pub interval: i64,
     pub published: bool,
+    pub proxy: bool,
     pub acl_src_cidr: Option<IpNetwork>,
     pub acl_pwd_hash: Option<String>,
     pub acl_ap_hostname_regex: Option<String>,
-    pub discovered_at: Option<String>
+    pub discovered_at: Option<String>,
 }
 
 impl From<Device> for DeviceDisplay {
-
     fn from(value: Device) -> Self {
-        let format = format_description::parse("[day]. [month]. [year] [hour]:[minute]:[second]").unwrap_or_default();
+        let format = format_description::parse("[day]. [month]. [year] [hour]:[minute]:[second]")
+            .unwrap_or_default();
         Self {
             id: value.id,
             probe_id: value.probe_id,
@@ -104,10 +111,13 @@ impl From<Device> for DeviceDisplay {
             duration: value.duration,
             interval: value.interval,
             published: value.published,
+            proxy: value.proxy,
             acl_src_cidr: value.acl_src_cidr,
             acl_pwd_hash: value.acl_pwd_hash,
             acl_ap_hostname_regex: value.acl_ap_hostname_regex,
-            discovered_at: value.discovered_at.map(|t| t.format(&format).unwrap_or_default()),
+            discovered_at: value
+                .discovered_at
+                .map(|t| t.format(&format).unwrap_or_default()),
         }
     }
 }
@@ -131,6 +141,7 @@ pub struct UpdateDevice {
     pub duration: Option<i64>,
     pub interval: Option<i64>,
     pub published: Option<bool>,
+    pub proxy: Option<bool>,
     #[diesel(treat_none_as_null = true)]
     pub acl_src_cidr: Option<IpNetwork>,
     #[diesel(treat_none_as_null = true)]
@@ -149,6 +160,7 @@ impl UpdateDevice {
         duration: Option<i64>,
         interval: Option<i64>,
         published: Option<bool>,
+        proxy: Option<bool>,
         acl_src_cidr: Option<IpNetwork>,
         acl_pwd_hash: Option<&str>,
         acl_pwd_salt: Option<&str>,
@@ -160,6 +172,7 @@ impl UpdateDevice {
             duration,
             interval,
             published,
+            proxy,
             acl_src_cidr,
             acl_pwd_hash: acl_pwd_hash.map(|s| s.to_string()),
             acl_pwd_salt: acl_pwd_salt.map(|s| s.to_string()),
@@ -167,14 +180,31 @@ impl UpdateDevice {
         }
     }
 
-    pub fn toggle_publicity(device_id: &Id, published: bool) -> Self{
+    pub fn toggle_publicity(device_id: &Id, published: bool) -> Self {
         Self {
-            id: device_id.clone(),
+            id: *device_id,
             name: None,
             port: None,
             duration: None,
             interval: None,
             published: Some(published),
+            proxy: None,
+            acl_src_cidr: None,
+            acl_pwd_hash: None,
+            acl_pwd_salt: None,
+            acl_ap_hostname_regex: None,
+        }
+    }
+
+    pub fn toggle_proxy(device_id: &Id, proxy: bool) -> Self {
+        Self {
+            id: *device_id,
+            name: None,
+            port: None,
+            duration: None,
+            interval: None,
+            published: None,
+            proxy: Some(proxy),
             acl_src_cidr: None,
             acl_pwd_hash: None,
             acl_pwd_salt: None,

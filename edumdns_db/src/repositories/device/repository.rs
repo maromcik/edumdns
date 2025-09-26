@@ -58,6 +58,14 @@ impl PgDeviceRepository {
             query = query.filter(device::name.ilike(format!("%{q}%")))
         }
 
+        if let Some(p) = &params.published {
+            query = query.filter(device::published.eq(p))
+        }
+
+        if let Some(p) = &params.proxy {
+            query = query.filter(device::proxy.eq(p))
+        }
+
         if let Some(pagination) = params.pagination {
             query = query.limit(pagination.limit.unwrap_or(i64::MAX));
             query = query.offset(pagination.offset.unwrap_or(0));

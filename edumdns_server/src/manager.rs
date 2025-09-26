@@ -55,31 +55,30 @@ impl PacketManager {
         handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
         global_timeout: Duration,
     ) -> Result<Self, ServerError> {
-        let use_proxy = env::var("EDUMDNS_SERVER_USE_PROXY")
-            .unwrap_or("false".to_string())
-            .parse::<bool>()
-            .unwrap_or(false);
-
         let proxy_ipv4 = env::var("EDUMDNS_SERVER_PROXY_IPV4")
             .unwrap_or("127.0.0.1".to_string())
-            .parse::<Ipv4Addr>()?;
+            .parse::<Ipv4Addr>()
+            .ok();
         let proxy_ipv6 = env::var("EDUMDNS_SERVER_PROXY_IPV6")
             .unwrap_or("::1".to_string())
-            .parse::<Ipv6Addr>()?;
-        let proxy = if use_proxy {
-            match EbpfUpdater::new() {
-                Ok(updater) => Some(Proxy {
-                    proxy_ipv4,
-                    proxy_ipv6,
-                    ebpf_updater: Arc::new(Mutex::new(updater)),
-                }),
-                Err(e) => {
-                    error!("Could not create ebpf updater: {}", e);
-                    None
+            .parse::<Ipv6Addr>()
+            .ok();
+
+        let proxy = match (proxy_ipv4, proxy_ipv6) {
+            (Some(ipv4), Some(ipv6)) => {
+                match EbpfUpdater::new() {
+                    Ok(updater) => Some(Proxy {
+                        proxy_ipv4: ipv4,
+                        proxy_ipv6: ipv6,
+                        ebpf_updater: Arc::new(Mutex::new(updater)),
+                    }),
+                    Err(e) => {
+                        error!("Could not create ebpf updater: {}", e);
+                        None
+                    }
                 }
-            }
-        } else {
-            None
+            },
+            (_, _) => None
         };
 
         Ok(Self {
@@ -223,7 +222,7 @@ impl PacketManager {
                                 if !device_entry.get().contains(&probe_packet) {
                                     device_entry.get_mut().insert(probe_packet.clone());
                                     debug!("Probe and device found; stored packet in database");
-                                    // self.store_packet_in_database(probe_packet.clone()).await;
+                                    self.store_packet_in_database(probe_packet.clone()).await;
                                 } else {
                                     debug!("Probe, device and packet found; no action");
                                 }
@@ -232,8 +231,8 @@ impl PacketManager {
                                 let device_entry = device_entry.insert(HashSet::new());
                                 device_entry.insert(probe_packet.clone());
                                 debug!("Probe found; stored device and packet in database");
-                                // self.store_device_in_database(probe_packet.clone()).await;
-                                // self.store_packet_in_database(probe_packet.clone()).await;
+                                self.store_device_in_database(probe_packet.clone()).await;
+                                self.store_packet_in_database(probe_packet.clone()).await;
                             }
                         }
                     }
@@ -243,8 +242,8 @@ impl PacketManager {
                             .entry((src_mac, src_ip))
                             .or_default()
                             .insert(probe_packet.clone());
-                        // self.store_device_in_database(probe_packet.clone()).await;
-                        // self.store_packet_in_database(probe_packet.clone()).await;
+                        self.store_device_in_database(probe_packet.clone()).await;
+                        self.store_packet_in_database(probe_packet.clone()).await;
                         debug!("Probe not found in hashmap; stored device and packet in database");
                     }
                 }

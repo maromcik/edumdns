@@ -9,7 +9,9 @@ use edumdns_core::error::CoreError;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use std::env;
 use std::time::Duration;
+use log::warn;
 use tokio::sync::mpsc::{Receiver, Sender};
+use crate::utilities::load_all_packet_transmit_requests;
 
 mod connection;
 mod ebpf;
@@ -62,26 +64,4 @@ pub fn parse_host() -> String {
     let hostname = env::var("EDUMDNS_SERVER_HOSTNAME").unwrap_or(DEFAULT_HOSTNAME.to_string());
     let port = env::var("EDUMDNS_SERVER_PORT").unwrap_or(DEFAULT_PORT.to_string());
     format!("{hostname}:{port}")
-}
-
-pub async fn load_all_packet_transmit_requests(
-    pool: Pool<AsyncPgConnection>,
-    tx: Sender<AppPacket>,
-) -> Result<(), ServerError> {
-    let device_repo = PgDeviceRepository::new(pool);
-    for (device, request) in device_repo.get_all_packet_transmit_requests().await? {
-        let packet_transmit_request = PacketTransmitRequestPacket::new(
-            device.probe_id,
-            device.mac,
-            device.ip,
-            request.target_ip,
-            request.target_port as u16,
-        );
-        tx.send(AppPacket::Local(LocalAppPacket::Command(
-            LocalCommandPacket::TransmitDevicePackets(packet_transmit_request),
-        )))
-        .await
-        .map_err(CoreError::from)?;
-    }
-    Ok(())
 }

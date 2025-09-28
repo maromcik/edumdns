@@ -1,5 +1,6 @@
 use crate::error::AppError;
 use clap::Parser;
+use tracing::log::error;
 use edumdns_db::db_init;
 use edumdns_server::server_init;
 use edumdns_web::web_init;
@@ -33,10 +34,16 @@ async fn main() -> Result<(), AppError> {
         .init();
 
     let pool = db_init().await?;
-    tokio::select! {
-        web = web_init(pool.clone(), command_channel.0.clone()) => web?,
-        server = server_init(pool.clone(), command_channel) => server?,
-    }
+    let pool_local = pool.clone();
+    let sender_local =  command_channel.0.clone();
 
+    tokio::spawn(async move {
+        if let Err(e) = server_init(pool_local, command_channel).await {
+            error!("{e}")
+        }
+    });
+
+    let pool_local = pool.clone();
+    web_init(pool_local,sender_local).await?;
     Ok(())
 }

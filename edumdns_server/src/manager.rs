@@ -263,14 +263,14 @@ impl PacketManager {
     }
 
     pub async fn store_device_in_database(&self, packet: ProbePacket) {
-        let src_mac = packet
-            .packet_metadata
-            .datalink_metadata
-            .mac_metadata
-            .src_mac;
-        let src_ip = packet.packet_metadata.ip_metadata.src_ip;
         let device_repo = self.pg_device_repository.clone();
         tokio::task::spawn(async move {
+            let src_mac = packet
+                .packet_metadata
+                .datalink_metadata
+                .mac_metadata
+                .src_mac;
+            let src_ip = packet.packet_metadata.ip_metadata.src_ip;
             let device = device_repo
                 .create(&CreateDevice::new(
                     packet.probe_metadata.id.0,
@@ -299,14 +299,14 @@ impl PacketManager {
     }
 
     pub async fn store_packet_in_database(&self, packet: ProbePacket) {
-        let src_mac = packet
-            .packet_metadata
-            .datalink_metadata
-            .mac_metadata
-            .src_mac;
-        let src_ip = packet.packet_metadata.ip_metadata.src_ip;
         let packet_repo = self.pg_packet_repository.clone();
         tokio::task::spawn(async move {
+            let src_mac = packet
+                .packet_metadata
+                .datalink_metadata
+                .mac_metadata
+                .src_mac;
+            let src_ip = packet.packet_metadata.ip_metadata.src_ip;
             let packet = packet_repo
                 .create(&CreatePacket::new(
                     packet.probe_metadata.id.0,

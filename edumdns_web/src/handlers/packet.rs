@@ -7,7 +7,7 @@ use crate::templates::packet::{PacketDetailTemplate, PacketTemplate};
 use crate::templates::PageInfo;
 use crate::utils::AppState;
 use actix_identity::Identity;
-use actix_web::{delete, get, web, HttpRequest, HttpResponse};
+use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
 use edumdns_db::repositories::common::{
     DbDelete, DbReadMany, DbReadOne, Id, PAGINATION_ELEMENTS_PER_PAGE,
 };
@@ -124,3 +124,24 @@ pub async fn delete_packet(
         .insert_header((LOCATION, return_url))
         .finish())
 }
+
+// #[post("create")]
+// pub async fn create_packet(
+//     request: HttpRequest,
+//     identity: Option<Identity>,
+//     packet_repo: web::Data<PgPacketRepository>,
+//     path: web::Path<(Id,)>,
+// ) -> Result<HttpResponse, WebError> {
+//     let i = authorized!(identity, request);
+//     let user_id = parse_user_id(&i)?;
+// 
+//     let return_url = query
+//         .get("return_url")
+//         .map(String::as_str)
+//         .unwrap_or("/packet");
+// 
+//     packet_repo.delete_auth(&path.0, &user_id).await?;
+//     Ok(HttpResponse::SeeOther()
+//         .insert_header((LOCATION, return_url))
+//         .finish())
+// }

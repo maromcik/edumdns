@@ -3,11 +3,12 @@ use crate::error::WebError;
 use crate::forms::packet::PacketQuery;
 use crate::handlers::utilities::{get_template_name, parse_user_id};
 use crate::header::LOCATION;
-use crate::templates::packet::{PacketDetailTemplate, PacketTemplate};
 use crate::templates::PageInfo;
+use crate::templates::packet::{PacketDetailTemplate, PacketTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
-use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
+use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use edumdns_db::repositories::common::{
     DbDelete, DbReadMany, DbReadOne, Id, PAGINATION_ELEMENTS_PER_PAGE,
 };
@@ -15,9 +16,9 @@ use edumdns_db::repositories::device::models::SelectSingleDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
-use std::collections::HashMap;
-use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use edumdns_db::repositories::user::repository::PgUserRepository;
+use hickory_proto::op::{Header, Message};
+use std::collections::HashMap;
 
 #[get("")]
 pub async fn get_packets(
@@ -33,14 +34,18 @@ pub async fn get_packets(
     let has_groups = !user_repo.get_groups(&user_id).await?.is_empty();
     let is_admin = user_repo.read_one(&user_id).await?.admin;
     if !has_groups && !is_admin {
-        return Err(DbError::new(DbErrorKind::BackendError(BackendError::new(BackendErrorKind::PermissionDenied, "User is not assigned to any group")), ""))?;
+        return Err(DbError::new(
+            DbErrorKind::BackendError(BackendError::new(
+                BackendErrorKind::PermissionDenied,
+                "User is not assigned to any group",
+            )),
+            "",
+        ))?;
     }
     let page = query.page.unwrap_or(1);
     let query = query.into_inner();
     let params = SelectManyPackets::from(query.clone());
-    let packets = packet_repo
-        .read_many_auth(&params, &user_id)
-        .await?;
+    let packets = packet_repo.read_many_auth(&params, &user_id).await?;
     let packet_count = packet_repo.get_packet_count(params).await?;
     let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
     let packets_parsed = packets
@@ -125,23 +130,17 @@ pub async fn delete_packet(
         .finish())
 }
 
-// #[post("create")]
-// pub async fn create_packet(
-//     request: HttpRequest,
-//     identity: Option<Identity>,
-//     packet_repo: web::Data<PgPacketRepository>,
-//     path: web::Path<(Id,)>,
-// ) -> Result<HttpResponse, WebError> {
-//     let i = authorized!(identity, request);
-//     let user_id = parse_user_id(&i)?;
-// 
-//     let return_url = query
-//         .get("return_url")
-//         .map(String::as_str)
-//         .unwrap_or("/packet");
-// 
-//     packet_repo.delete_auth(&path.0, &user_id).await?;
-//     Ok(HttpResponse::SeeOther()
-//         .insert_header((LOCATION, return_url))
-//         .finish())
-// }
+#[post("create")]
+pub async fn create_packet(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    packet_repo: web::Data<PgPacketRepository>,
+    path: web::Path<(Id,)>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
+
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, "/"))
+        .finish())
+}

@@ -19,6 +19,7 @@ use edumdns_core::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
 use edumdns_core::error::CoreError;
+use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use edumdns_db::repositories::common::{
     DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE, Pagination,
 };
@@ -26,10 +27,9 @@ use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices,
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
+use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_db::repositories::utilities::verify_password_hash;
 use std::collections::HashMap;
-use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
-use edumdns_db::repositories::user::repository::PgUserRepository;
 
 #[get("")]
 pub async fn get_devices(
@@ -45,14 +45,18 @@ pub async fn get_devices(
     let has_groups = !user_repo.get_groups(&user_id).await?.is_empty();
     let is_admin = user_repo.read_one(&user_id).await?.admin;
     if !has_groups && !is_admin {
-        return Err(DbError::new(DbErrorKind::BackendError(BackendError::new(BackendErrorKind::PermissionDenied, "User is not assigned to any group")), ""))?;
+        return Err(DbError::new(
+            DbErrorKind::BackendError(BackendError::new(
+                BackendErrorKind::PermissionDenied,
+                "User is not assigned to any group",
+            )),
+            "",
+        ))?;
     }
     let page = query.page.unwrap_or(1);
     let query = query.into_inner();
     let params = SelectManyDevices::from(query.clone());
-    let devices = device_repo
-        .read_many_auth(&params, &user_id)
-        .await?;
+    let devices = device_repo.read_many_auth(&params, &user_id).await?;
     let devices_parsed = devices
         .data
         .into_iter()
@@ -93,9 +97,7 @@ pub async fn get_device(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
-    let device = device_repo
-        .read_one_auth(&path.0, &user_id)
-        .await?;
+    let device = device_repo.read_one_auth(&path.0, &user_id).await?;
     let page = query.page.unwrap_or(1);
     let params = SelectManyPackets::new(
         query.id,
@@ -267,7 +269,9 @@ pub async fn request_packet_transmit(
     let i = authorized!(identity, request);
     let device = device_repo.read_one(&path.0).await?;
     if !device.published {
-        device_repo.read_one_auth(&path.0, &parse_user_id(&i)?).await?;
+        device_repo
+            .read_one_auth(&path.0, &parse_user_id(&i)?)
+            .await?;
     }
     let target_ip = request
         .connection_info()
@@ -330,7 +334,6 @@ pub async fn request_packet_transmit(
         .read_packet_transmit_requests(&device.id)
         .await?;
 
-
     let template_name = get_template_name(&request, "device/public");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
@@ -355,7 +358,9 @@ pub async fn get_device_for_transmit(
     let i = authorized!(identity, request);
     let device = device_repo.read_one(&path.0).await?;
     if !device.published {
-        device_repo.read_one_auth(&path.0, &parse_user_id(&i)?).await?;
+        device_repo
+            .read_one_auth(&path.0, &parse_user_id(&i)?)
+            .await?;
     }
     let target_ip = request
         .connection_info()
@@ -394,7 +399,9 @@ pub async fn publish_device(
     let user_id = parse_user_id(&i)?;
     let device_id = path.0;
 
-    device_repo.update_auth(&UpdateDevice::toggle_publicity(&device_id, true), &user_id).await?;
+    device_repo
+        .update_auth(&UpdateDevice::toggle_publicity(&device_id, true), &user_id)
+        .await?;
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/device/{}", device_id)))
@@ -411,7 +418,9 @@ pub async fn hide_device(
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     let device_id = path.0;
-    device_repo.update_auth(&UpdateDevice::toggle_publicity(&device_id, false), &user_id).await?;
+    device_repo
+        .update_auth(&UpdateDevice::toggle_publicity(&device_id, false), &user_id)
+        .await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/device/{}", device_id)))
         .finish())

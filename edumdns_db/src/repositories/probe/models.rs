@@ -5,7 +5,7 @@ use diesel::{AsChangeset, Identifiable, Insertable};
 use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
-use time::{format_description, OffsetDateTime};
+use time::{OffsetDateTime, format_description};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,7 +81,8 @@ pub struct ProbeDisplay {
 
 impl From<Probe> for ProbeDisplay {
     fn from(value: Probe) -> Self {
-        let format = format_description::parse("[day]. [month]. [year] [hour]:[minute]:[second]").unwrap_or_default();
+        let format = format_description::parse("[day]. [month]. [year] [hour]:[minute]:[second]")
+            .unwrap_or_default();
         Self {
             id: value.id,
             owner_id: value.owner_id,
@@ -90,8 +91,12 @@ impl From<Probe> for ProbeDisplay {
             mac: MacAddr::from_octets(value.mac),
             ip: value.ip,
             name: value.name,
-            first_connected_at: value.first_connected_at.map(|t| t.format(&format).unwrap_or_default()),
-            last_connected_at: value.last_connected_at.map(|t| t.format(&format).unwrap_or_default()),
+            first_connected_at: value
+                .first_connected_at
+                .map(|t| t.format(&format).unwrap_or_default()),
+            last_connected_at: value
+                .last_connected_at
+                .map(|t| t.format(&format).unwrap_or_default()),
         }
     }
 }

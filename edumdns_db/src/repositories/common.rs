@@ -59,7 +59,11 @@ pub trait DbCreate<Create, Data> {
     ///                          data coming from the database)
     /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn create(&self, data: &Create) -> impl Future<Output = DbResultSingle<Data>> + Send;
-    fn create_auth(&self, data: &Create, user_id: &Id) -> impl Future<Output = DbResultSingle<Data>> + Send;
+    fn create_auth(
+        &self,
+        data: &Create,
+        user_id: &Id,
+    ) -> impl Future<Output = DbResultSingle<Data>> + Send;
 }
 
 pub trait DbReadOne<ReadOne, Data> {

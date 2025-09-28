@@ -14,10 +14,10 @@ use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, rt, web};
 use actix_ws::AggregatedMessage;
 use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket};
 use edumdns_core::error::CoreError;
-use edumdns_db::models::{Group};
+use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
+use edumdns_db::models::Group;
 use edumdns_db::repositories::common::{
-    DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE,
-    Permission,
+    DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE, Permission,
 };
 use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
@@ -28,13 +28,12 @@ use edumdns_db::repositories::probe::models::{
     SelectSingleProbeConfig, UpdateProbe,
 };
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
+use edumdns_db::repositories::user::repository::PgUserRepository;
 use log::{info, warn};
 use std::collections::{HashMap, HashSet};
 use strum::IntoEnumIterator;
 use tokio::sync::mpsc;
 use uuid::{Timestamp, Uuid};
-use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
-use edumdns_db::repositories::user::repository::PgUserRepository;
 
 #[get("")]
 pub async fn get_probes(
@@ -51,13 +50,17 @@ pub async fn get_probes(
     let has_groups = !user_repo.get_groups(&user_id).await?.is_empty();
     let is_admin = user_repo.read_one(&user_id).await?.admin;
     if !has_groups && !is_admin {
-        return Err(DbError::new(DbErrorKind::BackendError(BackendError::new(BackendErrorKind::PermissionDenied, "User is not assigned to any group")), ""))?;
+        return Err(DbError::new(
+            DbErrorKind::BackendError(BackendError::new(
+                BackendErrorKind::PermissionDenied,
+                "User is not assigned to any group",
+            )),
+            "",
+        ))?;
     }
     let query = query.into_inner();
     let params = SelectManyProbes::from(query.clone());
-    let probes = probe_repo
-        .read_many_auth(&params, &user_id)
-        .await?;
+    let probes = probe_repo.read_many_auth(&params, &user_id).await?;
 
     let probes_parsed = probes
         .data
@@ -102,9 +105,7 @@ pub async fn get_probe(
     let user_id = parse_user_id(&i)?;
     let probe_id = path.0;
     let page = query.page.unwrap_or(1);
-    let probe = probe_repo
-        .read_one_auth(&probe_id, &user_id)
-        .await?;
+    let probe = probe_repo.read_one_auth(&probe_id, &user_id).await?;
 
     let granted: HashSet<(Id, Permission)> = probe_repo
         .get_permissions(&probe_id)

@@ -1,8 +1,8 @@
 use crate::forms::user::UserQuery;
 use edumdns_db::models::User;
 use edumdns_db::repositories::common::Permissions;
-use serde::Serialize;
 use edumdns_db::repositories::utilities::WEAK_PASSWORD_MESSAGE;
+use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct UserTemplate {
@@ -63,4 +63,3 @@ pub struct UserManageProfileUserFormTemplate<'a> {
     pub success: bool,
     pub logged_in: bool,
 }
-

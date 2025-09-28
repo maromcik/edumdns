@@ -1,5 +1,6 @@
 use crate::error::ServerError;
 use crate::listen::listen;
+use crate::utilities::load_all_packet_transmit_requests;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::{
@@ -7,11 +8,10 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::error::CoreError;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
+use log::warn;
 use std::env;
 use std::time::Duration;
-use log::warn;
 use tokio::sync::mpsc::{Receiver, Sender};
-use crate::utilities::load_all_packet_transmit_requests;
 
 mod connection;
 mod ebpf;
@@ -45,15 +45,11 @@ pub async fn server_init(
     let cert = env::var("EDUMDNS_SERVER_CERT").ok();
     let key = env::var("EDUMDNS_SERVER_KEY").ok();
     let config = match (cert, key) {
-        (Some(c), Some(k)) => {
-            Some(
-                ServerTlsConfig {
-                    cert_path: c,
-                    key_path: k,
-                }
-            )
-        }
-        (_, _, ) => None
+        (Some(c), Some(k)) => Some(ServerTlsConfig {
+            cert_path: c,
+            key_path: k,
+        }),
+        (_, _) => None,
     };
     load_all_packet_transmit_requests(pool.clone(), tx.clone()).await?;
     listen(pool, (tx, rx), config, global_timeout).await?;

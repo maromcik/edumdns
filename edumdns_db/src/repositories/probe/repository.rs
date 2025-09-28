@@ -170,7 +170,11 @@ impl DbCreate<CreateProbe, Probe> for PgProbeRepository {
             .returning(Probe::as_returning())
             .on_conflict(probe::id)
             .do_update()
-            .set((probe::mac.eq(data.mac), probe::ip.eq(data.ip), probe::last_connected_at.eq(OffsetDateTime::now_utc())))
+            .set((
+                probe::mac.eq(data.mac),
+                probe::ip.eq(data.ip),
+                probe::last_connected_at.eq(OffsetDateTime::now_utc()),
+            ))
             .get_result(&mut conn)
             .await
             .map_err(DbError::from)

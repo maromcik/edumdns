@@ -1,7 +1,6 @@
-use std::sync::Arc;
 use crate::error::{ServerError, ServerErrorKind};
 use crate::listen::ProbeHandles;
-use crate::probe_tracker::{ProbeTracker, SharedProbeLastSeen};
+use crate::probe_tracker::{ProbeStat, SharedProbeTracker};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::{
@@ -17,8 +16,9 @@ use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use ipnetwork::IpNetwork;
 use log::{trace, warn};
-use std::time::Duration;
 use rustls::ServerConfig;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
 
@@ -27,7 +27,7 @@ pub struct ConnectionManager {
     pg_probe_repository: PgProbeRepository,
     tx: Sender<AppPacket>,
     probe_handles: ProbeHandles,
-    probe_last_seen: SharedProbeLastSeen,
+    probe_last_seen: SharedProbeTracker,
     global_timeout: Duration,
 }
 
@@ -38,11 +38,18 @@ impl ConnectionManager {
         pool: Pool<AsyncPgConnection>,
         tx: Sender<AppPacket>,
         handles: ProbeHandles,
-        probe_last_seen: SharedProbeLastSeen,
+        probe_last_seen: SharedProbeTracker,
         global_timeout: Duration,
     ) -> Result<Self, ServerError> {
         let handle = match config {
-            Some(config) => TcpConnectionHandle::stream_to_framed_tls_server(stream, Arc::new(config), global_timeout).await?,
+            Some(config) => {
+                TcpConnectionHandle::stream_to_framed_tls_server(
+                    stream,
+                    Arc::new(config),
+                    global_timeout,
+                )
+                .await?
+            }
             _ => TcpConnectionHandle::stream_to_framed(stream, global_timeout)?,
         };
         Ok(Self {
@@ -161,7 +168,7 @@ impl ConnectionManager {
                     }
                     NetworkAppPacket::Status(status) => match status {
                         NetworkStatusPacket::PingRequest(uuid) => {
-                            let tracker = ProbeTracker::new(*uuid);
+                            let tracker = ProbeStat::new(*uuid);
                             trace!(
                                 "Received ping request from probe {:?}, adding to the last seen tracker",
                                 tracker

@@ -1,6 +1,8 @@
 use crate::ebpf::EbpfUpdater;
 use crate::error::{ServerError, ServerErrorKind};
+use crate::listen::ProbeHandles;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
+use crate::utilities::rewrite_payloads;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::{
@@ -24,7 +26,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
-use crate::utilities::rewrite_payloads;
 
 #[derive(Clone)]
 pub struct Proxy {
@@ -37,7 +38,7 @@ pub struct PacketManager {
     pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
     pub packet_receiver: Receiver<AppPacket>,
     pub transmitter_tasks: Arc<Mutex<HashMap<PacketTransmitRequestPacket, PacketTransmitterTask>>>,
-    pub probe_handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
+    pub probe_handles: ProbeHandles,
     pub probe_ws_handles: HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<ProbeResponse>>>,
     pub pg_device_repository: PgDeviceRepository,
     pub pg_packet_repository: PgPacketRepository,
@@ -52,24 +53,26 @@ impl PacketManager {
         handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
         global_timeout: Duration,
     ) -> Result<Self, ServerError> {
-        let proxy_ipv4 = env::var("EDUMDNS_SERVER_PROXY_IPV4").map(|ip| ip.parse::<Ipv4Addr>().ok()).ok();
-        let proxy_ipv6 = env::var("EDUMDNS_SERVER_PROXY_IPV6").map(|ip| ip.parse::<Ipv6Addr>().ok()).ok();
+        let proxy_ipv4 = env::var("EDUMDNS_SERVER_PROXY_IPV4")
+            .map(|ip| ip.parse::<Ipv4Addr>().ok())
+            .ok();
+        let proxy_ipv6 = env::var("EDUMDNS_SERVER_PROXY_IPV6")
+            .map(|ip| ip.parse::<Ipv6Addr>().ok())
+            .ok();
 
         let proxy = match (proxy_ipv4, proxy_ipv6) {
-            (Some(Some(ipv4)), Some(Some(ipv6))) => {
-                match EbpfUpdater::new() {
-                    Ok(updater) => Some(Proxy {
-                        proxy_ipv4: ipv4,
-                        proxy_ipv6: ipv6,
-                        ebpf_updater: Arc::new(Mutex::new(updater)),
-                    }),
-                    Err(e) => {
-                        error!("Could not create ebpf updater: {}", e);
-                        None
-                    }
+            (Some(Some(ipv4)), Some(Some(ipv6))) => match EbpfUpdater::new() {
+                Ok(updater) => Some(Proxy {
+                    proxy_ipv4: ipv4,
+                    proxy_ipv6: ipv6,
+                    ebpf_updater: Arc::new(Mutex::new(updater)),
+                }),
+                Err(e) => {
+                    error!("Could not create ebpf updater: {}", e);
+                    None
                 }
             },
-            (_, _) => None
+            (_, _) => None,
         };
 
         Ok(Self {
@@ -418,7 +421,9 @@ impl PacketManager {
             };
 
             info!("Packets found for target: {}", transmit_request);
-            let payloads = if let Some(p) = &proxy && device.proxy {
+            let payloads = if let Some(p) = &proxy
+                && device.proxy
+            {
                 rewrite_payloads(packets, p.proxy_ipv4, p.proxy_ipv6)
             } else {
                 packets.into_iter().map(|p| p.payload).collect()
@@ -429,7 +434,9 @@ impl PacketManager {
                 return;
             }
 
-            if let Some(p) = proxy && device.proxy {
+            if let Some(p) = proxy
+                && device.proxy
+            {
                 match p
                     .ebpf_updater
                     .lock()

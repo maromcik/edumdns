@@ -156,7 +156,7 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
         }
 
         validate_user(&user_entry)?;
-        
+
         let packets = self.read_many(params).await?;
 
         let ids: Vec<Id> = packets.iter().map(|p| p.id).collect();

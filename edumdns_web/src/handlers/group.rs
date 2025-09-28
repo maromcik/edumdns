@@ -61,9 +61,7 @@ pub async fn get_group(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
-    let group = group_repo
-        .read_one_auth(&path.0, &user_id)
-        .await?;
+    let group = group_repo.read_one_auth(&path.0, &user_id).await?;
 
     let template_name = get_template_name(&request, "group/detail");
     let env = state.jinja.acquire_env()?;

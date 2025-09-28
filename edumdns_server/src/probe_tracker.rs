@@ -8,29 +8,29 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 use tokio::time::Instant;
 
-pub type SharedProbeLastSeen = Arc<RwLock<OrderedMap<Uuid, ProbeTracker>>>;
+pub type SharedProbeTracker = Arc<RwLock<OrderedMap<Uuid, ProbeStat>>>;
 
 #[derive(Debug)]
-pub struct ProbeTracker {
+pub struct ProbeStat {
     pub id: Uuid,
     pub last_seen: Instant,
 }
 
-impl Eq for ProbeTracker {}
+impl Eq for ProbeStat {}
 
-impl PartialEq for ProbeTracker {
+impl PartialEq for ProbeStat {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl Hash for ProbeTracker {
+impl Hash for ProbeStat {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
 }
 
-impl Ord for ProbeTracker {
+impl Ord for ProbeStat {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         if self.id == other.id {
             return std::cmp::Ordering::Equal;
@@ -39,13 +39,13 @@ impl Ord for ProbeTracker {
     }
 }
 
-impl PartialOrd for ProbeTracker {
+impl PartialOrd for ProbeStat {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl ProbeTracker {
+impl ProbeStat {
     pub fn new(id: Uuid) -> Self {
         Self {
             id,
@@ -54,11 +54,7 @@ impl ProbeTracker {
     }
 }
 
-pub async fn watchdog(
-    tracker: SharedProbeLastSeen,
-    probe_handles: ProbeHandles,
-    max_age: Duration,
-) {
+pub async fn watchdog(tracker: SharedProbeTracker, probe_handles: ProbeHandles, max_age: Duration) {
     loop {
         tokio::time::sleep(max_age).await;
         trace!("Checking for dead probes");

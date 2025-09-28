@@ -1,5 +1,3 @@
-use std::net::SocketAddr;
-use std::sync::Arc;
 use crate::app_packet::NetworkAppPacket;
 use crate::error::{CoreError, CoreErrorKind};
 use bincode::{Decode, Encode};
@@ -7,17 +5,18 @@ use bytes::{Bytes, BytesMut};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
 use log::error;
+use rustls::{ClientConfig, ServerConfig};
+use rustls_pki_types::ServerName;
+use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::UdpSocket;
 use tokio::net::{TcpSocket, TcpStream};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
-use tokio_util::codec::{Framed, LengthDelimitedCodec};
-use rustls::{ClientConfig, ServerConfig};
-use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_rustls::{TlsAcceptor, TlsConnector};
-use rustls_pki_types::{ServerName};
-
+use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 // ---------- Message Multiplexers & Run loops (generic over stream S) ----------
 
@@ -51,9 +50,7 @@ where
     Ok(())
 }
 
-async fn run_tcp_connection_send_loop<S>(
-    mut actor: TcpConnectionSender<S>,
-) -> Result<(), CoreError>
+async fn run_tcp_connection_send_loop<S>(mut actor: TcpConnectionSender<S>) -> Result<(), CoreError>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
@@ -70,11 +67,7 @@ where
                     })?;
             }
             TcpConnectionMessage::Close => {
-                actor
-                    .framed_sink
-                    .close()
-                    .await
-                    .map_err(CoreError::from)?;
+                actor.framed_sink.close().await.map_err(CoreError::from)?;
                 return Ok(());
             }
             _ => {}
@@ -196,7 +189,7 @@ impl TcpConnectionHandle {
             recv_channel.1,
             global_timeout,
         )
-            .await?;
+        .await?;
 
         tokio::spawn(async move {
             if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
@@ -238,7 +231,7 @@ impl TcpConnectionHandle {
             client_config,
             global_timeout,
         )
-            .await?;
+        .await?;
 
         tokio::spawn(async move {
             if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
@@ -276,7 +269,7 @@ impl TcpConnectionHandle {
             server_config,
             global_timeout,
         )
-            .await?;
+        .await?;
 
         tokio::spawn(async move {
             if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
@@ -319,7 +312,7 @@ impl TcpConnectionHandle {
             recv_channel.1,
             global_timeout,
         )
-            .await?;
+        .await?;
 
         tokio::spawn(async move {
             if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
@@ -377,8 +370,8 @@ where
             self.global_timeout,
             self.framed_sink.send(Bytes::from(encoded)),
         )
-            .await
-            .map_err(|_| CoreError::new(CoreErrorKind::TimeoutError, "Sending a packet timed out"))??;
+        .await
+        .map_err(|_| CoreError::new(CoreErrorKind::TimeoutError, "Sending a packet timed out"))??;
         Ok(())
     }
 
@@ -469,8 +462,19 @@ impl TcpConnection {
         message_channel_receiver: mpsc::Receiver<TcpConnectionMessage>,
         stream: TcpStream,
         global_timeout: Duration,
-    ) -> Result<(TcpConnectionSender<TcpStream>, TcpConnectionReceiver<TcpStream>), CoreError> {
-        Self::stream_to_framed_generic(message_channel_sender, message_channel_receiver, stream, global_timeout)
+    ) -> Result<
+        (
+            TcpConnectionSender<TcpStream>,
+            TcpConnectionReceiver<TcpStream>,
+        ),
+        CoreError,
+    > {
+        Self::stream_to_framed_generic(
+            message_channel_sender,
+            message_channel_receiver,
+            stream,
+            global_timeout,
+        )
     }
 
     pub async fn stream_to_framed_tls(
@@ -489,14 +493,18 @@ impl TcpConnection {
     > {
         let connector = TlsConnector::from(client_config);
         let dnsname = ServerName::try_from(domain)?.to_owned();
-        let tls_stream = timeout(
-            global_timeout,
-            connector.connect(dnsname, stream),
-        )
+        let tls_stream = timeout(global_timeout, connector.connect(dnsname, stream))
             .await
-            .map_err(|_| CoreError::new(CoreErrorKind::TimeoutError, "TLS handshake timed out"))??;
+            .map_err(|_| {
+                CoreError::new(CoreErrorKind::TimeoutError, "TLS handshake timed out")
+            })??;
 
-        Self::stream_to_framed_generic(message_channel_sender, message_channel_receiver, tls_stream, global_timeout)
+        Self::stream_to_framed_generic(
+            message_channel_sender,
+            message_channel_receiver,
+            tls_stream,
+            global_timeout,
+        )
     }
 
     pub async fn stream_to_framed_tls_server(
@@ -513,14 +521,18 @@ impl TcpConnection {
         CoreError,
     > {
         let connector = TlsAcceptor::from(server_config);
-        let tls_stream = timeout(
-            global_timeout,
-            connector.accept(stream),
-        )
+        let tls_stream = timeout(global_timeout, connector.accept(stream))
             .await
-            .map_err(|_| CoreError::new(CoreErrorKind::TimeoutError, "TLS handshake timed out"))??;
+            .map_err(|_| {
+                CoreError::new(CoreErrorKind::TimeoutError, "TLS handshake timed out")
+            })??;
 
-        Self::stream_to_framed_generic(message_channel_sender, message_channel_receiver, tls_stream, global_timeout)
+        Self::stream_to_framed_generic(
+            message_channel_sender,
+            message_channel_receiver,
+            tls_stream,
+            global_timeout,
+        )
     }
 
     /// Plain connect (unchanged public behavior)
@@ -530,7 +542,13 @@ impl TcpConnection {
         message_channel_sender: mpsc::Receiver<TcpConnectionMessage>,
         message_channel_receiver: mpsc::Receiver<TcpConnectionMessage>,
         global_timeout: Duration,
-    ) -> Result<(TcpConnectionSender<TcpStream>, TcpConnectionReceiver<TcpStream>), CoreError> {
+    ) -> Result<
+        (
+            TcpConnectionSender<TcpStream>,
+            TcpConnectionReceiver<TcpStream>,
+        ),
+        CoreError,
+    > {
         let socket = TcpSocket::new_v4()?;
         let bind_ip = bind_ip.parse()?;
         socket.bind(bind_ip)?;
@@ -592,7 +610,7 @@ impl TcpConnection {
             client_config,
             global_timeout,
         )
-            .await
+        .await
     }
 }
 

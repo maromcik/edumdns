@@ -1,11 +1,16 @@
 use crate::error::DbError;
 use crate::models::{Device, GroupProbePermission, PacketTransmitRequest, Probe, User};
-use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission};
+use crate::repositories::common::{
+    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
+    DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission,
+};
 use crate::repositories::device::models::{
     CreateDevice, CreatePacketTransmitRequest, DeviceUpdatePassword, SelectManyDevices,
     SelectSingleDevice, UpdateDevice,
 };
-use crate::repositories::utilities::{generate_salt, hash_password, validate_permissions, validate_user};
+use crate::repositories::utilities::{
+    generate_salt, hash_password, validate_permissions, validate_user,
+};
 use crate::schema::device::BoxedQuery;
 use crate::schema::{
     device, group_probe_permission, group_user, packet, packet_transmit_request, probe, user,

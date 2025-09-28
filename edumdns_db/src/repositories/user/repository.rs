@@ -1,17 +1,22 @@
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::{GroupUser, User};
-use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id};
+use crate::repositories::common::{
+    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
+    DbResultSingle, DbResultSinglePerm, DbUpdate, Id,
+};
 
 use crate::error::BackendErrorKind::UserPasswordDoesNotMatch;
 use crate::repositories::user::models::{
     SelectManyUsers, UserCreate, UserLogin, UserUpdate, UserUpdatePassword,
 };
-use crate::repositories::utilities::{generate_salt, hash_password, validate_admin, verify_password_hash};
+use crate::repositories::utilities::{
+    generate_salt, hash_password, validate_admin, verify_password_hash,
+};
 use crate::schema::{group_user, user};
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
+use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
-use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 
 #[derive(Clone)]
@@ -101,7 +106,6 @@ impl PgUserRepository {
             .await?;
         Ok(maps)
     }
-
 }
 
 impl DbReadOne<Id, User> for PgUserRepository {

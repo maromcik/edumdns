@@ -2,16 +2,16 @@ use crate::error::{WebError, WebErrorKind};
 use crate::{DEFAULT_HOSTNAME, DEFAULT_PORT, SECS_IN_MONTH, SECS_IN_WEEK, SESSION_EXPIRY};
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
+use actix_session::SessionMiddleware;
 use actix_session::config::PersistentSession;
 use actix_session::storage::CookieSessionStore;
-use actix_session::SessionMiddleware;
 use actix_web::dev::ServiceRequest;
 use actix_web::http::header;
 use actix_web_openidconnect::ActixWebOpenId;
 use edumdns_core::app_packet::AppPacket;
 use edumdns_db::models::GroupProbePermission;
 use edumdns_db::repositories::common::Permission;
-use minijinja::{path_loader, Environment, Value};
+use minijinja::{Environment, Value, path_loader};
 use minijinja_autoreload::AutoReloader;
 use serde::Deserialize;
 use std::env;
@@ -146,7 +146,9 @@ pub fn get_session_middleware(
 ) -> SessionMiddleware<CookieSessionStore> {
     SessionMiddleware::builder(CookieSessionStore::default(), key.clone())
         .cookie_secure(use_secure_cookie)
-        .session_lifecycle(PersistentSession::default().session_ttl(time::Duration::days(SESSION_EXPIRY)))
+        .session_lifecycle(
+            PersistentSession::default().session_ttl(time::Duration::days(SESSION_EXPIRY)),
+        )
         .build()
 }
 

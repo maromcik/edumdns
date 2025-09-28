@@ -46,7 +46,7 @@ pub enum CoreErrorKind {
     #[error("dns packet manipulation error")]
     DnsPacketManipulationError,
     #[error("dns error")]
-    DnsError
+    DnsError,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

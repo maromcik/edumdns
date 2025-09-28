@@ -1,14 +1,21 @@
 use crate::error::WebError;
-use crate::forms::user::{UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm};
+use crate::forms::user::{
+    UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm,
+};
 use crate::handlers::utilities::{get_template_name, parse_user_id};
-use crate::templates::user::{UserDetailTemplate, UserManagePasswordTemplate, UserManageProfileTemplate, UserManageProfileUserFormTemplate, UserTemplate};
-use crate::{authorized, AppState};
+use crate::templates::user::{
+    UserDetailTemplate, UserManagePasswordTemplate, UserManageProfileTemplate,
+    UserManageProfileUserFormTemplate, UserTemplate,
+};
+use crate::{AppState, authorized};
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{delete, get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
 use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id};
-use edumdns_db::repositories::user::models::{SelectManyUsers, UserCreate, UserUpdate, UserUpdatePassword};
+use edumdns_db::repositories::user::models::{
+    SelectManyUsers, UserCreate, UserUpdate, UserUpdatePassword,
+};
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_db::repositories::utilities::validate_password;
 
@@ -24,12 +31,7 @@ pub async fn get_users(
     let user_id = parse_user_id(&i)?;
     let query = query.into_inner();
     let params = SelectManyUsers::from(query.clone());
-    let users = user_repo
-        .read_many_auth(
-            &params,
-            &user_id,
-        )
-        .await?;
+    let users = user_repo.read_many_auth(&params, &user_id).await?;
 
     let template_name = get_template_name(&request, "user");
     let env = state.jinja.acquire_env()?;
@@ -56,9 +58,7 @@ pub async fn get_user(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
-    let user = user_repo
-        .read_one_auth(&path.0, &user_id)
-        .await?;
+    let user = user_repo.read_one_auth(&path.0, &user_id).await?;
 
     let template_name = get_template_name(&request, "user/detail");
     let env = state.jinja.acquire_env()?;
@@ -84,15 +84,17 @@ pub async fn create_user(
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     user_repo
-        .create_auth(&UserCreate::new_from_admin(
-            &form.email,
-            &form.name,
-            &form.surname,
-            form.admin,
-            &form.password,
-            &form.confirm_password,
-        )?,
-        &user_id)
+        .create_auth(
+            &UserCreate::new_from_admin(
+                &form.email,
+                &form.name,
+                &form.surname,
+                form.admin,
+                &form.password,
+                &form.confirm_password,
+            )?,
+            &user_id,
+        )
         .await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, "/user"))
@@ -124,7 +126,9 @@ pub async fn update_user(
     let i = authorized!(identity, request);
     let target_user_id = form.0.id;
     let params = form.into_inner();
-    user_repo.update_auth(&UserUpdate::from(params), &parse_user_id(&i)?).await?;
+    user_repo
+        .update_auth(&UserUpdate::from(params), &parse_user_id(&i)?)
+        .await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/user/{}", target_user_id)))
         .finish())

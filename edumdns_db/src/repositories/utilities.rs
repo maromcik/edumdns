@@ -1,27 +1,27 @@
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::{GroupProbePermission, User};
+use crate::repositories::MIN_PASS_LEN;
 use crate::repositories::common::{DbResult, Id, Permission};
 use crate::schema::group_probe_permission;
 use crate::schema::group_user;
 use crate::schema::user;
 use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
+use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
-use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
-use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
 use pbkdf2::Pbkdf2;
+use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
 use rand_core::OsRng;
 use serde::{Deserialize, Deserializer};
 use std::ops::DerefMut;
 use std::str::FromStr;
 use uuid::Uuid;
-use crate::repositories::MIN_PASS_LEN;
 
 pub const WEAK_PASSWORD_MESSAGE: &str = "Weak Password! Must contain at least one char from: {lower, upper, number, special} and be at least 6 characters long.";
 
 pub fn validate_user(user: &User) -> Result<(), DbError> {
-    if user.disabled  {
+    if user.disabled {
         return Err(DbError::from(BackendError::new(
             BackendErrorKind::PermissionDenied,
             "User is disabled",
@@ -105,7 +105,7 @@ pub async fn validate_admin_transaction(
             "User is not admin",
         )));
     }
-    if user_entry.disabled  {
+    if user_entry.disabled {
         return Err(DbError::from(BackendError::new(
             BackendErrorKind::PermissionDenied,
             "User is disabled",

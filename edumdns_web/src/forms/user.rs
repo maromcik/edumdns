@@ -1,8 +1,8 @@
 use edumdns_db::repositories::common::{Id, Pagination};
 use edumdns_db::repositories::user::models::{SelectManyUsers, UserUpdate};
+use edumdns_db::repositories::utilities::empty_string_is_none;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-use edumdns_db::repositories::utilities::empty_string_is_none;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct UserQuery {
@@ -114,4 +114,3 @@ pub struct UserLoginForm {
 //     pub deleted: Option<bool>,
 //     pub page: Option<i64>,
 // }
-

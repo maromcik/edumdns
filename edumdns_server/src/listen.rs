@@ -2,20 +2,20 @@ use crate::connection::ConnectionManager;
 use crate::error::{ServerError, ServerErrorKind};
 use crate::manager::PacketManager;
 use crate::ordered_map::OrderedMap;
-use crate::{parse_host, ServerTlsConfig};
-use crate::probe_tracker::{SharedProbeLastSeen, watchdog};
+use crate::probe_tracker::{SharedProbeTracker, watchdog};
+use crate::{ServerTlsConfig, parse_host};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::AppPacket;
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::TcpConnectionHandle;
 use log::{debug, error, info, warn};
+use rustls::ServerConfig;
+use rustls_pki_types::pem::PemObject;
+use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use rustls::ServerConfig;
-use rustls_pki_types::{CertificateDer, PrivateKeyDer};
-use rustls_pki_types::pem::PemObject;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -41,7 +41,7 @@ pub async fn listen(
     info!("Listening on {}", listener.local_addr()?);
 
     let probe_handles: ProbeHandles = Arc::new(RwLock::new(HashMap::new()));
-    let tracker: SharedProbeLastSeen = Arc::new(RwLock::new(OrderedMap::new()));
+    let tracker: SharedProbeTracker = Arc::new(RwLock::new(OrderedMap::new()));
 
     let pool_local = pool.clone();
     let probe_handles_local = probe_handles.clone();
@@ -54,21 +54,28 @@ pub async fn listen(
         }
     });
 
-    let tracker_local: SharedProbeLastSeen = tracker.clone();
+    let tracker_local: SharedProbeTracker = tracker.clone();
     let probe_handles_local = probe_handles.clone();
     let _probe_watchdog_task = tokio::task::spawn(async move {
         info!("Starting the probe watchdog");
         watchdog(tracker_local, probe_handles_local, global_timeout).await;
     });
     info!("Packet storage initialized");
-    
+
     let server_config = match config {
         None => None,
         Some(config) => {
-            let certs = CertificateDer::pem_file_iter(&config.cert_path)?.collect::<Result<Vec<_>, _>>()?;
+            let certs =
+                CertificateDer::pem_file_iter(&config.cert_path)?.collect::<Result<Vec<_>, _>>()?;
             let key = PrivateKeyDer::from_pem_file(&config.key_path)?;
-            rustls::crypto::ring::default_provider().install_default().expect("Failed to install rustls crypto provider");
-            Some(ServerConfig::builder().with_no_client_auth().with_single_cert(certs, key)?)
+            rustls::crypto::ring::default_provider()
+                .install_default()
+                .expect("Failed to install rustls crypto provider");
+            Some(
+                ServerConfig::builder()
+                    .with_no_client_auth()
+                    .with_single_cert(certs, key)?,
+            )
         }
     };
 
@@ -83,7 +90,9 @@ pub async fn listen(
             probe_handles.clone(),
             tracker.clone(),
             global_timeout,
-        ).await {
+        )
+        .await
+        {
             Ok(c) => c,
             Err(e) => {
                 warn!("Invalid connection from {addr}: {e}");

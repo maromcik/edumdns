@@ -25,7 +25,7 @@ pub enum ServerErrorKind {
     #[error("ebpf map error")]
     EbpfMapError,
     #[error("tls error")]
-    TlsError
+    TlsError,
 }
 
 #[derive(Error, Debug, Clone)]

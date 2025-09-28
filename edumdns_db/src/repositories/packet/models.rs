@@ -7,7 +7,7 @@ use edumdns_core::network_packet::ApplicationPacket;
 use ipnetwork::IpNetwork;
 use log::warn;
 use serde::{Deserialize, Serialize};
-use time::{format_description, OffsetDateTime};
+use time::{OffsetDateTime, format_description};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
@@ -117,7 +117,7 @@ pub struct PacketDisplay {
     pub src_port: i32,
     pub dst_port: i32,
     pub payload: String,
-    pub captured_at: Option<String>
+    pub captured_at: Option<String>,
 }
 
 impl PacketDisplay {
@@ -129,7 +129,8 @@ impl PacketDisplay {
                 return Err(e);
             }
         };
-        let format = format_description::parse("[day]. [month]. [year] [hour]:[minute]:[second]").unwrap_or_default();
+        let format = format_description::parse("[day]. [month]. [year] [hour]:[minute]:[second]")
+            .unwrap_or_default();
         Ok(Self {
             id: value.id,
             probe_id: value.probe_id,
@@ -140,7 +141,9 @@ impl PacketDisplay {
             src_port: value.src_port,
             dst_port: value.dst_port,
             payload: payload.read_content(),
-            captured_at: value.captured_at.map(|t| t.format(&format).unwrap_or_default()),
+            captured_at: value
+                .captured_at
+                .map(|t| t.format(&format).unwrap_or_default()),
         })
     }
 }

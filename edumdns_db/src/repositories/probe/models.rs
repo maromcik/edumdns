@@ -1,12 +1,14 @@
+use std::net::Ipv4Addr;
+use std::str::FromStr;
 use crate::models::Probe;
 use crate::repositories::common::{Id, Pagination, Permission};
 use crate::repositories::utilities::empty_string_is_none;
 use diesel::{AsChangeset, Identifiable, Insertable};
 use edumdns_core::bincode_types::MacAddr;
-use ipnetwork::IpNetwork;
+use ipnetwork::{IpNetwork, Ipv4Network};
 use serde::{Deserialize, Serialize};
-use time::{OffsetDateTime, format_description};
-use uuid::Uuid;
+use time::{format_description, OffsetDateTime};
+use uuid::{Timestamp, Uuid};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SelectManyProbes {
@@ -50,10 +52,11 @@ pub struct CreateProbe {
     pub id: Uuid,
     pub mac: [u8; 6],
     pub ip: IpNetwork,
+    pub name: Option<String>,
 }
 
 impl CreateProbe {
-    pub fn new(
+    pub fn new_connect(
         id: edumdns_core::bincode_types::Uuid,
         mac: edumdns_core::bincode_types::MacAddr,
         ip: IpNetwork,
@@ -62,6 +65,18 @@ impl CreateProbe {
             id: id.0,
             mac: mac.0.octets(),
             ip,
+            name: None,
+        }
+    }
+
+    pub fn new_web(name: Option<&str>) -> CreateProbe {
+        let ts = Timestamp::now(uuid::NoContext);
+        let uuid = uuid::Uuid::new_v7(ts);
+        Self {
+            id: uuid,
+            mac: MacAddr::default().to_octets(),
+            ip: IpNetwork::V4(Ipv4Network::from_str("0.0.0.0/0").expect("Parsing hardcoded IP should not fail")),
+            name: name.map(|n|n.to_owned()),
         }
     }
 }
@@ -81,8 +96,7 @@ pub struct ProbeDisplay {
 
 impl From<Probe> for ProbeDisplay {
     fn from(value: Probe) -> Self {
-        let format = format_description::parse("[day]. [month]. [year] [hour]:[minute]:[second]")
-            .unwrap_or_default();
+        let format = format_description::parse("[day]. [month]. [year] [hour]:[minute]:[second]").unwrap_or_default();
         Self {
             id: value.id,
             owner_id: value.owner_id,
@@ -91,12 +105,8 @@ impl From<Probe> for ProbeDisplay {
             mac: MacAddr::from_octets(value.mac),
             ip: value.ip,
             name: value.name,
-            first_connected_at: value
-                .first_connected_at
-                .map(|t| t.format(&format).unwrap_or_default()),
-            last_connected_at: value
-                .last_connected_at
-                .map(|t| t.format(&format).unwrap_or_default()),
+            first_connected_at: value.first_connected_at.map(|t| t.format(&format).unwrap_or_default()),
+            last_connected_at: value.last_connected_at.map(|t| t.format(&format).unwrap_or_default()),
         }
     }
 }

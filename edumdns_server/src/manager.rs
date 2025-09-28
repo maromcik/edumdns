@@ -275,7 +275,8 @@ impl PacketManager {
                 .src_mac;
             let src_ip = packet.packet_metadata.ip_metadata.src_ip;
             let device = device_repo
-                .create(&CreateDevice::new(
+                .create(&CreateDevice::
+                new_discover(
                     packet.probe_metadata.id.0,
                     src_mac.to_octets(),
                     src_ip.0,

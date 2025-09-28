@@ -23,7 +23,6 @@
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
                     hx-push-url="/probe/{{ probe.id }}"
-                    hx-swap="none"
             >
                 Restart
             </button>
@@ -61,6 +60,15 @@
                     hx-push-url="/probe"
             >
                 Delete
+            </button>
+            <button
+                    class="ml-2 bg-green-400 hover:bg-green-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                    hx-get="/device/create/{{ probe.id}}"
+                    hx-target="#probe-content-area"
+                    hx-target-error="#probe-content-area"
+                    hx-push-url="/device/create/{{ probe.id}}"
+            >
+                Create Device
             </button>
             {% endif %}
         </div>

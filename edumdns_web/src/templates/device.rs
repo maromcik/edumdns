@@ -6,6 +6,7 @@ use edumdns_db::repositories::common::Permissions;
 use edumdns_db::repositories::device::models::DeviceDisplay;
 use edumdns_db::repositories::packet::models::PacketDisplay;
 use serde::Serialize;
+use uuid::Uuid;
 
 #[derive(Serialize)]
 pub struct DeviceTemplate {
@@ -39,4 +40,9 @@ pub struct DeviceTransmitTemplate {
     pub device: DeviceDisplay,
     pub client_ip: String,
     pub packet_transmit_requests: Vec<PacketTransmitRequest>,
+}
+
+#[derive(Serialize)]
+pub struct DeviceCreateTemplate {
+    pub probe_id: Uuid
 }

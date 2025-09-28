@@ -1,24 +1,25 @@
 use crate::authorized;
 use crate::error::WebError;
-use crate::forms::packet::PacketQuery;
+use crate::forms::packet::{CreatePacketForm, PacketDeviceDataForm, PacketQuery};
 use crate::handlers::utilities::{get_template_name, parse_user_id};
 use crate::header::LOCATION;
 use crate::templates::PageInfo;
-use crate::templates::packet::{PacketDetailTemplate, PacketTemplate};
+use crate::templates::packet::{PacketCreateTemplate, PacketDetailTemplate, PacketTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
-use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
+use actix_web::{HttpRequest, HttpResponse, delete, get, post, web, put};
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
-use edumdns_db::repositories::common::{
-    DbDelete, DbReadMany, DbReadOne, Id, PAGINATION_ELEMENTS_PER_PAGE,
-};
-use edumdns_db::repositories::device::models::SelectSingleDevice;
+use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, Id, PAGINATION_ELEMENTS_PER_PAGE};
+use edumdns_db::repositories::device::models::{CreateDevice, SelectSingleDevice};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
+use edumdns_db::repositories::packet::models::{CreatePacket, PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use hickory_proto::op::{Header, Message};
 use std::collections::HashMap;
+use uuid::Uuid;
+use crate::forms::device::CreateDeviceForm;
+use crate::templates::device::DeviceCreateTemplate;
 
 #[get("")]
 pub async fn get_packets(
@@ -135,12 +136,33 @@ pub async fn create_packet(
     request: HttpRequest,
     identity: Option<Identity>,
     packet_repo: web::Data<PgPacketRepository>,
-    path: web::Path<(Id,)>,
+    form: web::Form<CreatePacketForm>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
-    let user_id = parse_user_id(&i)?;
-
+    let params = CreatePacket::from(form.into_inner());
+    let packet = packet_repo
+        .create_auth(&params, &parse_user_id(&i)?)
+        .await?;
     Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, "/"))
+        .insert_header((LOCATION, format!("/packet/{}", packet.id)))
         .finish())
+}
+
+#[put("create")]
+pub async fn create_packet_form(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    state: web::Data<AppState>,
+    form: web::Form<PacketDeviceDataForm>,
+) -> Result<HttpResponse, WebError> {
+    let _ = authorized!(identity, request);
+    let template_name = get_template_name(&request, "packet/create");
+    let env = state.jinja.acquire_env()?;
+    let template = env.get_template(&template_name)?;
+    let body = template.render(PacketCreateTemplate {
+        probe_id: form.probe_id,
+        ip: form.ip,
+        mac: form.mac,
+    })?;
+    Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

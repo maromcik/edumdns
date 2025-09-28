@@ -53,3 +53,9 @@ pub struct ProbePermissionForm {
     #[serde(default)]
     pub value: bool,
 }
+
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CreateProbeForm {
+    pub name: String,
+}

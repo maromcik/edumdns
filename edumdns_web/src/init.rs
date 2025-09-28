@@ -1,8 +1,4 @@
-use crate::handlers::device::{
-    delete_device, delete_request_packet_transmit, get_device, get_device_for_transmit,
-    get_devices, hide_device, publish_device, request_custom_packet_transmit,
-    request_packet_transmit, update_device,
-};
+use crate::handlers::device::{create_device, create_device_form, delete_device, delete_request_packet_transmit, get_device, get_device_for_transmit, get_devices, hide_device, publish_device, request_custom_packet_transmit, request_packet_transmit, update_device};
 use crate::handlers::group::{
     add_group_users, create_group, delete_group, delete_group_user, get_group, get_group_users,
     get_groups, search_group_users, update_group,
@@ -10,15 +6,9 @@ use crate::handlers::group::{
 use crate::handlers::index::{
     index, login, login_base, login_oidc, login_oidc_redirect, logout, logout_cleanup,
 };
-use crate::handlers::packet::{delete_packet, get_packet, get_packets};
-use crate::handlers::probe::{
-    adopt, change_probe_permission, create_config, delete_config, delete_probe, forget, get_probe,
-    get_probe_ws, get_probes, restart, save_config, update_probe,
-};
-use crate::handlers::user::{
-    create_user, delete_user, get_user, get_users, update_user, user_manage, user_manage_form_page,
-    user_manage_password, user_manage_password_form, user_manage_profile_form,
-};
+use crate::handlers::packet::{create_packet, create_packet_form, delete_packet, get_packet, get_packets};
+use crate::handlers::probe::{adopt, change_probe_permission, create_config, create_probe, delete_config, delete_probe, forget, get_probe, get_probe_ws, get_probes, restart, save_config, update_probe};
+use crate::handlers::user::{create_user, update_user, delete_user, get_user, get_users, user_manage, user_manage_form_page, user_manage_password, user_manage_password_form, user_manage_profile_form};
 use crate::utils::AppState;
 use actix_files::Files;
 use actix_web::web;
@@ -84,7 +74,8 @@ pub fn configure_webapp(
         .service(change_probe_permission)
         .service(update_probe)
         .service(delete_probe)
-        .service(get_probe_ws);
+        .service(get_probe_ws)
+        .service(create_probe);
 
     let device_scope = web::scope("device")
         .app_data(web::Data::new(device_repo.clone()))
@@ -98,14 +89,18 @@ pub fn configure_webapp(
         .service(request_packet_transmit)
         .service(get_device_for_transmit)
         .service(publish_device)
-        .service(hide_device);
+        .service(hide_device)
+        .service(create_device)
+        .service(create_device_form);
 
     let packet_scope = web::scope("packet")
         .app_data(web::Data::new(packet_repo))
         .app_data(web::Data::new(device_repo.clone()))
         .service(get_packets)
         .service(get_packet)
-        .service(delete_packet);
+        .service(delete_packet)
+        .service(create_packet)
+        .service(create_packet_form);
 
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.app_data(web::Data::new(app_state))

@@ -184,6 +184,7 @@ impl Pagination {
 )]
 #[diesel(sql_type = SmallInt)]
 pub enum Permission {
+    Full,
     Read,
     Adopt,
     Forget,
@@ -191,12 +192,13 @@ pub enum Permission {
     ModifyConfig,
     Delete,
     Update,
-    Full,
+    Create,
 }
 
 impl Display for Permission {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            Permission::Full => write!(f, "Full"),
             Permission::Read => write!(f, "Read"),
             Permission::Adopt => write!(f, "Adopt"),
             Permission::Forget => write!(f, "Forget"),
@@ -204,7 +206,7 @@ impl Display for Permission {
             Permission::ModifyConfig => write!(f, "ModifyConfig"),
             Permission::Delete => write!(f, "Delete"),
             Permission::Update => write!(f, "Update"),
-            Permission::Full => write!(f, "Full"),
+            Permission::Create => write!(f, "Create"),
         }
     }
 }
@@ -224,6 +226,7 @@ where
             5 => Ok(Permission::ModifyConfig),
             6 => Ok(Permission::Delete),
             7 => Ok(Permission::Update),
+            8 => Ok(Permission::Create),
             x => Err(format!("Unrecognized variant {}", x).into()),
         }
     }
@@ -244,6 +247,7 @@ where
             Permission::ModifyConfig => 5_i16.to_sql(out),
             Permission::Delete => 6_i16.to_sql(out),
             Permission::Update => 7_i16.to_sql(out),
+            Permission::Create => 8_i16.to_sql(out),
         }
     }
 }

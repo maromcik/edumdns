@@ -1,8 +1,11 @@
+use ipnetwork::IpNetwork;
 use crate::forms::packet::PacketQuery;
 use crate::templates::PageInfo;
 use edumdns_db::repositories::common::{Id, Permissions};
 use edumdns_db::repositories::packet::models::PacketDisplay;
 use serde::Serialize;
+use uuid::Uuid;
+use edumdns_core::bincode_types::MacAddr;
 
 #[derive(Serialize)]
 pub struct PacketTemplate<'a> {
@@ -24,4 +27,11 @@ pub struct PacketDetailTemplate<'a> {
     pub permissions: Permissions,
     pub packet: &'a PacketDisplay,
     pub device_id: Id,
+}
+
+#[derive(Serialize)]
+pub struct PacketCreateTemplate {
+    pub probe_id: Uuid,
+    pub mac: MacAddr,
+    pub ip: IpNetwork,
 }

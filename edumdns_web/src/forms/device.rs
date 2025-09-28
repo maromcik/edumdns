@@ -1,7 +1,7 @@
 use crate::error::WebError;
 use edumdns_core::bincode_types::MacAddr;
 use edumdns_db::repositories::common::{Id, Pagination};
-use edumdns_db::repositories::device::models::{SelectManyDevices, UpdateDevice};
+use edumdns_db::repositories::device::models::{CreateDevice, SelectManyDevices, UpdateDevice};
 use edumdns_db::repositories::utilities::empty_string_is_none;
 use edumdns_db::repositories::utilities::{generate_salt, hash_password};
 use ipnetwork::IpNetwork;
@@ -75,6 +75,9 @@ pub struct UpdateDeviceForm {
     pub id: Id,
     #[serde(default, deserialize_with = "empty_string_is_none")]
     pub name: Option<String>,
+    pub mac: Option<MacAddr>,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
+    pub ip: Option<IpNetwork>,
     #[serde(default, deserialize_with = "empty_string_is_none")]
     pub port: Option<i32>,
     #[serde(default, deserialize_with = "empty_string_is_none")]
@@ -108,6 +111,8 @@ impl UpdateDeviceForm {
         Ok(UpdateDevice {
             id: self.id,
             name: self.name,
+            mac: self.mac.map(|mac| mac.to_octets()),
+            ip: self.ip,
             port: self.port,
             duration: self.duration,
             interval: self.interval,
@@ -118,5 +123,26 @@ impl UpdateDeviceForm {
             acl_pwd_salt: salt,
             proxy: Some(self.proxy),
         })
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CreateDeviceForm {
+    pub name: String,
+    pub probe_id: Uuid,
+    pub mac: MacAddr,
+    pub ip: IpNetwork,
+    pub port: i32,
+}
+
+impl From<CreateDeviceForm> for CreateDevice {
+    fn from(value: CreateDeviceForm) -> Self {
+        Self {
+            probe_id: value.probe_id,
+            mac: value.mac.to_octets(),
+            ip: value.ip,
+            port: value.port,
+            name: Some(value.name),
+        }
     }
 }

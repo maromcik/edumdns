@@ -615,16 +615,9 @@ impl<'a> ApplicationPacket<'a> {
         }
     }
 
-    pub fn read_content(&mut self) -> String {
+    pub fn read_content(&self) -> String {
         match self.application_packet_type {
-            ApplicationPacketType::DnsPacket(ref mut packet) => {
-                // for answer in packet.answers_mut() {
-                //     if answer.data().is_a() {
-                //         answer.set_data(RData::A(hickory_proto::rr::rdata::a::A::new(1, 1,1,1)));
-                //         error!("{:?}", answer.data());
-                //     }
-                //
-                // }
+            ApplicationPacketType::DnsPacket(ref packet) => {
                 packet.to_string()
             }
             ApplicationPacketType::Other(packet) => String::from_utf8_lossy(packet).to_string(),

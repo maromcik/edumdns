@@ -216,7 +216,24 @@ impl DbCreate<CreatePacket, Packet> for PgPacketRepository {
             .map_err(DbError::from)
     }
     async fn create_auth(&self, data: &CreatePacket, user_id: &Id) -> DbResultSingle<Packet> {
-        self.create(data).await
+        validate_permissions(&self.pg_pool, user_id, &data.probe_id, Permission::Create).await?;
+        let mut conn = self.pg_pool.get().await?;
+        diesel::insert_into(packet::table)
+            .values((
+                packet::probe_id.eq(data.probe_id),
+                packet::src_mac.eq(data.src_mac),
+                packet::dst_mac.eq(data.dst_mac),
+                packet::src_addr.eq(data.src_addr),
+                packet::dst_addr.eq(data.dst_addr),
+                packet::src_port.eq(data.src_port),
+                packet::dst_port.eq(data.dst_port),
+                packet::payload.eq(&data.payload),
+                packet::payload_hash.eq(&data.payload_hash),
+                ))
+            .returning(Packet::as_returning())
+            .get_result(&mut conn)
+            .await
+            .map_err(DbError::from)
     }
 }
 

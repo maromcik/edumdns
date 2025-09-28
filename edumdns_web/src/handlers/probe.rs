@@ -1,6 +1,6 @@
 use crate::error::WebError;
 use crate::forms::device::DeviceQuery;
-use crate::forms::probe::{ProbeConfigForm, ProbePermissionForm, ProbeQuery};
+use crate::forms::probe::{ProbeConfigForm, CreateProbeForm, ProbePermissionForm, ProbeQuery};
 use crate::handlers::helpers::reconnect_probe;
 use crate::handlers::utilities::{get_template_name, parse_user_id};
 use crate::templates::PageInfo;
@@ -14,26 +14,21 @@ use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, rt, web};
 use actix_ws::AggregatedMessage;
 use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket};
 use edumdns_core::error::CoreError;
-use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
-use edumdns_db::models::Group;
-use edumdns_db::repositories::common::{
-    DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE, Permission,
-};
+use edumdns_db::models::{Group};
+use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE, Permission, DbCreate};
 use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::group::models::SelectManyGroups;
 use edumdns_db::repositories::group::repository::PgGroupRepository;
-use edumdns_db::repositories::probe::models::{
-    AlterProbePermission, CreateProbeConfig, ProbeDisplay, SelectManyProbes,
-    SelectSingleProbeConfig, UpdateProbe,
-};
+use edumdns_db::repositories::probe::models::{AlterProbePermission, CreateProbe, CreateProbeConfig, ProbeDisplay, SelectManyProbes, SelectSingleProbeConfig, UpdateProbe};
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
-use edumdns_db::repositories::user::repository::PgUserRepository;
 use log::{info, warn};
 use std::collections::{HashMap, HashSet};
 use strum::IntoEnumIterator;
 use tokio::sync::mpsc;
 use uuid::{Timestamp, Uuid};
+use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
+use edumdns_db::repositories::user::repository::PgUserRepository;
 
 #[get("")]
 pub async fn get_probes(
@@ -50,17 +45,13 @@ pub async fn get_probes(
     let has_groups = !user_repo.get_groups(&user_id).await?.is_empty();
     let is_admin = user_repo.read_one(&user_id).await?.admin;
     if !has_groups && !is_admin {
-        return Err(DbError::new(
-            DbErrorKind::BackendError(BackendError::new(
-                BackendErrorKind::PermissionDenied,
-                "User is not assigned to any group",
-            )),
-            "",
-        ))?;
+        return Err(DbError::new(DbErrorKind::BackendError(BackendError::new(BackendErrorKind::PermissionDenied, "User is not assigned to any group")), ""))?;
     }
     let query = query.into_inner();
     let params = SelectManyProbes::from(query.clone());
-    let probes = probe_repo.read_many_auth(&params, &user_id).await?;
+    let probes = probe_repo
+        .read_many_auth(&params, &user_id)
+        .await?;
 
     let probes_parsed = probes
         .data
@@ -105,7 +96,9 @@ pub async fn get_probe(
     let user_id = parse_user_id(&i)?;
     let probe_id = path.0;
     let page = query.page.unwrap_or(1);
-    let probe = probe_repo.read_one_auth(&probe_id, &user_id).await?;
+    let probe = probe_repo
+        .read_one_auth(&probe_id, &user_id)
+        .await?;
 
     let granted: HashSet<(Id, Permission)> = probe_repo
         .get_permissions(&probe_id)
@@ -474,4 +467,21 @@ pub async fn get_probe_ws(
         }
     });
     Ok(res)
+}
+
+#[post("create")]
+pub async fn create_probe(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    probe_repo: web::Data<PgProbeRepository>,
+    form: web::Form<CreateProbeForm>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
+    let probe_create = CreateProbe::new_web(Some(form.name.as_str()));
+    println!("ID: {}", probe_create.id);
+    let _ = probe_repo.create_auth(&probe_create, &user_id).await?;
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/probe/{}", probe_create.id)))
+        .finish())
 }

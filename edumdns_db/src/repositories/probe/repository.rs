@@ -9,11 +9,11 @@ use crate::repositories::probe::models::{
     SelectSingleProbeConfig, UpdateProbe,
 };
 use crate::repositories::utilities::{validate_admin, validate_permissions, validate_user};
-use crate::schema::group_probe_permission;
 use crate::schema::group_user;
 use crate::schema::probe;
 use crate::schema::probe::BoxedQuery;
 use crate::schema::user;
+use crate::schema::{device, group_probe_permission};
 use crate::schema::{location, probe_config};
 use diesel::pg::Pg;
 use diesel::{
@@ -109,6 +109,7 @@ impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeReposito
 
         let probes = query
             .left_outer_join(location::table)
+            .order_by(probe::ip.asc())
             .select((Option::<Location>::as_select(), Probe::as_select()))
             .load::<(Option<Location>, Probe)>(&mut conn)
             .await?;
@@ -155,6 +156,7 @@ impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeReposito
             )
             .distinct()
             .left_outer_join(location::table)
+            .order_by(probe::ip.asc())
             .select((Option::<Location>::as_select(), Probe::as_select()))
             .load::<(Option<Location>, Probe)>(&mut conn)
             .await?;
@@ -180,7 +182,21 @@ impl DbCreate<CreateProbe, Probe> for PgProbeRepository {
             .map_err(DbError::from)
     }
     async fn create_auth(&self, data: &CreateProbe, user_id: &Id) -> DbResultSingle<Probe> {
-        self.create(data).await
+        validate_admin(&self.pg_pool, user_id).await?;
+        let mut conn = self.pg_pool.get().await?;
+        diesel::insert_into(probe::table)
+            .values((
+                probe::id.eq(data.id),
+                probe::ip.eq(data.ip),
+                probe::mac.eq(data.mac),
+                probe::name.eq(data.name.as_ref()),
+                probe::first_connected_at.eq::<Option<OffsetDateTime>>(None),
+                probe::last_connected_at.eq::<Option<OffsetDateTime>>(None),
+            ))
+            .returning(Probe::as_returning())
+            .get_result(&mut conn)
+            .await
+            .map_err(DbError::from)
     }
 }
 
@@ -196,6 +212,22 @@ impl DbDelete<Uuid, Probe> for PgProbeRepository {
     async fn delete_auth(&self, params: &Uuid, user_id: &Id) -> DbResultMultiple<Probe> {
         validate_permissions(&self.pg_pool, user_id, params, Permission::Delete).await?;
         self.delete(params).await
+    }
+}
+
+impl DbUpdate<UpdateProbe, Probe> for PgProbeRepository {
+    async fn update(&self, params: &UpdateProbe) -> DbResultMultiple<Probe> {
+        let mut conn = self.pg_pool.get().await?;
+        let probes = diesel::update(probe::table.find(&params.id))
+            .set(params)
+            .get_results(&mut conn)
+            .await?;
+        Ok(probes)
+    }
+
+    async fn update_auth(&self, params: &UpdateProbe, user_id: &Id) -> DbResultMultiple<Probe> {
+        validate_permissions(&self.pg_pool, user_id, &params.id, Permission::Update).await?;
+        self.update(params).await
     }
 }
 
@@ -322,21 +354,5 @@ impl PgProbeRepository {
             .load::<GroupProbePermission>(&mut conn)
             .await?;
         Ok(permissions)
-    }
-}
-
-impl DbUpdate<UpdateProbe, Probe> for PgProbeRepository {
-    async fn update(&self, params: &UpdateProbe) -> DbResultMultiple<Probe> {
-        let mut conn = self.pg_pool.get().await?;
-        let probes = diesel::update(probe::table.find(&params.id))
-            .set(params)
-            .get_results(&mut conn)
-            .await?;
-        Ok(probes)
-    }
-
-    async fn update_auth(&self, params: &UpdateProbe, user_id: &Id) -> DbResultMultiple<Probe> {
-        validate_permissions(&self.pg_pool, user_id, &params.id, Permission::Update).await?;
-        self.update(params).await
     }
 }

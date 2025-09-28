@@ -3,6 +3,50 @@
         <h2 class="text-4xl font-bold text-sat-xl">Probes</h2>
     </div>
 
+    <div class="flex items-center justify-between py-4">
+        <h2 class="text-4xl font-bold text-sat-xl">Probes</h2>
+
+<!--        {% if is_admin %}-->
+<!--        <button-->
+<!--                class="ml-4 bg-acc-l rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"-->
+<!--                hx-post="/probe/create"-->
+<!--                hx-target="#content-area"-->
+<!--                hx-target-error="#content-area"-->
+<!--                hx-push-url="/probe"-->
+<!--        >-->
+<!--            Create Probe-->
+<!--        </button>-->
+<!--        {% endif %}-->
+    </div>
+
+    {% if is_admin %}
+    <!-- New Group -->
+    <div class="rounded-lg border border-base bg-cards p-6 mb-6">
+        <h3 class="text-2xl font-semibold text-sat-l mb-4">New Probe</h3>
+        <form action="/probe/create" method="post" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="flex flex-col">
+                <label for="name" class="text-xs uppercase tracking-wide text-sat-m">Name</label>
+                <input
+                        id="name"
+                        name="name"
+                        type="text"
+                        required
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        placeholder="Enter probe name"
+                />
+            </div>
+            <div class="md:col-span-2">
+                <button
+                        type="submit"
+                        class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-cards hover:bg-acc-xl transition-colors"
+                >
+                    Create Probe
+                </button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
     <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards">
         <table class="w-full divide-y divide-base">
             <thead class="bg-muted/10">

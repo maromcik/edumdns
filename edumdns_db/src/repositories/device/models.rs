@@ -66,15 +66,26 @@ pub struct CreateDevice {
     pub mac: [u8; 6],
     pub ip: IpNetwork,
     pub port: i32,
+    pub name: Option<String>,
 }
 
 impl CreateDevice {
-    pub fn new(probe_id: Uuid, mac: [u8; 6], ip: IpNetwork, port: u16) -> Self {
+    pub fn new(probe_id: Uuid, mac: [u8; 6], ip: IpNetwork, port: u16, name: Option<&String>) -> Self {
         Self {
             probe_id,
             mac,
             ip,
             port: port as i32,
+            name: name.map(|s| s.to_string()),
+        }
+    }
+    pub fn new_discover(probe_id: Uuid, mac: [u8; 6], ip: IpNetwork, port: u16) -> Self {
+        Self {
+            probe_id,
+            mac,
+            ip,
+            port: port as i32,
+            name: None,
         }
     }
 }
@@ -137,6 +148,8 @@ pub struct UpdateDevice {
     pub id: Id,
     #[diesel(treat_none_as_null = true)]
     pub name: Option<String>,
+    pub mac: Option<[u8; 6]>,
+    pub ip: Option<IpNetwork>,
     pub port: Option<i32>,
     pub duration: Option<i64>,
     pub interval: Option<i64>,
@@ -153,58 +166,17 @@ pub struct UpdateDevice {
 }
 
 impl UpdateDevice {
-    pub fn new(
-        id: Id,
-        name: Option<&str>,
-        port: Option<i32>,
-        duration: Option<i64>,
-        interval: Option<i64>,
-        published: Option<bool>,
-        proxy: Option<bool>,
-        acl_src_cidr: Option<IpNetwork>,
-        acl_pwd_hash: Option<&str>,
-        acl_pwd_salt: Option<&str>,
-    ) -> Self {
-        Self {
-            id,
-            name: name.map(|s| s.to_string()),
-            port,
-            duration,
-            interval,
-            published,
-            proxy,
-            acl_src_cidr,
-            acl_pwd_hash: acl_pwd_hash.map(|s| s.to_string()),
-            acl_pwd_salt: acl_pwd_salt.map(|s| s.to_string()),
-            acl_ap_hostname_regex: acl_pwd_salt.map(|s| s.to_string()),
-        }
-    }
-
     pub fn toggle_publicity(device_id: &Id, published: bool) -> Self {
         Self {
             id: *device_id,
             name: None,
+            mac: None,
+            ip: None,
             port: None,
             duration: None,
             interval: None,
             published: Some(published),
             proxy: None,
-            acl_src_cidr: None,
-            acl_pwd_hash: None,
-            acl_pwd_salt: None,
-            acl_ap_hostname_regex: None,
-        }
-    }
-
-    pub fn toggle_proxy(device_id: &Id, proxy: bool) -> Self {
-        Self {
-            id: *device_id,
-            name: None,
-            port: None,
-            duration: None,
-            interval: None,
-            published: None,
-            proxy: Some(proxy),
             acl_src_cidr: None,
             acl_pwd_hash: None,
             acl_pwd_salt: None,

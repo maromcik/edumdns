@@ -34,7 +34,7 @@
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">Probe ID</span>
                 <span class="font-mono text-code">
-          <a class="underline text-acc hover:text-acc-xl" href="/probe/{{ packet.probe_id }}"><code>{{ packet.probe_id }}</code></a>
+          <a class="underline text-code hover:text-acc-xl" href="/probe/{{ packet.probe_id }}"><code>{{ packet.probe_id }}</code></a>
         </span>
             </div>
 
@@ -42,7 +42,8 @@
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">Device ID</span>
                 <span class="font-mono text-code">
-          <a class="underline text-acc hover:text-acc-xl" href="/device/{{ device_id }}"><code>{{ device_id }}</code></a>
+          <a class="underline text-code hover:text-acc-xl"
+             href="/device/{{ device_id }}"><code>{{ device_id }}</code></a>
         </span>
             </div>
 
@@ -93,9 +94,11 @@
             <h3 class="text-2xl font-medium mb-3 text-sat-l">Payload</h3>
             {% if packet.payload and packet.payload | length > 0 %}
             <div class="rounded-lg border border-base bg-panes p-4 overflow-x-auto">
-                <code class="text-code">
-                    {{ packet.payload }}
-                </code>
+               <pre>
+                    <code class="text-code">
+                        {{ packet.payload }}
+                    </code>
+               </pre>
             </div>
             {% else %}
             <div class="rounded-lg border border-base bg-panes p-4 text-sat-m">

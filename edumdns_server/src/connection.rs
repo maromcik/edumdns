@@ -199,7 +199,7 @@ impl ConnectionManager {
     pub async fn upsert_probe(&self, probe_metadata: &ProbeMetadata) -> Result<Probe, ServerError> {
         Ok(self
             .pg_probe_repository
-            .create(&CreateProbe::new(
+            .create(&CreateProbe::new_connect(
                 probe_metadata.id,
                 probe_metadata.mac,
                 IpNetwork::from(probe_metadata.ip),

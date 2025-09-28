@@ -25,6 +25,7 @@ use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 use std::collections::HashSet;
+use time::OffsetDateTime;
 
 #[derive(Clone)]
 pub struct PgDeviceRepository {
@@ -287,7 +288,21 @@ impl DbCreate<CreateDevice, Device> for PgDeviceRepository {
             .map_err(DbError::from)
     }
     async fn create_auth(&self, data: &CreateDevice, user_id: &Id) -> DbResultSingle<Device> {
-        self.create(data).await
+        validate_permissions(&self.pg_pool, user_id, &data.probe_id, Permission::Create).await?;
+        let mut conn = self.pg_pool.get().await?;
+        diesel::insert_into(device::table)
+            .values((
+                device::probe_id.eq(data.probe_id),
+                device::mac.eq(data.mac),
+                device::ip.eq(data.ip),
+                device::port.eq(data.port),
+                device::name.eq(data.name.as_ref()),
+                device::discovered_at.eq::<Option<OffsetDateTime>>(None),
+            ))
+            .returning(Device::as_returning())
+            .get_result(&mut conn)
+            .await
+            .map_err(DbError::from)
     }
 }
 

@@ -48,6 +48,20 @@
                 <i class="fa-solid fa-trash"></i>
             </button>
             {% endif %}
+            <form hx-put="/packet/create/"
+                  hx-target="#content-area"
+                  hx-push-url="/packet/create"
+                  hx-target-error="#content-area"
+                  class="inline">
+                <input type="hidden" name="probe_id" value="{{ device.probe_id }}" />
+                <input type="hidden" name="mac" value="{{ device.mac }}" />
+                <input type="hidden" name="ip" value="{{ device.ip }}" />
+                <button type="submit"
+                        class="flex items-center justify-center w-10 h-10 bg-acc hover:bg-acc-l rounded-md text-button shadow-md">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </form>
+
         </div>
     </div>
 
@@ -65,20 +79,8 @@
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">Probe ID</span>
                 <span class="font-mono text-code">
-          <a class="underline text-acc hover:text-acc-xl" href="/probe/{{ device.probe_id }}"><code>{{ device.probe_id }}</code></a>
+          <a class="underline text-code hover:text-acc-xl" href="/probe/{{ device.probe_id }}"><code>{{ device.probe_id }}</code></a>
         </span>
-            </div>
-
-            <!-- MAC -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">MAC</span>
-                <span class="font-mono text-code"><code>{{ device.mac }}</code></span>
-            </div>
-
-            <!-- IP -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">IP</span>
-                <span class="font-mono text-code"><code>{{ device.ip }}</code></span>
             </div>
 
             <!-- TIME -->
@@ -115,6 +117,29 @@
                 <p class="text-xs text-sat-m mt-1">Optional friendly name for the device.</p>
             </div>
 
+            <!-- Port -->
+            <div class="flex flex-col">
+                <label for="mac" class="text-xs uppercase tracking-wide text-sat-m">MAC</label>
+                <input
+                        id="mac"
+                        name="mac"
+                        value="{{ device.mac }}"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        required
+                />
+            </div>
+
+            <!-- Port -->
+            <div class="flex flex-col">
+                <label for="ip" class="text-xs uppercase tracking-wide text-sat-m">IP</label>
+                <input
+                        id="ip"
+                        name="ip"
+                        value="{{ device.ip }}"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        required
+                />
+            </div>
             <!-- Port -->
             <div class="flex flex-col">
                 <label for="port" class="text-xs uppercase tracking-wide text-sat-m">Port</label>

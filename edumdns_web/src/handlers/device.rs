@@ -1,15 +1,13 @@
 use crate::authorized;
 use crate::error::{WebError, WebErrorKind};
-use crate::forms::device::{
-    DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest, DeviceQuery, UpdateDeviceForm,
-};
+use crate::forms::device::{CreateDeviceForm, DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest, DeviceQuery, UpdateDeviceForm};
 use crate::forms::packet::PacketQuery;
 use crate::handlers::helpers::request_packet_transmit_helper;
 use crate::handlers::utilities::{
     get_template_name, parse_user_id, verify_transmit_request_client_ap,
 };
 use crate::templates::PageInfo;
-use crate::templates::device::{DeviceDetailTemplate, DeviceTemplate, DeviceTransmitTemplate};
+use crate::templates::device::{DeviceCreateTemplate, DeviceDetailTemplate, DeviceTemplate, DeviceTransmitTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
@@ -20,16 +18,15 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::error::CoreError;
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
-use edumdns_db::repositories::common::{
-    DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE, Pagination,
-};
-use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices, UpdateDevice};
+use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE, Pagination, DbCreate};
+use edumdns_db::repositories::device::models::{CreateDevice, DeviceDisplay, SelectManyDevices, UpdateDevice};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_db::repositories::utilities::verify_password_hash;
 use std::collections::HashMap;
+use uuid::Uuid;
 
 #[get("")]
 pub async fn get_devices(
@@ -424,4 +421,39 @@ pub async fn hide_device(
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/device/{}", device_id)))
         .finish())
+}
+
+
+#[post("create")]
+pub async fn create_device(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    device_repo: web::Data<PgDeviceRepository>,
+    form: web::Form<CreateDeviceForm>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request);
+    let params = CreateDevice::from(form.into_inner());
+    let device = device_repo
+        .create_auth(&params, &parse_user_id(&i)?)
+        .await?;
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/device/{}", device.id)))
+        .finish())
+}
+
+#[get("create/{id}")]
+pub async fn create_device_form(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    state: web::Data<AppState>,
+    path: web::Path<(Uuid,)>,
+) -> Result<HttpResponse, WebError> {
+    let _ = authorized!(identity, request);
+    let template_name = get_template_name(&request, "device/create");
+    let env = state.jinja.acquire_env()?;
+    let template = env.get_template(&template_name)?;
+    let body = template.render(DeviceCreateTemplate {
+        probe_id: path.0,
+    })?;
+    Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

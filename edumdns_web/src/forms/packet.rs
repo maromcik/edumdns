@@ -1,9 +1,12 @@
+use hickory_proto::op::Message;
+use hickory_proto::rr::RecordType;
 use edumdns_core::bincode_types::MacAddr;
 use edumdns_db::repositories::common::{Id, Pagination};
 use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use crate::error::WebError;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PacketQuery {
@@ -49,6 +52,16 @@ pub struct PacketDeviceDataForm {
     pub ip: IpNetwork,
 }
 
+pub enum DnsRecordType {
+    A,
+    AAAA
+}
+
+pub struct DnsRecord {
+    pub record_type: RecordType,
+
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CreatePacketForm {
     pub probe_id: Uuid,
@@ -58,21 +71,22 @@ pub struct CreatePacketForm {
     pub dst_addr: IpNetwork,
     pub src_port: i32,
     pub dst_port: i32,
-    pub payload: Vec<u8>,
-    pub payload_hash: String,
+    pub message: Message
 }
-impl From<CreatePacketForm> for CreatePacket {
-    fn from(value: CreatePacketForm) -> Self {
-        Self {
-            probe_id: value.probe_id,
-            src_mac: value.src_mac.to_octets(),
-            dst_mac: value.dst_mac.to_octets(),
-            src_addr: value.src_addr,
-            dst_addr: value.dst_addr,
-            src_port: value.src_port,
-            dst_port: value.dst_port,
-            payload: value.payload,
-            payload_hash: value.payload_hash,
-        }
+impl CreatePacketForm {
+    pub fn to_db_params(self) -> Result<CreatePacket, WebError> {
+        let payload = self.message.to_vec()?;
+        let payload_hash = edumdns_core::app_packet::calculate_hash(&payload);
+        Ok(CreatePacket {
+            probe_id: self.probe_id,
+            src_mac: self.src_mac.to_octets(),
+            dst_mac: self.dst_mac.to_octets(),
+            src_addr: self.src_addr,
+            dst_addr: self.dst_addr,
+            src_port: self.src_port,
+            dst_port: self.dst_port,
+            payload,
+            payload_hash,
+        })
     }
 }

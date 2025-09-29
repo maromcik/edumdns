@@ -2,7 +2,7 @@ use crate::templates::error::GenericError;
 use actix_web::http::StatusCode;
 use actix_web::http::header::ContentType;
 use actix_web::{HttpResponse, ResponseError};
-use edumdns_core::error::CoreError;
+use edumdns_core::error::{CoreError, CoreErrorKind};
 use edumdns_db::error::{BackendErrorKind, DbError, DbErrorKind};
 use minijinja::{Environment, path_loader};
 use std::env;
@@ -56,6 +56,8 @@ pub enum WebErrorKind {
     ApDatabaseError,
     #[error("oidc error")]
     OidcError,
+    #[error("dns packet manipulation error")]
+    DnsPacketManipulationError,
 }
 
 // impl From<askama::Error> for AppError {
@@ -198,6 +200,15 @@ impl From<serde_json::Error> for WebError {
     }
 }
 
+impl From<hickory_proto::ProtoError> for WebError {
+    fn from(value: hickory_proto::ProtoError) -> Self {
+        Self::new(
+            WebErrorKind::DnsPacketManipulationError,
+            value.to_string().as_str(),
+        )
+    }
+}
+
 impl ResponseError for WebError {
     fn status_code(&self) -> StatusCode {
         match self.error_kind {
@@ -230,6 +241,7 @@ impl ResponseError for WebError {
             | WebErrorKind::ParseError
             | WebErrorKind::EnvVarError
             | WebErrorKind::ApDatabaseError
+            | WebErrorKind::DnsPacketManipulationError
             | WebErrorKind::OidcError => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

@@ -2207,6 +2207,8 @@ dependencies = [
  "once_cell",
  "rand 0.9.1",
  "ring",
+ "serde",
+ "socket2 0.5.9",
  "thiserror 2.0.16",
  "tinyvec",
  "tokio",

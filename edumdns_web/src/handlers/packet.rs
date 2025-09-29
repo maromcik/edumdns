@@ -139,7 +139,7 @@ pub async fn create_packet(
     form: web::Form<CreatePacketForm>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
-    let params = CreatePacket::from(form.into_inner());
+    let params = form.into_inner().to_db_params()?;
     let packet = packet_repo
         .create_auth(&params, &parse_user_id(&i)?)
         .await?;

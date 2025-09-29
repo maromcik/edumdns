@@ -14,61 +14,66 @@
         </div>
     </div>
 
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items- gap-2 mb-6">
         <div class="flex items-center gap-2">
             {% if permissions|has_perm("Restart") %}
             <button
-                    class="ml-2 bg-acc-l rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                    class="bg-yellow-400 hover:bg-yellow-500 flex items-center justify-center w-10 h-10  rounded-md text-button shadow-md"
                     hx-get="/probe/{{ probe.id }}/restart"
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
                     hx-push-url="/probe/{{ probe.id }}"
+                    title="Reconnect probe"
             >
-                Restart
+                <i class="fa-solid fa-rotate-right"></i>
             </button>
             {% endif %}
             {% if probe.adopted and permissions|has_perm("Forget") %}
             <button
-                    class="ml-2 bg-purple-400 hover:bg-purple-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                    class="bg-purple-400 hover:bg-purple-500 items-center justify-center w-10 h-10  rounded-md text-button shadow-md"
                     hx-get="/probe/{{ probe.id }}/forget"
                     hx-confirm="Forget this probe? Devices will remain, but the probe will be marked as not adopted."
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
                     hx-push-url="/probe/{{ probe.id }}"
+                    title="Forget probe"
             >
-                Forget
+                <i class="fa-solid fa-stop"></i>
             </button>
             {% endif %}
             {% if not probe.adopted and permissions|has_perm("Adopt") %}
             <button
-                    class="ml-2 bg-green-400 hover:bg-green-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                    class="bg-green-400 hover:bg-green-500 items-center justify-center w-10 h-10  rounded-md text-button shadow-md"
                     hx-get="/probe/{{ probe.id }}/adopt"
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
                     hx-push-url="/probe/{{ probe.id }}"
+                    title="Adopt probe"
             >
-                Adopt
+                <i class="fa-solid fa-rotate"></i>
             </button>
             {% endif %}
             {% if permissions|has_perm("Delete") %}
             <button
-                    class="ml-2 bg-red-600 hover:bg-red-700 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                    class="bg-red-600 hover:bg-red-700 items-center justify-center w-10 h-10  rounded-md text-button shadow-md"
                     hx-delete="/probe/{{ probe.id }}/delete"
                     hx-confirm="Delete this probe? All devices and related packets will be removed."
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
                     hx-push-url="/probe"
+                    title="Permanently delete probe"
             >
-                Delete
+                <i class="fa-solid fa-trash"></i>
             </button>
             <button
-                    class="ml-2 bg-green-400 hover:bg-green-500 rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"
+                    class="bg-acc hover:bg-acc-xl items-center justify-center w-10 h-10  rounded-md text-button shadow-md"
                     hx-get="/device/create/{{ probe.id}}"
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
                     hx-push-url="/device/create/{{ probe.id}}"
+                    title="Add a new device"
             >
-                Create Device
+                <i class="fa-solid fa-plus"></i>
             </button>
             {% endif %}
         </div>

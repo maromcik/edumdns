@@ -1,26 +1,27 @@
-<div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-6">
+<div class="max-w-7xl mx-auto px-4 sm:px-8 ">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between">
         <h1 class="text-4xl font-semibold text-sat-l">Packet Detail</h1>
-        <div class="flex items-center gap-2">
-            <a href="/packet"
-               class="flex items-center justify-center w-10 h-10 rounded-md border border-base bg-cards text-sm font-medium text-acc hover:text-acc-xl transition-colors">
-                ←
-            </a>
-            {% if permissions|has_perm("Delete") %}
-            <!-- Delete -->
-            <button
-                    hx-delete="/packet/{{ packet.id }}/delete"
-                    hx-target="#content-area"
-                    hx-target-error="#content-area"
-                    hx-push-url="/packet"
-                    class="flex items-center justify-center w-10 h-10 bg-red-600 hover:bg-red-700 rounded-md text-button shadow-md">
-                <i class="fa-solid fa-trash"></i>
-            </button>
-            {% endif %}
-        </div>
+
     </div>
 
+    <div class="flex items-center gap-2 mb-6">
+        <a href="/packet"
+           class="flex items-center justify-center w-10 h-10 rounded-md border border-base bg-cards text-sm font-medium text-acc hover:text-acc-xl transition-colors">
+            ←
+        </a>
+        {% if permissions|has_perm("Delete") %}
+        <!-- Delete -->
+        <button
+                hx-delete="/packet/{{ packet.id }}/delete"
+                hx-target="#content-area"
+                hx-target-error="#content-area"
+                hx-push-url="/packet"
+                class="flex items-center justify-center w-10 h-10 bg-red-600 hover:bg-red-700 rounded-md text-button shadow-md">
+            <i class="fa-solid fa-trash"></i>
+        </button>
+        {% endif %}
+    </div>
     <!-- Packet Card -->
     <div class="rounded-lg border border-base bg-cards p-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

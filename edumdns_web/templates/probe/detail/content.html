@@ -1,21 +1,18 @@
-<div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-6">
+<div class="max-w-7xl mx-auto px-4 sm:px-8">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between">
         <h1 class="text-4xl font-semibold text-sat-xl flex items-center gap-2">
             <span id="probe-status-dot" class="inline-block w-3 h-3 rounded-full bg-gray-400"></span>
             Probe {% if probe.name is none %}{{ probe.id[:13] }}...{% else %}{{ probe.name }}{% endif %}
         </h1>
+    </div>
 
+    <div class="flex items- gap-2 mb-6">
         <div class="flex items-center gap-2">
             <a href="/probe"
                class="flex items-center justify-center w-10 h-10 rounded-md border border-base bg-cards text-sm font-medium text-acc hover:text-acc-xl transition-colors">
                 ←
             </a>
-        </div>
-    </div>
-
-    <div class="flex items- gap-2 mb-6">
-        <div class="flex items-center gap-2">
             {% if permissions|has_perm("Restart") %}
             <button
                     class="bg-yellow-400 hover:bg-yellow-500 flex items-center justify-center w-10 h-10  rounded-md text-button shadow-md"

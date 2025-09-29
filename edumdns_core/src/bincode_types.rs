@@ -1,8 +1,10 @@
 use bincode::enc::Encoder;
+use ipnetwork::{Ipv4Network, Ipv6Network};
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{Display, Formatter};
 use std::hash::Hash;
+use std::str::FromStr;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MacAddr(pub pnet::datalink::MacAddr);
@@ -164,6 +166,21 @@ impl<'__de, __Context> ::bincode::BorrowDecode<'__de, __Context> for IpNetwork {
         )
         .map_err(|_| bincode::error::DecodeError::Other("Invalid IPNetwork"))?;
         Ok(Self(ip))
+    }
+}
+
+impl IpNetwork {
+    pub fn default_ipv4() -> Self {
+        Self(ipnetwork::IpNetwork::V4(
+            Ipv4Network::from_str("0.0.0.0/0")
+                .expect("Parsing hardcoded IPNetwork should not fail"),
+        ))
+    }
+
+    pub fn default_ipv6() -> Self {
+        Self(ipnetwork::IpNetwork::V6(
+            Ipv6Network::from_str("::/0").expect("Parsing hardcoded IPNetwork should not fail"),
+        ))
     }
 }
 

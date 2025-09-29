@@ -3,23 +3,19 @@ use crate::error::WebError;
 use crate::forms::packet::{CreatePacketForm, PacketDeviceDataForm, PacketQuery};
 use crate::handlers::utilities::{get_template_name, parse_user_id};
 use crate::header::LOCATION;
-use crate::templates::PageInfo;
 use crate::templates::packet::{PacketCreateTemplate, PacketDetailTemplate, PacketTemplate};
+use crate::templates::PageInfo;
 use crate::utils::AppState;
 use actix_identity::Identity;
-use actix_web::{HttpRequest, HttpResponse, delete, get, post, web, put};
+use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, Id, PAGINATION_ELEMENTS_PER_PAGE};
-use edumdns_db::repositories::device::models::{CreateDevice, SelectSingleDevice};
+use edumdns_db::repositories::device::models::SelectSingleDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use edumdns_db::repositories::packet::models::{CreatePacket, PacketDisplay, SelectManyPackets};
+use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
-use hickory_proto::op::{Header, Message};
 use std::collections::HashMap;
-use uuid::Uuid;
-use crate::forms::device::CreateDeviceForm;
-use crate::templates::device::DeviceCreateTemplate;
 
 #[get("")]
 pub async fn get_packets(
@@ -136,7 +132,7 @@ pub async fn create_packet(
     request: HttpRequest,
     identity: Option<Identity>,
     packet_repo: web::Data<PgPacketRepository>,
-    form: web::Form<CreatePacketForm>,
+    form: web::Json<CreatePacketForm>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let params = form.into_inner().to_db_params()?;
@@ -148,21 +144,38 @@ pub async fn create_packet(
         .finish())
 }
 
-#[put("create")]
+#[get("create")]
 pub async fn create_packet_form(
     request: HttpRequest,
     identity: Option<Identity>,
     state: web::Data<AppState>,
-    form: web::Form<PacketDeviceDataForm>,
+    user_repo: web::Data<PgUserRepository>,
+    query: web::Query<PacketDeviceDataForm>,
 ) -> Result<HttpResponse, WebError> {
-    let _ = authorized!(identity, request);
+    let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
+    let has_groups = !user_repo.get_groups(&user_id).await?.is_empty();
+    let is_admin = user_repo.read_one(&user_id).await?.admin;
+    if !has_groups && !is_admin {
+        return Err(DbError::new(
+            DbErrorKind::BackendError(BackendError::new(
+                BackendErrorKind::PermissionDenied,
+                "User is not assigned to any group",
+            )),
+            "",
+        ))?;
+    }
     let template_name = get_template_name(&request, "packet/create");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(PacketCreateTemplate {
-        probe_id: form.probe_id,
-        ip: form.ip,
-        mac: form.mac,
+        probe_id: query.probe_id,
+        ip: query.ip,
+        mac: query.mac,
+        port: query.port,
+        logged_in: true,
+        is_admin,
+        has_groups,
     })?;
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

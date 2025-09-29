@@ -29,11 +29,10 @@
             <button
                     class="bg-purple-400 hover:bg-purple-500 items-center justify-center w-10 h-10  rounded-md text-button shadow-md"
                     hx-get="/probe/{{ probe.id }}/forget"
-                    hx-confirm="Forget this probe? Devices will remain, but the probe will be marked as not adopted."
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
                     hx-push-url="/probe/{{ probe.id }}"
-                    title="Forget probe"
+                    title="Stop (forget) probe"
             >
                 <i class="fa-solid fa-stop"></i>
             </button>
@@ -45,7 +44,7 @@
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
                     hx-push-url="/probe/{{ probe.id }}"
-                    title="Adopt probe"
+                    title="Resume (adopt) probe"
             >
                 <i class="fa-solid fa-play"></i>
             </button>

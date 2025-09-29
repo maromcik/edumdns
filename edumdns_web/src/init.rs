@@ -96,11 +96,12 @@ pub fn configure_webapp(
     let packet_scope = web::scope("packet")
         .app_data(web::Data::new(packet_repo))
         .app_data(web::Data::new(device_repo.clone()))
+        .service(create_packet_form)
         .service(get_packets)
         .service(get_packet)
         .service(delete_packet)
-        .service(create_packet)
-        .service(create_packet_form);
+        .service(create_packet);
+
 
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.app_data(web::Data::new(app_state))

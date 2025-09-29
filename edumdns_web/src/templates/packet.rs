@@ -34,4 +34,8 @@ pub struct PacketCreateTemplate {
     pub probe_id: Uuid,
     pub mac: MacAddr,
     pub ip: IpNetwork,
+    pub port: u16,
+    pub logged_in: bool,
+    pub is_admin: bool,
+    pub has_groups: bool,
 }

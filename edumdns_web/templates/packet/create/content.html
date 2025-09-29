@@ -1,246 +1,272 @@
-<!-- create_packet_form.html (MiniJinja) -->
-<div class="container mx-auto p-6 max-w-7xl">
-    <form id="create-packet-form"
-          hx-post="/packet/create"
-          hx-target="#content-area"
-          hx-push-url="/packet/create"
-          hx-target-error="#content-area"
-          class="bg-forms shadow-md rounded px-8 pt-6 pb-8 mb-4 space-y-6">
-        <h2 class="text-forms text-xl font-bold mb-2 text-center">Create Packet</h2>
+<div class="max-w-7xl mx-auto px-4 sm:px-8">
+    <form id="create-packet-json-form"
+          action="/packet/create"
+          method="post"
+          class="space-y-6 bg-forms shadow-md rounded px-8 pt-6 pb-8">
 
-        <!-- Hidden probe_id provided by server -->
-        <input type="hidden" name="probe_id" value="{{ probe_id }}" />
-        <input type="hidden" name="mac" value="{{ mac }}" />
-        <input type="hidden" name="ip" value="{{ ip }}" />
+        <h2 class="text-xl font-bold text-center mb-4">Create Packet (JSON)</h2>
 
-        <!-- MACs and IPs -->
+        <!-- Hidden fields provided by server -->
+        <input type="hidden" name="probe_id" id="probe_id" value="{{ probe_id }}" />
+        <input type="hidden" name="src_mac" id="src_mac" value="{{ mac }}" />
+        <input type="hidden" name="src_addr" id="src_addr" value="{{ ip }}" />
+        <input type="hidden" name="dst_port" id="dst_port" value="{{ port }}" />
+
+        <!-- Metadata preview -->
         <div class="grid grid-cols-2 gap-4">
-            <div class="flex flex-col">
-                <label class="text-xs uppercase tracking-wide text-sat-m">Source MAC</label>
-                <input name="src_mac" type="text" value="{{ src_mac or '' }}" required
-                       placeholder="AA:BB:CC:DD:EE:FF"
-                       class="mt-1 rounded-md border border-base bg-panes px-3 py-2" />
+            <div>
+                <label class="block text-xs uppercase mb-1">Probe ID</label>
+                <div class="p-2 rounded border bg-forms break-all">
+                    <code class="text-forms-input">{{ probe_id }}</code>
+                </div>
             </div>
-
-            <div class="flex flex-col">
-                <label class="text-xs uppercase tracking-wide text-sat-m">Destination MAC</label>
-                <input name="dst_mac" type="text" value="{{ dst_mac or '' }}" required
-                       placeholder="AA:BB:CC:DD:EE:FF"
-                       class="mt-1 rounded-md border border-base bg-panes px-3 py-2" />
+            <div>
+                <label class="block text-xs uppercase mb-1">Source MAC</label>
+                <div class="p-2 rounded border bg-forms break-all">
+                    <code class="text-forms-input">{{ mac }}</code>
+                </div>
             </div>
-
-            <div class="flex flex-col">
-                <label class="text-xs uppercase tracking-wide text-sat-m">Source IP (CIDR)</label>
-                <input name="src_addr" type="text" value="{{ src_addr or '' }}" required
-                       placeholder="192.168.1.10/24"
-                       class="mt-1 rounded-md border border-base bg-panes px-3 py-2" />
+            <div>
+                <label class="block text-xs uppercase mb-1">Source IP</label>
+                <div class="p-2 rounded border bg-forms break-all">
+                    <code class="text-forms-input">{{ ip }}</code>
+                </div>
             </div>
-
-            <div class="flex flex-col">
-                <label class="text-xs uppercase tracking-wide text-sat-m">Destination IP (CIDR)</label>
-                <input name="dst_addr" type="text" value="{{ dst_addr or '' }}" required
-                       placeholder="8.8.8.8/32"
-                       class="mt-1 rounded-md border border-base bg-panes px-3 py-2" />
-            </div>
-
-            <div class="flex flex-col">
-                <label class="text-xs uppercase tracking-wide text-sat-m">Source Port</label>
-                <input name="src_port" type="number" min="0" max="65535" value="{{ src_port or 0 }}" required
-                       class="mt-1 rounded-md border border-base bg-panes px-3 py-2" />
-            </div>
-
-            <div class="flex flex-col">
-                <label class="text-xs uppercase tracking-wide text-sat-m">Destination Port</label>
-                <input name="dst_port" type="number" min="0" max="65535" value="{{ dst_port or 53 }}" required
-                       class="mt-1 rounded-md border border-base bg-panes px-3 py-2" />
+            <div>
+                <label class="block text-xs uppercase mb-1">Dest Port</label>
+                <div class="p-2 rounded border bg-forms break-all">
+                    <code class="text-forms-input">{{ port }}</code>
+                </div>
             </div>
         </div>
 
-        <!-- DNS Header fields (explicit) -->
-        <div class="rounded-lg border border-base bg-cards p-4 space-y-2">
-            <h3 class="text-sm font-semibold">DNS Header</h3>
-
-            <div class="grid grid-cols-4 gap-4">
-                <div class="flex flex-col">
-                    <label class="text-xs uppercase tracking-wide text-sat-m">Response Code</label>
-                    <select name="response_code" class="mt-1 rounded-md border px-2 py-1">
-                        <!-- only common codes; adjust as needed -->
-                        <option value="0" selected>NoError (0)</option>
-                        <option value="1">FormErr (1)</option>
-                        <option value="2">ServFail (2)</option>
-                        <option value="3">NXDomain (3)</option>
-                        <option value="4">NotImp (4)</option>
-                        <option value="5">Refused (5)</option>
+        <!-- Header -->
+        <fieldset class="border rounded p-4">
+            <legend class="text-sm font-semibold">DNS Header</legend>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs uppercase mb-1">Message Type</label>
+                    <select id="header-message_type" class="w-full rounded border px-2 py-1">
+                        <option value="Query" selected>Query</option>
+                        <option value="Response">Response</option>
                     </select>
                 </div>
-
-                <div class="flex flex-col">
-                    <label class="text-xs uppercase tracking-wide text-sat-m">Query Count</label>
-                    <input name="query_count" type="number" min="0" value="{{ queries|length or 0 }}"
-                           class="mt-1 rounded-md border px-2 py-1" />
+                <div>
+                    <label class="block text-xs uppercase mb-1">Op Code</label>
+                    <select id="header-op_code" class="w-full rounded border px-2 py-1">
+                        <option value="Query" selected>Query</option>
+                        <option value="IQuery">IQuery</option>
+                        <option value="Status">Status</option>
+                    </select>
                 </div>
-
-                <div class="flex flex-col">
-                    <label class="text-xs uppercase tracking-wide text-sat-m">Answer Count</label>
-                    <input name="answer_count" type="number" min="0" value="{{ answers|length or 0 }}"
-                           class="mt-1 rounded-md border px-2 py-1" />
+                <div>
+                    <label class="block text-xs uppercase mb-1">Response Code</label>
+                    <select id="header-response_code" class="w-full rounded border px-2 py-1">
+                        <option value="NoError" selected>NoError</option>
+                        <option value="FormErr">FormErr</option>
+                        <option value="ServFail">ServFail</option>
+                        <option value="NXDomain">NXDomain</option>
+                    </select>
                 </div>
-
-                <div class="flex flex-col">
-                    <label class="text-xs uppercase tracking-wide text-sat-m">Authority Count</label>
-                    <input name="name_server_count" type="number" min="0" value="{{ name_servers|length or 0 }}"
-                           class="mt-1 rounded-md border px-2 py-1" />
-                </div>
-
-                <div class="flex flex-col">
-                    <label class="text-xs uppercase tracking-wide text-sat-m">Additional Count</label>
-                    <input name="additional_count" type="number" min="0" value="{{ additionals|length or 0 }}"
-                           class="mt-1 rounded-md border px-2 py-1" />
+                <div>
+                    <label class="block text-xs uppercase mb-1">ID</label>
+                    <input id="header-id" type="number" min="0" max="65535" value="0"
+                           class="w-full rounded border px-2 py-1" />
                 </div>
             </div>
-        </div>
+        </fieldset>
 
-        <!-- Queries: repeatable -->
-        <div id="queries-section" class="space-y-2">
-            <div class="flex items-center justify-between">
-                <h3 class="text-sm font-semibold">Queries</h3>
-                <div class="space-x-2">
-                    <!-- HTMX + fallback template approach -->
-                    <button
-                            type="button"
-                            hx-get="/packet/fragments/query"
-                            hx-target="#queries-section"
-                            hx-swap="afterend"
-                            class="px-2 py-1 text-xs bg-acc rounded">Add Query (server)</button>
-
-                    <button type="button" onclick="cloneTemplate('query-template')"
-                            class="px-2 py-1 text-xs bg-acc rounded">Add Query (client)</button>
+        <!-- Queries -->
+        <fieldset class="border rounded p-4">
+            <legend class="text-sm font-semibold">Queries</legend>
+            <div id="queries-list" class="space-y-3">
+                <div class="query-row border rounded p-3 bg-white flex gap-2 items-center">
+                    <input type="text" placeholder="name (example.com.)"
+                           class="query-name flex-1 rounded border px-2 py-1" />
+                    <select class="query-type w-24 rounded border px-2 py-1">
+                        <option value="A" selected>A</option>
+                        <option value="AAAA">AAAA</option>
+                        <option value="CNAME">CNAME</option>
+                        <option value="MX">MX</option>
+                        <option value="TXT">TXT</option>
+                        <option value="PTR">PTR</option>
+                    </select>
+                    <input type="text" placeholder="class (IN)"
+                           class="query-class w-20 rounded border px-2 py-1" value="IN" />
+                    <button type="button"
+                            class="text-xs px-2 py-1 bg-red-500 text-button rounded"
+                            onclick="removeRow(this)">Del</button>
                 </div>
             </div>
-
-            {% if queries %}
-            {% for q in queries %}
-            <div class="query-row border rounded p-3 bg-white">
-                <input type="hidden" name="queries[{{ loop.index0 }}][__keep]" value="1" />
-                <div class="grid grid-cols-3 gap-2">
-                    <input name="queries[{{ loop.index0 }}][name]" value="{{ q.name }}" placeholder="example.com." required
-                           class="rounded border px-2 py-1" />
-                    <input name="queries[{{ loop.index0 }}][query_type]" value="{{ q.query_type }}" placeholder="A" required
-                           class="rounded border px-2 py-1" />
-                    <input name="queries[{{ loop.index0 }}][query_class]" value="{{ q.query_class }}" placeholder="IN" required
-                           class="rounded border px-2 py-1" />
-                </div>
+            <div class="mt-2 flex gap-2">
+                <button type="button" id="add-query-btn" class="bg-acc text-button px-3 py-1 rounded">+ Query</button>
+                <button type="button" id="clear-queries-btn" class="px-3 py-1 rounded border">Clear</button>
             </div>
-            {% endfor %}
-            {% else %}
-            <!-- empty initial -->
-            {% endif %}
-        </div>
+        </fieldset>
 
-        <!-- Records sections (answers / authority / additionals) -->
-        {% for slot in ["answers","name_servers","additionals"] %}
-        <div id="{{ slot }}-section" class="space-y-2">
-            <div class="flex items-center justify-between">
-                <h3 class="text-sm font-semibold">{{ slot|replace("_"," ") | title }}</h3>
-                <div class="space-x-2">
-                    <button
-                            type="button"
-                            hx-get="/packet/fragments/record?slot={{ slot }}"
-                            hx-target="#{{ slot }}-section"
-                            hx-swap="afterend"
-                            class="px-2 py-1 text-xs bg-acc rounded">Add Record (server)</button>
-
-                    <button type="button" onclick="cloneTemplate('record-template-{{ slot }}')" class="px-2 py-1 text-xs bg-acc rounded">Add Record (client)</button>
-                </div>
+        <!-- Answers -->
+        <fieldset class="border rounded p-4">
+            <legend class="text-sm font-semibold">Answers</legend>
+            <div id="answers-list" class="space-y-3"></div>
+            <div class="mt-2 flex gap-2">
+                <button type="button" id="add-answer-btn" class="bg-acc text-button px-3 py-1 rounded">+ Answer</button>
             </div>
+        </fieldset>
 
-            {% if (slot == "answers" and answers) or (slot == "name_servers" and name_servers) or (slot == "additionals" and additionals) %}
-            {% set list = slot == "answers" and answers or slot == "name_servers" and name_servers or additionals %}
-            {% for r in list %}
-            <div class="record-row border rounded p-3 bg-white">
-                <input type="hidden" name="{{ slot }}[{{ loop.index0 }}][__keep]" value="1" />
-                <div class="grid grid-cols-4 gap-2">
-                    <input name="{{ slot }}[{{ loop.index0 }}][name]" value="{{ r.name }}" placeholder="example.com." required class="rounded border px-2 py-1" />
-                    <input name="{{ slot }}[{{ loop.index0 }}][record_type]" value="{{ r.record_type }}" placeholder="A" required class="rounded border px-2 py-1" />
-                    <input name="{{ slot }}[{{ loop.index0 }}][dns_class]" value="{{ r.dns_class or 'IN' }}" placeholder="IN" required class="rounded border px-2 py-1" />
-                    <input name="{{ slot }}[{{ loop.index0 }}][ttl]" type="number" value="{{ r.ttl or 300 }}" placeholder="TTL" class="rounded border px-2 py-1" />
-                    <input name="{{ slot }}[{{ loop.index0 }}][rdata]" value="{{ r.rdata }}" placeholder="RDATA (depends on type e.g. 1.2.3.4 or 'text string')" class="rounded border px-2 py-1 col-span-4 mt-2" />
-                </div>
-            </div>
-            {% endfor %}
-            {% endif %}
-        </div>
-        {% endfor %}
-
-        <div class="flex justify-end">
+        <div class="flex justify-end gap-3">
+            <button id="preview-json-btn" type="button" class="px-4 py-2 rounded border">Preview JSON</button>
             <button type="submit"
-                    class="bg-acc text-button font-bold py-2 px-6 rounded-lg focus:outline-none hover:scale-105 transition-all duration-200">
+                    class="bg-acc hover:bg-acc-l text-button px-6 py-2 rounded shadow">
                 Send Packet
             </button>
         </div>
     </form>
+
+    <pre id="json-preview"
+         class="hidden mt-4 p-3 bg-black text-button rounded overflow-auto"
+         style="max-height:40vh"></pre>
 </div>
 
-<!-- Client-side templates for cloning (fallback if you don't want server fragments) -->
-<template id="query-template">
-    <div class="query-row border rounded p-3 bg-white mt-2">
-        <div class="grid grid-cols-3 gap-2">
-            <input name="queries[][name]" placeholder="example.com." required class="rounded border px-2 py-1" />
-            <input name="queries[][query_type]" placeholder="A" required class="rounded border px-2 py-1" />
-            <input name="queries[][query_class]" placeholder="IN" required class="rounded border px-2 py-1" />
-        </div>
-    </div>
-</template>
-
-<template id="record-template-answers">
-    <div class="record-row border rounded p-3 bg-white mt-2">
-        <div class="grid grid-cols-4 gap-2">
-            <input name="answers[][name]" placeholder="example.com." required class="rounded border px-2 py-1" />
-            <input name="answers[][record_type]" placeholder="A" required class="rounded border px-2 py-1" />
-            <input name="answers[][dns_class]" placeholder="IN" required class="rounded border px-2 py-1" />
-            <input name="answers[][ttl]" type="number" placeholder="300" class="rounded border px-2 py-1" />
-            <input name="answers[][rdata]" placeholder="1.2.3.4 or 'text string' etc." class="rounded border px-2 py-1 col-span-4 mt-2" />
-        </div>
-    </div>
-</template>
-
-<!-- record-template-name_servers and record-template-additionals can reuse the above with adjusted name attributes -->
-<template id="record-template-name_servers">
-    <!-- clone but name= name_servers[][... ] -->
-    <div class="record-row border rounded p-3 bg-white mt-2">
-        <div class="grid grid-cols-4 gap-2">
-            <input name="name_servers[][name]" placeholder="example.com." required class="rounded border px-2 py-1" />
-            <input name="name_servers[][record_type]" placeholder="NS" required class="rounded border px-2 py-1" />
-            <input name="name_servers[][dns_class]" placeholder="IN" required class="rounded border px-2 py-1" />
-            <input name="name_servers[][ttl]" type="number" placeholder="300" class="rounded border px-2 py-1" />
-            <input name="name_servers[][rdata]" placeholder="ns1.example.com." class="rounded border px-2 py-1 col-span-4 mt-2" />
-        </div>
-    </div>
-</template>
-
-<template id="record-template-additionals">
-    <div class="record-row border rounded p-3 bg-white mt-2">
-        <div class="grid grid-cols-4 gap-2">
-            <input name="additionals[][name]" placeholder="example.com." required class="rounded border px-2 py-1" />
-            <input name="additionals[][record_type]" placeholder="A" required class="rounded border px-2 py-1" />
-            <input name="additionals[][dns_class]" placeholder="IN" required class="rounded border px-2 py-1" />
-            <input name="additionals[][ttl]" type="number" placeholder="300" class="rounded border px-2 py-1" />
-            <input name="additionals[][rdata]" placeholder="1.2.3.4 or text" class="rounded border px-2 py-1 col-span-4 mt-2" />
-        </div>
-    </div>
-</template>
-
 <script>
-    function cloneTemplate(id) {
-        const t = document.getElementById(id);
-        if (!t) return;
-        const clone = t.content.cloneNode(true);
-        // Append after the element indicated by id
-        if (id === 'query-template') {
-            document.getElementById('queries-section').appendChild(clone);
-        } else if (id.startsWith('record-template')) {
-            const slot = id.split('-').pop(); // answers, name_servers, additionals
-            document.getElementById(slot + '-section').appendChild(clone);
+    function removeRow(btn){ btn.closest('div').remove(); }
+
+    // Add query row
+    document.getElementById('add-query-btn').addEventListener('click', () => {
+        const row = document.createElement('div');
+        row.className = "query-row border rounded p-3 bg-white flex gap-2 items-center";
+        row.innerHTML = `
+          <input type="text" placeholder="name (example.com.)"
+                 class="query-name flex-1 rounded border px-2 py-1" />
+          <select class="query-type w-24 rounded border px-2 py-1">
+            <option value="A" selected>A</option>
+            <option value="AAAA">AAAA</option>
+            <option value="CNAME">CNAME</option>
+            <option value="MX">MX</option>
+            <option value="TXT">TXT</option>
+            <option value="PTR">PTR</option>
+          </select>
+          <input type="text" placeholder="class (IN)"
+                 class="query-class w-20 rounded border px-2 py-1" value="IN" />
+          <button type="button" class="text-xs px-2 py-1 bg-red-500 text-button rounded"
+                  onclick="removeRow(this)">Del</button>`;
+        document.getElementById('queries-list').appendChild(row);
+    });
+
+    document.getElementById('clear-queries-btn').addEventListener('click', () => {
+        document.getElementById('queries-list').innerHTML = '';
+    });
+
+    // Add answer row
+    document.getElementById('add-answer-btn').addEventListener('click', () => {
+        const row = document.createElement('div');
+        row.className = "answer-row border rounded p-3 bg-white grid grid-cols-6 gap-2 items-center";
+        row.innerHTML = `
+          <input type="text" placeholder="name_labels (example.com.)" class="answer-name col-span-2 rounded border px-2 py-1" />
+          <input type="text" placeholder="class (IN)" class="answer-class w-20 rounded border px-2 py-1" value="IN" />
+          <input type="number" placeholder="ttl" class="answer-ttl w-24 rounded border px-2 py-1" value="300" />
+          <select class="answer-type w-24 rounded border px-2 py-1">
+            <option value="A">A</option>
+            <option value="AAAA">AAAA</option>
+            <option value="CNAME">CNAME</option>
+            <option value="MX">MX</option>
+            <option value="TXT">TXT</option>
+            <option value="PTR">PTR</option>
+          </select>
+          <input type="text" placeholder="rdata (e.g. 1.2.3.4, text, or ptr target)" class="answer-rdata col-span-6 rounded border px-2 py-1 mt-2" />
+          <div class="col-span-6 mt-2 flex justify-end">
+            <button type="button" class="text-xs px-2 py-1 bg-red-500 text-button rounded"">Del</button>
+          </div>`;
+        document.getElementById('answers-list').appendChild(row);
+    });
+
+    document.getElementById('answers-list').addEventListener('click', function(e) {
+        if(e.target.tagName === 'BUTTON' && e.target.textContent === 'Del'){
+            const row = e.target.closest('.answer-row');
+            if(row) row.remove();
         }
+    });
+    function buildCreatePacketJson(){
+        const probe_id = document.getElementById('probe_id').value;
+        const src_mac = document.getElementById('src_mac').value;
+        const src_addr = document.getElementById('src_addr').value;
+        const dst_port = Number(document.getElementById('dst_port')?.value || 0);
+
+        // header
+        const header = {
+            id: Number(document.getElementById('header-id').value || 0),
+            message_type: document.getElementById('header-message_type').value || "Query",
+            op_code: document.getElementById('header-op_code').value || "Query",
+            authoritative: false,
+            truncation: false,
+            recursion_desired: false,
+            recursion_available: false,
+            authentic_data: false,
+            checking_disabled: false,
+            response_code: document.getElementById('header-response_code').value || "NoError",
+            query_count: 0, answer_count: 0, name_server_count: 0, additional_count: 0
+        };
+
+        // queries
+        const queries = [];
+        document.querySelectorAll('#queries-list .query-row').forEach(row => {
+            const name = row.querySelector('.query-name')?.value?.trim() || "";
+            const qtype = row.querySelector('.query-type')?.value || "A";
+            const qclass = row.querySelector('.query-class')?.value?.trim() || "IN";
+            if(name) queries.push({ name, query_type: qtype, query_class: qclass, mdns_unicast_response: true });
+        });
+
+        // answers
+        const answers = [];
+        document.querySelectorAll('#answers-list .answer-row').forEach(row => {
+            const name_labels = row.querySelector('.answer-name')?.value?.trim() || "";
+            const dns_class = row.querySelector('.answer-class')?.value?.trim() || "IN";
+            const ttl = Number(row.querySelector('.answer-ttl')?.value || 300);
+            const type = row.querySelector('.answer-type')?.value || "A";
+            const rdataVal = row.querySelector('.answer-rdata')?.value?.trim() || "";
+            if(name_labels && rdataVal){
+                let rdata;
+                if (type === "TXT") {
+                    rdata = { TXT: [rdataVal] }; // TXT must be array of strings
+                } else {
+                    rdata = { [type]: rdataVal };
+                }
+                answers.push({ name_labels, dns_class, ttl, rdata, mdns_cache_flush: false });
+            }
+        });
+
+        return {
+            probe_id, src_mac, src_addr, dst_port,
+            message: {
+                header, queries, answers,
+                name_servers: [], additionals: [], signature: [], edns: null
+            }
+        };
     }
+
+    // Preview JSON
+    document.getElementById('preview-json-btn').addEventListener('click', () => {
+        const obj = buildCreatePacketJson();
+        const pre = document.getElementById('json-preview');
+        pre.textContent = JSON.stringify(obj, null, 2);
+        pre.classList.toggle('hidden');
+    });
+
+    // Submit override
+    document.getElementById('create-packet-json-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const payload = buildCreatePacketJson();
+        fetch(e.target.action, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        })
+            .then(resp => {
+                if (resp.redirected) {
+                    window.location.href = resp.url;
+                } else {
+                    window.location.reload();
+                }
+            })
+            .catch(err => console.error('submit error', err));
+    });
 </script>

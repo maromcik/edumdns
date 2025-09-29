@@ -50,19 +50,13 @@
             </button>
             {% endif %}
             {% if permissions|has_perm("Create") %}
-            <form hx-put="/packet/create/"
-                  hx-target="#content-area"
-                  hx-push-url="/packet/create"
-                  hx-target-error="#content-area"
-                  class="inline">
-                <input type="hidden" name="probe_id" value="{{ device.probe_id }}"/>
-                <input type="hidden" name="mac" value="{{ device.mac }}"/>
-                <input type="hidden" name="ip" value="{{ device.ip }}"/>
-                <button type="submit"
+                <button hx-get="/packet/create?probe_id={{ device.probe_id }}&mac={{ device.mac }}&ip={{ device.ip }}&port={{ device.port }}"
+                        hx-target="#content-area"
+                        hx-push-url="/packet/create?probe_id={{ device.probe_id }}&mac={{ device.mac }}&ip={{ device.ip }}&port={{ device.port }}"
+                        hx-target-error="#content-area"
                         class="flex items-center justify-center w-10 h-10 bg-acc hover:bg-acc-l rounded-md text-button shadow-md">
                     <i class="fa-solid fa-plus"></i>
                 </button>
-            </form>
             {% endif %}
         </div>
     </div>

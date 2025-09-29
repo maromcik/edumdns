@@ -1,9 +1,11 @@
 use hickory_proto::op::Message;
 use hickory_proto::rr::RecordType;
-use edumdns_core::bincode_types::MacAddr;
+use hickory_proto::serialize::binary::{BinDecodable, BinEncodable};
+use edumdns_core::bincode_types::{IpNetwork as EdumdnsIpNetwork, MacAddr};
 use edumdns_db::repositories::common::{Id, Pagination};
 use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
 use ipnetwork::IpNetwork;
+use log::error;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use crate::error::WebError;
@@ -50,41 +52,29 @@ pub struct PacketDeviceDataForm {
     pub probe_id: Uuid,
     pub mac: MacAddr,
     pub ip: IpNetwork,
-}
-
-pub enum DnsRecordType {
-    A,
-    AAAA
-}
-
-pub struct DnsRecord {
-    pub record_type: RecordType,
-
+    pub port: u16,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CreatePacketForm {
     pub probe_id: Uuid,
     pub src_mac: MacAddr,
-    pub dst_mac: MacAddr,
     pub src_addr: IpNetwork,
-    pub dst_addr: IpNetwork,
-    pub src_port: i32,
-    pub dst_port: i32,
+    pub dst_port: u16,
     pub message: Message
 }
 impl CreatePacketForm {
     pub fn to_db_params(self) -> Result<CreatePacket, WebError> {
-        let payload = self.message.to_vec()?;
+        let payload = self.message.to_bytes()?;
         let payload_hash = edumdns_core::app_packet::calculate_hash(&payload);
         Ok(CreatePacket {
             probe_id: self.probe_id,
             src_mac: self.src_mac.to_octets(),
-            dst_mac: self.dst_mac.to_octets(),
+            dst_mac: MacAddr::default().to_octets(),
             src_addr: self.src_addr,
-            dst_addr: self.dst_addr,
-            src_port: self.src_port,
-            dst_port: self.dst_port,
+            dst_addr: EdumdnsIpNetwork::default_ipv4().0,
+            src_port: 0,
+            dst_port: self.dst_port as i32,
             payload,
             payload_hash,
         })

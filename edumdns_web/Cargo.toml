@@ -31,4 +31,4 @@ serde_json = "1.0.140"
 time = "0.3.44"
 futures-util = "0.3.31"
 urlencoding = "2.1.3"
-hickory-proto = { version = "0.25.2", features = ["default", "serde", "mdns"]}
+hickory-proto = { version = "0.25.2", features = ["default", "serde"]}

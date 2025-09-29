@@ -4,12 +4,14 @@
         <h1 class="text-4xl font-semibold text-sat-xl">
             Device {% if device.name is not none %} {{ device.name }} {% else %} {{ device.id }} {% endif %}
         </h1>
+        <!-- Back -->
+        <a href="/device"
+           class="flex items-center justify-center w-10 h-10 rounded-md border border-base bg-cards text-sm font-medium text-acc hover:text-acc-xl transition-colors">
+            ←
+        </a>
+    </div>
+    <div class="flex items- gap-2 mb-6">
         <div class="flex items-center gap-2">
-            <!-- Back -->
-            <a href="/device"
-               class="flex items-center justify-center w-10 h-10 rounded-md border border-base bg-cards text-sm font-medium text-acc hover:text-acc-xl transition-colors">
-                ←
-            </a>
             <button hx-get="/device/{{ device.id }}/transmit"
                     hx-target="#content-area"
                     hx-push-url="/device/{{ device.id }}/transmit"
@@ -48,20 +50,21 @@
                 <i class="fa-solid fa-trash"></i>
             </button>
             {% endif %}
+            {% if permissions|has_perm("Create") %}
             <form hx-put="/packet/create/"
                   hx-target="#content-area"
                   hx-push-url="/packet/create"
                   hx-target-error="#content-area"
                   class="inline">
-                <input type="hidden" name="probe_id" value="{{ device.probe_id }}" />
-                <input type="hidden" name="mac" value="{{ device.mac }}" />
-                <input type="hidden" name="ip" value="{{ device.ip }}" />
+                <input type="hidden" name="probe_id" value="{{ device.probe_id }}"/>
+                <input type="hidden" name="mac" value="{{ device.mac }}"/>
+                <input type="hidden" name="ip" value="{{ device.ip }}"/>
                 <button type="submit"
                         class="flex items-center justify-center w-10 h-10 bg-acc hover:bg-acc-l rounded-md text-button shadow-md">
                     <i class="fa-solid fa-plus"></i>
                 </button>
             </form>
-
+            {% endif %}
         </div>
     </div>
 
@@ -227,16 +230,16 @@
                 <p class="text-xs text-sat-m mt-1">Regex over client AP hostname.</p>
             </div>
             <div class="flex flex-col">
-            <label class="inline-flex items-center">
-                <input
-                        type="checkbox"
-                        name="proxy"
-                        value="true"
-                        class="rounded border-gray-300 text-acc focus:ring-acc"
-                        {% if device.proxy %}checked{% endif %}
-                />
-                <span class="ml-2 text-sat-m">Use Proxy</span>
-            </label>
+                <label class="inline-flex items-center">
+                    <input
+                            type="checkbox"
+                            name="proxy"
+                            value="true"
+                            class="rounded border-gray-300 text-acc focus:ring-acc"
+                            {% if device.proxy %}checked{% endif %}
+                    />
+                    <span class="ml-2 text-sat-m">Use Proxy</span>
+                </label>
             </div>
             {% if permissions|has_perm("Update") %}
             <!-- Actions -->
@@ -581,7 +584,7 @@
     function runSearch() {
         const params = new URLSearchParams();
 
-        ["id", "src_mac","dst_mac","src_addr","dst_addr","src_port","dst_port"].forEach(field => {
+        ["id", "src_mac", "dst_mac", "src_addr", "dst_addr", "src_port", "dst_port"].forEach(field => {
             const el = document.getElementById(`filter-${field}`);
             if (!el) return;
 
@@ -606,7 +609,7 @@
     });
 
     // Trigger search on Enter in any filter input
-    ["filter-id", "filter-src_mac","filter-dst_mac","filter-src_addr","filter-dst_addr","filter-src_port","filter-dst_port"].forEach(id => {
+    ["filter-id", "filter-src_mac", "filter-dst_mac", "filter-src_addr", "filter-dst_addr", "filter-src_port", "filter-dst_port"].forEach(id => {
         const input = document.getElementById(id);
         input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {

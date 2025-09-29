@@ -65,6 +65,8 @@
             >
                 <i class="fa-solid fa-trash"></i>
             </button>
+            {% endif %}
+            {% if permissions|has_perm("Create") %}
             <button
                     class="bg-acc hover:bg-acc-xl items-center justify-center w-10 h-10  rounded-md text-button shadow-md"
                     hx-get="/device/create/{{ probe.id}}"
@@ -336,6 +338,10 @@
                     </th>
                     <th scope="col"
                         class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                        Full
+                    </th>
+                    <th scope="col"
+                        class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
                         Read
                     </th>
                     <th scope="col"
@@ -364,7 +370,7 @@
                     </th>
                     <th scope="col"
                         class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                        Full
+                        Create
                     </th>
                 </tr>
                 </thead>

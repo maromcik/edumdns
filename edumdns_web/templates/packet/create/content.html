@@ -16,27 +16,19 @@
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block text-xs uppercase mb-1">Probe ID</label>
-                <div class="p-2 rounded border bg-forms break-all">
-                    <code class="text-forms-input">{{ probe_id }}</code>
-                </div>
+                <div class="p-2 rounded border bg-forms break-all"><code class="text-forms-input">{{ probe_id }}</code></div>
             </div>
             <div>
                 <label class="block text-xs uppercase mb-1">Source MAC</label>
-                <div class="p-2 rounded border bg-forms break-all">
-                    <code class="text-forms-input">{{ mac }}</code>
-                </div>
+                <div class="p-2 rounded border bg-forms break-all"><code class="text-forms-input">{{ mac }}</code></div>
             </div>
             <div>
                 <label class="block text-xs uppercase mb-1">Source IP</label>
-                <div class="p-2 rounded border bg-forms break-all">
-                    <code class="text-forms-input">{{ ip }}</code>
-                </div>
+                <div class="p-2 rounded border bg-forms break-all"><code class="text-forms-input">{{ ip }}</code></div>
             </div>
             <div>
                 <label class="block text-xs uppercase mb-1">Dest Port</label>
-                <div class="p-2 rounded border bg-forms break-all">
-                    <code class="text-forms-input">{{ port }}</code>
-                </div>
+                <div class="p-2 rounded border bg-forms break-all"><code class="text-forms-input">{{ port }}</code></div>
             </div>
         </div>
 
@@ -70,8 +62,7 @@
                 </div>
                 <div>
                     <label class="block text-xs uppercase mb-1">ID</label>
-                    <input id="header-id" type="number" min="0" max="65535" value="0"
-                           class="w-full rounded border px-2 py-1" />
+                    <input id="header-id" type="number" min="0" max="65535" value="0" class="w-full rounded border px-2 py-1" />
                 </div>
             </div>
         </fieldset>
@@ -79,11 +70,11 @@
         <!-- Queries -->
         <fieldset class="border rounded p-4">
             <legend class="text-sm font-semibold">Queries</legend>
+
             <div id="queries-list" class="space-y-3">
                 <div class="query-row border rounded p-3 bg-white flex gap-2 items-center">
-                    <input type="text" placeholder="name (example.com.)"
-                           class="query-name flex-1 rounded border px-2 py-1" />
-                    <select class="query-type w-24 rounded border px-2 py-1">
+                    <input type="text" placeholder="name (example.com.)" class="query-name flex-1 rounded border px-2 py-1" />
+                    <select class="query-type w-28 rounded border px-2 py-1">
                         <option value="A" selected>A</option>
                         <option value="AAAA">AAAA</option>
                         <option value="ANY">ANY</option>
@@ -91,14 +82,13 @@
                         <option value="MX">MX</option>
                         <option value="TXT">TXT</option>
                         <option value="PTR">PTR</option>
+                        <option value="SRV">SRV</option>
                     </select>
-                    <input type="text" placeholder="class (IN)"
-                           class="query-class w-20 rounded border px-2 py-1" value="IN" />
-                    <button type="button"
-                            class="text-xs px-2 py-1 bg-red-500 text-button rounded"
-                            onclick="removeRow(this)">Del</button>
+                    <input type="text" placeholder="class (IN)" class="query-class w-20 rounded border px-2 py-1" value="IN" />
+                    <button type="button" data-action="delete" class="btn-del text-xs px-2 py-1 bg-red-500 text-white rounded">Del</button>
                 </div>
             </div>
+
             <div class="mt-2 flex gap-2">
                 <button type="button" id="add-query-btn" class="bg-acc text-button px-3 py-1 rounded">+ Query</button>
                 <button type="button" id="clear-queries-btn" class="px-3 py-1 rounded border">Clear</button>
@@ -108,144 +98,293 @@
         <!-- Answers -->
         <fieldset class="border rounded p-4">
             <legend class="text-sm font-semibold">Answers</legend>
+
             <div id="answers-list" class="space-y-3"></div>
+
             <div class="mt-2 flex gap-2">
                 <button type="button" id="add-answer-btn" class="bg-acc text-button px-3 py-1 rounded">+ Answer</button>
             </div>
         </fieldset>
 
+        <!-- Additionals -->
+        <fieldset class="border rounded p-4">
+            <legend class="text-sm font-semibold">Additionals</legend>
+
+            <div id="additionals-list" class="space-y-3"></div>
+
+            <div class="mt-2 flex gap-2">
+                <button type="button" id="add-additional-btn" class="bg-acc text-button px-3 py-1 rounded">+ Additional</button>
+            </div>
+        </fieldset>
+
         <div class="flex justify-end gap-3">
             <button id="preview-json-btn" type="button" class="px-4 py-2 rounded border">Preview JSON</button>
-            <button type="submit"
-                    class="bg-acc hover:bg-acc-l text-button px-6 py-2 rounded shadow">
-                Send Packet
-            </button>
+            <button type="submit" class="bg-acc hover:bg-acc-l text-button px-6 py-2 rounded shadow">Send Packet</button>
         </div>
     </form>
 
-    <pre id="json-preview"
-         class="hidden mt-4 p-3 bg-black text-button rounded overflow-auto"
-         style="max-height:40vh"></pre>
+    <pre id="json-preview" class="hidden mt-4 p-3 bg-black text-button rounded overflow-auto" style="max-height:40vh"></pre>
 </div>
 
 <script>
-    function removeRow(btn){ btn.closest('div').remove(); }
+    /* helpers */
+    const createEl = (html) => {
+        const tmp = document.createElement('template');
+        tmp.innerHTML = html.trim();
+        return tmp.content.firstElementChild;
+    };
 
-    // Add query row
-    document.getElementById('add-query-btn').addEventListener('click', () => {
-        const row = document.createElement('div');
-        row.className = "query-row border rounded p-3 bg-white flex gap-2 items-center";
-        row.innerHTML = `
-          <input type="text" placeholder="name (example.com.)"
-                 class="query-name flex-1 rounded border px-2 py-1" />
-          <select class="query-type w-24 rounded border px-2 py-1">
-            <option value="A" selected>A</option>
-            <option value="AAAA">AAAA</option>
-            <option value="ANY">ANY</option>
-            <option value="CNAME">CNAME</option>
-            <option value="MX">MX</option>
-            <option value="TXT">TXT</option>
-            <option value="PTR">PTR</option>
-          </select>
-          <input type="text" placeholder="class (IN)"
-                 class="query-class w-20 rounded border px-2 py-1" value="IN" />
-          <button type="button" class="text-xs px-2 py-1 bg-red-500 text-button rounded"
-                  onclick="removeRow(this)">Del</button>`;
-        document.getElementById('queries-list').appendChild(row);
+    function removeRowElement(el){ el?.closest?.('div')?.remove(); } // not used, keep for short calls
+
+    /* delegation for deletes */
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-action="delete"]');
+        if (!btn) return;
+        const row = btn.closest('.query-row, .answer-row, .additional-row');
+        if (row) row.remove();
     });
 
+    /* add query */
+    document.getElementById('add-query-btn').addEventListener('click', () => {
+        const html = `
+    <div class="query-row border rounded p-3 bg-white flex gap-2 items-center">
+      <input type="text" placeholder="name (example.com.)" class="query-name flex-1 rounded border px-2 py-1" />
+      <select class="query-type w-28 rounded border px-2 py-1">
+        <option value="A" selected>A</option>
+        <option value="AAAA">AAAA</option>
+        <option value="ANY">ANY</option>
+        <option value="CNAME">CNAME</option>
+        <option value="MX">MX</option>
+        <option value="TXT">TXT</option>
+        <option value="PTR">PTR</option>
+        <option value="SRV">SRV</option>
+      </select>
+      <input type="text" placeholder="class (IN)" class="query-class w-20 rounded border px-2 py-1" value="IN" />
+      <button type="button" data-action="delete" class="btn-del text-xs px-2 py-1 bg-red-500 text-white rounded">Del</button>
+    </div>`;
+        document.getElementById('queries-list').appendChild(createEl(html));
+    });
+
+    /* clear queries */
     document.getElementById('clear-queries-btn').addEventListener('click', () => {
         document.getElementById('queries-list').innerHTML = '';
     });
 
-    // Add answer row
+    /* answer / additional row factory (includes SRV block hidden by default) */
+    function answerRowHtml(kind = 'answer') {
+        // kind: 'answer' or 'additional' to differentiate classes/selectors
+        return `
+  <div class="${kind}-row border rounded p-3 bg-white">
+    <div class="grid grid-cols-6 gap-2 items-start">
+      <input type="text" placeholder="name_labels (example.com.)" class="${kind}-name col-span-2 rounded border px-2 py-1" />
+      <input type="text" placeholder="class (IN)" class="${kind}-class w-20 rounded border px-2 py-1" value="IN" />
+      <input type="number" placeholder="ttl" class="${kind}-ttl w-24 rounded border px-2 py-1" value="300" />
+      <select class="${kind}-type w-24 rounded border px-2 py-1">
+        <option value="A">A</option>
+        <option value="AAAA">AAAA</option>
+        <option value="CNAME">CNAME</option>
+        <option value="MX">MX</option>
+        <option value="TXT">TXT</option>
+        <option value="PTR">PTR</option>
+        <option value="SRV">SRV</option>
+      </select>
+      <div class="${kind}-rdata-wrap col-span-6 mt-2">
+        <input type="text" placeholder="rdata (e.g. 1.2.3.4 or 'text' or PTR target)" class="${kind}-rdata w-full rounded border px-2 py-1" />
+      </div>
+
+      <!-- SRV subfields (hidden until type === 'SRV') -->
+      <div class="${kind}-srv-wrap col-span-6 mt-2 hidden">
+        <div class="grid grid-cols-4 gap-2 items-center">
+          <input type="number" min="0" max="65535" placeholder="priority" class="${kind}-srv-priority rounded border px-2 py-1" />
+          <input type="number" min="0" max="65535" placeholder="weight" class="${kind}-srv-weight rounded border px-2 py-1" />
+          <input type="number" min="0" max="65535" placeholder="port" class="${kind}-srv-port rounded border px-2 py-1" />
+          <input type="text" placeholder="target (example.com.)" class="${kind}-srv-target rounded border px-2 py-1" />
+        </div>
+      </div>
+
+      <div class="col-span-6 mt-2 flex justify-end">
+        <button type="button" data-action="delete" class="btn-del text-xs px-2 py-1 bg-red-500 text-white rounded">Del</button>
+      </div>
+    </div>
+  </div>`;
+    }
+
+    /* add answer */
     document.getElementById('add-answer-btn').addEventListener('click', () => {
-        const row = document.createElement('div');
-        row.className = "answer-row border rounded p-3 bg-white grid grid-cols-6 gap-2 items-center";
-        row.innerHTML = `
-          <input type="text" placeholder="name_labels (example.com.)" class="answer-name col-span-2 rounded border px-2 py-1" />
-          <input type="text" placeholder="class (IN)" class="answer-class w-20 rounded border px-2 py-1" value="IN" />
-          <input type="number" placeholder="ttl" class="answer-ttl w-24 rounded border px-2 py-1" value="300" />
-          <select class="answer-type w-24 rounded border px-2 py-1">
-            <option value="A">A</option>
-            <option value="AAAA">AAAA</option>
-            <option value="CNAME">CNAME</option>
-            <option value="MX">MX</option>
-            <option value="TXT">TXT</option>
-            <option value="PTR">PTR</option>
-          </select>
-          <input type="text" placeholder="rdata (e.g. 1.2.3.4, text, or ptr target)" class="answer-rdata col-span-6 rounded border px-2 py-1 mt-2" />
-          <div class="col-span-6 mt-2 flex justify-end">
-            <button type="button" class="text-xs px-2 py-1 bg-red-500 text-button rounded"">Del</button>
-          </div>`;
-        document.getElementById('answers-list').appendChild(row);
+        document.getElementById('answers-list').appendChild(createEl(answerRowHtml('answer')));
     });
 
-    document.getElementById('answers-list').addEventListener('click', function(e) {
-        if(e.target.tagName === 'BUTTON' && e.target.textContent === 'Del'){
-            const row = e.target.closest('.answer-row');
-            if(row) row.remove();
-        }
+    /* add additional */
+    document.getElementById('add-additional-btn').addEventListener('click', () => {
+        document.getElementById('additionals-list').appendChild(createEl(answerRowHtml('additional')));
     });
-    function buildCreatePacketJson(){
+
+    /* Toggle SRV/normal RDATA inputs using event delegation */
+    function toggleSrvForRow(selectEl, kind) {
+        const row = selectEl.closest(`.${kind}-row`);
+        if (!row) return;
+        const rdataWrap = row.querySelector(`.${kind}-rdata-wrap`);
+        const srvWrap = row.querySelector(`.${kind}-srv-wrap`);
+        if (selectEl.value === 'SRV') {
+            rdataWrap?.classList.add('hidden');
+            srvWrap?.classList.remove('hidden');
+        } else {
+            rdataWrap?.classList.remove('hidden');
+            srvWrap?.classList.add('hidden');
+        }
+    }
+
+    document.addEventListener('change', (e) => {
+        const sel = e.target;
+        if (sel.matches('.answer-type')) toggleSrvForRow(sel, 'answer');
+        if (sel.matches('.additional-type')) toggleSrvForRow(sel, 'additional');
+    });
+
+    /* Also handle dynamically inserted selects — delegate on container */
+    document.getElementById('answers-list').addEventListener('change', (e) => {
+        const sel = e.target;
+        if (sel.matches('.answer-type')) toggleSrvForRow(sel, 'answer');
+    });
+    document.getElementById('additionals-list').addEventListener('change', (e) => {
+        const sel = e.target;
+        if (sel.matches('.additional-type')) toggleSrvForRow(sel, 'additional');
+    });
+
+    /* Build JSON payload */
+    function parseTxtValue(raw) {
+        raw = (raw || '').trim();
+        if (!raw) return [];
+        // If user provided a JSON array, try parse it first
+        if (raw.startsWith('[')) {
+            try { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) return parsed.map(s => String(s)); }
+            catch(e) { /* fallthrough to split */ }
+        }
+        // Split on semicolon or comma
+        return raw.split(/\s*[;,]\s*/).map(s => s.trim()).filter(Boolean);
+    }
+
+    function buildCreatePacketJson() {
         const probe_id = document.getElementById('probe_id').value;
         const src_mac = document.getElementById('src_mac').value;
         const src_addr = document.getElementById('src_addr').value;
         const dst_port = Number(document.getElementById('dst_port')?.value || 0);
 
-        // header
         const header = {
             id: Number(document.getElementById('header-id').value || 0),
-            message_type: document.getElementById('header-message_type').value || "Query",
-            op_code: document.getElementById('header-op_code').value || "Query",
+            message_type: document.getElementById('header-message_type').value || 'Query',
+            op_code: document.getElementById('header-op_code').value || 'Query',
             authoritative: false,
             truncation: false,
             recursion_desired: false,
             recursion_available: false,
             authentic_data: false,
             checking_disabled: false,
-            response_code: document.getElementById('header-response_code').value || "NoError",
+            response_code: document.getElementById('header-response_code').value || 'NoError',
             query_count: 0, answer_count: 0, name_server_count: 0, additional_count: 0
         };
 
-        // queries
         const queries = [];
         document.querySelectorAll('#queries-list .query-row').forEach(row => {
-            const name = row.querySelector('.query-name')?.value?.trim() || "";
-            const qtype = row.querySelector('.query-type')?.value || "A";
-            const qclass = row.querySelector('.query-class')?.value?.trim() || "IN";
-            if(name) queries.push({ name, query_type: qtype, query_class: qclass, mdns_unicast_response: true });
+            const name = row.querySelector('.query-name')?.value?.trim() || '';
+            const qtype = row.querySelector('.query-type')?.value || 'A';
+            const qclass = row.querySelector('.query-class')?.value?.trim() || 'IN';
+            if (!name) return;
+            queries.push({ name, query_type: qtype, query_class: qclass, mdns_unicast_response: false });
         });
 
-        // answers
         const answers = [];
         document.querySelectorAll('#answers-list .answer-row').forEach(row => {
-            const name_labels = row.querySelector('.answer-name')?.value?.trim() || "";
-            const dns_class = row.querySelector('.answer-class')?.value?.trim() || "IN";
+            const name_labels = row.querySelector('.answer-name')?.value?.trim() || '';
+            if (!name_labels) return;
+            const dns_class = row.querySelector('.answer-class')?.value?.trim() || 'IN';
             const ttl = Number(row.querySelector('.answer-ttl')?.value || 300);
-            const type = row.querySelector('.answer-type')?.value || "A";
-            const rdataVal = row.querySelector('.answer-rdata')?.value?.trim() || "";
-            if(name_labels && rdataVal){
-                let rdata;
-                if (type === "TXT") {
-                    rdata = { TXT: [rdataVal] }; // TXT must be array of strings
-                } else {
-                    rdata = { [type]: rdataVal };
-                }
-                answers.push({ name_labels, dns_class, ttl, rdata, mdns_cache_flush: false });
+            const type = row.querySelector('.answer-type')?.value || 'A';
+
+            let rdataObj = null;
+            if (type === 'TXT') {
+                const raw = row.querySelector('.answer-rdata')?.value || '';
+                const arr = parseTxtValue(raw);
+                if (arr.length === 0) return; // skip empty
+                rdataObj = { TXT: arr };
+            } else if (type === 'SRV') {
+                // SRV subfields
+                const priority = Number(row.querySelector('.answer-srv-priority')?.value || 0);
+                const weight = Number(row.querySelector('.answer-srv-weight')?.value || 0);
+                const port = Number(row.querySelector('.answer-srv-port')?.value || 0);
+                const target = row.querySelector('.answer-srv-target')?.value?.trim() || '';
+                if (!target) return; // require target
+                rdataObj = { SRV: { priority, weight, port, target } };
+            } else {
+                const raw = row.querySelector('.answer-rdata')?.value?.trim() || '';
+                if (!raw) return;
+                rdataObj = { [type]: raw };
             }
+
+            answers.push({
+                name_labels, dns_class, ttl,
+                rdata: rdataObj,
+                mdns_cache_flush: false
+            });
         });
 
+        const additionals = [];
+        document.querySelectorAll('#additionals-list .additional-row').forEach(row => {
+            const name_labels = row.querySelector('.additional-name')?.value?.trim() || '';
+            if (!name_labels) return;
+            const dns_class = row.querySelector('.additional-class')?.value?.trim() || 'IN';
+            const ttl = Number(row.querySelector('.additional-ttl')?.value || 300);
+            const type = row.querySelector('.additional-type')?.value || 'A';
+
+            let rdataObj = null;
+            if (type === 'TXT') {
+                const raw = row.querySelector('.additional-rdata')?.value || '';
+                const arr = parseTxtValue(raw);
+                if (arr.length === 0) return;
+                rdataObj = { TXT: arr };
+            } else if (type === 'SRV') {
+                const priority = Number(row.querySelector('.additional-srv-priority')?.value || 0);
+                const weight = Number(row.querySelector('.additional-srv-weight')?.value || 0);
+                const port = Number(row.querySelector('.additional-srv-port')?.value || 0);
+                const target = row.querySelector('.additional-srv-target')?.value?.trim() || '';
+                if (!target) return;
+                rdataObj = { SRV: { priority, weight, port, target } };
+            } else {
+                const raw = row.querySelector('.additional-rdata')?.value?.trim() || '';
+                if (!raw) return;
+                rdataObj = { [type]: raw };
+            }
+
+            additionals.push({
+                name_labels, dns_class, ttl,
+                rdata: rdataObj,
+                mdns_cache_flush: false
+            });
+        });
+
+        // update header counts
+        header.query_count = queries.length;
+        header.answer_count = answers.length;
+        header.additional_count = additionals.length;
+        // name_server_count left 0 (no UI for name servers in this form)
+
         return {
-            probe_id, src_mac, src_addr, dst_port,
+            probe_id,
+            src_mac,
+            src_addr,
+            dst_port,
             message: {
-                header, queries, answers,
-                name_servers: [], additionals: [], signature: [], edns: null
+                header,
+                queries,
+                answers,
+                name_servers: [],
+                additionals,
+                signature: [],
+                edns: null
             }
         };
     }
 
-    // Preview JSON
+    /* Preview JSON */
     document.getElementById('preview-json-btn').addEventListener('click', () => {
         const obj = buildCreatePacketJson();
         const pre = document.getElementById('json-preview');
@@ -253,7 +392,7 @@
         pre.classList.toggle('hidden');
     });
 
-    // Submit override
+    /* submit - send JSON and trigger full page reload or follow redirect */
     document.getElementById('create-packet-json-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const payload = buildCreatePacketJson();
@@ -266,9 +405,13 @@
                 if (resp.redirected) {
                     window.location.href = resp.url;
                 } else {
+                    // if server returns HTML without redirect, still reload to get new full page
                     window.location.reload();
                 }
             })
-            .catch(err => console.error('submit error', err));
+            .catch(err => {
+                console.error('submit error', err);
+                alert('Submit error, check console');
+            });
     });
 </script>

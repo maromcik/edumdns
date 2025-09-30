@@ -26,7 +26,6 @@ pub async fn get_groups(
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     let user = user_repo.read_one(&user_id).await?;
-    validate_has_groups(&user)?;
     let groups = group_repo
         .read_many_auth(
             &SelectManyGroups::new(

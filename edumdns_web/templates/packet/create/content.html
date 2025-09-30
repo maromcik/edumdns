@@ -4,7 +4,7 @@
           method="post"
           class="space-y-6 bg-forms shadow-md rounded px-8 pt-6 pb-8">
 
-        <h2 class="text-xl font-bold text-center mb-4">Create Packet (JSON)</h2>
+        <h2 class="text-xl font-bold text-center mb-4">Craft Packet</h2>
 
         <!-- Hidden fields provided by server -->
         <input type="hidden" name="probe_id" id="probe_id" value="{{ probe_id }}" />
@@ -123,7 +123,7 @@
         </div>
     </form>
 
-    <pre id="json-preview" class="hidden mt-4 p-3 bg-black text-button rounded overflow-auto" style="max-height:40vh"></pre>
+    <pre id="json-preview" class="hidden mt-4 p-3 bg-forms text-button rounded overflow-auto" style="max-height:40vh"></pre>
 </div>
 
 
@@ -245,20 +245,13 @@
         raw = (raw || '').trim();
         if (!raw) return [];
         const encoder = new TextEncoder();
-        if (raw.startsWith('[')) {
-            try {
-                const parsed = JSON.parse(raw);
-                if (Array.isArray(parsed)) {
-                    return parsed.map(s => Array.from(encoder.encode(String(s))));
-                }
-            } catch {}
-        }
         return raw
             .split(/\s*[;,]\s*/)
             .map(s => s.trim())
             .filter(Boolean)
             .map(s => Array.from(encoder.encode(s)));
     }
+
 
     /* Build JSON */
     function buildCreatePacketJson() {

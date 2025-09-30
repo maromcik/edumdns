@@ -9,15 +9,14 @@ use crate::error::BackendErrorKind::UserPasswordDoesNotMatch;
 use crate::repositories::user::models::{
     SelectManyUsers, UserCreate, UserLogin, UserUpdate, UserUpdatePassword,
 };
-use crate::repositories::utilities::{
-    generate_salt, hash_password, validate_admin, verify_password_hash,
-};
+use crate::repositories::utilities::{generate_salt, hash_password, validate_admin, validate_user, verify_password_hash};
 use crate::schema::{group_user, user};
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
+use pbkdf2::hmac::digest::generic_array::functional::FunctionalSequence;
 
 #[derive(Clone)]
 pub struct PgUserRepository {
@@ -112,12 +111,14 @@ impl DbReadOne<Id, User> for PgUserRepository {
     async fn read_one(&self, params: &Id) -> DbResultSingle<User> {
         let mut conn = self.pg_pool.get().await?;
         let u = user::table.find(&params).first::<User>(&mut conn).await?;
+        validate_user(&u)?;
         Ok(u)
     }
 
     async fn read_one_auth(&self, params: &Id, user_id: &Id) -> DbResultSinglePerm<User> {
         validate_admin(&self.pg_pool, user_id).await?;
-        let u = self.read_one(params).await?;
+        let mut conn = self.pg_pool.get().await?;
+        let u = user::table.find(&params).first::<User>(&mut conn).await?;
         Ok(DbDataPerm::new(u, (false, vec![])))
     }
 }
@@ -175,6 +176,7 @@ impl DbReadMany<SelectManyUsers, User> for PgUserRepository {
 impl DbUpdate<UserUpdate, User> for PgUserRepository {
     async fn update(&self, params: &UserUpdate) -> DbResultMultiple<User> {
         let mut conn = self.pg_pool.get().await?;
+        self.read_one(&params.id).await?;
         let updated_users = diesel::update(user::table.find(&params.id))
             .set(params)
             .get_results(&mut conn)
@@ -215,6 +217,7 @@ impl DbCreate<UserCreate, User> for PgUserRepository {
 impl DbDelete<Id, User> for PgUserRepository {
     async fn delete(&self, params: &Id) -> DbResultMultiple<User> {
         let mut conn = self.pg_pool.get().await?;
+        self.read_one(params).await?;
         diesel::delete(user::table.find(params))
             .get_results(&mut conn)
             .await

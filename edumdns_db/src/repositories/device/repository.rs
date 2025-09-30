@@ -222,6 +222,9 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
             .select(User::as_select())
             .first(&mut conn)
             .await?;
+
+        validate_user(&user_entry)?;
+
         if user_entry.admin {
             let devices = self.read_many(params).await?;
             return Ok(DbDataPerm::new(
@@ -229,8 +232,6 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
                 (true, vec![GroupProbePermission::full()]),
             ));
         }
-
-        validate_user(&user_entry)?;
 
         let query = PgDeviceRepository::build_select_many_query(params);
         let ids = query

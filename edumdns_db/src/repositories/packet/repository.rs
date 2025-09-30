@@ -147,6 +147,9 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
             .select(User::as_select())
             .first(&mut conn)
             .await?;
+
+        validate_user(&user_entry)?;
+        
         if user_entry.admin {
             let packets = self.read_many(params).await?;
             return Ok(DbDataPerm::new(
@@ -154,8 +157,6 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
                 (true, vec![GroupProbePermission::full()]),
             ));
         }
-
-        validate_user(&user_entry)?;
 
         let packets = self.read_many(params).await?;
 

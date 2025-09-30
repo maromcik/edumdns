@@ -8,7 +8,6 @@ use crate::templates::PageInfo;
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
-use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, Id, PAGINATION_ELEMENTS_PER_PAGE};
 use edumdns_db::repositories::device::models::SelectSingleDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;

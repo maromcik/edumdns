@@ -107,7 +107,7 @@ impl DbReadOne<Id, UserDisplay> for PgUserRepository {
         let mut conn = self.pg_pool.get().await?;
         let u = user::table.find(&params).first::<User>(&mut conn).await?;
         validate_user(&u)?;
-        let has_groups = self.get_groups(&u.id).await?.is_empty();
+        let has_groups = !self.get_groups(&u.id).await?.is_empty();
         let u = UserDisplay {
             user: u,
             has_groups
@@ -119,7 +119,7 @@ impl DbReadOne<Id, UserDisplay> for PgUserRepository {
         validate_admin(&self.pg_pool, user_id).await?;
         let mut conn = self.pg_pool.get().await?;
         let u = user::table.find(&params).first::<User>(&mut conn).await?;
-        let has_groups = self.get_groups(&u.id).await?.is_empty();
+        let has_groups = !self.get_groups(&u.id).await?.is_empty();
         let u = UserDisplay {
             user: u,
             has_groups

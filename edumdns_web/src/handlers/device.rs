@@ -311,20 +311,9 @@ pub async fn request_packet_transmit(
     )
     .await?;
 
-    let packet_transmit_requests = device_repo
-        .read_packet_transmit_requests(&device.id)
-        .await?;
-
-    let template_name = get_template_name(&request, "device/public");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(DeviceTransmitTemplate {
-        device: DeviceDisplay::from(device),
-        client_ip: target_ip.to_string(),
-        packet_transmit_requests,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/device/{}/transmit", device.id)))
+        .finish())
 }
 
 #[get("{id}/transmit")]
@@ -332,6 +321,7 @@ pub async fn get_device_for_transmit(
     request: HttpRequest,
     identity: Option<Identity>,
     device_repo: web::Data<PgDeviceRepository>,
+    user_repo: web::Data<PgUserRepository>,
     path: web::Path<(Id,)>,
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
@@ -359,6 +349,7 @@ pub async fn get_device_for_transmit(
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(DeviceTransmitTemplate {
+        user: user_repo.read_one(&parse_user_id(&i)?).await?,
         device: DeviceDisplay::from(device),
         client_ip: target_ip,
         packet_transmit_requests,

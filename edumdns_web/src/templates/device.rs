@@ -33,6 +33,7 @@ pub struct DeviceDetailTemplate {
 
 #[derive(Serialize)]
 pub struct DeviceTransmitTemplate {
+    pub user: UserDisplay,
     pub device: DeviceDisplay,
     pub client_ip: String,
     pub packet_transmit_requests: Vec<PacketTransmitRequest>,

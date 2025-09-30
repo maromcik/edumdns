@@ -185,8 +185,13 @@ impl DbUpdate<UserUpdate, User> for PgUserRepository {
     }
 
     async fn update_auth(&self, params: &UserUpdate, user_id: &Id) -> DbResultMultiple<User> {
+        let mut conn = self.pg_pool.get().await?;
         validate_admin(&self.pg_pool, user_id).await?;
-        self.update(params).await
+        let updated_users = diesel::update(user::table.find(&params.id))
+            .set(params)
+            .get_results(&mut conn)
+            .await?;
+        Ok(updated_users)
     }
 }
 
@@ -225,7 +230,11 @@ impl DbDelete<Id, User> for PgUserRepository {
     }
 
     async fn delete_auth(&self, params: &Id, user_id: &Id) -> DbResultMultiple<User> {
+        let mut conn = self.pg_pool.get().await?;
         validate_admin(&self.pg_pool, user_id).await?;
-        self.delete(params).await
+        diesel::delete(user::table.find(params))
+            .get_results(&mut conn)
+            .await
+            .map_err(DbError::from)
     }
 }

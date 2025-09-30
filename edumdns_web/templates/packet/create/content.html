@@ -15,36 +15,36 @@
         <!-- Metadata preview -->
         <div class="grid grid-cols-2 gap-4">
             <div>
-                <label class="block text-xs uppercase mb-1">Probe ID</label>
-                <div class="p-2 rounded border bg-forms break-all"><code class="text-forms-input">{{ probe_id }}</code></div>
+                <label class="block text-xs text-forms uppercase mb-1">Probe ID</label>
+                <div class="p-2 rounded border bg-forms break-all"><code class="text-code">{{ probe_id }}</code></div>
             </div>
             <div>
-                <label class="block text-xs uppercase mb-1">Source MAC</label>
-                <div class="p-2 rounded border bg-forms break-all"><code class="text-forms-input">{{ mac }}</code></div>
+                <label class="block text-xs text-forms uppercase mb-1">Source MAC</label>
+                <div class="p-2 rounded border bg-forms break-all"><code class="text-code">{{ mac }}</code></div>
             </div>
             <div>
-                <label class="block text-xs uppercase mb-1">Source IP</label>
-                <div class="p-2 rounded border bg-forms break-all"><code class="text-forms-input">{{ ip }}</code></div>
+                <label class="block text-xs text-forms uppercase mb-1">Source IP</label>
+                <div class="p-2 rounded border bg-forms break-all"><code class="text-code">{{ ip }}</code></div>
             </div>
             <div>
-                <label class="block text-xs uppercase mb-1">Dest Port</label>
-                <div class="p-2 rounded border bg-forms break-all"><code class="text-forms-input">{{ port }}</code></div>
+                <label class="block text-xs text-forms uppercase mb-1">Dest Port</label>
+                <div class="p-2 rounded border bg-forms break-all"><code class="text-code">{{ port }}</code></div>
             </div>
         </div>
 
         <!-- Header -->
         <fieldset class="border rounded p-4">
-            <legend class="text-sm font-semibold">DNS Header</legend>
+            <legend class="text-sm text-forms font-semibold">DNS Header</legend>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs uppercase mb-1">Message Type</label>
+                    <label class="block text-xs text-forms uppercase mb-1">Message Type</label>
                     <select id="header-message_type" class="w-full rounded border px-2 py-1">
                         <option value="Query" selected>Query</option>
                         <option value="Response">Response</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs uppercase mb-1">Op Code</label>
+                    <label class="block text-xs text-forms uppercase mb-1">Op Code</label>
                     <select id="header-op_code" class="w-full rounded border px-2 py-1">
                         <option value="Query" selected>Query</option>
                         <option value="IQuery">IQuery</option>
@@ -52,7 +52,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs uppercase mb-1">Response Code</label>
+                    <label class="block text-xs text-forms uppercase mb-1">Response Code</label>
                     <select id="header-response_code" class="w-full rounded border px-2 py-1">
                         <option value="NoError" selected>NoError</option>
                         <option value="FormErr">FormErr</option>
@@ -61,7 +61,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs uppercase mb-1">ID</label>
+                    <label class="block text-xs text-forms uppercase mb-1">ID</label>
                     <input id="header-id" type="number" min="0" max="65535" value="0" class="w-full rounded border px-2 py-1" />
                 </div>
             </div>
@@ -69,11 +69,11 @@
 
         <!-- Queries -->
         <fieldset class="border rounded p-4">
-            <legend class="text-sm font-semibold">Queries</legend>
+            <legend class="text-sm text-forms font-semibold">Queries</legend>
 
             <div id="queries-list" class="space-y-3">
-                <div class="query-row border rounded p-3 bg-white gap-2 items-center">
-                    <input type="text" placeholder="name (example.com.)" class="query-name flex-1 rounded border px-2 py-1" />
+                <div class="query-row border rounded p-3 bg-forms gap-2 items-center">
+                    <input type="text" placeholder="name (example.com.)" class="query-name rounded border px-2 py-1" />
                     <select class="query-type w-28 rounded border px-2 py-1">
                         <option value="A" selected>A</option>
                         <option value="AAAA">AAAA</option>
@@ -85,19 +85,19 @@
                         <option value="SRV">SRV</option>
                     </select>
                     <input type="text" placeholder="class (IN)" class="query-class w-20 rounded border px-2 py-1" value="IN" />
-                    <button type="button" data-action="delete" class="btn-del text-xs px-2 py-1 bg-red-500 text-white rounded">Del</button>
+                    <button type="button" data-action="delete" class="btn-del text-xs px-2 py-1 bg-red-500 text-forms rounded">Del</button>
                 </div>
             </div>
 
             <div class="mt-2 flex gap-2">
                 <button type="button" id="add-query-btn" class="bg-acc text-button px-3 py-1 rounded">+ Query</button>
-                <button type="button" id="clear-queries-btn" class="px-3 py-1 rounded border">Clear</button>
+                <button type="button" id="clear-queries-btn" class="px-3 py-1 text-forms rounded border">Clear</button>
             </div>
         </fieldset>
 
         <!-- Answers -->
         <fieldset class="border rounded p-4">
-            <legend class="text-sm font-semibold">Answers</legend>
+            <legend class="text-sm text-forms font-semibold">Answers</legend>
 
             <div id="answers-list" class="space-y-3"></div>
 
@@ -108,7 +108,7 @@
 
         <!-- Additionals -->
         <fieldset class="border rounded p-4">
-            <legend class="text-sm font-semibold">Additionals</legend>
+            <legend class="text-sm text-forms font-semibold">Additionals</legend>
 
             <div id="additionals-list" class="space-y-3"></div>
 
@@ -118,8 +118,8 @@
         </fieldset>
 
         <div class="flex justify-end gap-3">
-            <button id="preview-json-btn" type="button" class="px-4 py-2 rounded border">Preview JSON</button>
-            <button type="submit" class="bg-acc hover:bg-acc-l text-button px-6 py-2 rounded shadow">Send Packet</button>
+            <button id="preview-json-btn" type="button" class="px-4 py-2 text-forms rounded border">Preview JSON</button>
+            <button type="submit" class="bg-acc hover:bg-acc-l text-button px-6 py-2 rounded">Send Packet</button>
         </div>
     </form>
 
@@ -148,7 +148,7 @@
     /* add query */
     document.getElementById('add-query-btn').addEventListener('click', () => {
         const html = `
-    <div class="query-row border rounded p-3 bg-white gap-2 items-center">
+    <div class="query-row border rounded p-3 bg-forms gap-2 items-center">
       <input type="text" placeholder="name (example.com.)" class="query-name flex-1 rounded border px-2 py-1" />
       <select class="query-type w-28 rounded border px-2 py-1">
         <option value="A" selected>A</option>
@@ -161,7 +161,7 @@
         <option value="SRV">SRV</option>
       </select>
       <input type="text" placeholder="class (IN)" class="query-class w-20 rounded border px-2 py-1" value="IN" />
-      <button type="button" data-action="delete" class="btn-del text-xs px-2 py-1 bg-red-500 text-white rounded">Del</button>
+      <button type="button" data-action="delete" class="btn-del text-xs px-2 py-1 bg-red-500 text-button rounded">Del</button>
     </div>`;
         document.getElementById('queries-list').appendChild(createEl(html));
     });
@@ -174,7 +174,7 @@
     /* answer / additional row factory */
     function answerRowHtml(kind = 'answer') {
         return `
-  <div class="${kind}-row border rounded p-3 bg-white">
+  <div class="${kind}-row border rounded p-3 bg-forms">
     <div class="grid grid-cols-6 gap-2 items-start">
       <input type="text" placeholder="name_labels (example.com.)" class="${kind}-name col-span-2 rounded border px-2 py-1" />
       <input type="text" placeholder="class (IN)" class="${kind}-class w-20 rounded border px-2 py-1" value="IN" />
@@ -203,7 +203,7 @@
       </div>
 
       <div class="col-span-6 mt-2 flex justify-end">
-        <button type="button" data-action="delete" class="btn-del text-xs px-2 py-1 bg-red-500 text-white rounded">Del</button>
+        <button type="button" data-action="delete" class="btn-del text-xs px-2 py-1 bg-red-500 text-button rounded">Del</button>
       </div>
     </div>
   </div>`;

@@ -26,6 +26,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
+use tokio::time::sleep;
 
 #[derive(Clone)]
 pub struct Proxy {
@@ -268,78 +269,14 @@ impl PacketManager {
     pub async fn store_device_in_database(&self, packet: ProbePacket) {
         let device_repo = self.pg_device_repository.clone();
         tokio::task::spawn(async move {
-            let src_mac = packet
-                .packet_metadata
-                .datalink_metadata
-                .mac_metadata
-                .src_mac;
-            let src_ip = packet.packet_metadata.ip_metadata.src_ip;
-            let device = device_repo
-                .create(&CreateDevice::
-                new_discover(
-                    packet.probe_metadata.id.0,
-                    src_mac.to_octets(),
-                    src_ip.0,
-                    packet.packet_metadata.transport_metadata.dst_port,
-                ))
-                .await;
-            match device {
-                Ok(d) => {
-                    debug!(
-                        "Device <ID: {}, MAC: {}, IP: {}> stored in database",
-                        d.id, src_mac, d.ip
-                    );
-                    d
-                }
-                Err(e) => {
-                    error!(
-                        "Could not store device <MAC: {}, IP: {}> in database: {e}",
-                        src_mac, src_ip
-                    );
-                    return;
-                }
-            };
+            sleep(Duration::from_millis(100)).await;
         });
     }
 
     pub async fn store_packet_in_database(&self, packet: ProbePacket) {
         let packet_repo = self.pg_packet_repository.clone();
         tokio::task::spawn(async move {
-            let src_mac = packet
-                .packet_metadata
-                .datalink_metadata
-                .mac_metadata
-                .src_mac;
-            let src_ip = packet.packet_metadata.ip_metadata.src_ip;
-            let packet = packet_repo
-                .create(&CreatePacket::new(
-                    packet.probe_metadata.id.0,
-                    src_mac.to_octets(),
-                    packet
-                        .packet_metadata
-                        .datalink_metadata
-                        .mac_metadata
-                        .dst_mac
-                        .0
-                        .octets(),
-                    src_ip.0,
-                    packet.packet_metadata.ip_metadata.dst_ip.0,
-                    packet.packet_metadata.transport_metadata.src_port,
-                    packet.packet_metadata.transport_metadata.dst_port,
-                    packet.payload,
-                    packet.payload_hash,
-                ))
-                .await;
-            match packet {
-                Ok(p) => debug!(
-                    "Packet <ProbeID: {}, MAC: {}, IP: {}> stored in database",
-                    p.probe_id, src_mac, p.src_addr
-                ),
-                Err(e) => error!(
-                    "Could not store packet <MAC: {}, IP: {}> in database: {e}",
-                    src_mac, src_ip
-                ),
-            }
+           sleep(Duration::from_millis(100)).await;
         });
     }
 

@@ -378,9 +378,7 @@ pub async fn publish_device(
     let user_id = parse_user_id(&i)?;
     let device_id = path.0;
 
-    device_repo
-        .update_auth(&UpdateDevice::toggle_publicity(&device_id, true), &user_id)
-        .await?;
+    device_repo.toggle_publicity(&device_id, &user_id, true).await?;
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/device/{}", device_id)))
@@ -397,9 +395,7 @@ pub async fn hide_device(
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     let device_id = path.0;
-    device_repo
-        .update_auth(&UpdateDevice::toggle_publicity(&device_id, false), &user_id)
-        .await?;
+    device_repo.toggle_publicity(&device_id, &user_id, false).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/device/{}", device_id)))
         .finish())

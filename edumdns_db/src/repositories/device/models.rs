@@ -165,26 +165,6 @@ pub struct UpdateDevice {
     pub acl_ap_hostname_regex: Option<String>,
 }
 
-impl UpdateDevice {
-    pub fn toggle_publicity(device_id: &Id, published: bool) -> Self {
-        Self {
-            id: *device_id,
-            name: None,
-            mac: None,
-            ip: None,
-            port: None,
-            duration: None,
-            interval: None,
-            published: Some(published),
-            proxy: None,
-            acl_src_cidr: None,
-            acl_pwd_hash: None,
-            acl_pwd_salt: None,
-            acl_ap_hostname_regex: None,
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct DeviceUpdatePassword {
     pub id: Id,

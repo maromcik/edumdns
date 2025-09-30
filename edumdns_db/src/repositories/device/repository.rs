@@ -150,6 +150,20 @@ impl PgDeviceRepository {
             .await?;
         Ok(device)
     }
+
+    pub async fn toggle_publicity(&self, device_id: &Id, user_id: &Id, published: bool) -> DbResult<()> {
+        let mut conn = self.pg_pool.get().await?;
+        let d = device::table
+            .find(&device_id)
+            .first::<Device>(&mut conn)
+            .await?;
+        validate_permissions(&self.pg_pool, user_id, &d.probe_id, Permission::Update).await?;
+        diesel::update(device::table.find(&device_id))
+            .set(device::published.eq(published))
+            .execute(&mut conn)
+            .await?;
+        Ok(())
+    }
 }
 
 impl DbReadOne<Id, Device> for PgDeviceRepository {

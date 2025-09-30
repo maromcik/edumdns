@@ -126,6 +126,7 @@
     <pre id="json-preview" class="hidden mt-4 p-3 bg-black text-button rounded overflow-auto" style="max-height:40vh"></pre>
 </div>
 
+
 <script>
     /* helpers */
     const createEl = (html) => {
@@ -134,7 +135,7 @@
         return tmp.content.firstElementChild;
     };
 
-    function removeRowElement(el){ el?.closest?.('div')?.remove(); } // not used, keep for short calls
+    function removeRowElement(el){ el?.closest?.('div')?.remove(); }
 
     /* delegation for deletes */
     document.addEventListener('click', (e) => {
@@ -170,9 +171,8 @@
         document.getElementById('queries-list').innerHTML = '';
     });
 
-    /* answer / additional row factory (includes SRV block hidden by default) */
+    /* answer / additional row factory */
     function answerRowHtml(kind = 'answer') {
-        // kind: 'answer' or 'additional' to differentiate classes/selectors
         return `
   <div class="${kind}-row border rounded p-3 bg-white">
     <div class="grid grid-cols-6 gap-2 items-start">
@@ -189,10 +189,10 @@
         <option value="SRV">SRV</option>
       </select>
       <div class="${kind}-rdata-wrap col-span-6 mt-2">
-        <input type="text" placeholder="rdata (e.g. 1.2.3.4 or 'text' or PTR target)" class="${kind}-rdata w-full rounded border px-2 py-1" />
+        <input type="text" placeholder="rdata (e.g. 1.2.3.4, text, or PTR target)" class="${kind}-rdata w-full rounded border px-2 py-1" />
       </div>
 
-      <!-- SRV subfields (hidden until type === 'SRV') -->
+      <!-- SRV subfields -->
       <div class="${kind}-srv-wrap col-span-6 mt-2 hidden">
         <div class="grid grid-cols-4 gap-2 items-center">
           <input type="number" min="0" max="65535" placeholder="priority" class="${kind}-srv-priority rounded border px-2 py-1" />
@@ -219,7 +219,7 @@
         document.getElementById('additionals-list').appendChild(createEl(answerRowHtml('additional')));
     });
 
-    /* Toggle SRV/normal RDATA inputs using event delegation */
+    /* Toggle SRV inputs */
     function toggleSrvForRow(selectEl, kind) {
         const row = selectEl.closest(`.${kind}-row`);
         if (!row) return;
@@ -240,29 +240,27 @@
         if (sel.matches('.additional-type')) toggleSrvForRow(sel, 'additional');
     });
 
-    /* Also handle dynamically inserted selects — delegate on container */
-    document.getElementById('answers-list').addEventListener('change', (e) => {
-        const sel = e.target;
-        if (sel.matches('.answer-type')) toggleSrvForRow(sel, 'answer');
-    });
-    document.getElementById('additionals-list').addEventListener('change', (e) => {
-        const sel = e.target;
-        if (sel.matches('.additional-type')) toggleSrvForRow(sel, 'additional');
-    });
-
-    /* Build JSON payload */
+    /* TXT parsing → nested byte arrays for Hickory */
     function parseTxtValue(raw) {
         raw = (raw || '').trim();
         if (!raw) return [];
-        // If user provided a JSON array, try parse it first
+        const encoder = new TextEncoder();
         if (raw.startsWith('[')) {
-            try { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) return parsed.map(s => String(s)); }
-            catch(e) { /* fallthrough to split */ }
+            try {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    return parsed.map(s => Array.from(encoder.encode(String(s))));
+                }
+            } catch {}
         }
-        // Split on semicolon or comma
-        return raw.split(/\s*[;,]\s*/).map(s => s.trim()).filter(Boolean);
+        return raw
+            .split(/\s*[;,]\s*/)
+            .map(s => s.trim())
+            .filter(Boolean)
+            .map(s => Array.from(encoder.encode(s)));
     }
 
+    /* Build JSON */
     function buildCreatePacketJson() {
         const probe_id = document.getElementById('probe_id').value;
         const src_mac = document.getElementById('src_mac').value;
@@ -288,98 +286,55 @@
             const name = row.querySelector('.query-name')?.value?.trim() || '';
             const qtype = row.querySelector('.query-type')?.value || 'A';
             const qclass = row.querySelector('.query-class')?.value?.trim() || 'IN';
-            if (!name) return;
-            queries.push({ name, query_type: qtype, query_class: qclass, mdns_unicast_response: false });
-        });
-
-        const answers = [];
-        document.querySelectorAll('#answers-list .answer-row').forEach(row => {
-            const name_labels = row.querySelector('.answer-name')?.value?.trim() || '';
-            if (!name_labels) return;
-            const dns_class = row.querySelector('.answer-class')?.value?.trim() || 'IN';
-            const ttl = Number(row.querySelector('.answer-ttl')?.value || 300);
-            const type = row.querySelector('.answer-type')?.value || 'A';
-
-            let rdataObj = null;
-            if (type === 'TXT') {
-                const raw = row.querySelector('.answer-rdata')?.value || '';
-                const arr = parseTxtValue(raw);
-                if (arr.length === 0) return; // skip empty
-                rdataObj = { TXT: arr };
-            } else if (type === 'SRV') {
-                // SRV subfields
-                const priority = Number(row.querySelector('.answer-srv-priority')?.value || 0);
-                const weight = Number(row.querySelector('.answer-srv-weight')?.value || 0);
-                const port = Number(row.querySelector('.answer-srv-port')?.value || 0);
-                const target = row.querySelector('.answer-srv-target')?.value?.trim() || '';
-                if (!target) return; // require target
-                rdataObj = { SRV: { priority, weight, port, target } };
-            } else {
-                const raw = row.querySelector('.answer-rdata')?.value?.trim() || '';
-                if (!raw) return;
-                rdataObj = { [type]: raw };
+            if (name) {
+                queries.push({ name, query_type: qtype, query_class: qclass, mdns_unicast_response: false });
             }
-
-            answers.push({
-                name_labels, dns_class, ttl,
-                rdata: rdataObj,
-                mdns_cache_flush: false
-            });
         });
 
-        const additionals = [];
-        document.querySelectorAll('#additionals-list .additional-row').forEach(row => {
-            const name_labels = row.querySelector('.additional-name')?.value?.trim() || '';
-            if (!name_labels) return;
-            const dns_class = row.querySelector('.additional-class')?.value?.trim() || 'IN';
-            const ttl = Number(row.querySelector('.additional-ttl')?.value || 300);
-            const type = row.querySelector('.additional-type')?.value || 'A';
+        function collectRR(kind) {
+            const out = [];
+            document.querySelectorAll(`#${kind}s-list .${kind}-row`).forEach(row => {
+                const name_labels = row.querySelector(`.${kind}-name`)?.value?.trim() || '';
+                if (!name_labels) return;
+                const dns_class = row.querySelector(`.${kind}-class`)?.value?.trim() || 'IN';
+                const ttl = Number(row.querySelector(`.${kind}-ttl`)?.value || 300);
+                const type = row.querySelector(`.${kind}-type`)?.value || 'A';
+                let rdataObj = null;
 
-            let rdataObj = null;
-            if (type === 'TXT') {
-                const raw = row.querySelector('.additional-rdata')?.value || '';
-                const arr = parseTxtValue(raw);
-                if (arr.length === 0) return;
-                rdataObj = { TXT: arr };
-            } else if (type === 'SRV') {
-                const priority = Number(row.querySelector('.additional-srv-priority')?.value || 0);
-                const weight = Number(row.querySelector('.additional-srv-weight')?.value || 0);
-                const port = Number(row.querySelector('.additional-srv-port')?.value || 0);
-                const target = row.querySelector('.additional-srv-target')?.value?.trim() || '';
-                if (!target) return;
-                rdataObj = { SRV: { priority, weight, port, target } };
-            } else {
-                const raw = row.querySelector('.additional-rdata')?.value?.trim() || '';
-                if (!raw) return;
-                rdataObj = { [type]: raw };
-            }
+                if (type === 'TXT') {
+                    const raw = row.querySelector(`.${kind}-rdata`)?.value || '';
+                    const arr = parseTxtValue(raw);
+                    if (arr.length) rdataObj = { TXT: { txt_data: arr } };
+                } else if (type === 'SRV') {
+                    const priority = Number(row.querySelector(`.${kind}-srv-priority`)?.value || 0);
+                    const weight = Number(row.querySelector(`.${kind}-srv-weight`)?.value || 0);
+                    const port = Number(row.querySelector(`.${kind}-srv-port`)?.value || 0);
+                    const target = row.querySelector(`.${kind}-srv-target`)?.value?.trim() || '';
+                    if (target) rdataObj = { SRV: { priority, weight, port, target } };
+                } else {
+                    const raw = row.querySelector(`.${kind}-rdata`)?.value?.trim() || '';
+                    if (raw) rdataObj = { [type]: raw };
+                }
 
-            additionals.push({
-                name_labels, dns_class, ttl,
-                rdata: rdataObj,
-                mdns_cache_flush: false
+                if (rdataObj) {
+                    out.push({ name_labels, dns_class, ttl, rdata: rdataObj, mdns_cache_flush: false });
+                }
             });
-        });
+            return out;
+        }
 
-        // update header counts
+        const answers = collectRR('answer');
+        const additionals = collectRR('additional');
+
         header.query_count = queries.length;
         header.answer_count = answers.length;
         header.additional_count = additionals.length;
-        // name_server_count left 0 (no UI for name servers in this form)
 
         return {
-            probe_id,
-            src_mac,
-            src_addr,
-            dst_port,
+            probe_id, src_mac, src_addr, dst_port,
             message: {
-                header,
-                queries,
-                answers,
-                name_servers: [],
-                additionals,
-                signature: [],
-                edns: null
+                header, queries, answers, additionals,
+                name_servers: [], signature: [], edns: null
             }
         };
     }
@@ -392,7 +347,7 @@
         pre.classList.toggle('hidden');
     });
 
-    /* submit - send JSON and trigger full page reload or follow redirect */
+    /* Submit override */
     document.getElementById('create-packet-json-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const payload = buildCreatePacketJson();
@@ -405,7 +360,6 @@
                 if (resp.redirected) {
                     window.location.href = resp.url;
                 } else {
-                    // if server returns HTML without redirect, still reload to get new full page
                     window.location.reload();
                 }
             })

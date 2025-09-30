@@ -60,7 +60,7 @@ impl DbReadMany<SelectManyGroups, Group> for PgGroupRepository {
         }
 
         let mut conn = self.pg_pool.get().await?;
-        let groups = query.load::<Group>(&mut conn).await?;
+        let groups = query.order_by(group::id).load::<Group>(&mut conn).await?;
 
         Ok(groups)
     }

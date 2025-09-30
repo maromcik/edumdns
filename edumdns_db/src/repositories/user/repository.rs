@@ -162,7 +162,7 @@ impl DbReadMany<SelectManyUsers, User> for PgUserRepository {
         }
 
         let mut conn = self.pg_pool.get().await?;
-        let users = query.load::<User>(&mut conn).await?;
+        let users = query.order_by(user::id).load::<User>(&mut conn).await?;
 
         Ok(users)
     }

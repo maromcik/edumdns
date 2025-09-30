@@ -1,14 +1,9 @@
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
-use crate::models::{GroupUser, User};
-use crate::repositories::common::{
-    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
-    DbResultSingle, DbResultSinglePerm, DbUpdate, Id,
-};
+use crate::models::{GroupProbePermission, GroupUser, User};
+use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission};
 
 use crate::error::BackendErrorKind::UserPasswordDoesNotMatch;
-use crate::repositories::user::models::{
-    SelectManyUsers, UserCreate, UserLogin, UserUpdate, UserUpdatePassword,
-};
+use crate::repositories::user::models::{SelectManyUsers, UserCreate, UserDisplay, UserLogin, UserUpdate, UserUpdatePassword};
 use crate::repositories::utilities::{generate_salt, hash_password, validate_admin, validate_user, verify_password_hash};
 use crate::schema::{group_user, user};
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
@@ -107,19 +102,29 @@ impl PgUserRepository {
     }
 }
 
-impl DbReadOne<Id, User> for PgUserRepository {
-    async fn read_one(&self, params: &Id) -> DbResultSingle<User> {
+impl DbReadOne<Id, UserDisplay> for PgUserRepository {
+    async fn read_one(&self, params: &Id) -> DbResultSingle<UserDisplay> {
         let mut conn = self.pg_pool.get().await?;
         let u = user::table.find(&params).first::<User>(&mut conn).await?;
         validate_user(&u)?;
+        let has_groups = self.get_groups(&u.id).await?.is_empty();
+        let u = UserDisplay {
+            user: u,
+            has_groups
+        };
         Ok(u)
     }
 
-    async fn read_one_auth(&self, params: &Id, user_id: &Id) -> DbResultSinglePerm<User> {
+    async fn read_one_auth(&self, params: &Id, user_id: &Id) -> DbResultSinglePerm<UserDisplay> {
         validate_admin(&self.pg_pool, user_id).await?;
         let mut conn = self.pg_pool.get().await?;
         let u = user::table.find(&params).first::<User>(&mut conn).await?;
-        Ok(DbDataPerm::new(u, (false, vec![])))
+        let has_groups = self.get_groups(&u.id).await?.is_empty();
+        let u = UserDisplay {
+            user: u,
+            has_groups
+        };
+        Ok(DbDataPerm::new(u, (true, vec![GroupProbePermission::full()])))
     }
 }
 

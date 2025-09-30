@@ -1,7 +1,7 @@
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::group::{AddGroupUsersForm, CreateGroupForm, GroupQuery, SearchUsersQuery};
-use crate::handlers::utilities::{get_template_name, parse_user_id};
+use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
 use crate::templates::group::{GroupDetailTemplate, GroupDetailUsersTemplate, GroupTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
@@ -25,6 +25,8 @@ pub async fn get_groups(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
+    let user = user_repo.read_one(&user_id).await?;
+    validate_has_groups(&user)?;
     let groups = group_repo
         .read_many_auth(
             &SelectManyGroups::new(
@@ -39,11 +41,9 @@ pub async fn get_groups(
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(GroupTemplate {
-        logged_in: true,
+        user,
         permissions: groups.permissions,
         groups: groups.data,
-        is_admin: user_repo.read_one(&user_id).await?.admin,
-        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
         filters: query.into_inner(),
     })?;
 
@@ -61,17 +61,16 @@ pub async fn get_group(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
+    let user = user_repo.read_one(&user_id).await?;
     let group = group_repo.read_one_auth(&path.0, &user_id).await?;
 
     let template_name = get_template_name(&request, "group/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(GroupDetailTemplate {
-        logged_in: true,
+        user,
         permissions: group.permissions,
         group: group.data,
-        is_admin: user_repo.read_one(&user_id).await?.admin,
-        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

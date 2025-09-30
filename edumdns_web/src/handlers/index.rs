@@ -26,13 +26,12 @@ pub async fn index(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
+    let user = user_repo.read_one(&user_id).await?;
     let template_name = get_template_name(&request, "index");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(IndexTemplate {
-        logged_in: true,
-        is_admin: user_repo.read_one(&user_id).await?.admin,
-        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
+        user
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

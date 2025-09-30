@@ -2,7 +2,7 @@ use crate::error::WebError;
 use crate::forms::device::DeviceQuery;
 use crate::forms::probe::{ProbeConfigForm, CreateProbeForm, ProbePermissionForm, ProbeQuery};
 use crate::handlers::helpers::reconnect_probe;
-use crate::handlers::utilities::{get_template_name, parse_user_id};
+use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
 use crate::templates::PageInfo;
 use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
@@ -42,11 +42,8 @@ pub async fn get_probes(
     let i = authorized!(identity, request);
     let page = query.page.unwrap_or(1);
     let user_id = parse_user_id(&i)?;
-    let has_groups = !user_repo.get_groups(&user_id).await?.is_empty();
-    let is_admin = user_repo.read_one(&user_id).await?.admin;
-    if !has_groups && !is_admin {
-        return Err(DbError::new(DbErrorKind::BackendError(BackendError::new(BackendErrorKind::PermissionDenied, "User is not assigned to any group")), ""))?;
-    }
+    let user = user_repo.read_one(&user_id).await?;
+    validate_has_groups(&user)?;
     let query = query.into_inner();
     let params = SelectManyProbes::from(query.clone());
     let probes = probe_repo
@@ -67,9 +64,7 @@ pub async fn get_probes(
     let template = env.get_template(&template_name)?;
     let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(ProbeTemplate {
-        logged_in: true,
-        is_admin,
-        has_groups,
+        user,
         permissions: probes.permissions,
         probes: probes_parsed,
         page_info: PageInfo::new(page, total_pages),
@@ -94,6 +89,7 @@ pub async fn get_probe(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
+    let user = user_repo.read_one(&user_id).await?;
     let probe_id = path.0;
     let page = query.page.unwrap_or(1);
     let probe = probe_repo
@@ -135,9 +131,7 @@ pub async fn get_probe(
     let template = env.get_template(&template_name)?;
     let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(ProbeDetailTemplate {
-        logged_in: true,
-        is_admin: user_repo.read_one(&user_id).await?.admin,
-        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
+        user,
         permissions: probe.permissions,
         permission_matrix: matrix,
         probe: ProbeDisplay::from(probe.data.0),
@@ -146,7 +140,6 @@ pub async fn get_probe(
             .map(|d| DeviceDisplay::from(d.1))
             .collect(),
         configs: probe.data.1,
-        admin: probe.admin,
         page_info: PageInfo::new(page, total_pages),
         filters: query,
         query_string,

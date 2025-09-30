@@ -7,6 +7,7 @@ use crate::repositories::utilities::{
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use diesel::{AsChangeset, Identifiable, Insertable};
 use serde::{Deserialize, Serialize};
+use crate::models::User;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyUsers {
@@ -154,4 +155,10 @@ impl UserCreate {
             admin,
         })
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserDisplay {
+    pub user: User,
+    pub has_groups: bool
 }

@@ -2,7 +2,7 @@
     <div class="flex items-center justify-between py-4">
         <h2 class="text-4xl font-bold text-sat-xl">Probes</h2>
 
-<!--        {% if is_admin %}-->
+<!--        {% if user.user.admin %}-->
 <!--        <button-->
 <!--                class="ml-4 bg-acc-l rounded-md px-3 py-1.5 text-sm font-medium text-button border border-base transition-colors"-->
 <!--                hx-post="/probe/create"-->
@@ -15,7 +15,7 @@
 <!--        {% endif %}-->
     </div>
 
-    {% if is_admin %}
+    {% if user.user.admin %}
     <!-- New Group -->
     <div class="rounded-lg border border-base bg-cards p-6 mb-6">
         <h3 class="text-2xl font-semibold text-sat-l mb-4">New Probe</h3>

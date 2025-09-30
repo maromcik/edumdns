@@ -319,7 +319,7 @@
     </div>
 
     <!-- Permissions Table -->
-    {% if admin %}
+    {% if user.user.admin %}
     <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards mb-8">
         <div class="flex flex-col justify-center items-center py-4">
             <h2 class="text-3xl font-medium text-sat-xl">Permissions</h2>

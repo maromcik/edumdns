@@ -5,13 +5,12 @@ use edumdns_db::models::{Group, Location, ProbeConfig};
 use edumdns_db::repositories::common::{Permission, Permissions};
 use edumdns_db::repositories::device::models::DeviceDisplay;
 use edumdns_db::repositories::probe::models::ProbeDisplay;
+use edumdns_db::repositories::user::models::UserDisplay;
 use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct ProbeTemplate {
-    pub logged_in: bool,
-    pub is_admin: bool,
-    pub has_groups: bool,
+    pub user: UserDisplay,
     pub permissions: Permissions,
     pub probes: Vec<(Option<Location>, ProbeDisplay)>,
     pub page_info: PageInfo,
@@ -21,15 +20,12 @@ pub struct ProbeTemplate {
 
 #[derive(Serialize)]
 pub struct ProbeDetailTemplate {
-    pub logged_in: bool,
-    pub is_admin: bool,
-    pub has_groups: bool,
+    pub user: UserDisplay,
     pub permissions: Permissions,
     pub permission_matrix: Vec<(Vec<(Permission, bool)>, Group)>,
     pub probe: ProbeDisplay,
     pub devices: Vec<DeviceDisplay>,
     pub configs: Vec<ProbeConfig>,
-    pub admin: bool,
     pub page_info: PageInfo,
     pub filters: DeviceQuery,
     pub query_string: String,

@@ -3,22 +3,18 @@ use crate::error::{WebError, WebErrorKind};
 use crate::forms::device::{CreateDeviceForm, DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest, DeviceQuery, UpdateDeviceForm};
 use crate::forms::packet::PacketQuery;
 use crate::handlers::helpers::request_packet_transmit_helper;
-use crate::handlers::utilities::{
-    get_template_name, parse_user_id, verify_transmit_request_client_ap,
-};
-use crate::templates::PageInfo;
+use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups, verify_transmit_request_client_ap};
 use crate::templates::device::{DeviceCreateTemplate, DeviceDetailTemplate, DeviceTemplate, DeviceTransmitTemplate};
+use crate::templates::PageInfo;
 use crate::utils::AppState;
 use actix_identity::Identity;
-use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
+use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
 use edumdns_core::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
 use edumdns_core::error::CoreError;
-use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
-use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE, Pagination, DbCreate};
+use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination, PAGINATION_ELEMENTS_PER_PAGE};
 use edumdns_db::repositories::device::models::{CreateDevice, DeviceDisplay, SelectManyDevices, UpdateDevice};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
@@ -39,17 +35,8 @@ pub async fn get_devices(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
-    let has_groups = !user_repo.get_groups(&user_id).await?.is_empty();
-    let is_admin = user_repo.read_one(&user_id).await?.admin;
-    if !has_groups && !is_admin {
-        return Err(DbError::new(
-            DbErrorKind::BackendError(BackendError::new(
-                BackendErrorKind::PermissionDenied,
-                "User is not assigned to any group",
-            )),
-            "",
-        ))?;
-    }
+    let user = user_repo.read_one(&user_id).await?;
+    validate_has_groups(&user)?;
     let page = query.page.unwrap_or(1);
     let query = query.into_inner();
     let params = SelectManyDevices::from(query.clone());
@@ -68,11 +55,9 @@ pub async fn get_devices(
     let template = env.get_template(&template_name)?;
     let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(DeviceTemplate {
-        logged_in: true,
         permissions: devices.permissions,
         devices: devices_parsed,
-        is_admin,
-        has_groups,
+        user,
         page_info: PageInfo::new(page, total_pages),
         filters: query,
         query_string,
@@ -94,6 +79,7 @@ pub async fn get_device(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
+    let user = user_repo.read_one(&user_id).await?;
     let device = device_repo.read_one_auth(&path.0, &user_id).await?;
     let page = query.page.unwrap_or(1);
     let params = SelectManyPackets::new(
@@ -126,13 +112,11 @@ pub async fn get_device(
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(DeviceDetailTemplate {
-        logged_in: true,
+        user,
         permissions: device.permissions,
         device: DeviceDisplay::from(device.data),
         packets,
         packet_transmit_requests,
-        is_admin: user_repo.read_one(&user_id).await?.admin,
-        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
         page_info: PageInfo::new(page, total_pages),
         filters: query.into_inner(),
         query_string,
@@ -335,7 +319,6 @@ pub async fn request_packet_transmit(
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(DeviceTransmitTemplate {
-        logged_in: true,
         device: DeviceDisplay::from(device),
         client_ip: target_ip.to_string(),
         packet_transmit_requests,
@@ -376,7 +359,6 @@ pub async fn get_device_for_transmit(
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(DeviceTransmitTemplate {
-        logged_in: true,
         device: DeviceDisplay::from(device),
         client_ip: target_ip,
         packet_transmit_requests,

@@ -1,7 +1,7 @@
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::packet::{CreatePacketForm, PacketDeviceDataForm, PacketQuery};
-use crate::handlers::utilities::{get_template_name, parse_user_id};
+use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
 use crate::header::LOCATION;
 use crate::templates::packet::{PacketCreateTemplate, PacketDetailTemplate, PacketTemplate};
 use crate::templates::PageInfo;
@@ -28,17 +28,8 @@ pub async fn get_packets(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
-    let has_groups = !user_repo.get_groups(&user_id).await?.is_empty();
-    let is_admin = user_repo.read_one(&user_id).await?.admin;
-    if !has_groups && !is_admin {
-        return Err(DbError::new(
-            DbErrorKind::BackendError(BackendError::new(
-                BackendErrorKind::PermissionDenied,
-                "User is not assigned to any group",
-            )),
-            "",
-        ))?;
-    }
+    let user = user_repo.read_one(&user_id).await?;
+    validate_has_groups(&user)?;
     let page = query.page.unwrap_or(1);
     let query = query.into_inner();
     let params = SelectManyPackets::from(query.clone());
@@ -57,11 +48,9 @@ pub async fn get_packets(
     let template = env.get_template(&template_name)?;
     let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(PacketTemplate {
-        logged_in: true,
+        user,
         permissions: packets.permissions,
         packets: &packets_parsed,
-        is_admin,
-        has_groups,
         page_info: PageInfo::new(page, total_pages),
         filters: query,
         query_string,
@@ -83,7 +72,7 @@ pub async fn get_packet(
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     let packet = packet_repo.read_one_auth(&path.0, &user_id).await?;
-
+    let user = user_repo.read_one(&user_id).await?;
     let params = SelectSingleDevice::new(
         packet.data.probe_id,
         packet.data.src_mac,
@@ -94,12 +83,10 @@ pub async fn get_packet(
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(PacketDetailTemplate {
-        logged_in: true,
+        user,
         permissions: packet.permissions,
         packet: &PacketDisplay::from(packet.data)?,
         device_id: device.data.id,
-        is_admin: user_repo.read_one(&user_id).await?.admin,
-        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -154,28 +141,17 @@ pub async fn create_packet_form(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
-    let has_groups = !user_repo.get_groups(&user_id).await?.is_empty();
-    let is_admin = user_repo.read_one(&user_id).await?.admin;
-    if !has_groups && !is_admin {
-        return Err(DbError::new(
-            DbErrorKind::BackendError(BackendError::new(
-                BackendErrorKind::PermissionDenied,
-                "User is not assigned to any group",
-            )),
-            "",
-        ))?;
-    }
+    let user = user_repo.read_one(&user_id).await?;
+    validate_has_groups(&user)?;
     let template_name = get_template_name(&request, "packet/create");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(PacketCreateTemplate {
+        user,
         probe_id: query.probe_id,
         ip: query.ip,
         mac: query.mac,
         port: query.port,
-        logged_in: true,
-        is_admin,
-        has_groups,
     })?;
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

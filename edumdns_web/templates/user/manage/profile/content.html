@@ -19,8 +19,8 @@
                                         <label for="profile-id-name" class="font-bold text-forms">Name</label>
                                     </td>
                                     <td class="pb-2">
-                                        <input type="text" id="profile-id-name" name="name" value="{{ user.name }}"
-                                               placeholder="{{ user.name }}"
+                                        <input type="text" id="profile-id-name" name="name" value="{{ user.user.name }}"
+                                               placeholder="{{ user.user.name }}"
                                                class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
                                     </td>
                                 </tr>
@@ -30,7 +30,7 @@
                                     </td>
                                     <td class="pb-2">
                                         <input type="text" id="profile-id-surname" name="surname"
-                                               value="{{ user.surname }}" placeholder="{{ user.surname }}"
+                                               value="{{ user.user.surname }}" placeholder="{{ user.user.surname }}"
                                                class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
                                     </td>
                                 </tr>
@@ -39,8 +39,8 @@
                                         <label for="profile-id-email" class="font-bold text-forms">Email</label>
                                     </td>
                                     <td class="pb-2">
-                                        <input type="text" id="profile-id-email" name="email" value="{{ user.email }}"
-                                               placeholder="{{ user.email }}"
+                                        <input type="text" id="profile-id-email" name="email" value="{{ user.user.email }}"
+                                               placeholder="{{ user.user.email }}"
                                                class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
                                     </td>
                                 </tr>

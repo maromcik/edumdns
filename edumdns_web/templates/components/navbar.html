@@ -29,8 +29,8 @@
 
     <!-- Navigation Links Laptop View -->
     <div id="laptop-menu" class="hidden lg:flex lg:items-center lg:space-x-10 xl:space-x-16 xl:text-xl">
-        {% if has_groups or is_admin %}
-        {% if is_admin %}
+        {% if user.has_groups or user.user.admin %}
+        {% if user.user.admin %}
         <a href="/group"
            class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer">
             <i class="fa-solid fa-object-group text-3l w-6 h-6 mr-2 lg:mt-2 xl:mt-1"></i>
@@ -61,7 +61,6 @@
     </div>
     <!-- Login/Logout -->
     <div class="hidden lg:flex lg:items-center lg:space-x-10 xl:space-x-16 xl:text-xl">
-        {% if logged_in %}
         <a href="/user/manage"
            class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
@@ -82,18 +81,6 @@
             </svg>
             Log out
         </a>
-        {% else %}
-        <a href="/login"
-           class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
-                 stroke="currentColor"
-                 class="mr-2 w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                      d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/>
-            </svg>
-            Log in
-        </a>
-        {% endif %}
     </div>
 
     <!-- Hamburger Menu Button -->
@@ -118,8 +105,8 @@
         <a href="/" class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Home
         </a>
-        {% if has_groups or is_admin %}
-        {% if is_admin %}
+        {% if user.has_groups or user.user.admin %}
+        {% if user.user.admin %}
         <a href="/group" class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Groups
         </a>
@@ -137,7 +124,6 @@
             Packets
         </a>
         {% endif %}
-        {% if logged_in %}
         <a href="/user/manage"
            class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Profile
@@ -146,12 +132,6 @@
            class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Log out
         </a>
-        {% else %}
-        <a href="/login"
-           class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
-            Log in
-        </a>
-        {% endif %}
     </div>
 </div>
 

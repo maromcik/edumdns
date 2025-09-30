@@ -13,9 +13,7 @@ use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
 use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id};
-use edumdns_db::repositories::user::models::{
-    SelectManyUsers, UserCreate, UserUpdate, UserUpdatePassword,
-};
+use edumdns_db::repositories::user::models::{SelectManyUsers, UserCreate, UserDisplay, UserUpdate, UserUpdatePassword};
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_db::repositories::utilities::validate_password;
 
@@ -31,17 +29,15 @@ pub async fn get_users(
     let user_id = parse_user_id(&i)?;
     let query = query.into_inner();
     let params = SelectManyUsers::from(query.clone());
+    let user = user_repo.read_one(&user_id).await?;
     let users = user_repo.read_many_auth(&params, &user_id).await?;
 
     let template_name = get_template_name(&request, "user");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(UserTemplate {
-        logged_in: true,
-        permissions: users.permissions,
+        user,
         users: users.data,
-        is_admin: user_repo.read_one(&user_id).await?.admin,
-        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
         filters: query,
     })?;
 
@@ -58,17 +54,14 @@ pub async fn get_user(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
-    let user = user_repo.read_one_auth(&path.0, &user_id).await?;
-
+    let target_user = user_repo.read_one_auth(&path.0, &user_id).await?;
+    let user = user_repo.read_one(&user_id).await?;
     let template_name = get_template_name(&request, "user/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(UserDetailTemplate {
-        logged_in: true,
-        permissions: user.permissions,
-        user: user.data,
-        is_admin: user_repo.read_one(&user_id).await?.admin,
-        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
+        user,
+        target_user: target_user.data,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -143,18 +136,16 @@ pub async fn user_manage_form_page(
 ) -> Result<impl Responder, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
-    let user = user_repo.read_one(&user_id).await?;
+    let user = user_repo.read_one(&user_id).await?;;
 
     let template_name = get_template_name(&request, "user/manage/profile");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(UserManageProfileTemplate {
-        user: &user,
+        user,
         message: String::new(),
         success: true,
-        logged_in: true,
-        is_admin: user_repo.read_one(&user_id).await?.admin,
-        has_groups: !user_repo.get_groups(&user_id).await?.is_empty(),
+
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -174,7 +165,6 @@ pub async fn user_manage_password_form(
     let body = template.render(UserManagePasswordTemplate {
         message: String::new(),
         success: true,
-        logged_in: true,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -189,15 +179,13 @@ pub async fn user_manage_profile_form(
 ) -> Result<impl Responder, WebError> {
     let u = authorized!(identity, request);
     let user = user_repo.read_one(&parse_user_id(&u)?).await?;
-
     let template_name = get_template_name(&request, "user/manage/profile");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(UserManageProfileUserFormTemplate {
-        user: &user,
+        user,
         message: String::new(),
         success: true,
-        logged_in: true,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -227,15 +215,18 @@ pub async fn user_manage(
             "",
         ))));
     };
+    let user = UserDisplay {
+        has_groups: user_repo.get_groups(&user_valid.id).await?.is_empty(),
+        user: user_valid,
 
+    };
     let template_name = get_template_name(&request, "user/manage/profile");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(UserManageProfileUserFormTemplate {
-        user: &user_valid,
+        user,
         message: "Profile successfully updated".to_string(),
         success: true,
-        logged_in: true,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -259,7 +250,6 @@ pub async fn user_manage_password(
         let context = UserManagePasswordTemplate {
             message: "Passwords do not match".to_string(),
             success: false,
-            logged_in: true,
         };
 
         let body = template.render(context)?;
@@ -285,7 +275,6 @@ pub async fn user_manage_password(
         let context = UserManagePasswordTemplate {
             message: "Old password incorrect".to_string(),
             success: false,
-            logged_in: true,
         };
         let body = template.render(context)?;
         return Ok(HttpResponse::Ok().content_type("text/html").body(body));
@@ -294,7 +283,6 @@ pub async fn user_manage_password(
     let context = UserManagePasswordTemplate {
         message: "Password successfully updated".to_string(),
         success: true,
-        logged_in: true,
     };
     let body = template.render(context)?;
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

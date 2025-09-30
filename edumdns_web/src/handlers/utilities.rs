@@ -3,8 +3,9 @@ use crate::utils::DeviceAclApDatabase;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::HttpRequest;
+use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use edumdns_db::repositories::common::Id;
-use edumdns_db::repositories::user::models::UserCreate;
+use edumdns_db::repositories::user::models::{UserCreate, UserDisplay};
 use log::error;
 use regex::Regex;
 use serde_json::Value;
@@ -14,6 +15,21 @@ use tokio_postgres::NoTls;
 #[macro_export]
 macro_rules! authorized {
     ($identity:expr, $req:expr ) => {{
+        match $identity {
+            None => {
+                let path = format!("/login?ret={}", $req.path());
+                return Ok(actix_web::HttpResponse::SeeOther()
+                    .insert_header((actix_web::http::header::LOCATION, path))
+                    .finish());
+            }
+            Some(v) => v,
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! has_groups {
+    ($user:expr ) => {{
         match $identity {
             None => {
                 let path = format!("/login?ret={}", $req.path());
@@ -99,4 +115,18 @@ pub fn extract_referrer(request: &HttpRequest) -> String {
         .map_or("/".to_string(), |header_value| {
             header_value.to_str().unwrap_or("/").to_string()
         })
+}
+
+pub fn validate_has_groups(user: &UserDisplay) -> Result<(), WebError> {
+    if user.has_groups || user.user.admin {
+        return Ok(());
+    }
+    Err(DbError::new(
+        DbErrorKind::BackendError(BackendError::new(
+            BackendErrorKind::PermissionDenied,
+            "User is not assigned to any group",
+        )),
+        "",
+    ))
+    .map_err(WebError::from)
 }

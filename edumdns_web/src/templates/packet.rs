@@ -1,17 +1,16 @@
-use ipnetwork::IpNetwork;
 use crate::forms::packet::PacketQuery;
 use crate::templates::PageInfo;
+use edumdns_core::bincode_types::MacAddr;
 use edumdns_db::repositories::common::{Id, Permissions};
 use edumdns_db::repositories::packet::models::PacketDisplay;
+use edumdns_db::repositories::user::models::UserDisplay;
+use ipnetwork::IpNetwork;
 use serde::Serialize;
 use uuid::Uuid;
-use edumdns_core::bincode_types::MacAddr;
 
 #[derive(Serialize)]
 pub struct PacketTemplate<'a> {
-    pub logged_in: bool,
-    pub is_admin: bool,
-    pub has_groups: bool,
+    pub user: UserDisplay,
     pub permissions: Permissions,
     pub packets: &'a Vec<PacketDisplay>,
     pub page_info: PageInfo,
@@ -21,9 +20,7 @@ pub struct PacketTemplate<'a> {
 
 #[derive(Serialize)]
 pub struct PacketDetailTemplate<'a> {
-    pub logged_in: bool,
-    pub is_admin: bool,
-    pub has_groups: bool,
+    pub user: UserDisplay,
     pub permissions: Permissions,
     pub packet: &'a PacketDisplay,
     pub device_id: Id,
@@ -31,11 +28,9 @@ pub struct PacketDetailTemplate<'a> {
 
 #[derive(Serialize)]
 pub struct PacketCreateTemplate {
+    pub user: UserDisplay,
     pub probe_id: Uuid,
     pub mac: MacAddr,
     pub ip: IpNetwork,
     pub port: u16,
-    pub logged_in: bool,
-    pub is_admin: bool,
-    pub has_groups: bool,
 }

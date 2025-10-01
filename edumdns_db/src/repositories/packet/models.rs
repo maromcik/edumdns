@@ -9,6 +9,7 @@ use log::warn;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, format_description};
 use uuid::Uuid;
+use crate::repositories::utilities::format_time;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyPackets {
@@ -129,8 +130,6 @@ impl PacketDisplay {
                 return Err(e);
             }
         };
-        let format = format_description::parse("[day]. [month]. [year] [hour]:[minute]:[second]")
-            .unwrap_or_default();
         Ok(Self {
             id: value.id,
             probe_id: value.probe_id,
@@ -143,7 +142,7 @@ impl PacketDisplay {
             payload: payload.read_content(),
             captured_at: value
                 .captured_at
-                .map(|t| t.format(&format).unwrap_or_default()),
+                .map(format_time),
         })
     }
 }

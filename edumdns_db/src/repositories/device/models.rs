@@ -6,6 +6,7 @@ use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, format_description};
 use uuid::Uuid;
+use crate::repositories::utilities::format_time;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyDevices {
@@ -110,8 +111,6 @@ pub struct DeviceDisplay {
 
 impl From<Device> for DeviceDisplay {
     fn from(value: Device) -> Self {
-        let format = format_description::parse("[day]. [month]. [year] [hour]:[minute]:[second]")
-            .unwrap_or_default();
         Self {
             id: value.id,
             probe_id: value.probe_id,
@@ -128,7 +127,7 @@ impl From<Device> for DeviceDisplay {
             acl_ap_hostname_regex: value.acl_ap_hostname_regex,
             discovered_at: value
                 .discovered_at
-                .map(|t| t.format(&format).unwrap_or_default()),
+                .map(format_time),
         }
     }
 }

@@ -16,6 +16,7 @@ use rand_core::OsRng;
 use serde::{Deserialize, Deserializer};
 use std::ops::DerefMut;
 use std::str::FromStr;
+use time::{OffsetDateTime, UtcOffset, format_description};
 use uuid::Uuid;
 
 pub const WEAK_PASSWORD_MESSAGE: &str = "Weak Password! Must contain at least one char from: {lower, upper, number, special} and be at least 6 characters long.";
@@ -194,4 +195,16 @@ pub fn validate_password(password: &str) -> bool {
                 )
             });
     lower && upper && numeric && special && password.len() >= MIN_PASS_LEN
+}
+
+pub fn format_time(t: OffsetDateTime) -> String {
+    let format = format_description::parse("[day]. [month]. [year] [hour]:[minute]:[second]").ok();
+    let offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
+
+    let local = t.to_offset(offset);
+    if let Some(fmt) = &format {
+        local.format(fmt).unwrap_or_else(|_| local.to_string())
+    } else {
+        local.to_string()
+    }
 }

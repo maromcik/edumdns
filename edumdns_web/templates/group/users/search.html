@@ -1,7 +1,7 @@
 {%- for user in users %}
 <div class="flex items-center gap-2 px-3 py-2 border-b border-base">
   <!-- Use repeated name without [] to keep compatibility -->
-  <input form="add-users-form" type="checkbox" name="user_ids[]" value="{{ user.id }}" class="shrink-0" />
+  <input form="add-users-form" type="checkbox" name="entity_ids[]" value="{{ user.id }}" class="shrink-0" />
   <div class="flex flex-col">
     <span class="text-sat-l font-medium">{{ user.name }} {{ user.surname }}</span>
     <span class="text-sat-m text-sm">{{ user.email }}</span>

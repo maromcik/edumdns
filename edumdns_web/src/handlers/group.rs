@@ -1,19 +1,19 @@
-use std::collections::HashMap;
 use crate::authorized;
 use crate::error::WebError;
-use crate::forms::group::{AddGroupUsersForm, CreateGroupForm, GroupQuery, SearchUsersQuery};
-use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
+use crate::forms::group::{CreateGroupForm, GroupQuery};
+use crate::handlers::utilities::{get_template_name, parse_user_id};
 use crate::templates::group::{GroupDetailTemplate, GroupDetailUsersTemplate, GroupTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
-use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
+use actix_web::{delete, get, post, web, HttpRequest, HttpResponse, Responder};
 use edumdns_db::repositories::common::{DbCreate, DbDelete, DbUpdate};
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
 use edumdns_db::repositories::group::models::{CreateGroup, SelectManyGroups, UpdateGroup};
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
+use std::collections::HashMap;
+use crate::handlers::{BulkAddEntityForm, SearchEntityQuery};
 
 #[get("")]
 pub async fn get_groups(
@@ -119,14 +119,14 @@ pub async fn add_group_users(
     identity: Option<Identity>,
     group_repo: web::Data<PgGroupRepository>,
     path: web::Path<(Id,)>,
-    form: web::Form<AddGroupUsersForm>,
+    form: web::Form<BulkAddEntityForm>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let group_id = path.0;
     let admin_id = parse_user_id(&i)?;
-    if !form.user_ids.is_empty() {
+    if !form.entity_ids.is_empty() {
         group_repo
-            .add_users(&group_id, &form.user_ids, &admin_id)
+            .add_users(&group_id, &form.entity_ids, &admin_id)
             .await?;
     }
     Ok(HttpResponse::SeeOther()
@@ -166,7 +166,7 @@ pub async fn search_group_users(
     group_repo: web::Data<PgGroupRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Id,)>,
-    query: web::Query<SearchUsersQuery>,
+    query: web::Query<SearchEntityQuery>,
 ) -> Result<impl Responder, WebError> {
     let i = authorized!(identity, request);
     let users = group_repo

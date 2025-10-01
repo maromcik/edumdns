@@ -116,26 +116,6 @@ pub struct UserLoginForm {
 //     pub page: Option<i64>,
 // }
 
-#[derive(Debug)]
-pub struct AddUserGroupsForm {
-    pub group_ids: Vec<Id>,
-}
-impl<'de> Deserialize<'de> for AddUserGroupsForm {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let pairs = Vec::<(String, String)>::deserialize(deserializer)?;
-        let ids = pairs
-            .into_iter()
-            .filter_map(|(k, v)| if k == "group_ids[]" { Some(v) } else { None })
-            .filter_map(|id| id.parse::<Id>().ok())
-            .collect::<HashSet<Id>>();
-        Ok(AddUserGroupsForm {
-            group_ids: Vec::from_iter(ids),
-        })
-    }
-}
 
 #[derive(serde::Deserialize)]
 pub struct SearchGroupsQuery {

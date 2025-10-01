@@ -1,20 +1,17 @@
 use crate::error::{WebError, WebErrorKind};
-use crate::forms::user::{AddUserGroupsForm, UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm};
+use crate::forms::user::{UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm};
 use crate::handlers::utilities::{get_template_name, parse_user_id};
+use crate::handlers::{BulkAddEntityForm, SearchEntityQuery};
 use crate::templates::user::{UserDetailGroupsTemplate, UserDetailTemplate, UserManagePasswordTemplate, UserManageProfileTemplate, UserManageProfileUserFormTemplate, UserTemplate};
-use crate::{AppState, authorized};
+use crate::{authorized, AppState};
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
-use log::error;
+use actix_web::{delete, get, post, web, HttpRequest, HttpResponse, Responder};
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
 use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id};
-use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::user::models::{SelectManyUsers, UserCreate, UserDisplay, UserUpdate, UserUpdatePassword};
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_db::repositories::utilities::validate_password;
-use crate::forms::group::{AddGroupUsersForm, SearchUsersQuery};
-use crate::templates::group::GroupDetailUsersTemplate;
 
 #[get("")]
 pub async fn get_users(
@@ -301,14 +298,14 @@ pub async fn add_user_groups(
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
     path: web::Path<(Id,)>,
-    form: web::Form<AddUserGroupsForm>,
+    form: web::Form<BulkAddEntityForm>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = path.0;
     let admin_id = parse_user_id(&i)?;
-    if !form.group_ids.is_empty() {
+    if !form.entity_ids.is_empty() {
         user_repo
-            .add_groups(&user_id, &form.group_ids, &admin_id)
+            .add_groups(&user_id, &form.entity_ids, &admin_id)
             .await?;
     }
     Ok(HttpResponse::SeeOther()
@@ -324,7 +321,7 @@ pub async fn search_user_groups(
     user_repo: web::Data<PgUserRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Id,)>,
-    query: web::Query<SearchUsersQuery>,
+    query: web::Query<SearchEntityQuery>,
 ) -> Result<impl Responder, WebError> {
     let i = authorized!(identity, request);
     let groups = user_repo

@@ -1,6 +1,6 @@
 ## Web
 - user management
   - pagination
-  - adding to groups
+  - resetting password
   - disabling
   - align admin checkbox

@@ -1,21 +1,20 @@
 use crate::error::WebError;
-use crate::forms::user::{
-    UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm,
-};
+use crate::forms::user::{AddUserGroupsForm, UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm};
 use crate::handlers::utilities::{get_template_name, parse_user_id};
-use crate::templates::user::{
-    UserDetailTemplate, UserManagePasswordTemplate, UserManageProfileTemplate,
-    UserManageProfileUserFormTemplate, UserTemplate,
-};
+use crate::templates::user::{UserDetailGroupsTemplate, UserDetailTemplate, UserManagePasswordTemplate, UserManageProfileTemplate, UserManageProfileUserFormTemplate, UserTemplate};
 use crate::{AppState, authorized};
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
+use log::error;
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
 use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id};
+use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::user::models::{SelectManyUsers, UserCreate, UserDisplay, UserUpdate, UserUpdatePassword};
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_db::repositories::utilities::validate_password;
+use crate::forms::group::{AddGroupUsersForm, SearchUsersQuery};
+use crate::templates::group::GroupDetailUsersTemplate;
 
 #[get("")]
 pub async fn get_users(
@@ -56,11 +55,13 @@ pub async fn get_user(
     let user_id = parse_user_id(&i)?;
     let target_user = user_repo.read_one_auth(&path.0, &user_id).await?;
     let user = user_repo.read_one(&user_id).await?;
+    let groups = user_repo.read_groups(&path.0, &user_id).await?;
     let template_name = get_template_name(&request, "user/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(UserDetailTemplate {
         user,
+        groups,
         target_user: target_user.data,
     })?;
 
@@ -285,5 +286,50 @@ pub async fn user_manage_password(
         success: true,
     };
     let body = template.render(context)?;
+    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+}
+
+
+#[post("{id}/groups/add")]
+pub async fn add_user_groups(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    user_repo: web::Data<PgUserRepository>,
+    path: web::Path<(Id,)>,
+    form: web::Form<AddUserGroupsForm>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request);
+    let user_id = path.0;
+    let admin_id = parse_user_id(&i)?;
+    if !form.group_ids.is_empty() {
+        user_repo
+            .add_groups(&user_id, &form.group_ids, &admin_id)
+            .await?;
+    }
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/user/{}", user_id)))
+        .finish())
+}
+
+
+#[get("{id}/search")]
+pub async fn search_user_groups(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    user_repo: web::Data<PgUserRepository>,
+    state: web::Data<AppState>,
+    path: web::Path<(Id,)>,
+    query: web::Query<SearchUsersQuery>,
+) -> Result<impl Responder, WebError> {
+    let i = authorized!(identity, request);
+    let groups = user_repo
+        .search_user_groups(&query.q, &parse_user_id(&i)?, &path.0)
+        .await?;
+    let template_name = "user/groups/search.html";
+    let env = state.jinja.acquire_env()?;
+    let template = env.get_template(template_name)?;
+    let body = template.render(UserDetailGroupsTemplate {
+        groups,
+    })?;
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

@@ -15,6 +15,7 @@ pub struct GroupTemplate {
 #[derive(Serialize)]
 pub struct GroupDetailTemplate {
     pub user: UserDisplay,
+    pub users: Vec<User>,
     pub permissions: Permissions,
     pub group: Group,
 }
@@ -22,5 +23,4 @@ pub struct GroupDetailTemplate {
 #[derive(Serialize)]
 pub struct GroupDetailUsersTemplate {
     pub users: Vec<User>,
-    pub group_id: Id,
 }

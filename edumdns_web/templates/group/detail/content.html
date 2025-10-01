@@ -84,8 +84,8 @@
       <form
         id="add-users-form"
         hx-post="/group/{{ group.id }}/users/add"
-        hx-target="#group-users"
-        hx-swap="innerHTML"
+        hx-target="#content-area"
+        hx-target-error="#content-area"
         hx-params="*"
         class="space-y-4"
       >
@@ -133,20 +133,47 @@
       </form>
     </div>
 
-  <div
-          id="group-users"
-          class="rounded-lg border border-base bg-cards p-6"
-          hx-get="/group/{{ group.id }}/users"
-          hx-trigger="load"
-          hx-swap="innerHTML"
-  >
-    <h3 class="text-2xl font-semibold text-sat-l mb-4">Users in this group</h3>
+  <div id="group-users" class="rounded-lg border border-base bg-cards p-6">
+      <h3 class="text-2xl font-semibold text-sat-l mb-4">Users in this group</h3>
+      {% if users|length > 0 %}
+      <div class="overflow-x-auto rounded-lg border border-base">
+          <table class="min-w-full divide-y divide-base">
+              <thead class="bg-muted/10">
+              <tr>
+                  <th class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">ID</th>
+                  <th class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Name</th>
+                  <th class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Email</th>
+                  <th class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
+              </tr>
+              </thead>
+              <tbody class="divide-y divide-base">
+              {% for u in users %}
+              <tr class="hover:bg-muted/5 transition-colors">
+                  <td class="px-4 py-3 font-mono text-sm text-sat-l"><a href="/user/{{ u.id }}">{{ u.id }}</a></td>
+                  <td class="px-4 py-3 text-sm text-sat-l">{{ u.name }} {{ u.surname }}</td>
+                  <td class="px-4 py-3 text-sm text-sat-l">{{ u.email }}</td>
+                  <td class="px-4 py-3 text-sm text-sat-l">
+                      <button
+                              hx-get="/group/{{ group.id }}/users/{{ u.id }}/delete?return_url=/group/{{ group.id }}"
+                              hx-target="#content-area"
+                              hx-target-error="#content-area"
+                              hx-push-url="/group/{{ group.id }}"
+                              class="inline-flex items-center rounded-md border border-base px-3 py-1 text-sm text-red-400 hover:bg-muted/20 transition-colors"
+                              title="Delete user from group"
 
-    <!-- Loading placeholder shown until partial loads -->
-    <div class="space-y-2 text-sat-m">
-      <div class="h-4 w-40 bg-muted/20 rounded animate-pulse"></div>
-      <div class="h-28 w-full bg-muted/10 rounded animate-pulse"></div>
-    </div>
+                      >
+                          <i class="fa-solid fa-trash"></i>
+                      </button>
+                  </td>
+
+              </tr>
+              {% endfor %}
+              </tbody>
+          </table>
+      </div>
+      {% else %}
+      <div class="p-4 text-muted-foreground">No users in this group.</div>
+      {% endif %}
   </div>
 
 </div>

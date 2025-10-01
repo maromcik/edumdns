@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::group::{AddGroupUsersForm, CreateGroupForm, GroupQuery, SearchUsersQuery};
@@ -62,12 +63,13 @@ pub async fn get_group(
     let user_id = parse_user_id(&i)?;
     let user = user_repo.read_one(&user_id).await?;
     let group = group_repo.read_one_auth(&path.0, &user_id).await?;
-
+    let users = group_repo.read_users(&path.0, &user_id).await?;
     let template_name = get_template_name(&request, "group/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(GroupDetailTemplate {
         user,
+        users,
         permissions: group.permissions,
         group: group.data,
     })?;
@@ -110,34 +112,12 @@ pub async fn delete_group(
         .finish())
 }
 
-#[get("{id}/users")]
-pub async fn get_group_users(
-    request: HttpRequest,
-    identity: Option<Identity>,
-    group_repo: web::Data<PgGroupRepository>,
-    state: web::Data<AppState>,
-    path: web::Path<(Id,)>,
-) -> Result<HttpResponse, WebError> {
-    let i = authorized!(identity, request);
-    let user_id = parse_user_id(&i)?;
-    let users = group_repo.read_users(&path.0, &user_id).await?;
-    let template_name = "group/users/content.html";
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(template_name)?;
-    let body = template.render(GroupDetailUsersTemplate {
-        users,
-        group_id: path.0,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
-}
 
 #[post("{id}/users/add")]
 pub async fn add_group_users(
     request: HttpRequest,
     identity: Option<Identity>,
     group_repo: web::Data<PgGroupRepository>,
-    state: web::Data<AppState>,
     path: web::Path<(Id,)>,
     form: web::Form<AddGroupUsersForm>,
 ) -> Result<HttpResponse, WebError> {
@@ -149,14 +129,9 @@ pub async fn add_group_users(
             .add_users(&group_id, &form.user_ids, &admin_id)
             .await?;
     }
-    // Re-render the "users in this group" panel
-    let users = group_repo.read_users(&group_id, &admin_id).await?;
-    let template_name = get_template_name(&request, "group/users");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(GroupDetailUsersTemplate { users, group_id })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/group/{}", group_id)))
+        .finish())
 }
 
 #[get("{id}/users/{user_id}/delete")]
@@ -164,8 +139,8 @@ pub async fn delete_group_user(
     request: HttpRequest,
     identity: Option<Identity>,
     group_repo: web::Data<PgGroupRepository>,
-    state: web::Data<AppState>,
     path: web::Path<(Id, Id)>,
+    query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let group_id = path.0;
@@ -175,13 +150,13 @@ pub async fn delete_group_user(
         .delete_user(&group_id, &user_id, &admin_id)
         .await?;
 
-    let users = group_repo.read_users(&group_id, &admin_id).await?;
-    let template_name = get_template_name(&request, "group/users");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(GroupDetailUsersTemplate { users, group_id })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    let return_url = query
+        .get("return_url")
+        .map(String::as_str)
+        .unwrap_or("/group");
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, return_url))
+        .finish())
 }
 
 #[get("{id}/search")]
@@ -202,7 +177,6 @@ pub async fn search_group_users(
     let template = env.get_template(template_name)?;
     let body = template.render(GroupDetailUsersTemplate {
         users,
-        group_id: path.0,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

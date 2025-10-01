@@ -1,7 +1,8 @@
+use std::collections::HashSet;
 use edumdns_db::repositories::common::{Id, Pagination};
 use edumdns_db::repositories::user::models::{SelectManyUsers, UserUpdate};
 use edumdns_db::repositories::utilities::empty_string_is_none;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::Display;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -114,3 +115,29 @@ pub struct UserLoginForm {
 //     pub deleted: Option<bool>,
 //     pub page: Option<i64>,
 // }
+
+#[derive(Debug)]
+pub struct AddUserGroupsForm {
+    pub group_ids: Vec<Id>,
+}
+impl<'de> Deserialize<'de> for AddUserGroupsForm {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let pairs = Vec::<(String, String)>::deserialize(deserializer)?;
+        let ids = pairs
+            .into_iter()
+            .filter_map(|(k, v)| if k == "group_ids[]" { Some(v) } else { None })
+            .filter_map(|id| id.parse::<Id>().ok())
+            .collect::<HashSet<Id>>();
+        Ok(AddUserGroupsForm {
+            group_ids: Vec::from_iter(ids),
+        })
+    }
+}
+
+#[derive(serde::Deserialize)]
+pub struct SearchGroupsQuery {
+    pub q: String,
+}

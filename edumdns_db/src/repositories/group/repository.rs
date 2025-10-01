@@ -183,8 +183,8 @@ impl PgGroupRepository {
         let mut conn = self.pg_pool.get().await?;
         validate_admin(&self.pg_pool, admin_id).await?;
         let users = group_user::table
-            .inner_join(user::table)
             .filter(group_user::group_id.eq(group_id))
+            .inner_join(user::table)
             .select(User::as_select())
             .load::<User>(&mut conn)
             .await?;

@@ -1,4 +1,4 @@
-use crate::error::WebError;
+use crate::error::{WebError, WebErrorKind};
 use crate::forms::user::{AddUserGroupsForm, UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm};
 use crate::handlers::utilities::{get_template_name, parse_user_id};
 use crate::templates::user::{UserDetailGroupsTemplate, UserDetailTemplate, UserManagePasswordTemplate, UserManageProfileTemplate, UserManageProfileUserFormTemplate, UserTemplate};
@@ -103,7 +103,12 @@ pub async fn delete_user(
     path: web::Path<(Id,)>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
-    let _ = user_repo.delete_auth(&path.0, &parse_user_id(&i)?).await?;
+    let admin_id = parse_user_id(&i)?;
+    if admin_id == path.0 {
+        return Err(WebError::new(WebErrorKind::BadRequest, "Cannot delete the currently logged-in user"));
+    }
+
+    let _ = user_repo.delete_auth(&path.0, &admin_id).await?;
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, "/user"))

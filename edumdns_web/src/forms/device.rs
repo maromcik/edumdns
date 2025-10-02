@@ -98,7 +98,6 @@ pub struct UpdateDeviceForm {
 
 impl UpdateDeviceForm {
     pub fn to_db_params(self) -> Result<UpdateDevice, WebError> {
-        error!("{:?}", self.acl_password);
         let (hash, salt) = match self.acl_password {
             None => (None, None),
             Some(password) => {

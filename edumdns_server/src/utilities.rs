@@ -59,6 +59,8 @@ pub async fn load_all_packet_transmit_requests(
             device.ip,
             request.target_ip,
             request.target_port as u16,
+            device.proxy,
+            device.interval,
         );
         tx.send(AppPacket::Local(LocalAppPacket::Command(
             LocalCommandPacket::TransmitDevicePackets(packet_transmit_request.clone()),

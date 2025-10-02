@@ -26,6 +26,8 @@ pub async fn request_packet_transmit_helper(
         device.ip,
         form.target_ip,
         form.target_port,
+        device.proxy,
+        device.interval,
     );
 
     let request = CreatePacketTransmitRequest {

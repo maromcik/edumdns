@@ -136,17 +136,16 @@ impl PacketManager {
                         t.transmitter_task.abort();
                     }
                     self.transmitter_tasks.lock().await.remove(&target);
-                    let Some(proxy) = &self.proxy else {
-                        return;
-                    };
-                    if let Err(e) = proxy
-                        .ebpf_updater
-                        .lock()
-                        .await
-                        .remove_ip(target.device_ip, target.target_ip)
+                    if let Some(proxy) = &self.proxy
+                        && target.proxy
+                        && let Err(e) = proxy
+                            .ebpf_updater
+                            .lock()
+                            .await
+                            .remove_ip(target.device_ip, target.target_ip)
                     {
                         error!("Could not remove IP from an ebpf map: {}", e);
-                    }
+                    };
                 }
                 LocalCommandPacket::ReconnectProbe(id, session_id) => {
                     if let Err(e) = self.send_reconnect(id, session_id).await {
@@ -275,8 +274,7 @@ impl PacketManager {
                 .src_mac;
             let src_ip = packet.packet_metadata.ip_metadata.src_ip;
             let device = device_repo
-                .create(&CreateDevice::
-                new_discover(
+                .create(&CreateDevice::new_discover(
                     packet.probe_metadata.id.0,
                     src_mac.to_octets(),
                     src_ip.0,
@@ -377,36 +375,18 @@ impl PacketManager {
 
     pub fn transmit_device_packets(&mut self, transmit_request: PacketTransmitRequestPacket) {
         let packet_repo = self.pg_packet_repository.clone();
-        let device_repo = self.pg_device_repository.clone();
-
         let probe_id = transmit_request.probe_uuid.0;
-        let device_lookup = SelectSingleDevice::new(
-            probe_id,
-            transmit_request.device_mac.to_octets(),
-            transmit_request.device_ip,
-        );
-
         let proxy = self.proxy.clone();
         let transmitter_tasks = self.transmitter_tasks.clone();
         let global_timeout = self.global_timeout;
         tokio::task::spawn(async move {
-            let device = match device_repo.read_one(&device_lookup).await {
-                Ok(d) => d,
-                Err(e) => {
-                    warn!("No target device: {transmit_request}: {e}");
-                    return;
-                }
-            };
-
-            info!("Target device found: {}", transmit_request);
-
             let packets = match packet_repo
                 .read_many(&SelectManyPackets::new(
                     None,
                     Some(probe_id),
-                    Some(device.mac),
+                    Some(transmit_request.device_mac.to_octets()),
                     None,
-                    Some(device.ip),
+                    Some(transmit_request.device_ip),
                     None,
                     None,
                     None,
@@ -423,7 +403,7 @@ impl PacketManager {
 
             info!("Packets found for target: {}", transmit_request);
             let payloads = if let Some(p) = &proxy
-                && device.proxy
+                && transmit_request.proxy
             {
                 rewrite_payloads(packets, p.proxy_ipv4, p.proxy_ipv6)
             } else {
@@ -436,13 +416,13 @@ impl PacketManager {
             }
 
             if let Some(p) = proxy
-                && device.proxy
+                && transmit_request.proxy
             {
                 match p
                     .ebpf_updater
                     .lock()
                     .await
-                    .add_ip(device.ip, transmit_request.target_ip)
+                    .add_ip(transmit_request.device_ip, transmit_request.target_ip)
                 {
                     Ok(_) => {}
                     Err(e) => {
@@ -454,7 +434,7 @@ impl PacketManager {
             let transmitter = PacketTransmitter::new(
                 payloads,
                 transmit_request.clone(),
-                Duration::from_millis(device.interval as u64),
+                Duration::from_millis(transmit_request.interval),
                 global_timeout,
             )
             .await;

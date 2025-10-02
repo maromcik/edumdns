@@ -224,6 +224,8 @@ pub struct PacketTransmitRequestPacket {
     pub device_ip: ipnetwork::IpNetwork,
     pub target_ip: ipnetwork::IpNetwork,
     pub target_port: u16,
+    pub proxy: bool,
+    pub interval: u64,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -246,6 +248,8 @@ impl PacketTransmitRequestPacket {
         device_ip: ipnetwork::IpNetwork,
         target_ip: ipnetwork::IpNetwork,
         target_port: u16,
+        proxy: bool,
+        interval: i64,
     ) -> Self {
         Self {
             probe_uuid: Uuid(probe_uuid),
@@ -253,6 +257,8 @@ impl PacketTransmitRequestPacket {
             device_ip,
             target_ip,
             target_port,
+            proxy,
+            interval: interval as u64,
         }
     }
 }

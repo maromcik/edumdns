@@ -1,12 +1,12 @@
 use crate::models::Device;
 use crate::repositories::common::{Id, Pagination};
+use crate::repositories::utilities::format_time;
 use diesel::{AsChangeset, Identifiable, Insertable};
 use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, format_description};
 use uuid::Uuid;
-use crate::repositories::utilities::format_time;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyDevices {
@@ -71,7 +71,13 @@ pub struct CreateDevice {
 }
 
 impl CreateDevice {
-    pub fn new(probe_id: Uuid, mac: [u8; 6], ip: IpNetwork, port: u16, name: Option<&String>) -> Self {
+    pub fn new(
+        probe_id: Uuid,
+        mac: [u8; 6],
+        ip: IpNetwork,
+        port: u16,
+        name: Option<&String>,
+    ) -> Self {
         Self {
             probe_id,
             mac,
@@ -125,9 +131,7 @@ impl From<Device> for DeviceDisplay {
             acl_src_cidr: value.acl_src_cidr,
             acl_pwd_hash: value.acl_pwd_hash,
             acl_ap_hostname_regex: value.acl_ap_hostname_regex,
-            discovered_at: value
-                .discovered_at
-                .map(format_time),
+            discovered_at: value.discovered_at.map(format_time),
         }
     }
 }

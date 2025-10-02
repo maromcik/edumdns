@@ -1,6 +1,6 @@
 use crate::error::WebError;
 use crate::forms::device::DeviceQuery;
-use crate::forms::probe::{ProbeConfigForm, CreateProbeForm, ProbePermissionForm, ProbeQuery};
+use crate::forms::probe::{CreateProbeForm, ProbeConfigForm, ProbePermissionForm, ProbeQuery};
 use crate::handlers::helpers::reconnect_probe;
 use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
 use crate::templates::PageInfo;
@@ -14,21 +14,27 @@ use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, rt, web};
 use actix_ws::AggregatedMessage;
 use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket};
 use edumdns_core::error::CoreError;
-use edumdns_db::models::{Group};
-use edumdns_db::repositories::common::{DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE, Permission, DbCreate};
+use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
+use edumdns_db::models::Group;
+use edumdns_db::repositories::common::{
+    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE,
+    Permission,
+};
 use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::group::models::SelectManyGroups;
 use edumdns_db::repositories::group::repository::PgGroupRepository;
-use edumdns_db::repositories::probe::models::{AlterProbePermission, CreateProbe, CreateProbeConfig, ProbeDisplay, SelectManyProbes, SelectSingleProbeConfig, UpdateProbe};
+use edumdns_db::repositories::probe::models::{
+    AlterProbePermission, CreateProbe, CreateProbeConfig, ProbeDisplay, SelectManyProbes,
+    SelectSingleProbeConfig, UpdateProbe,
+};
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
+use edumdns_db::repositories::user::repository::PgUserRepository;
 use log::{info, warn};
 use std::collections::{HashMap, HashSet};
 use strum::IntoEnumIterator;
 use tokio::sync::mpsc;
 use uuid::{Timestamp, Uuid};
-use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
-use edumdns_db::repositories::user::repository::PgUserRepository;
 
 #[get("")]
 pub async fn get_probes(
@@ -46,9 +52,7 @@ pub async fn get_probes(
     validate_has_groups(&user)?;
     let query = query.into_inner();
     let params = SelectManyProbes::from(query.clone());
-    let probes = probe_repo
-        .read_many_auth(&params, &user_id)
-        .await?;
+    let probes = probe_repo.read_many_auth(&params, &user_id).await?;
 
     let probes_parsed = probes
         .data
@@ -92,9 +96,7 @@ pub async fn get_probe(
     let user = user_repo.read_one(&user_id).await?;
     let probe_id = path.0;
     let page = query.page.unwrap_or(1);
-    let probe = probe_repo
-        .read_one_auth(&probe_id, &user_id)
-        .await?;
+    let probe = probe_repo.read_one_auth(&probe_id, &user_id).await?;
 
     let granted: HashSet<(Id, Permission)> = probe_repo
         .get_permissions(&probe_id)

@@ -1,8 +1,8 @@
-use std::collections::HashSet;
 use edumdns_db::repositories::common::{Id, Pagination};
 use edumdns_db::repositories::user::models::{SelectManyUsers, UserUpdate};
 use edumdns_db::repositories::utilities::empty_string_is_none;
 use serde::{Deserialize, Deserializer, Serialize};
+use std::collections::HashSet;
 use std::fmt::Display;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -115,7 +115,6 @@ pub struct UserLoginForm {
 //     pub deleted: Option<bool>,
 //     pub page: Option<i64>,
 // }
-
 
 #[derive(serde::Deserialize)]
 pub struct SearchGroupsQuery {

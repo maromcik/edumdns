@@ -1,15 +1,25 @@
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::{Group, GroupProbePermission, GroupUser, User};
-use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple, DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id};
+use crate::repositories::common::{
+    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
+    DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id,
+};
 
 use crate::error::BackendErrorKind::UserPasswordDoesNotMatch;
-use crate::repositories::user::models::{SelectManyUsers, UserCreate, UserDisplay, UserLogin, UserUpdate, UserUpdatePassword};
-use crate::repositories::utilities::{generate_salt, hash_password, validate_admin, validate_user, verify_password_hash};
+use crate::repositories::user::models::{
+    SelectManyUsers, UserCreate, UserDisplay, UserLogin, UserUpdate, UserUpdatePassword,
+};
+use crate::repositories::utilities::{
+    generate_salt, hash_password, validate_admin, validate_user, verify_password_hash,
+};
 use crate::schema::{group, group_user, user};
-use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgTextExpressionMethods, QueryDsl, SelectableHelper};
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgTextExpressionMethods, QueryDsl,
+    SelectableHelper,
+};
+use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
-use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 
 #[derive(Clone)]
@@ -165,7 +175,7 @@ impl DbReadOne<Id, UserDisplay> for PgUserRepository {
         let has_groups = !self.get_groups(&u.id).await?.is_empty();
         let u = UserDisplay {
             user: u,
-            has_groups
+            has_groups,
         };
         Ok(u)
     }
@@ -177,9 +187,12 @@ impl DbReadOne<Id, UserDisplay> for PgUserRepository {
         let has_groups = !self.get_groups(&u.id).await?.is_empty();
         let u = UserDisplay {
             user: u,
-            has_groups
+            has_groups,
         };
-        Ok(DbDataPerm::new(u, (true, vec![GroupProbePermission::full()])))
+        Ok(DbDataPerm::new(
+            u,
+            (true, vec![GroupProbePermission::full()]),
+        ))
     }
 }
 

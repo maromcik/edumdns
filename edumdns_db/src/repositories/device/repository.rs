@@ -151,7 +151,12 @@ impl PgDeviceRepository {
         Ok(device)
     }
 
-    pub async fn toggle_publicity(&self, device_id: &Id, user_id: &Id, published: bool) -> DbResult<()> {
+    pub async fn toggle_publicity(
+        &self,
+        device_id: &Id,
+        user_id: &Id,
+        published: bool,
+    ) -> DbResult<()> {
         let mut conn = self.pg_pool.get().await?;
         let d = device::table
             .find(&device_id)

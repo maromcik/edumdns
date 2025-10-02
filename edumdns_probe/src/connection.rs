@@ -176,7 +176,7 @@ impl ConnectionManager {
             }
             Err(e) => {
                 error!("Failed to reconnect: {e}");
-                Err(ProbeError::from(e))
+                Err(e)
             }
         }
     }

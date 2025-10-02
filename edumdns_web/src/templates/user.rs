@@ -1,9 +1,9 @@
 use crate::forms::user::UserQuery;
 use edumdns_db::models::{Group, User};
 use edumdns_db::repositories::common::{Id, Permissions};
+use edumdns_db::repositories::user::models::UserDisplay;
 use edumdns_db::repositories::utilities::WEAK_PASSWORD_MESSAGE;
 use serde::Serialize;
-use edumdns_db::repositories::user::models::UserDisplay;
 
 #[derive(Serialize)]
 pub struct UserTemplate {
@@ -13,7 +13,7 @@ pub struct UserTemplate {
 }
 
 #[derive(Serialize)]
-pub struct UserDetailTemplate{
+pub struct UserDetailTemplate {
     pub user: UserDisplay,
     pub groups: Vec<Group>,
     pub target_user: UserDisplay,

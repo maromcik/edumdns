@@ -1,8 +1,8 @@
 use crate::forms::group::GroupQuery;
 use edumdns_db::models::{Group, User};
 use edumdns_db::repositories::common::{Id, Permissions};
-use serde::Serialize;
 use edumdns_db::repositories::user::models::UserDisplay;
+use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct GroupTemplate {

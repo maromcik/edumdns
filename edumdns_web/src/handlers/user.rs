@@ -1,15 +1,22 @@
 use crate::error::{WebError, WebErrorKind};
-use crate::forms::user::{UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm};
+use crate::forms::user::{
+    UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm,
+};
 use crate::handlers::utilities::{get_template_name, parse_user_id};
 use crate::handlers::{BulkAddEntityForm, SearchEntityQuery};
-use crate::templates::user::{UserDetailGroupsTemplate, UserDetailTemplate, UserManagePasswordTemplate, UserManageProfileTemplate, UserManageProfileUserFormTemplate, UserTemplate};
-use crate::{authorized, AppState};
+use crate::templates::user::{
+    UserDetailGroupsTemplate, UserDetailTemplate, UserManagePasswordTemplate,
+    UserManageProfileTemplate, UserManageProfileUserFormTemplate, UserTemplate,
+};
+use crate::{AppState, authorized};
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{delete, get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
 use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id};
-use edumdns_db::repositories::user::models::{SelectManyUsers, UserCreate, UserDisplay, UserUpdate, UserUpdatePassword};
+use edumdns_db::repositories::user::models::{
+    SelectManyUsers, UserCreate, UserDisplay, UserUpdate, UserUpdatePassword,
+};
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_db::repositories::utilities::validate_password;
 
@@ -102,7 +109,10 @@ pub async fn delete_user(
     let i = authorized!(identity, request);
     let admin_id = parse_user_id(&i)?;
     if admin_id == path.0 {
-        return Err(WebError::new(WebErrorKind::BadRequest, "Cannot delete the currently logged-in user"));
+        return Err(WebError::new(
+            WebErrorKind::BadRequest,
+            "Cannot delete the currently logged-in user",
+        ));
     }
 
     let _ = user_repo.delete_auth(&path.0, &admin_id).await?;
@@ -139,7 +149,7 @@ pub async fn user_manage_form_page(
 ) -> Result<impl Responder, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
-    let user = user_repo.read_one(&user_id).await?;;
+    let user = user_repo.read_one(&user_id).await?;
 
     let template_name = get_template_name(&request, "user/manage/profile");
     let env = state.jinja.acquire_env()?;
@@ -148,7 +158,6 @@ pub async fn user_manage_form_page(
         user,
         message: String::new(),
         success: true,
-
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -221,7 +230,6 @@ pub async fn user_manage(
     let user = UserDisplay {
         has_groups: user_repo.get_groups(&user_valid.id).await?.is_empty(),
         user: user_valid,
-
     };
     let template_name = get_template_name(&request, "user/manage/profile");
     let env = state.jinja.acquire_env()?;
@@ -291,7 +299,6 @@ pub async fn user_manage_password(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
-
 #[post("{id}/groups/add")]
 pub async fn add_user_groups(
     request: HttpRequest,
@@ -313,7 +320,6 @@ pub async fn add_user_groups(
         .finish())
 }
 
-
 #[get("{id}/search")]
 pub async fn search_user_groups(
     request: HttpRequest,
@@ -330,8 +336,6 @@ pub async fn search_user_groups(
     let template_name = "user/groups/search.html";
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(template_name)?;
-    let body = template.render(UserDetailGroupsTemplate {
-        groups,
-    })?;
+    let body = template.render(UserDetailGroupsTemplate { groups })?;
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

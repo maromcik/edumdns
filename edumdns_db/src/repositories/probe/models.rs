@@ -1,5 +1,3 @@
-use std::net::Ipv4Addr;
-use std::str::FromStr;
 use crate::models::Probe;
 use crate::repositories::common::{Id, Pagination, Permission};
 use crate::repositories::utilities::{empty_string_is_none, format_time};
@@ -7,7 +5,9 @@ use diesel::{AsChangeset, Identifiable, Insertable};
 use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::{IpNetwork, Ipv4Network};
 use serde::{Deserialize, Serialize};
-use time::{format_description, OffsetDateTime};
+use std::net::Ipv4Addr;
+use std::str::FromStr;
+use time::{OffsetDateTime, format_description};
 use uuid::{Timestamp, Uuid};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,8 +75,10 @@ impl CreateProbe {
         Self {
             id: uuid,
             mac: MacAddr::default().to_octets(),
-            ip: IpNetwork::V4(Ipv4Network::from_str("0.0.0.0/0").expect("Parsing hardcoded IP should not fail")),
-            name: name.map(|n|n.to_owned()),
+            ip: IpNetwork::V4(
+                Ipv4Network::from_str("0.0.0.0/0").expect("Parsing hardcoded IP should not fail"),
+            ),
+            name: name.map(|n| n.to_owned()),
         }
     }
 }

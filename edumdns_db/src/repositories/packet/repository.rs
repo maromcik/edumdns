@@ -149,7 +149,7 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
             .await?;
 
         validate_user(&user_entry)?;
-        
+
         if user_entry.admin {
             let packets = self.read_many(params).await?;
             return Ok(DbDataPerm::new(
@@ -230,7 +230,7 @@ impl DbCreate<CreatePacket, Packet> for PgPacketRepository {
                 packet::dst_port.eq(data.dst_port),
                 packet::payload.eq(&data.payload),
                 packet::payload_hash.eq(&data.payload_hash),
-                ))
+            ))
             .returning(Packet::as_returning())
             .get_result(&mut conn)
             .await

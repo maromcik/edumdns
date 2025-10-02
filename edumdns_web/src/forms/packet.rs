@@ -1,14 +1,14 @@
-use hickory_proto::op::Message;
-use hickory_proto::rr::RecordType;
-use hickory_proto::serialize::binary::{BinDecodable, BinEncodable};
+use crate::error::WebError;
 use edumdns_core::bincode_types::{IpNetwork as EdumdnsIpNetwork, MacAddr};
 use edumdns_db::repositories::common::{Id, Pagination};
 use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
+use hickory_proto::op::Message;
+use hickory_proto::rr::RecordType;
+use hickory_proto::serialize::binary::{BinDecodable, BinEncodable};
 use ipnetwork::IpNetwork;
 use log::error;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::error::WebError;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PacketQuery {
@@ -61,7 +61,7 @@ pub struct CreatePacketForm {
     pub src_mac: MacAddr,
     pub src_addr: IpNetwork,
     pub dst_port: u16,
-    pub message: Message
+    pub message: Message,
 }
 impl CreatePacketForm {
     pub fn to_db_params(self) -> Result<CreatePacket, WebError> {

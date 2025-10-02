@@ -1,14 +1,27 @@
-use crate::handlers::device::{create_device, create_device_form, delete_device, delete_request_packet_transmit, get_device, get_device_for_transmit, get_devices, hide_device, publish_device, request_custom_packet_transmit, request_packet_transmit, update_device};
+use crate::handlers::device::{
+    create_device, create_device_form, delete_device, delete_request_packet_transmit, get_device,
+    get_device_for_transmit, get_devices, hide_device, publish_device,
+    request_custom_packet_transmit, request_packet_transmit, update_device,
+};
 use crate::handlers::group::{
-    add_group_users, create_group, delete_group, delete_group_user, get_group,
-    get_groups, search_group_users, update_group,
+    add_group_users, create_group, delete_group, delete_group_user, get_group, get_groups,
+    search_group_users, update_group,
 };
 use crate::handlers::index::{
     index, login, login_base, login_oidc, login_oidc_redirect, logout, logout_cleanup,
 };
-use crate::handlers::packet::{create_packet, create_packet_form, delete_packet, get_packet, get_packets};
-use crate::handlers::probe::{adopt, change_probe_permission, create_config, create_probe, delete_config, delete_probe, forget, get_probe, get_probe_ws, get_probes, restart, save_config, update_probe};
-use crate::handlers::user::{create_user, update_user, delete_user, get_user, get_users, user_manage, user_manage_form_page, user_manage_password, user_manage_password_form, user_manage_profile_form, search_user_groups, add_user_groups};
+use crate::handlers::packet::{
+    create_packet, create_packet_form, delete_packet, get_packet, get_packets,
+};
+use crate::handlers::probe::{
+    adopt, change_probe_permission, create_config, create_probe, delete_config, delete_probe,
+    forget, get_probe, get_probe_ws, get_probes, restart, save_config, update_probe,
+};
+use crate::handlers::user::{
+    add_user_groups, create_user, delete_user, get_user, get_users, search_user_groups,
+    update_user, user_manage, user_manage_form_page, user_manage_password,
+    user_manage_password_form, user_manage_profile_form,
+};
 use crate::utils::AppState;
 use actix_files::Files;
 use actix_web::web;
@@ -102,7 +115,6 @@ pub fn configure_webapp(
         .service(get_packet)
         .service(delete_packet)
         .service(create_packet);
-
 
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.app_data(web::Data::new(app_state))

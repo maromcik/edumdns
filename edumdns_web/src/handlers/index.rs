@@ -30,9 +30,7 @@ pub async fn index(
     let template_name = get_template_name(&request, "index");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
-    let body = template.render(IndexTemplate {
-        user
-    })?;
+    let body = template.render(IndexTemplate { user })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

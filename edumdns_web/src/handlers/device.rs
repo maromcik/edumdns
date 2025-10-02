@@ -1,21 +1,33 @@
 use crate::authorized;
 use crate::error::{WebError, WebErrorKind};
-use crate::forms::device::{CreateDeviceForm, DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest, DeviceQuery, UpdateDeviceForm};
+use crate::forms::device::{
+    CreateDeviceForm, DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest, DeviceQuery,
+    UpdateDeviceForm,
+};
 use crate::forms::packet::PacketQuery;
 use crate::handlers::helpers::request_packet_transmit_helper;
-use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups, verify_transmit_request_client_ap};
-use crate::templates::device::{DeviceCreateTemplate, DeviceDetailTemplate, DeviceTemplate, DeviceTransmitTemplate};
+use crate::handlers::utilities::{
+    get_template_name, parse_user_id, validate_has_groups, verify_transmit_request_client_ap,
+};
 use crate::templates::PageInfo;
+use crate::templates::device::{
+    DeviceCreateTemplate, DeviceDetailTemplate, DeviceTemplate, DeviceTransmitTemplate,
+};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
 use edumdns_core::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
 use edumdns_core::error::CoreError;
-use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination, PAGINATION_ELEMENTS_PER_PAGE};
-use edumdns_db::repositories::device::models::{CreateDevice, DeviceDisplay, SelectManyDevices, UpdateDevice};
+use edumdns_db::repositories::common::{
+    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE,
+    Pagination,
+};
+use edumdns_db::repositories::device::models::{
+    CreateDevice, DeviceDisplay, SelectManyDevices, UpdateDevice,
+};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
@@ -371,7 +383,9 @@ pub async fn publish_device(
     let user_id = parse_user_id(&i)?;
     let device_id = path.0;
 
-    device_repo.toggle_publicity(&device_id, &user_id, true).await?;
+    device_repo
+        .toggle_publicity(&device_id, &user_id, true)
+        .await?;
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/device/{}", device_id)))
@@ -388,12 +402,13 @@ pub async fn hide_device(
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     let device_id = path.0;
-    device_repo.toggle_publicity(&device_id, &user_id, false).await?;
+    device_repo
+        .toggle_publicity(&device_id, &user_id, false)
+        .await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/device/{}", device_id)))
         .finish())
 }
-
 
 #[post("create")]
 pub async fn create_device(
@@ -423,8 +438,6 @@ pub async fn create_device_form(
     let template_name = get_template_name(&request, "device/create");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
-    let body = template.render(DeviceCreateTemplate {
-        probe_id: path.0,
-    })?;
+    let body = template.render(DeviceCreateTemplate { probe_id: path.0 })?;
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

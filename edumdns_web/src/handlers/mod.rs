@@ -1,6 +1,6 @@
-use std::collections::HashSet;
-use serde::{Deserialize, Deserializer};
 use edumdns_db::repositories::common::Id;
+use serde::{Deserialize, Deserializer};
+use std::collections::HashSet;
 
 pub mod device;
 pub mod group;

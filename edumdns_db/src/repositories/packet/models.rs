@@ -1,5 +1,6 @@
 use crate::models::Packet;
 use crate::repositories::common::{Id, Pagination};
+use crate::repositories::utilities::format_time;
 use diesel::{AsChangeset, Insertable};
 use edumdns_core::bincode_types::MacAddr;
 use edumdns_core::error::CoreError;
@@ -9,7 +10,6 @@ use log::warn;
 use serde::{Deserialize, Serialize};
 use time::{OffsetDateTime, format_description};
 use uuid::Uuid;
-use crate::repositories::utilities::format_time;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyPackets {
@@ -140,9 +140,7 @@ impl PacketDisplay {
             src_port: value.src_port,
             dst_port: value.dst_port,
             payload: payload.read_content(),
-            captured_at: value
-                .captured_at
-                .map(format_time),
+            captured_at: value.captured_at.map(format_time),
         })
     }
 }

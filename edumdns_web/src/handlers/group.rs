@@ -2,18 +2,18 @@ use crate::authorized;
 use crate::error::WebError;
 use crate::forms::group::{CreateGroupForm, GroupQuery};
 use crate::handlers::utilities::{get_template_name, parse_user_id};
+use crate::handlers::{BulkAddEntityForm, SearchEntityQuery};
 use crate::templates::group::{GroupDetailTemplate, GroupDetailUsersTemplate, GroupTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{delete, get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
 use edumdns_db::repositories::common::{DbCreate, DbDelete, DbUpdate};
 use edumdns_db::repositories::common::{DbReadMany, DbReadOne, Id, Pagination};
 use edumdns_db::repositories::group::models::{CreateGroup, SelectManyGroups, UpdateGroup};
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use std::collections::HashMap;
-use crate::handlers::{BulkAddEntityForm, SearchEntityQuery};
 
 #[get("")]
 pub async fn get_groups(
@@ -112,7 +112,6 @@ pub async fn delete_group(
         .finish())
 }
 
-
 #[post("{id}/users/add")]
 pub async fn add_group_users(
     request: HttpRequest,
@@ -175,9 +174,7 @@ pub async fn search_group_users(
     let template_name = "group/users/search.html";
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(template_name)?;
-    let body = template.render(GroupDetailUsersTemplate {
-        users,
-    })?;
+    let body = template.render(GroupDetailUsersTemplate { users })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

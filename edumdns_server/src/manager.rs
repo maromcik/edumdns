@@ -1,3 +1,4 @@
+use crate::BUFFER_SIZE;
 use crate::ebpf::EbpfUpdater;
 use crate::error::{ServerError, ServerErrorKind};
 use crate::listen::ProbeHandles;
@@ -26,7 +27,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
-use crate::BUFFER_SIZE;
 
 #[derive(Clone)]
 pub struct Proxy {
@@ -207,7 +207,9 @@ impl PacketManager {
                             Entry::Occupied(mut device_entry) => {
                                 if device_entry.get().len() > BUFFER_SIZE {
                                     device_entry.get_mut().clear();
-                                    info!("Device buffer for <{src_mac}; {src_ip}> exceeded {BUFFER_SIZE} elements; cleared");
+                                    info!(
+                                        "Device buffer for <{src_mac}; {src_ip}> exceeded {BUFFER_SIZE} elements; cleared"
+                                    );
                                 }
                                 if !device_entry.get().contains(&probe_packet) {
                                     device_entry.get_mut().insert(probe_packet.clone());

@@ -26,6 +26,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
+use crate::BUFFER_SIZE;
 
 #[derive(Clone)]
 pub struct Proxy {
@@ -204,6 +205,10 @@ impl PacketManager {
                     Entry::Occupied(mut probe_entry) => {
                         match probe_entry.get_mut().entry((src_mac, src_ip)) {
                             Entry::Occupied(mut device_entry) => {
+                                if device_entry.get().len() > BUFFER_SIZE {
+                                    device_entry.get_mut().clear();
+                                    info!("Device buffer exceeded {BUFFER_SIZE} elements; cleared");
+                                }
                                 if !device_entry.get().contains(&probe_packet) {
                                     device_entry.get_mut().insert(probe_packet.clone());
                                     debug!("Probe and device found; stored packet in database");

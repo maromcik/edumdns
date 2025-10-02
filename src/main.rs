@@ -7,7 +7,7 @@ use tracing::log::error;
 use tracing_subscriber::EnvFilter;
 
 mod error;
-pub const CHANNEL_BUFFER_SIZE: usize = 100000;
+pub const CHANNEL_BUFFER_SIZE: usize = 10000;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]

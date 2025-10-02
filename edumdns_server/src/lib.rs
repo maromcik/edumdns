@@ -28,7 +28,7 @@ const DEFAULT_PORT: &str = "5000";
 
 const DEFAULT_INTERVAL_MULTIPLICATOR: u32 = 5;
 
-pub const BUFFER_SIZE: usize = 100000;
+pub const BUFFER_SIZE: usize = 1000;
 
 pub struct ServerTlsConfig {
     pub cert_path: String,

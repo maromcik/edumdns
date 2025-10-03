@@ -163,27 +163,24 @@ pub struct ProbePacket {
 impl ProbePacket {
     pub fn from_datalink_packet(
         probe_metadata: &ProbeMetadata,
-        mut packet: DataLinkPacket<'_>,
-    ) -> Option<Self> {
-        let mac_metadata = packet.get_mac_metadata()?;
-        let mut vlan_packet = packet.unpack_vlan()?;
-        let vlan_metadata = vlan_packet.get_vlan_metadata();
-        let mut ip_packet = vlan_packet.get_next_layer()?;
-        let ip_metadata = ip_packet.get_ip_metadata().ok()?;
-        let transport_packet = ip_packet.get_next_layer()?;
-        let transport_metadata = transport_packet.get_transport_metadata()?;
-        let payload = transport_packet.get_payload();
-        let payload_hash = calculate_hash(payload);
-        Some(Self {
+    ) -> Self {
+        // let mac_metadata = packet.get_mac_metadata()?;
+        // let mut vlan_packet = packet.unpack_vlan()?;
+        // let vlan_metadata = vlan_packet.get_vlan_metadata();
+        // let mut ip_packet = vlan_packet.get_next_layer()?;
+        // let ip_metadata = ip_packet.get_ip_metadata().ok()?;
+        // let transport_packet = ip_packet.get_next_layer()?;
+        // let transport_metadata = transport_packet.get_transport_metadata()?;
+        // let payload = transport_packet.get_payload();
+        let payload = "In a quiet valley surrounded by evergreen forests, a village once thrived on simple traditions. The people rose with the dawn, greeted each other kindly, and shared what they harvested. Each home was warmed by firewood, each path carved by footsteps of generations. Though the world outside grew faster and louder, this place resisted change. The blacksmith still hammered iron on his anvil, the baker kneaded bread by hand, and the storyteller gathered children beneath the great oak, where he spun tales of courage and wonder. Time moved slowly, yet it moved surely, weaving memories into the walls of cottages and into the laughter carried on the wind. Travelers who stumbled into the valley often said it felt like stepping into another age, where life was measured not by wealth but by the strength of community. The villagers themselves rarely thought about such things. To them, it was simply life: tending gardens, raising children, repairing fences, and preparing festivals where lanterns floated into the night sky like tiny stars. Evenings glowed with quiet joy, and mornings promised new beginnings. If you stood there long enough, you might believe the world could always be this gentle, that harmony might endure forever. And perhaps, in that valley, it still does.
+".to_string().bytes().collect::<Vec<u8>>();();
+        let payload_hash = calculate_hash(payload.as_slice());
+        Self {
             probe_metadata: probe_metadata.clone(),
-            packet_metadata: PacketMetadata::new(
-                DataLinkMetadata::new(mac_metadata, vlan_metadata),
-                ip_metadata,
-                transport_metadata,
-            ),
-            payload: payload.to_vec(),
+            packet_metadata: PacketMetadata::default(),
+            payload,
             payload_hash,
-        })
+        }
     }
 }
 

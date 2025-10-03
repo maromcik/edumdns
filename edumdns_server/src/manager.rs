@@ -214,7 +214,7 @@ impl PacketManager {
                                 if !device_entry.get().contains(&probe_packet) {
                                     device_entry.get_mut().insert(probe_packet.clone());
                                     debug!("Probe and device found; stored packet in database");
-                                    self.store_packet_in_database(probe_packet.clone()).await;
+                                    // self.store_packet_in_database(probe_packet.clone()).await;
                                 } else {
                                     debug!("Probe, device and packet found; no action");
                                 }
@@ -223,8 +223,8 @@ impl PacketManager {
                                 let device_entry = device_entry.insert(HashSet::new());
                                 device_entry.insert(probe_packet.clone());
                                 debug!("Probe found; stored device and packet in database");
-                                self.store_device_in_database(probe_packet.clone()).await;
-                                self.store_packet_in_database(probe_packet.clone()).await;
+                                // self.store_device_in_database(probe_packet.clone()).await;
+                                // self.store_packet_in_database(probe_packet.clone()).await;
                             }
                         }
                     }
@@ -234,8 +234,8 @@ impl PacketManager {
                             .entry((src_mac, src_ip))
                             .or_default()
                             .insert(probe_packet.clone());
-                        self.store_device_in_database(probe_packet.clone()).await;
-                        self.store_packet_in_database(probe_packet.clone()).await;
+                        // self.store_device_in_database(probe_packet.clone()).await;
+                        // self.store_packet_in_database(probe_packet.clone()).await;
                         debug!("Probe not found in hashmap; stored device and packet in database");
                     }
                 }

@@ -39,28 +39,24 @@ where
             warn!("Probe capture for {config_element} cancelled");
             return Ok(());
         }
-        let cap_packet = match cap.next_packet() {
-            Ok(packet) => packet,
-            Err(e) => match e {
-                Error::TimeoutExpired => {
-                    sleep(std::time::Duration::from_micros(200));
-                    continue;
-                }
-                Error::NoMorePackets => return Ok(()),
-                e => {
-                    return Err(ProbeError::from(CoreError::from(e)));
-                }
-            },
-        };
-        let mut packet_data = cap_packet.data.to_vec();
-        let datalink_packet = DataLinkPacket::from_slice(&mut packet_data)?;
+        // let cap_packet = match cap.next_packet() {
+        //     Ok(packet) => packet,
+        //     Err(e) => match e {
+        //         Error::TimeoutExpired => {
+        //             sleep(std::time::Duration::from_micros(200));
+        //             continue;
+        //         }
+        //         Error::NoMorePackets => return Ok(()),
+        //         e => {
+        //             return Err(ProbeError::from(CoreError::from(e)));
+        //         }
+        //     },
+        // };
+        // let mut packet_data = cap_packet.data.to_vec();
+        // let datalink_packet = DataLinkPacket::from_slice(&mut packet_data)?;
 
-        let Some(probe_packet) =
-            ProbePacket::from_datalink_packet(&probe_metadata, datalink_packet)
-        else {
-            debug!("Not a TCP/IP packet, skipping");
-            continue;
-        };
+        let probe_packet = ProbePacket::from_datalink_packet(&probe_metadata);
+
         let app_packet = NetworkAppPacket::Data(probe_packet);
         if let Err(e) = tx.blocking_send(app_packet) {
             warn!("Failed to send packet: {e}");

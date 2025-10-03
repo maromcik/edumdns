@@ -2,7 +2,7 @@ use crate::bincode_types::{IpNetwork, MacAddr, Uuid};
 use bincode::{Decode, Encode};
 use std::net::IpAddr;
 
-#[derive(Encode, Decode, Debug, Clone, Default)]
+#[derive(Encode, Decode, Debug, Clone)]
 pub struct PacketMetadata {
     pub datalink_metadata: DataLinkMetadata,
     pub ip_metadata: IpMetadata,
@@ -36,16 +36,7 @@ pub struct IpMetadata {
     pub dst_ip: IpNetwork,
 }
 
-impl Default for IpMetadata {
-    fn default() -> Self {
-        Self {
-            src_ip: IpNetwork::default_ipv4(),
-            dst_ip: IpNetwork::default_ipv4(),
-        }
-    }
-}
-
-#[derive(Encode, Decode, Debug, Clone, Default)]
+#[derive(Encode, Decode, Debug, Clone)]
 pub struct DataLinkMetadata {
     pub mac_metadata: MacMetadata,
     pub vlan_metadata: Option<VlanMetadata>,
@@ -72,7 +63,7 @@ impl PortMetadata {
     }
 }
 
-#[derive(Encode, Decode, Debug, Clone, Default)]
+#[derive(Encode, Decode, Debug, Clone)]
 pub struct MacMetadata {
     pub src_mac: MacAddr,
     pub dst_mac: MacAddr,

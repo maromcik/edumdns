@@ -13,10 +13,10 @@
                class="flex items-center justify-center w-10 h-10 rounded-md border border-base bg-cards text-sm font-medium text-acc hover:text-acc-xl transition-colors">
                 ←
             </a>
-            {% if permissions|has_perm("Restart") %}
+            {% if permissions|has_perm("Reconnect") %}
             <button
                     class="bg-yellow-400 hover:bg-yellow-500 flex items-center justify-center w-10 h-10  rounded-md text-button shadow-md"
-                    hx-get="/probe/{{ probe.id }}/restart"
+                    hx-get="/probe/{{ probe.id }}/reconnect"
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
                     hx-push-url="/probe/{{ probe.id }}"
@@ -350,7 +350,7 @@
                     </th>
                     <th scope="col"
                         class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                        Restart
+                        Reconnect
                     </th>
                     <th scope="col"
                         class="px-4 py-3 text-center text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">

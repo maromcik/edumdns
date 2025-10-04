@@ -49,6 +49,11 @@ pub enum LocalStatusPacket {
         probe_id: uuid::Uuid,
         respond_to: oneshot::Sender<bool>,
     },
+    OperationUpdateToWs {
+        probe_id: Uuid,
+        session_id: Option<Uuid>,
+        message: String
+    },
 }
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]

@@ -316,8 +316,8 @@ impl PgProbeRepository {
         Ok(())
     }
 
-    pub async fn check_permissions_for_restart(&self, params: &Uuid, user_id: &Id) -> DbResult<()> {
-        validate_permissions(&self.pg_pool, user_id, params, Permission::Restart).await?;
+    pub async fn check_permissions_for_reconnect(&self, params: &Uuid, user_id: &Id) -> DbResult<()> {
+        validate_permissions(&self.pg_pool, user_id, params, Permission::Reconnect).await?;
         Ok(())
     }
 

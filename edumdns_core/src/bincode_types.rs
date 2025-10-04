@@ -12,7 +12,7 @@ pub struct MacAddr(pub pnet::datalink::MacAddr);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct IpNetwork(pub ipnetwork::IpNetwork);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
 pub struct Uuid(pub uuid::Uuid);
 
 impl bincode::Encode for MacAddr {

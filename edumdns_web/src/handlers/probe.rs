@@ -184,8 +184,8 @@ pub async fn forget(
         .finish())
 }
 
-#[get("{id}/restart")]
-pub async fn restart(
+#[get("{id}/reconnect")]
+pub async fn reconnect(
     request: HttpRequest,
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
@@ -195,7 +195,7 @@ pub async fn restart(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     probe_repo
-        .check_permissions_for_restart(&path.0, &parse_user_id(&i)?)
+        .check_permissions_for_reconnect(&path.0, &parse_user_id(&i)?)
         .await?;
 
     reconnect_probe(state.command_channel.clone(), path.0, session).await?;
@@ -338,14 +338,20 @@ pub async fn delete_probe(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
-
+    let probe_id = path.0;
     let return_url = query
         .get("return_url")
         .map(String::as_str)
         .unwrap_or("/probe");
 
-    probe_repo.delete_auth(&path.0, &user_id).await?;
-    reconnect_probe(state.command_channel.clone(), path.0, session).await?;
+    let uuid = session.get::<edumdns_core::bincode_types::Uuid>("session_id")?;
+        let _ = state.command_channel.send(AppPacket::Local(LocalAppPacket::Status(LocalStatusPacket::OperationUpdateToWs {
+            probe_id: edumdns_core::bincode_types::Uuid(probe_id),
+            session_id: uuid,
+            message: format!("Deleting probe {} in the background.", probe_id),
+        }))).await;
+    probe_repo.delete_auth(&probe_id, &user_id).await?;
+    reconnect_probe(state.command_channel.clone(), probe_id, session).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, return_url))
         .finish())

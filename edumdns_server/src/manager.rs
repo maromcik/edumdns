@@ -180,6 +180,11 @@ impl PacketManager {
                         error!("Could not send a response to probe {}: {}", probe_id, e);
                     }
                 }
+                LocalStatusPacket::OperationUpdateToWs {
+                    probe_id,
+                    session_id,
+                    message,
+                } => self.send_response_to_ws(probe_id, session_id, ProbeResponse::new_ok_with_value(&message)).await,
             },
         }
     }

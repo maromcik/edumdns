@@ -15,7 +15,7 @@ use crate::handlers::packet::{
 };
 use crate::handlers::probe::{
     adopt, change_probe_permission, create_config, create_probe, delete_config, delete_probe,
-    forget, get_probe, get_probe_ws, get_probes, restart, save_config, update_probe,
+    forget, get_probe, get_probe_ws, get_probes, reconnect, save_config, update_probe,
 };
 use crate::handlers::user::{
     add_user_groups, create_user, delete_user, get_user, get_users, search_user_groups,
@@ -81,7 +81,7 @@ pub fn configure_webapp(
         .service(get_probe)
         .service(forget)
         .service(adopt)
-        .service(restart)
+        .service(reconnect)
         .service(save_config)
         .service(delete_config)
         .service(create_config)

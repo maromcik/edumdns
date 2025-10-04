@@ -11,7 +11,7 @@ tokio = { version = "1.47.1", features = ["full"] }
 log = "0.4.28"
 diesel-async = { version = "0.6.1" , features = ["tokio-postgres", "postgres", "deadpool"]}
 ipnetwork = "0.21.1"
-uuid = "1.18.1"
+uuid = {version = "1.18.1", features = ["default", "serde"]}
 aya = "0.13.1"
 hickory-proto = "0.25.2"
 rustls = { version = "0.23.32", features = ["ring"] }

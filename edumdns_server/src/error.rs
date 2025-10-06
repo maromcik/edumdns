@@ -16,6 +16,8 @@ pub enum ServerErrorKind {
     IoError,
     #[error("Invalid connection initiation")]
     InvalidConnectionInitiation,
+    #[error("probe already connected error")]
+    ProbeAlreadyConnected,
     #[error("probe not adopted error")]
     ProbeNotAdopted,
     #[error("probe not found")]

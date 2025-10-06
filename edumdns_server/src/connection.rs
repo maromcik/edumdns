@@ -74,6 +74,10 @@ impl ConnectionManager {
             return error;
         };
 
+        if self.probe_handles.read().await.contains_key(&hello_metadata.id) {
+            return Err(ServerError::new(ServerErrorKind::ProbeAlreadyConnected, format!("UUID: {}", hello_metadata.id).as_str()));
+        }
+
         let probe = self.upsert_probe(&hello_metadata).await?;
         if probe.adopted {
             self.handle

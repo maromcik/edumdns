@@ -52,11 +52,17 @@
     }
 
     pre {
-        @apply bg-gray-100 dark:bg-gray-800 text-sm p-4 rounded-lg overflow-x-auto mb-4;
+        @apply bg-gray-100 dark:bg-gray-800 text-sm p-4 rounded-lg overflow-x-auto mb-4 text-gray-800 dark:text-gray-100;
     }
 
-    code {
-        @apply bg-gray-600 dark:bg-gray-300 text-sm px-1 py-0.5 rounded;
+    /* inline code */
+    p code, li code, span code {
+        @apply bg-gray-600 dark:bg-gray-300 text-sm px-1 py-0.5 rounded text-gray-100 dark:text-gray-800;
+    }
+
+    /* remove background from block code */
+    pre code {
+        @apply bg-transparent p-0 rounded-none text-inherit;
     }
 }
 
@@ -154,11 +160,11 @@
 }
 
 .text-sat-l {
-    @apply text-gray-700 dark:text-gray-200
+    @apply text-gray-800 dark:text-gray-200
 }
 
 .text-sat-xl {
-    @apply text-gray-800 dark:text-gray-100
+    @apply text-gray-900 dark:text-gray-100
 }
 
 .text-code {

@@ -123,7 +123,7 @@ pub struct PacketDisplay {
 
 impl PacketDisplay {
     pub fn from(value: Packet) -> Result<PacketDisplay, CoreError> {
-        let mut payload = match ApplicationPacket::from_bytes(value.dst_port, &value.payload) {
+        let payload = match ApplicationPacket::from_bytes(value.dst_port, &value.payload) {
             Ok(p) => p,
             Err(e) => {
                 warn!("Unable to parse packet payload: {}", e);
@@ -139,7 +139,7 @@ impl PacketDisplay {
             dst_addr: value.dst_addr,
             src_port: value.src_port,
             dst_port: value.dst_port,
-            payload: payload.read_content(),
+            payload: payload.read_content().trim().to_string(),
             captured_at: value.captured_at.map(format_time),
         })
     }

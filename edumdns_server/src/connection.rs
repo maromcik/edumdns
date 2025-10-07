@@ -11,7 +11,7 @@ use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::error::CoreError;
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_db::models::Probe;
-use edumdns_db::repositories::common::DbCreate;
+use edumdns_db::repositories::common::{DbCreate, DbReadOne, DbResultSingle};
 use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use ipnetwork::IpNetwork;
@@ -19,6 +19,7 @@ use log::{trace, warn};
 use rustls::ServerConfig;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::io::AsyncReadExt;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
 
@@ -63,20 +64,43 @@ impl ConnectionManager {
     }
 
     pub async fn connection_init_server(&mut self) -> Result<Uuid, ServerError> {
-        let error = Err(ServerError::new(
-            ServerErrorKind::InvalidConnectionInitiation,
-            "invalid connection initiation",
-        ));
+        let error = |msg| {
+            Err(ServerError::new(
+                ServerErrorKind::InvalidConnectionInitiation,
+                msg,
+            ))
+        };
         let packet = self.receive_init_packet().await?;
 
-        let NetworkAppPacket::Status(NetworkStatusPacket::ProbeHello(hello_metadata)) = packet
+        let NetworkAppPacket::Status(NetworkStatusPacket::ProbeHello(
+            hello_metadata,
+            pre_shared_key,
+        )) = packet
         else {
-            return error;
+            return error("Invalid connection initiation, expected ProbeHello packet");
         };
 
-        if self.probe_handles.read().await.contains_key(&hello_metadata.id) {
-            return Err(ServerError::new(ServerErrorKind::ProbeAlreadyConnected, format!("UUID: {}", hello_metadata.id).as_str()));
+        if self
+            .probe_handles
+            .read()
+            .await
+            .contains_key(&hello_metadata.id)
+        {
+            return Err(ServerError::new(
+                ServerErrorKind::ProbeAlreadyConnected,
+                format!("UUID: {}", hello_metadata.id).as_str(),
+            ));
         }
+
+        if let Ok((p, _)) = self
+            .pg_probe_repository
+            .read_one(&hello_metadata.id.0)
+            .await
+            && p.pre_shared_key.is_some()
+            && p.pre_shared_key != pre_shared_key
+        {
+            return error("Invalid connection initiation, invalid pre-shared key");
+        };
 
         let probe = self.upsert_probe(&hello_metadata).await?;
         if probe.adopted {
@@ -108,11 +132,13 @@ impl ConnectionManager {
         let NetworkAppPacket::Status(NetworkStatusPacket::ProbeRequestConfig(config_metadata)) =
             packet
         else {
-            return error;
+            return error("Invalid connection initiation, expected ProbeRequestConfig packet");
         };
 
         if config_metadata != hello_metadata {
-            return error;
+            return error(
+                "Invalid connection initiation, invalid config metadata after second check",
+            );
         }
 
         let config = self.get_probe_config(&config_metadata).await?;

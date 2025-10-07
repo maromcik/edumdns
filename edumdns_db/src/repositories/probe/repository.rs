@@ -13,16 +13,16 @@ use crate::schema::group_user;
 use crate::schema::probe;
 use crate::schema::probe::BoxedQuery;
 use crate::schema::user;
-use crate::schema::{device, group_probe_permission};
+use crate::schema::group_probe_permission;
 use crate::schema::{location, probe_config};
 use diesel::pg::Pg;
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods,
     PgTextExpressionMethods, QueryDsl, SelectableHelper,
 };
+use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
-use diesel_async::pooled_connection::deadpool::Pool;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -190,6 +190,7 @@ impl DbCreate<CreateProbe, Probe> for PgProbeRepository {
                 probe::ip.eq(data.ip),
                 probe::mac.eq(data.mac),
                 probe::name.eq(data.name.as_ref()),
+                probe::pre_shared_key.eq(data.pre_shared_key.as_ref()),
                 probe::first_connected_at.eq::<Option<OffsetDateTime>>(None),
                 probe::last_connected_at.eq::<Option<OffsetDateTime>>(None),
             ))

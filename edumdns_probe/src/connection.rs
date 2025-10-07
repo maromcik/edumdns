@@ -14,36 +14,47 @@ use tokio::task::JoinSet;
 use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
+#[derive(Clone, Debug)]
+pub(crate) struct ConnectionLimits {
+    pub(crate) max_retries: usize,
+    pub(crate) retry_interval: Duration,
+    pub(crate) global_timeout: Duration,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct ConnectionInfo {
+    pub(crate) server_connection_string: String,
+    pub(crate) bind_ip: String,
+    pub(crate) domain: Option<String>,
+    pub(crate) pre_shared_key: Option<String>,
+}
+
 pub struct ReceivePacketTargets {
     pub pinger: mpsc::Sender<NetworkAppPacket>,
 }
 
-pub struct ConnectionManager {
+pub(crate) struct ConnectionManager {
+    pub(crate) handle: TcpConnectionHandle,
     probe_metadata: ProbeMetadata,
-    server_connection_string: String,
-    bind_ip: String,
-    domain: Option<String>,
-    pub handle: TcpConnectionHandle,
-    max_retries: usize,
-    retry_interval: Duration,
-    global_timeout: Duration,
+    conn_info: ConnectionInfo,
+    conn_limits: ConnectionLimits,
 }
 
 impl ConnectionManager {
     pub async fn connect(
-        server_connection_string: &str,
-        bind_ip: &str,
-        domain: Option<&String>,
-        max_retries: usize,
-        retry_interval: Duration,
-        global_timeout: Duration,
+        connection_info: &ConnectionInfo,
+        connection_limits: &ConnectionLimits,
     ) -> Result<TcpConnectionHandle, ProbeError> {
-        let handle = match domain {
+        let handle = match connection_info.domain.as_ref() {
             None => retry!(
-                TcpConnectionHandle::connect(server_connection_string, bind_ip, global_timeout)
-                    .await,
-                max_retries,
-                retry_interval
+                TcpConnectionHandle::connect(
+                    connection_info.server_connection_string.as_ref(),
+                    connection_info.bind_ip.as_ref(),
+                    connection_limits.global_timeout
+                )
+                .await,
+                connection_limits.max_retries,
+                connection_limits.retry_interval
             )?,
             Some(d) => {
                 let mut root_cert_store = rustls::RootCertStore::empty();
@@ -53,15 +64,15 @@ impl ConnectionManager {
                     .with_no_client_auth();
                 retry!(
                     TcpConnectionHandle::connect_tls(
-                        server_connection_string,
-                        bind_ip,
+                        connection_info.server_connection_string.as_ref(),
+                        connection_info.bind_ip.as_ref(),
                         d,
                         Arc::new(config.clone()),
-                        global_timeout
+                        connection_limits.global_timeout
                     )
                     .await,
-                    max_retries,
-                    retry_interval
+                    connection_limits.max_retries,
+                    connection_limits.retry_interval
                 )?
             }
         };
@@ -70,31 +81,15 @@ impl ConnectionManager {
 
     pub async fn new(
         probe_metadata: ProbeMetadata,
-        server_connection_string: &str,
-        bind_ip: &str,
-        domain: Option<&String>,
-        max_retries: usize,
-        retry_interval: Duration,
-        global_timeout: Duration,
+        connection_info: ConnectionInfo,
+        connection_limits: ConnectionLimits,
     ) -> Result<Self, ProbeError> {
-        let handle = Self::connect(
-            server_connection_string,
-            bind_ip,
-            domain,
-            max_retries,
-            retry_interval,
-            global_timeout,
-        )
-        .await?;
+        let handle = Self::connect(&connection_info, &connection_limits).await?;
         Ok(Self {
-            probe_metadata,
-            server_connection_string: server_connection_string.to_owned(),
-            bind_ip: bind_ip.to_owned(),
-            domain: domain.map(|d| d.to_owned()),
             handle,
-            max_retries,
-            retry_interval,
-            global_timeout,
+            probe_metadata,
+            conn_info: connection_info,
+            conn_limits: connection_limits,
         })
     }
 
@@ -104,7 +99,7 @@ impl ConnectionManager {
             "Invalid connection initiation",
         ));
         let hello_packet =
-            NetworkAppPacket::Status(NetworkStatusPacket::ProbeHello(self.probe_metadata.clone()));
+            NetworkAppPacket::Status(NetworkStatusPacket::ProbeHello(self.probe_metadata.clone(), self.conn_info.pre_shared_key.clone()));
 
         self.handle
             .send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, hello_packet))
@@ -114,7 +109,7 @@ impl ConnectionManager {
 
         if let NetworkAppPacket::Status(NetworkStatusPacket::ProbeUnknown) = packet {
             warn!("Probe is not adopted, make sure to adopt it in the web interface first");
-            sleep(self.retry_interval).await;
+            sleep(self.conn_limits.retry_interval).await;
             return Box::pin(self.reconnect()).await;
         }
         let NetworkAppPacket::Status(NetworkStatusPacket::ProbeAdopted) = packet else {
@@ -134,7 +129,10 @@ impl ConnectionManager {
         else {
             return error;
         };
-        info!("Connected to the server {}", self.server_connection_string);
+        info!(
+            "Connected to the server {}",
+            self.conn_info.server_connection_string
+        );
         debug!("Obtained config <{config:?}>");
         Ok(config)
     }
@@ -143,7 +141,10 @@ impl ConnectionManager {
         let packet = self
             .handle
             .send_message_with_response(|tx| {
-                TcpConnectionMessage::receive_packet(tx, Some(self.global_timeout))
+                TcpConnectionMessage::receive_packet(
+                    tx,
+                    Some(self.conn_limits.global_timeout),
+                )
             })
             .await??;
         let Some(app_packet) = packet else {
@@ -158,17 +159,9 @@ impl ConnectionManager {
     pub async fn reconnect(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
         self.handle.close().await?;
         match retry!(
-            Self::connect(
-                self.server_connection_string.as_str(),
-                self.bind_ip.as_str(),
-                self.domain.as_ref(),
-                self.max_retries,
-                self.retry_interval,
-                self.global_timeout,
-            )
-            .await,
-            self.max_retries,
-            self.retry_interval
+            Self::connect(&self.conn_info, &self.conn_limits).await,
+            self.conn_limits.max_retries,
+            self.conn_limits.retry_interval
         ) {
             Ok(connection) => {
                 self.handle = connection;

@@ -1552,10 +1552,8 @@ name = "edumdns"
 version = "0.1.0"
 dependencies = [
  "actix-web",
- "bytes",
  "clap",
  "dotenvy",
- "edumdns_core",
  "edumdns_db",
  "edumdns_server",
  "edumdns_web",
@@ -1597,6 +1595,7 @@ dependencies = [
  "diesel-async",
  "diesel_migrations",
  "edumdns_core",
+ "hex",
  "ipnetwork 0.21.1",
  "log",
  "pbkdf2",

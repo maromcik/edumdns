@@ -78,6 +78,7 @@ pub struct Probe {
     pub mac: [u8; 6],
     pub ip: ipnetwork::IpNetwork,
     pub name: Option<String>,
+    pub pre_shared_key: Option<String>,
     pub first_connected_at: Option<OffsetDateTime>,
     pub last_connected_at: Option<OffsetDateTime>,
 }

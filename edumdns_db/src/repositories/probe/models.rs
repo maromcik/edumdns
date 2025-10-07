@@ -4,10 +4,9 @@ use crate::repositories::utilities::{empty_string_is_none, format_time};
 use diesel::{AsChangeset, Identifiable, Insertable};
 use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::{IpNetwork, Ipv4Network};
+use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
-use std::net::Ipv4Addr;
 use std::str::FromStr;
-use time::{OffsetDateTime, format_description};
 use uuid::{Timestamp, Uuid};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,6 +52,7 @@ pub struct CreateProbe {
     pub mac: [u8; 6],
     pub ip: IpNetwork,
     pub name: Option<String>,
+    pub pre_shared_key: Option<String>,
 }
 
 impl CreateProbe {
@@ -66,12 +66,16 @@ impl CreateProbe {
             mac: mac.0.octets(),
             ip,
             name: None,
+            pre_shared_key: None
         }
     }
 
     pub fn new_web(name: Option<&str>) -> CreateProbe {
         let ts = Timestamp::now(uuid::NoContext);
         let uuid = uuid::Uuid::new_v7(ts);
+        let mut bytes = [0u8; 32];
+        OsRng.fill_bytes(&mut bytes);
+        let hex_string = hex::encode(bytes);
         Self {
             id: uuid,
             mac: MacAddr::default().to_octets(),
@@ -79,6 +83,7 @@ impl CreateProbe {
                 Ipv4Network::from_str("0.0.0.0/0").expect("Parsing hardcoded IP should not fail"),
             ),
             name: name.map(|n| n.to_owned()),
+            pre_shared_key: Some(hex_string),
         }
     }
 }
@@ -92,6 +97,7 @@ pub struct ProbeDisplay {
     pub mac: MacAddr,
     pub ip: IpNetwork,
     pub name: Option<String>,
+    pub pre_shared_key: Option<String>,
     pub first_connected_at: Option<String>,
     pub last_connected_at: Option<String>,
 }
@@ -106,6 +112,7 @@ impl From<Probe> for ProbeDisplay {
             mac: MacAddr::from_octets(value.mac),
             ip: value.ip,
             name: value.name,
+            pre_shared_key: value.pre_shared_key,
             first_connected_at: value.first_connected_at.map(format_time),
             last_connected_at: value.last_connected_at.map(format_time),
         }
@@ -208,5 +215,5 @@ pub struct UpdateProbe {
     pub name: Option<String>,
     #[serde(default, deserialize_with = "empty_string_is_none")]
     #[diesel(treat_none_as_null = true)]
-    pub location_id: Option<Id>,
+    pub pre_shared_key: Option<String>,
 }

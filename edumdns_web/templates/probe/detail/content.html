@@ -150,6 +150,20 @@
                 <p class="text-xs text-sat-m mt-1">Optional friendly name for the probe.</p>
             </div>
 
+            <!-- pre_shared_key -->
+            <div class="flex flex-col">
+                <label for="pre_shared_key" class="text-xs uppercase tracking-wide text-sat-m">Pre-Shared Secret Key</label>
+                <input
+                        id="pre_shared_key"
+                        name="pre_shared_key"
+                        type="text"
+                        value="{{ probe.pre_shared_key }}"
+                        placeholder="{{ probe.pre_shared_key }}"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                />
+                <p class="text-xs text-sat-m mt-1">Optional Pre-Shared Key for increased security (probe traffic is encrypted nonetheless).</p>
+            </div>
+
             <!--            &lt;!&ndash; Location &ndash;&gt;-->
             <!--            <div class="flex flex-col">-->
             <!--                <label for="location_id" class="text-xs uppercase tracking-wide text-sat-m">Location</label>-->

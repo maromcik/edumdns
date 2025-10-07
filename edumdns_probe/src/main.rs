@@ -1,4 +1,4 @@
-use crate::connection::{ConnectionManager, ReceivePacketTargets};
+use crate::connection::{ConnectionInfo, ConnectionLimits, ConnectionManager, ReceivePacketTargets};
 use crate::error::{ProbeError, ProbeErrorKind};
 use crate::probe::ProbeCapture;
 use clap::Parser;
@@ -74,6 +74,8 @@ async fn main() -> Result<(), ProbeError> {
         .unwrap_or("5".to_string())
         .parse::<usize>()?;
 
+    let pre_shared_key = env::var("EDUMDNS_PROBE_PRE_SHARED_KEY").ok();
+
     let uuid = generate_uuid(cli.uuid_file)?;
 
     info!("Starting probe with id: {}", uuid);
@@ -88,15 +90,24 @@ async fn main() -> Result<(), ProbeError> {
         ip: bind_ip.parse::<IpAddr>()?,
         mac: determine_mac(&bind_ip)?,
     };
-
-    let mut connection_manager = ConnectionManager::new(
-        probe_metadata.clone(),
-        format!("{}:{}", server_host, server_port).as_str(),
-        format!("{}:{}", bind_ip, bind_port).as_str(),
-        server_domain.as_ref(),
+    
+    let connection_info = ConnectionInfo {
+        server_connection_string: format!("{}:{}", server_host, server_port),
+        bind_ip: format!("{}:{}", bind_ip, bind_port),
+        domain: server_domain,
+        pre_shared_key
+    };
+    
+    let connection_limits = ConnectionLimits {
         max_retries,
         retry_interval,
         global_timeout,
+    };
+
+    let mut connection_manager = ConnectionManager::new(
+        probe_metadata.clone(),
+        connection_info,
+        connection_limits,
     )
     .await?;
 

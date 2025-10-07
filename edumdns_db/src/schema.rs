@@ -91,6 +91,7 @@ diesel::table! {
         mac -> Macaddr,
         ip -> Cidr,
         name -> Nullable<Text>,
+        pre_shared_key -> Nullable<Text>,
         first_connected_at -> Nullable<Timestamptz>,
         last_connected_at -> Nullable<Timestamptz>,
     }

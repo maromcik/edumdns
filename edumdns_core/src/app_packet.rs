@@ -65,7 +65,7 @@ pub enum NetworkCommandPacket {
 pub enum NetworkStatusPacket {
     PingRequest(Uuid),
     PingResponse,
-    ProbeHello(ProbeMetadata),
+    ProbeHello(ProbeMetadata, Option<String>),
     ProbeAdopted,
     ProbeUnknown,
     ProbeRequestConfig(ProbeMetadata),

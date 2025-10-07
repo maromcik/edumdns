@@ -20,3 +20,5 @@ select count (*) from device where probe_id = '019911f9-2fa9-7469-942e-d0269c439
 select * from device where "name" ilike '%st%';
 
 alter table device alter column proxy set default false;
+
+alter table probe add column "pre_shared_key" text;

@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS "probe"
     mac                 macaddr      NOT NULL,
     ip                  cidr         NOT NULL,
     name                text,
+    pre_shared_key      text,
     first_connected_at  timestamptz  DEFAULT now(),
     last_connected_at   timestamptz  DEFAULT now(),
 

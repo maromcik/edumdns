@@ -25,12 +25,9 @@ VALUES (1, 2);
 INSERT INTO "group_user"
 VALUES (2, 3);
 
-BEGIN;
+
 LOCK TABLE "user" IN EXCLUSIVE MODE;
 SELECT setval('"user_id_seq"', COALESCE((SELECT MAX(id) + 1 FROM "user"), 1), false);
-COMMIT;
 
-BEGIN;
 LOCK TABLE "group" IN EXCLUSIVE MODE;
 SELECT setval('"group_id_seq"', COALESCE((SELECT MAX(id) + 1 FROM "group"), 1), false);
-COMMIT;

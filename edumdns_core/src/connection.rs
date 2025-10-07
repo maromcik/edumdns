@@ -4,7 +4,7 @@ use bincode::{Decode, Encode};
 use bytes::{Bytes, BytesMut};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
-use log::error;
+use log::{error, warn};
 use rustls::{ClientConfig, ServerConfig};
 use rustls_pki_types::ServerName;
 use std::net::SocketAddr;
@@ -18,7 +18,57 @@ use tokio::time::timeout;
 use tokio_rustls::{TlsAcceptor, TlsConnector};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
-// ---------- Message Multiplexers & Run loops (generic over stream S) ----------
+pub enum TcpConnectionMessage {
+    ReceivePacket {
+        respond_to: oneshot::Sender<Result<Option<NetworkAppPacket>, CoreError>>,
+        timeout: Option<Duration>,
+    },
+    SendPacket {
+        respond_to: oneshot::Sender<Result<(), CoreError>>,
+        packet: NetworkAppPacket,
+    },
+    Close,
+}
+
+impl TcpConnectionMessage {
+    pub fn send_packet(
+        respond_to: oneshot::Sender<Result<(), CoreError>>,
+        packet: NetworkAppPacket,
+    ) -> Self {
+        Self::SendPacket { respond_to, packet }
+    }
+
+    pub fn receive_packet(
+        respond_to: oneshot::Sender<Result<Option<NetworkAppPacket>, CoreError>>,
+        timeout: Option<Duration>,
+    ) -> Self {
+        Self::ReceivePacket {
+            respond_to,
+            timeout,
+        }
+    }
+}
+
+
+pub struct TcpConnectionActorChannels {
+    pub command_channel: (mpsc::Sender<TcpConnectionMessage>, mpsc::Receiver<TcpConnectionMessage>),
+    pub send_channel: (mpsc::Sender<TcpConnectionMessage>, mpsc::Receiver<TcpConnectionMessage>),
+    pub recv_channel: (mpsc::Sender<TcpConnectionMessage>, mpsc::Receiver<TcpConnectionMessage>)
+}
+
+impl TcpConnectionActorChannels {
+    pub fn new(capacity: usize) -> Self {
+        let command_channel = mpsc::channel(capacity);
+        let send_channel = mpsc::channel(capacity);
+        let recv_channel = mpsc::channel(capacity);
+
+        Self {
+            command_channel,
+            send_channel,
+            recv_channel,
+        }
+    }
+}
 
 async fn run_tcp_connection_receive_loop<S>(
     mut actor: TcpConnectionReceiver<S>,
@@ -95,38 +145,7 @@ async fn run_message_multiplexer(
     Ok(())
 }
 
-// ---------- Messages & Handle (unchanged public API) ----------
 
-pub enum TcpConnectionMessage {
-    ReceivePacket {
-        respond_to: oneshot::Sender<Result<Option<NetworkAppPacket>, CoreError>>,
-        timeout: Option<Duration>,
-    },
-    SendPacket {
-        respond_to: oneshot::Sender<Result<(), CoreError>>,
-        packet: NetworkAppPacket,
-    },
-    Close,
-}
-
-impl TcpConnectionMessage {
-    pub fn send_packet(
-        respond_to: oneshot::Sender<Result<(), CoreError>>,
-        packet: NetworkAppPacket,
-    ) -> Self {
-        Self::SendPacket { respond_to, packet }
-    }
-
-    pub fn receive_packet(
-        respond_to: oneshot::Sender<Result<Option<NetworkAppPacket>, CoreError>>,
-        timeout: Option<Duration>,
-    ) -> Self {
-        Self::ReceivePacket {
-            respond_to,
-            timeout,
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct TcpConnectionHandle {
@@ -134,42 +153,50 @@ pub struct TcpConnectionHandle {
 }
 
 impl TcpConnectionHandle {
+
+    pub fn spawn_actors<S>(receiver: mpsc::Receiver<TcpConnectionMessage>,
+                              send_channel: mpsc::Sender<TcpConnectionMessage>,
+                              recv_channel: mpsc::Sender<TcpConnectionMessage>,
+    actors: (TcpConnectionSender<S>, TcpConnectionReceiver<S>))
+    where
+        S: AsyncRead + AsyncWrite + Unpin + Send + 'static
+
+    {
+
+        tokio::spawn(async move {
+            if let Err(e) = run_message_multiplexer(receiver, send_channel, recv_channel).await
+            {
+                warn!("I/O message multiplexer failed: {e}");
+            }
+        });
+        tokio::spawn(async move {
+            if let Err(e) = run_tcp_connection_send_loop(actors.0).await {
+                warn!("I/O send loop failed: {e}");
+            }
+        });
+        tokio::spawn(async move {
+            if let Err(e) = run_tcp_connection_receive_loop(actors.1).await {
+                warn!("I/O receive loop failed: {e}");
+            }
+        });
+    }
     /// Unchanged public API: create connection handle from a plain TcpStream
     pub fn stream_to_framed(
         stream: TcpStream,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
-        let (sender, receiver) = mpsc::channel(1000);
-        let send_channel = mpsc::channel(1000);
-        let recv_channel = mpsc::channel(1000);
+        let channels = TcpConnectionActorChannels::new(1000);
 
-        // Use the plain TcpStream variant
         let actors = TcpConnection::stream_to_framed_plain(
-            send_channel.1,
-            recv_channel.1,
+            channels.send_channel.1,
+            channels.recv_channel.1,
             stream,
             global_timeout,
         )?;
 
-        // spawn multiplexer and loops (they are generic but concrete here)
-        tokio::spawn(async move {
-            if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
-            {
-                error!("I/O message multiplexer failed: {e}");
-            }
-        });
-        tokio::spawn(async move {
-            if let Err(e) = run_tcp_connection_send_loop(actors.0).await {
-                error!("I/O send loop failed: {e}");
-            }
-        });
-        tokio::spawn(async move {
-            if let Err(e) = run_tcp_connection_receive_loop(actors.1).await {
-                error!("I/O receive loop failed: {e}");
-            }
-        });
+        Self::spawn_actors(channels.command_channel.1, channels.send_channel.0, channels.recv_channel.0, actors);
 
-        Ok(Self { sender })
+        Ok(Self { sender: channels.command_channel.0 })
     }
 
     /// Unchanged public API: connect (plain TCP)
@@ -178,37 +205,20 @@ impl TcpConnectionHandle {
         bind_ip: &str,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
-        let (sender, receiver) = mpsc::channel(1000);
-        let send_channel = mpsc::channel(1000);
-        let recv_channel = mpsc::channel(1000);
+        let channels = TcpConnectionActorChannels::new(1000);
 
         let actors = TcpConnection::connect_plain(
             addr,
             bind_ip,
-            send_channel.1,
-            recv_channel.1,
+            channels.send_channel.1,
+            channels.recv_channel.1,
             global_timeout,
         )
         .await?;
 
-        tokio::spawn(async move {
-            if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
-            {
-                error!("I/O message multiplexer failed: {e}");
-            }
-        });
-        tokio::spawn(async move {
-            if let Err(e) = run_tcp_connection_send_loop(actors.0).await {
-                error!("I/O send loop failed: {e}");
-            }
-        });
-        tokio::spawn(async move {
-            if let Err(e) = run_tcp_connection_receive_loop(actors.1).await {
-                error!("I/O receive loop failed: {e}");
-            }
-        });
+        Self::spawn_actors(channels.command_channel.1, channels.send_channel.0, channels.recv_channel.0, actors);
 
-        Ok(Self { sender })
+        Ok(Self { sender: channels.command_channel.0 })
     }
 
     /// New optional helper: create a connection handle from an already-established TcpStream,
@@ -219,13 +229,11 @@ impl TcpConnectionHandle {
         client_config: Arc<ClientConfig>,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
-        let (sender, receiver) = mpsc::channel(1000);
-        let send_channel = mpsc::channel(1000);
-        let recv_channel = mpsc::channel(1000);
+        let channels = TcpConnectionActorChannels::new(1000);
 
         let actors = TcpConnection::stream_to_framed_tls(
-            send_channel.1,
-            recv_channel.1,
+            channels.send_channel.1,
+            channels.recv_channel.1,
             stream,
             domain,
             client_config,
@@ -233,24 +241,9 @@ impl TcpConnectionHandle {
         )
         .await?;
 
-        tokio::spawn(async move {
-            if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
-            {
-                error!("I/O message multiplexer failed: {e}");
-            }
-        });
-        tokio::spawn(async move {
-            if let Err(e) = run_tcp_connection_send_loop(actors.0).await {
-                error!("I/O send loop failed: {e}");
-            }
-        });
-        tokio::spawn(async move {
-            if let Err(e) = run_tcp_connection_receive_loop(actors.1).await {
-                error!("I/O receive loop failed: {e}");
-            }
-        });
+        Self::spawn_actors(channels.command_channel.1, channels.send_channel.0, channels.recv_channel.0, actors);
 
-        Ok(Self { sender })
+        Ok(Self { sender: channels.command_channel.0 })
     }
 
     pub async fn stream_to_framed_tls_server(
@@ -258,37 +251,21 @@ impl TcpConnectionHandle {
         server_config: Arc<ServerConfig>,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
-        let (sender, receiver) = mpsc::channel(1000);
-        let send_channel = mpsc::channel(1000);
-        let recv_channel = mpsc::channel(1000);
+        let channels = TcpConnectionActorChannels::new(1000);
+
 
         let actors = TcpConnection::stream_to_framed_tls_server(
-            send_channel.1,
-            recv_channel.1,
+            channels.send_channel.1,
+            channels.recv_channel.1,
             stream,
             server_config,
             global_timeout,
         )
         .await?;
 
-        tokio::spawn(async move {
-            if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
-            {
-                error!("I/O message multiplexer failed: {e}");
-            }
-        });
-        tokio::spawn(async move {
-            if let Err(e) = run_tcp_connection_send_loop(actors.0).await {
-                error!("I/O send loop failed: {e}");
-            }
-        });
-        tokio::spawn(async move {
-            if let Err(e) = run_tcp_connection_receive_loop(actors.1).await {
-                error!("I/O receive loop failed: {e}");
-            }
-        });
+        Self::spawn_actors(channels.command_channel.1, channels.send_channel.0, channels.recv_channel.0, actors);
 
-        Ok(Self { sender })
+        Ok(Self { sender: channels.command_channel.0 })
     }
 
     /// New optional helper: connect and then upgrade the stream with rustls.

@@ -109,7 +109,7 @@ pub async fn listen(
                     if let ServerErrorKind::ProbeNotAdopted = err.error_kind {
                         info!("Client {addr} tried to connect, but probe is not adopted");
                     } else {
-                        error!("{err}");
+                        warn!("{err}");
                     }
                 }
             }

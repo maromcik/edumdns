@@ -68,6 +68,7 @@ pub enum NetworkStatusPacket {
     ProbeHello(ProbeMetadata, Option<String>),
     ProbeAdopted,
     ProbeUnknown,
+    ProbeInvalidConnectionInitiation(String),
     ProbeRequestConfig(ProbeMetadata),
     ProbeResponseConfig(ProbeConfigPacket),
     ProbeResponse(Uuid, Option<Uuid>, ProbeResponse),

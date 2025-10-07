@@ -64,10 +64,10 @@ impl ConnectionManager {
     }
 
     pub async fn connection_init_server(&mut self) -> Result<Uuid, ServerError> {
-        let error = |msg| {
+        let error = |uuid, msg| {
             Err(ServerError::new(
                 ServerErrorKind::InvalidConnectionInitiation,
-                msg,
+                format!("Probe: {:?}; {}", uuid, msg).as_str(),
             ))
         };
         let packet = self.receive_init_packet().await?;
@@ -77,7 +77,7 @@ impl ConnectionManager {
             pre_shared_key,
         )) = packet
         else {
-            return error("Invalid connection initiation, expected ProbeHello packet");
+            return error(None, "expected a ProbeHello packet");
         };
 
         if self
@@ -86,10 +86,16 @@ impl ConnectionManager {
             .await
             .contains_key(&hello_metadata.id)
         {
-            return Err(ServerError::new(
-                ServerErrorKind::ProbeAlreadyConnected,
-                format!("UUID: {}", hello_metadata.id).as_str(),
-            ));
+            let msg = "probe with the same UUID already connected, please disconnect first";
+            self.handle
+                .send_message_with_response(|tx| {
+                    TcpConnectionMessage::send_packet(
+                        tx,
+                        NetworkAppPacket::Status(NetworkStatusPacket::ProbeInvalidConnectionInitiation(msg.to_string())),
+                    )
+                })
+                .await??;
+            return error(Some(hello_metadata.id), msg);
         }
 
         if let Ok((p, _)) = self
@@ -99,7 +105,16 @@ impl ConnectionManager {
             && p.pre_shared_key.is_some()
             && p.pre_shared_key != pre_shared_key
         {
-            return error("Invalid connection initiation, invalid pre-shared key");
+            let msg = "invalid pre-shared key";
+            self.handle
+                .send_message_with_response(|tx| {
+                    TcpConnectionMessage::send_packet(
+                        tx,
+                        NetworkAppPacket::Status(NetworkStatusPacket::ProbeInvalidConnectionInitiation(msg.to_string())),
+                    )
+                })
+                .await??;
+            return error(Some(hello_metadata.id), msg);
         };
 
         let probe = self.upsert_probe(&hello_metadata).await?;
@@ -132,12 +147,11 @@ impl ConnectionManager {
         let NetworkAppPacket::Status(NetworkStatusPacket::ProbeRequestConfig(config_metadata)) =
             packet
         else {
-            return error("Invalid connection initiation, expected ProbeRequestConfig packet");
+            return error(Some(hello_metadata.id),"expected ProbeRequestConfig packet");
         };
 
         if config_metadata != hello_metadata {
-            return error(
-                "Invalid connection initiation, invalid config metadata after second check",
+            return error(Some(config_metadata.id), format!("invalid config metadata after the second check; expected (hello_packet): {}, got (config_metadata) {}", hello_metadata.id, config_metadata.id).as_str(),
             );
         }
 
@@ -169,7 +183,7 @@ impl ConnectionManager {
         let Some(app_packet) = packet else {
             return Err(ServerError::new(
                 ServerErrorKind::InvalidConnectionInitiation,
-                "invalid connection initiation",
+                "could not receive a valid connection initiation packet",
             ));
         };
         Ok(app_packet)

@@ -112,6 +112,13 @@ impl ConnectionManager {
             sleep(self.conn_limits.retry_interval).await;
             return Box::pin(self.reconnect()).await;
         }
+
+        if let NetworkAppPacket::Status(NetworkStatusPacket::ProbeInvalidConnectionInitiation(error)) = packet {
+            warn!("Invalid connection initiation from server: {}", error);
+            sleep(self.conn_limits.retry_interval).await;
+            return Box::pin(self.reconnect()).await;
+        }
+
         let NetworkAppPacket::Status(NetworkStatusPacket::ProbeAdopted) = packet else {
             return error;
         };
@@ -186,7 +193,7 @@ impl ConnectionManager {
         join_set.spawn(async move {
             tokio::select! {
                 _ = cancellation_token.cancelled() => {
-                    warn!("Transmit packets task cancelled");
+                    info!("Transmit packets task cancelled");
                 }
                 result = ConnectionManager::transmit_packets_worker(handle, data_receiver, command_transmitter, max_retries, retry_interval) => {
                     result.map_err(|e| {
@@ -231,7 +238,7 @@ impl ConnectionManager {
         join_set.spawn(async move {
             tokio::select! {
                 _ = cancellation_token.cancelled() => {
-                    warn!("Receive packets task cancelled");
+                    info!("Receive packets task cancelled");
                 }
                 result = ConnectionManager::receive_packets_worker(handle, target, command_transmitter) => { result.map_err(|e| {
                         error!("Receive packets task exited with error: {e}");
@@ -318,7 +325,7 @@ impl ConnectionManager {
         join_set.spawn(async move {
             tokio::select! {
                 _ = cancellation_token.cancelled() => {
-                    warn!("Pinger task cancelled");
+                    info!("Pinger task cancelled");
                 }
                 result = ConnectionManager::pinger_worker(handle, packet_receiver, command_sender, uuid, interval) => {
                     result.map_err(|e| {

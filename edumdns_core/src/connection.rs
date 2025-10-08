@@ -4,7 +4,7 @@ use bincode::{Decode, Encode};
 use bytes::{Bytes, BytesMut};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
-use log::{error, warn};
+use log::{warn};
 use rustls::{ClientConfig, ServerConfig};
 use rustls_pki_types::ServerName;
 use std::net::SocketAddr;
@@ -253,7 +253,6 @@ impl TcpConnectionHandle {
     ) -> Result<Self, CoreError> {
         let channels = TcpConnectionActorChannels::new(1000);
 
-
         let actors = TcpConnection::stream_to_framed_tls_server(
             channels.send_channel.1,
             channels.recv_channel.1,
@@ -276,39 +275,22 @@ impl TcpConnectionHandle {
         client_config: Arc<ClientConfig>,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
-        let (sender, receiver) = mpsc::channel(1000);
-        let send_channel = mpsc::channel(1000);
-        let recv_channel = mpsc::channel(1000);
+        let channels = TcpConnectionActorChannels::new(1000);
 
         let actors = TcpConnection::connect_tls(
             addr,
             bind_ip,
             domain,
             client_config,
-            send_channel.1,
-            recv_channel.1,
+            channels.send_channel.1,
+            channels.recv_channel.1,
             global_timeout,
         )
         .await?;
 
-        tokio::spawn(async move {
-            if let Err(e) = run_message_multiplexer(receiver, send_channel.0, recv_channel.0).await
-            {
-                error!("I/O message multiplexer failed: {e}");
-            }
-        });
-        tokio::spawn(async move {
-            if let Err(e) = run_tcp_connection_send_loop(actors.0).await {
-                error!("I/O send loop failed: {e}");
-            }
-        });
-        tokio::spawn(async move {
-            if let Err(e) = run_tcp_connection_receive_loop(actors.1).await {
-                error!("I/O receive loop failed: {e}");
-            }
-        });
+        Self::spawn_actors(channels.command_channel.1, channels.send_channel.0, channels.recv_channel.0, actors);
 
-        Ok(Self { sender })
+        Ok(Self { sender: channels.command_channel.0 })
     }
 
     pub async fn send_message_with_response<T>(

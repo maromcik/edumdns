@@ -16,10 +16,8 @@ use crate::schema::user;
 use crate::schema::group_probe_permission;
 use crate::schema::{location, probe_config};
 use diesel::pg::Pg;
-use diesel::{
-    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods,
-    PgTextExpressionMethods, QueryDsl, SelectableHelper,
-};
+use diesel::{BoolExpressionMethods, CombineDsl, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl, SelectableHelper};
+use diesel::query_builder::AsQuery;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
@@ -141,9 +139,15 @@ impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeReposito
             ));
         }
 
-        let probes = query
+        let shared_probe_ids = probe::table
             .inner_join(
-                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
+                group_probe_permission::table
+                    .on(group_probe_permission::probe_id.eq(probe::id)),
+            )
+            .filter(
+                group_probe_permission::permission
+                    .eq(Permission::Read)
+                    .or(group_probe_permission::permission.eq(Permission::Full)),
             )
             .inner_join(
                 group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
@@ -154,12 +158,23 @@ impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeReposito
                     .eq(Permission::Read)
                     .or(group_probe_permission::permission.eq(Permission::Full)),
             )
+            .select(probe::id);
+
+        let owned_probe_ids = probe::table
+            .filter(probe::owner_id.eq(user_entry.id))
+            .select(probe::id);
+
+        let unioned_ids = shared_probe_ids.union(owned_probe_ids).load::<Uuid>(&mut conn).await?;
+
+        let probes = query
+            .filter(probe::id.eq_any(unioned_ids))
             .distinct()
             .left_outer_join(location::table)
             .order_by(probe::ip.asc())
             .select((Option::<Location>::as_select(), Probe::as_select()))
             .load::<(Option<Location>, Probe)>(&mut conn)
             .await?;
+
         Ok(DbDataPerm::new(probes, (false, vec![])))
     }
 }
@@ -182,7 +197,6 @@ impl DbCreate<CreateProbe, Probe> for PgProbeRepository {
             .map_err(DbError::from)
     }
     async fn create_auth(&self, data: &CreateProbe, user_id: &Id) -> DbResultSingle<Probe> {
-        validate_admin(&self.pg_pool, user_id).await?;
         let mut conn = self.pg_pool.get().await?;
         diesel::insert_into(probe::table)
             .values((
@@ -191,6 +205,7 @@ impl DbCreate<CreateProbe, Probe> for PgProbeRepository {
                 probe::mac.eq(data.mac),
                 probe::name.eq(data.name.as_ref()),
                 probe::pre_shared_key.eq(data.pre_shared_key.as_ref()),
+                probe::owner_id.eq(data.owner_id),
                 probe::first_connected_at.eq::<Option<OffsetDateTime>>(None),
                 probe::last_connected_at.eq::<Option<OffsetDateTime>>(None),
             ))

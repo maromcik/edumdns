@@ -475,12 +475,14 @@ pub async fn create_probe(
     request: HttpRequest,
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
+    user_repo: web::Data<PgUserRepository>,
     form: web::Form<CreateProbeForm>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
-    let probe_create = CreateProbe::new_web(Some(form.name.as_str()));
-    println!("ID: {}", probe_create.id);
+    let user = user_repo.read_one(&user_id).await?;
+    validate_has_groups(&user)?;
+    let probe_create = CreateProbe::new_web(form.name.as_str(), &user_id);
     let _ = probe_repo.create_auth(&probe_create, &user_id).await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/probe/{}", probe_create.id)))

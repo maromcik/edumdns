@@ -1,3 +1,5 @@
+use diesel::BoolExpressionMethods;
+use itertools;
 use crate::error::DbError;
 use crate::models::{Device, GroupProbePermission, PacketTransmitRequest, Probe, User};
 use crate::repositories::common::{
@@ -25,6 +27,7 @@ use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 use std::collections::HashSet;
+use itertools::Itertools;
 use time::OffsetDateTime;
 
 #[derive(Clone)]
@@ -253,43 +256,47 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
         }
 
         let query = PgDeviceRepository::build_select_many_query(params);
-        let ids = query
-            .inner_join(probe::table)
-            .select(device::id)
-            .load::<Id>(&mut conn)
-            .await?;
-
-        let devices = device::table
-            .filter(device::id.eq_any(&ids))
+        let devices = query
             .inner_join(probe::table)
             .inner_join(
                 group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
+            )
+            .filter(
+                group_probe_permission::permission
+                    .eq(Permission::Read)
+                    .or(group_probe_permission::permission.eq(Permission::Full)),
             )
             .inner_join(
                 group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
             )
             .filter(group_user::user_id.eq(user_id))
-            .distinct()
             .order_by(device::id.asc())
             .select((
                 Probe::as_select(),
                 Device::as_select(),
-                GroupProbePermission::as_select(),
             ))
-            .load::<(Probe, Device, GroupProbePermission)>(&mut conn)
+            .load::<(Probe, Device)>(&mut conn)
             .await?;
-        let mut devices_only = Vec::default();
-        let mut permissions: HashSet<GroupProbePermission> = HashSet::new();
-        for device in devices {
-            if device.2.permission == Permission::Full || device.2.permission == Permission::Read {
-                devices_only.push((device.0, device.1));
-            }
 
-            permissions.insert(device.2);
-        }
+        let query = PgDeviceRepository::build_select_many_query(params);
+        let owned_devices = query
+            .inner_join(probe::table)
+            .filter(probe::owner_id.eq(user_id))
+            .select((
+                Probe::as_select(),
+                Device::as_select(),
+            ))
+            .load::<(Probe, Device)>(&mut conn)
+            .await?;
+
+        let mut devices: HashSet<(Probe, Device)> = HashSet::from_iter(devices);
+        devices.extend(owned_devices);
+
+        let devices = devices.into_iter().sorted_by_key(|(_, d) | d.id).collect::<Vec<_>>();
+
         Ok(DbDataPerm::new(
-            devices_only,
-            (false, Vec::from_iter(permissions)),
+            devices,
+            (false, vec![]),
         ))
     }
 }

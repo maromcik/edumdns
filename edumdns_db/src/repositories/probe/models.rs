@@ -53,6 +53,7 @@ pub struct CreateProbe {
     pub ip: IpNetwork,
     pub name: Option<String>,
     pub pre_shared_key: Option<String>,
+    pub owner_id: Option<Id>,
 }
 
 impl CreateProbe {
@@ -66,11 +67,12 @@ impl CreateProbe {
             mac: mac.0.octets(),
             ip,
             name: None,
-            pre_shared_key: None
+            pre_shared_key: None,
+            owner_id: None,
         }
     }
 
-    pub fn new_web(name: Option<&str>) -> CreateProbe {
+    pub fn new_web(name: &str, owner: &Id) -> CreateProbe {
         let ts = Timestamp::now(uuid::NoContext);
         let uuid = uuid::Uuid::new_v7(ts);
         let mut bytes = [0u8; 32];
@@ -82,8 +84,9 @@ impl CreateProbe {
             ip: IpNetwork::V4(
                 Ipv4Network::from_str("0.0.0.0/0").expect("Parsing hardcoded IP should not fail"),
             ),
-            name: name.map(|n| n.to_owned()),
+            name: Some(name.to_string()),
             pre_shared_key: Some(hex_string),
+            owner_id: Some(*owner),
         }
     }
 }

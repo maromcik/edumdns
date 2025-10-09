@@ -15,8 +15,8 @@
 <!--        {% endif %}-->
 
 
-    {% if user.user.admin %}
-    <!-- New Group -->
+    {% if user.has_groups %}
+    <!-- New Probe -->
     <div class="rounded-lg border border-base bg-cards p-6 mb-6">
         <h3 class="text-2xl font-semibold text-sat-l mb-4">New Probe</h3>
         <form action="/probe/create" method="post" class="grid grid-cols-1 md:grid-cols-2 gap-4">

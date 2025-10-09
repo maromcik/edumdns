@@ -138,7 +138,7 @@ impl PgPacketRepository {
         &self,
         params: &SelectManyPackets,
         user_id: &Id,
-    ) -> DbResultMultiple<(Packet, Vec<Permission>)> {
+    ) -> DbResultMultiple<Packet> {
         let mut conn = self.pg_pool.get().await?;
         let user_entry = user::table
             .find(user_id)
@@ -151,10 +151,7 @@ impl PgPacketRepository {
         if user_entry.admin {
             let packets = self
                 .read_many(params)
-                .await?
-                .into_iter()
-                .map(|p| (p, vec![Permission::Full]))
-                .collect::<Vec<_>>();
+                .await?;
             return Ok(packets);
         }
 
@@ -162,23 +159,18 @@ impl PgPacketRepository {
         let packets = query
             .inner_join(probe::table)
             .inner_join(group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)), )
+            .filter(
+                group_probe_permission::permission
+                    .eq(Permission::Read)
+                    .or(group_probe_permission::permission.eq(Permission::Full)),
+            )
             .inner_join(
                 group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
             )
             .filter(group_user::user_id.eq(user_id))
-            .order_by(packet::id.asc())
-            .select((Packet::as_select(), group_probe_permission::permission))
-            .load::<(Packet, Permission)>(&mut conn)
-            .await?
-            .into_iter()
-            .fold(HashMap::new(), |mut acc: HashMap<Packet, HashSet<Permission>>, (p, perm)| {
-                acc.entry(p).or_default().insert(perm);
-                acc
-            })
-            .into_iter()
-            .filter(|(p, perm)| perm.contains(&Permission::Full) || perm.contains(&Permission::Read))
-            .map(|(p, perm)| (p, perm.into_iter().collect::<Vec<_>>()))
-            .collect::<Vec<(Packet, Vec<Permission>)>>();
+            .select(Packet::as_select())
+            .load::<Packet>(&mut conn)
+            .await?;
 
         let query = PgPacketRepository::build_select_many_query(params);
         let owned_packets = query
@@ -186,15 +178,12 @@ impl PgPacketRepository {
             .filter(probe::owner_id.eq(user_id))
             .select(Packet::as_select())
             .load::<Packet>(&mut conn)
-            .await?
-            .into_iter()
-            .map(|p| (p, Permission::web()))
-            .collect::<Vec<_>>();
+            .await?;
 
-        let mut packets: HashSet<(Packet, Vec<Permission>)> = HashSet::from_iter(packets);
+        let mut packets: HashSet<Packet> = HashSet::from_iter(packets);
         packets.extend(owned_packets);
 
-        let packets = packets.into_iter().sorted_by_key(|(p, perm)| p.id).collect::<Vec<_>>();
+        let packets = packets.into_iter().sorted_by_key(|p| p.id).collect::<Vec<_>>();
 
         Ok(packets)
 

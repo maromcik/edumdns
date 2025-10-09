@@ -11,7 +11,7 @@ use uuid::Uuid;
 #[derive(Serialize)]
 pub struct PacketTemplate<'a> {
     pub user: UserDisplay,
-    pub packets: &'a Vec<PacketDisplayPermissions>,
+    pub packets: &'a Vec<PacketDisplay>,
     pub page_info: PageInfo,
     pub filters: PacketQuery,
     pub query_string: String,

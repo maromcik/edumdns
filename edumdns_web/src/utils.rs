@@ -59,8 +59,8 @@ pub fn create_reloader(template_path: String) -> AutoReloader {
 fn has_perm(perms_values: Vec<Value>, query: Value) -> Result<bool, minijinja::Error> {
     let query_perm = Permission::deserialize(query)?;
     for perm in perms_values {
-        let perm = Permission::deserialize(perm)?;
-        if perm == query_perm || perm == Permission::Full {
+        let perm = GroupProbePermission::deserialize(perm)?;
+        if perm.permission == query_perm || perm.permission == Permission::Full {
             return Ok(true);
         }
     }

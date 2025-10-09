@@ -97,19 +97,18 @@ impl DbReadOne<Uuid, (Probe, Vec<ProbeConfig>)> for PgProbeRepository {
     }
 }
 
-impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeRepository {
+impl DbReadMany<SelectManyProbes, Probe> for PgProbeRepository {
     async fn read_many(
         &self,
         params: &SelectManyProbes,
-    ) -> DbResultMultiple<(Option<Location>, Probe)> {
+    ) -> DbResultMultiple<Probe> {
         let mut conn = self.pg_pool.get().await?;
         let query = PgProbeRepository::build_select_many_query(params);
 
         let probes = query
-            .left_outer_join(location::table)
             .order_by(probe::ip.asc())
-            .select((Option::<Location>::as_select(), Probe::as_select()))
-            .load::<(Option<Location>, Probe)>(&mut conn)
+            .select(Probe::as_select())
+            .load::<Probe>(&mut conn)
             .await?;
 
         Ok(probes)
@@ -119,7 +118,7 @@ impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeReposito
         &self,
         params: &SelectManyProbes,
         user_id: &Id,
-    ) -> DbResultMultiplePerm<(Option<Location>, Probe)> {
+    ) -> DbResultMultiplePerm<Probe> {
         let mut conn = self.pg_pool.get().await?;
         let query = PgProbeRepository::build_select_many_query(params);
 
@@ -169,10 +168,9 @@ impl DbReadMany<SelectManyProbes, (Option<Location>, Probe)> for PgProbeReposito
         let probes = query
             .filter(probe::id.eq_any(unioned_ids))
             .distinct()
-            .left_outer_join(location::table)
             .order_by(probe::ip.asc())
-            .select((Option::<Location>::as_select(), Probe::as_select()))
-            .load::<(Option<Location>, Probe)>(&mut conn)
+            .select(Probe::as_select())
+            .load::<Probe>(&mut conn)
             .await?;
 
         Ok(DbDataPerm::new(probes, (false, vec![])))

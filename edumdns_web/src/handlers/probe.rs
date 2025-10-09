@@ -57,7 +57,7 @@ pub async fn get_probes(
     let probes_parsed = probes
         .data
         .into_iter()
-        .map(|(l, p)| (l, ProbeDisplay::from(p)))
+        .map(|p| ProbeDisplay::from(p))
         .collect();
 
     let probe_count = probe_repo.get_probe_count(params).await?;

@@ -12,7 +12,7 @@ use serde::Serialize;
 pub struct ProbeTemplate {
     pub user: UserDisplay,
     pub permissions: Permissions,
-    pub probes: Vec<(Option<Location>, ProbeDisplay)>,
+    pub probes: Vec<ProbeDisplay>,
     pub page_info: PageInfo,
     pub filters: ProbeQuery,
     pub query_string: String,

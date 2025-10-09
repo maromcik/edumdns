@@ -57,7 +57,7 @@
                 </th>
                 <th scope="col"
                     class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
-                    Location
+                    Owner
                 </th>
                 <th scope="col"
                     class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
@@ -79,13 +79,18 @@
                     class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
                     Last Connected At
                 </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Actions
+                </th>
             </tr>
             <tr>
                 <td class="px-4 py-2"><input type="text" id="filter-id" value="{{ filters.id  | default('') }}"
                                              class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-name" value="{{ filters.name  | default('') }}"
                                              class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
-                <td class="px-4 py-2"></td>
+                <td class="px-4 py-2"><input type="text" id="filter-owner_id" value="{{ filters.owner_id  | default('') }}"
+                                             class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-mac" value="{{ filters.mac    | default('') }}"
                                              class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-ip" value="{{ filters.ip  | default('') }}"
@@ -119,32 +124,31 @@
             <tr class="hover:bg-muted/5 transition-colors">
                 <!-- probe[1] is Probe -->
                 <td class="px-4 py-3 font-mono text-sm text-sat-l whitespace-nowrap">
-                    <a href="/probe/{{ probe[1].id }}" class="text-primary hover:underline">
-                        {{ probe[1].id }}
+                    <a href="/probe/{{ probe.id }}" class="text-primary hover:underline">
+                        {{ probe.id }}
                     </a>
                 </td>
-                <td class="px-4 py-3 text-sm text-sat-l">{% if probe[1].name is not none %}{{ probe[1].name }} {% else
+                <td class="px-4 py-3 text-sm text-sat-l">{% if probe.name is not none %}{{ probe.name }} {% else
                     %} <span class="text-muted-foreground">—</span>{% endif %}
                 </td>
-                <!-- probe[0] is Option<Location> -->
                 <td class="px-4 py-3 text-sm text-sat-l">
-                    {% if probe[0] %}
-                    {{ probe[0].name }}
+                    {% if probe.owner_id %}
+                    <a href="/user/{{ probe.owner_id }}">{{ probe.owner_id }}</a>
                     {% else %}
                     <span class="text-muted-foreground">—</span>
                     {% endif %}
                 </td>
-                <td class="px-4 py-3 text-sm text-sat-l">{{ probe[1].mac }}</td>
-                <td class="px-4 py-3 text-sm text-sat-l">{{ probe[1].ip }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ probe.mac }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ probe.ip }}</td>
                 <td class="px-4 py-3 text-sm">
-                    {% if probe[1].adopted %}
+                    {% if probe.adopted %}
                     <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
                     {% else %}
                     <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
                     {% endif %}
                 </td>
-                <td class="px-4 py-3 text-sm text-sat-l">{{ probe[1].first_connected_at }}</td>
-                <td class="px-4 py-3 text-sm text-sat-l">{{ probe[1].last_connected_at }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ probe.first_connected_at }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ probe.last_connected_at }}</td>
 
 
             </tr>
@@ -230,7 +234,7 @@
     function runSearch() {
         const params = new URLSearchParams();
 
-        ["id", "name", "mac", "ip", "adopted"].forEach(field => {
+        ["id", "name", "owner_id", "mac", "ip", "adopted"].forEach(field => {
             const el = document.getElementById(`filter-${field}`);
             if (!el) return;
 
@@ -258,7 +262,7 @@
     });
 
     // Trigger search on Enter in text inputs
-    ["filter-id", "filter-name","filter-mac","filter-ip"].forEach(id => {
+    ["filter-id", "filter-name", "filter-owner_id", "filter-mac","filter-ip"].forEach(id => {
         const input = document.getElementById(id);
         input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {

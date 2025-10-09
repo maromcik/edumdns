@@ -39,9 +39,9 @@ pub async fn get_packets(
     let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
     let packets_parsed = packets
         .into_iter()
-        .map(|(p, perm)| PacketDisplayPermissions::from(p, perm))
+        .map(PacketDisplay::from)
         .filter_map(Result::ok)
-        .collect::<Vec<PacketDisplayPermissions>>();
+        .collect();
 
     let template_name = get_template_name(&request, "packet");
     let env = state.jinja.acquire_env()?;

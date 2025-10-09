@@ -87,21 +87,7 @@
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].ip }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].port }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].discovered_at }}</td>
-                {% if permissions|has_perm("Delete") %}
-                <td class="px-4 py-3 text-sm text-sat-l">
-                    <button
-                            hx-delete="/device/{{ device[1].id }}/delete?return_url=/device?page={{ page_info.page }}"
-                            hx-target="#content-area"
-                            hx-target-error="#content-area"
-                            hx-push-url="/device?page={{ page_info.page }}"
-                            class="inline-flex items-center rounded-md border border-base px-3 py-1 text-sm text-red-400 hover:bg-muted/20 transition-colors"
-                            title="Delete device"
-
-                    >
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </td>
-                {% endif %}
+                <td class="px-4 py-2"></td>
             </tr>
             {% endfor %}
             </tbody>

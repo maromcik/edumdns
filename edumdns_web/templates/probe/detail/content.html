@@ -123,7 +123,6 @@
 
         </div>
     </div>
-    {% if permissions|has_perm("Update") %}
     <!-- Make these fields editable -->
     <div class="rounded-lg border border-base bg-cards p-6 mb-8">
         <h3 class="text-2xl font-medium mb-4 text-sat-l">Probe Settings</h3>
@@ -150,6 +149,20 @@
                 <p class="text-xs text-sat-m mt-1">Optional friendly name for the probe.</p>
             </div>
 
+            <!-- owner -->
+            <div class="flex flex-col">
+                <label for="owner_id" class="text-xs uppercase tracking-wide text-sat-m">owner_id</label>
+                <input
+                        id="owner_id"
+                        name="owner_id"
+                        type="number"
+                        value="{{ probe.owner_id }}"
+                        placeholder="{{ probe.owner_id }}"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                />
+                <p class="text-xs text-sat-m mt-1">Optional owner_id</p>
+            </div>
+
             <!-- pre_shared_key -->
             <div class="flex flex-col">
                 <label for="pre_shared_key" class="text-xs uppercase tracking-wide text-sat-m">Pre-Shared Secret Key</label>
@@ -164,23 +177,7 @@
                 <p class="text-xs text-sat-m mt-1">Optional Pre-Shared Key for increased security (probe traffic is encrypted nonetheless).</p>
             </div>
 
-            <!--            &lt;!&ndash; Location &ndash;&gt;-->
-            <!--            <div class="flex flex-col">-->
-            <!--                <label for="location_id" class="text-xs uppercase tracking-wide text-sat-m">Location</label>-->
-            <!--                <select-->
-            <!--                    id="location_id"-->
-            <!--                    name="location_id"-->
-            <!--                    class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"-->
-            <!--                    hx-get="/location/?selected={{ probe.location_id | default('', true) }}"-->
-            <!--                    hx-trigger="load"-->
-            <!--                    hx-target="#location_id"-->
-            <!--                    hx-swap="innerHTML"-->
-            <!--                >-->
-            <!--                    <option value="">{{ '—' }}</option>-->
-            <!--                </select>-->
-            <!--                <p class="text-xs text-sat-m mt-1">Choose a location for this probe.</p>-->
-            <!--            </div>-->
-
+            {% if permissions|has_perm("Update") %}
             <!-- Actions -->
             <div class="md:col-span-2 flex items-center gap-2 pt-2">
                 <button
@@ -196,9 +193,9 @@
                     Reset
                 </button>
             </div>
+            {% endif %}
         </form>
     </div>
-    {% endif %}
     <!-- Probe Configs Table -->
     <div class="overflow-x-auto rounded-lg border border-base bg-cards mt-8 mb-8">
         <div class="flex flex-col justify-center items-center py-4">

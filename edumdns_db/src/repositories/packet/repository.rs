@@ -1,11 +1,8 @@
 use crate::error::DbError;
 use crate::models::{GroupProbePermission, Packet, User};
-use crate::repositories::common::{
-    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
-    DbResultSingle, DbResultSinglePerm, Id, Permission,
-};
+use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResultMultiple, DbResultSingle, DbResultSinglePerm, Id, Permission, Permissions};
 use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSinglePacket};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::repositories::utilities::{validate_permissions, validate_user};
 use crate::schema;
@@ -125,8 +122,8 @@ impl DbReadOne<Id, Packet> for PgPacketRepository {
     }
 }
 
-impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
-    async fn read_many(&self, params: &SelectManyPackets) -> DbResultMultiple<Packet> {
+impl PgPacketRepository {
+    pub async fn read_many(&self, params: &SelectManyPackets) -> DbResultMultiple<Packet> {
         let mut conn = self.pg_pool.get().await?;
         let query = PgPacketRepository::build_select_many_query(params);
         let packets = query
@@ -137,11 +134,11 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
         Ok(packets)
     }
 
-    async fn read_many_auth(
+    pub async fn read_many_auth(
         &self,
         params: &SelectManyPackets,
         user_id: &Id,
-    ) -> DbResultMultiplePerm<Packet> {
+    ) -> DbResultMultiple<(Packet, Vec<Permission>)> {
         let mut conn = self.pg_pool.get().await?;
         let user_entry = user::table
             .find(user_id)
@@ -152,32 +149,36 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
         validate_user(&user_entry)?;
 
         if user_entry.admin {
-            let packets = self.read_many(params).await?;
-            return Ok(DbDataPerm::new(
-                packets,
-                (true, vec![GroupProbePermission::full()]),
-            ));
+            let packets = self
+                .read_many(params)
+                .await?
+                .into_iter()
+                .map(|p| (p, vec![Permission::Full]))
+                .collect::<Vec<_>>();
+            return Ok(packets);
         }
 
         let query = PgPacketRepository::build_select_many_query(params);
         let packets = query
             .inner_join(probe::table)
-            .inner_join(
-                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
-            )
-            .filter(
-                group_probe_permission::permission
-                    .eq(Permission::Read)
-                    .or(group_probe_permission::permission.eq(Permission::Full)),
-            )
+            .inner_join(group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)), )
             .inner_join(
                 group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
             )
             .filter(group_user::user_id.eq(user_id))
             .order_by(packet::id.asc())
-            .select(Packet::as_select())
-            .load::<Packet>(&mut conn)
-            .await?;
+            .select((Packet::as_select(), group_probe_permission::permission))
+            .load::<(Packet, Permission)>(&mut conn)
+            .await?
+            .into_iter()
+            .fold(HashMap::new(), |mut acc: HashMap<Packet, HashSet<Permission>>, (p, perm)| {
+                acc.entry(p).or_default().insert(perm);
+                acc
+            })
+            .into_iter()
+            .filter(|(p, perm)| perm.contains(&Permission::Full) || perm.contains(&Permission::Read))
+            .map(|(p, perm)| (p, perm.into_iter().collect::<Vec<_>>()))
+            .collect::<Vec<(Packet, Vec<Permission>)>>();
 
         let query = PgPacketRepository::build_select_many_query(params);
         let owned_packets = query
@@ -185,17 +186,18 @@ impl DbReadMany<SelectManyPackets, Packet> for PgPacketRepository {
             .filter(probe::owner_id.eq(user_id))
             .select(Packet::as_select())
             .load::<Packet>(&mut conn)
-            .await?;
+            .await?
+            .into_iter()
+            .map(|p| (p, Permission::web()))
+            .collect::<Vec<_>>();
 
-        let mut packets: HashSet<Packet> = HashSet::from_iter(packets);
+        let mut packets: HashSet<(Packet, Vec<Permission>)> = HashSet::from_iter(packets);
         packets.extend(owned_packets);
 
-        let packets = packets.into_iter().sorted_by_key(|p| p.id).collect::<Vec<_>>();
+        let packets = packets.into_iter().sorted_by_key(|(p, perm)| p.id).collect::<Vec<_>>();
 
-        Ok(DbDataPerm::new(
-            packets,
-            (false, vec![]),
-        ))
+        Ok(packets)
+
     }
 }
 

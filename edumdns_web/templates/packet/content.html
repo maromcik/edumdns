@@ -80,40 +80,40 @@
             {% for packet in packets %}
             <tr class="hover:bg-muted/5 transition-colors">
                 <td class="px-4 py-3 font-mono text-sm">
-                    <a href="/packet/{{ packet.id }}" class="text-primary hover:underline">
-                        {{ packet.id }}
+                    <a href="/packet/{{ packet.data.id }}" class="text-primary hover:underline">
+                        {{ packet.data.id }}
                     </a>
                 </td>
                 <td class="px-4 py-3 font-mono text-sm">
-                    <a href="/probe/{{ packet.probe_id }}" class="text-primary hover:underline">
-                        {{ packet.probe_id }}
+                    <a href="/probe/{{ packet.data.probe_id }}" class="text-primary hover:underline">
+                        {{ packet.data.probe_id }}
                     </a>
                 </td>
 
-                <td class="px-4 py-3 text-sm text-sat-l font-mono">{{ packet.src_mac }}</td>
-                <td class="px-4 py-3 text-sm text-sat-l font-mono">{{ packet.dst_mac }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l font-mono">{{ packet.data.src_mac }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l font-mono">{{ packet.data.dst_mac }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">
-                    <span class="font-mono">{{ packet.src_addr }}</span>
+                    <span class="font-mono">{{ packet.data.src_addr }}</span>
                 </td>
                 <td class="px-4 py-3 text-sm text-sat-l">
-                    <span class="font-mono">{{ packet.dst_addr }}</span>
+                    <span class="font-mono">{{ packet.data.dst_addr }}</span>
                 </td>
                 <td class="px-4 py-3 text-sm text-sat-l">
-                    <span class="font-mono">{{ packet.src_port }}</span>
+                    <span class="font-mono">{{ packet.data.src_port }}</span>
                 </td>
                 <td class="px-4 py-3 text-sm text-sat-l">
-                    <span class="font-mono">{{ packet.dst_port }}</span>
+                    <span class="font-mono">{{ packet.data.dst_port }}</span>
                 </td>
                 <td class="px-4 py-3 text-sm text-sat-l">
-                    <span class="font-mono">{{ packet.captured_at }}</span>
+                    <span class="font-mono">{{ packet.data.captured_at }}</span>
                 </td>
                 <td class="px-4 py-3 text-sm text-sat-l">
-                    <span class="font-mono">{{ packet.payload[:42] }}</span>
+                    <span class="font-mono">{{ packet.data.payload[:42] }}</span>
                 </td>
-                {% if permissions|has_perm("Delete") %}
+                {% if packet.permissions | has_perm("Delete") %}
                 <td class="px-4 py-3 text-sm text-sat-l">
                     <button
-                            hx-delete="/packet/{{ packet.id }}/delete?return_url=/packet?page={{ page_info.page }}"
+                            hx-delete="/packet/{{ packet.data.id }}/delete?return_url=/packet?page={{ page_info.page }}"
                             hx-target="#content-area"
                             hx-target-error="#content-area"
                             hx-push-url="/packet?page={{ page_info.page }}"

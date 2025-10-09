@@ -1,5 +1,5 @@
 use crate::models::Packet;
-use crate::repositories::common::{Id, Pagination};
+use crate::repositories::common::{Id, Pagination, Permission, Permissions};
 use crate::repositories::utilities::format_time;
 use diesel::{AsChangeset, Insertable};
 use edumdns_core::bincode_types::MacAddr;
@@ -141,6 +141,21 @@ impl PacketDisplay {
             dst_port: value.dst_port,
             payload: payload.read_content().trim().to_string(),
             captured_at: value.captured_at.map(format_time),
+        })
+    }
+}
+
+#[derive(Serialize)]
+pub struct PacketDisplayPermissions {
+    pub data: PacketDisplay,
+    pub permissions: Vec<Permission>
+}
+
+impl PacketDisplayPermissions {
+    pub fn from(value: Packet, permissions: Vec<Permission>) -> Result<PacketDisplayPermissions, CoreError> {
+        Ok(Self {
+            data: PacketDisplay::from(value)?,
+            permissions
         })
     }
 }

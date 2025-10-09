@@ -195,6 +195,23 @@ pub enum Permission {
     Create,
 }
 
+impl Permission {
+    pub fn web() -> Vec<Permission> {
+        vec![
+            Permission::Read,
+            Permission::Delete,
+            Permission::Update,
+            Permission::Create,
+        ]
+    }
+
+    pub fn admin() -> Vec<Permission> {
+        vec![
+            Permission::Full,
+        ]
+    }
+}
+
 impl Display for Permission {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {

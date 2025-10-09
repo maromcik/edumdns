@@ -13,7 +13,7 @@ use edumdns_db::repositories::common::{
 };
 use edumdns_db::repositories::device::models::SelectSingleDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
+use edumdns_db::repositories::packet::models::{PacketDisplay, PacketDisplayPermissions, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use std::collections::HashMap;
@@ -38,11 +38,10 @@ pub async fn get_packets(
     let packet_count = packet_repo.get_packet_count(params).await?;
     let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
     let packets_parsed = packets
-        .data
         .into_iter()
-        .map(PacketDisplay::from)
+        .map(|(p, perm)| PacketDisplayPermissions::from(p, perm))
         .filter_map(Result::ok)
-        .collect::<Vec<PacketDisplay>>();
+        .collect::<Vec<PacketDisplayPermissions>>();
 
     let template_name = get_template_name(&request, "packet");
     let env = state.jinja.acquire_env()?;
@@ -50,7 +49,6 @@ pub async fn get_packets(
     let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(PacketTemplate {
         user,
-        permissions: packets.permissions,
         packets: &packets_parsed,
         page_info: PageInfo::new(page, total_pages),
         filters: query,

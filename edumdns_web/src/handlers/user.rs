@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::error::{WebError, WebErrorKind};
 use crate::forms::user::{
     UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm,
@@ -13,12 +14,13 @@ use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
-use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id};
+use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE};
 use edumdns_db::repositories::user::models::{
     SelectManyUsers, UserCreate, UserDisplay, UserUpdate, UserUpdatePassword,
 };
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_db::repositories::utilities::validate_password;
+use crate::templates::PageInfo;
 
 #[get("")]
 pub async fn get_users(
@@ -30,18 +32,25 @@ pub async fn get_users(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
+    let page = query.page.unwrap_or(1);
     let query = query.into_inner();
     let params = SelectManyUsers::from(query.clone());
     let user = user_repo.read_one(&user_id).await?;
     let users = user_repo.read_many_auth(&params, &user_id).await?;
 
+    let user_count = user_repo.get_user_count(params).await?;
+    let total_pages = (user_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
+
     let template_name = get_template_name(&request, "user");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
+    let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(UserTemplate {
         user,
         users: users.data,
         filters: query,
+        page_info: PageInfo::new(page, total_pages),
+        query_string,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -105,6 +114,7 @@ pub async fn delete_user(
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
     path: web::Path<(Id,)>,
+    query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let admin_id = parse_user_id(&i)?;
@@ -115,10 +125,15 @@ pub async fn delete_user(
         ));
     }
 
+    let return_url = query
+        .get("return_url")
+        .map(String::as_str)
+        .unwrap_or("/user");
+
     let _ = user_repo.delete_auth(&path.0, &admin_id).await?;
 
     Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, "/user"))
+        .insert_header((LOCATION, return_url))
         .finish())
 }
 

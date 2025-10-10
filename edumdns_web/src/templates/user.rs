@@ -1,6 +1,6 @@
 use crate::forms::user::UserQuery;
+use crate::templates::PageInfo;
 use edumdns_db::models::{Group, User};
-use edumdns_db::repositories::common::{Id, Permissions};
 use edumdns_db::repositories::user::models::UserDisplay;
 use edumdns_db::repositories::utilities::WEAK_PASSWORD_MESSAGE;
 use serde::Serialize;
@@ -10,6 +10,8 @@ pub struct UserTemplate {
     pub users: Vec<User>,
     pub user: UserDisplay,
     pub filters: UserQuery,
+    pub page_info: PageInfo,
+    pub query_string: String,
 }
 
 #[derive(Serialize)]

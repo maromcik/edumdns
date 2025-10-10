@@ -86,17 +86,12 @@
                 <span class="font-mono text-code"><code>{{ probe.id }}</code></span>
             </div>
 
-            <!-- Adopted -->
+            <!-- Owner ID -->
             <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Adopted</span>
-                <span class="font-mono text-sat-xl">
-          {% if probe.adopted %}
-            <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
-          {% else %}
-            <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
-          {% endif %}
-        </span>
+                <span class="text-xs uppercase tracking-wide text-sat-m">Owner</span>
+                <span class="font-mono text-code"><a href="/user/{{ probe.owner_id }}">{{ probe.owner_id }}</a></span>
             </div>
+
 
             <!-- MAC -->
             <div class="flex flex-col">
@@ -110,6 +105,7 @@
                 <span class="font-mono text-code"><code>{{ probe.ip }}</code></span>
             </div>
 
+
             <!-- TIME -->
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">First connected at</span>
@@ -119,6 +115,18 @@
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">Last connected at</span>
                 <span class="text-sat-l">{{ probe.last_connected_at }}</span>
+            </div>
+
+            <!-- Adopted -->
+            <div class="flex flex-col">
+                <span class="text-xs uppercase tracking-wide text-sat-m">Adopted</span>
+                <span class="font-mono text-sat-xl">
+          {% if probe.adopted %}
+            <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
+          {% else %}
+            <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
+          {% endif %}
+        </span>
             </div>
 
         </div>
@@ -151,7 +159,7 @@
 
             <!-- owner -->
             <div class="flex flex-col">
-                <label for="owner_id" class="text-xs uppercase tracking-wide text-sat-m">owner_id</label>
+                <label for="owner_id" class="text-xs uppercase tracking-wide text-sat-m">Owner</label>
                 <input
                         id="owner_id"
                         name="owner_id"
@@ -160,7 +168,7 @@
                         placeholder="{{ probe.owner_id }}"
                         class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
                 />
-                <p class="text-xs text-sat-m mt-1">Optional owner_id</p>
+                <p class="text-xs text-sat-m mt-1">Optional Owner of the probe</p>
             </div>
 
             <!-- pre_shared_key -->

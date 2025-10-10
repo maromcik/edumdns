@@ -12,14 +12,16 @@ use crate::repositories::user::models::{
 use crate::repositories::utilities::{
     generate_salt, hash_password, validate_admin, validate_user, verify_password_hash,
 };
-use crate::schema::{group, group_user, user};
+use crate::schema::user::BoxedQuery;
+use crate::schema::{device, group, group_user, user};
+use diesel::pg::Pg;
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgTextExpressionMethods, QueryDsl,
     SelectableHelper,
 };
-use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
+use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 
 #[derive(Clone)]
@@ -30,6 +32,40 @@ pub struct PgUserRepository {
 impl PgUserRepository {
     pub fn new(pg_pool: Pool<AsyncPgConnection>) -> Self {
         Self { pg_pool }
+    }
+
+    pub fn build_select_many_query<'a>(params: &'a SelectManyUsers) -> BoxedQuery<'a, Pg> {
+        let mut query = user::table.into_boxed();
+
+        if let Some(id) = &params.id {
+            query = query.filter(user::id.eq(id));
+        }
+
+        if let Some(n) = &params.name {
+            query = query.filter(user::name.ilike(format!("%{n}%")))
+        }
+
+        if let Some(s) = &params.surname {
+            query = query.filter(user::surname.ilike(format!("%{s}%")))
+        }
+
+        if let Some(e) = &params.email {
+            query = query.filter(user::email.ilike(format!("%{e}%")))
+        }
+
+        if let Some(a) = &params.admin {
+            query = query.filter(user::admin.eq(a));
+        }
+
+        if let Some(d) = &params.disabled {
+            query = query.filter(user::disabled.eq(d));
+        }
+
+        if let Some(pagination) = params.pagination {
+            query = query.limit(pagination.limit.unwrap_or(i64::MAX));
+            query = query.offset(pagination.offset.unwrap_or(0));
+        }
+        query
     }
 
     pub async fn login(&self, params: &UserLogin) -> DbResultSingle<User> {
@@ -48,6 +84,16 @@ impl PgUserRepository {
             ));
         }
         PgUserRepository::verify_password(u, &params.password)
+    }
+
+    pub async fn get_user_count(&self, mut params: SelectManyUsers) -> DbResultSingle<i64> {
+        let mut conn = self.pg_pool.get().await?;
+        params.pagination = None;
+        Self::build_select_many_query(&params)
+            .count()
+            .get_result(&mut conn)
+            .await
+            .map_err(DbError::from)
     }
 
     pub fn verify_password(u: User, given_password: &str) -> DbResultSingle<User> {
@@ -198,36 +244,7 @@ impl DbReadOne<Id, UserDisplay> for PgUserRepository {
 
 impl DbReadMany<SelectManyUsers, User> for PgUserRepository {
     async fn read_many(&self, params: &SelectManyUsers) -> DbResultMultiple<User> {
-        let mut query = user::table.into_boxed();
-
-        if let Some(id) = &params.id {
-            query = query.filter(user::id.eq(id));
-        }
-
-        if let Some(n) = &params.name {
-            query = query.filter(user::name.eq(n));
-        }
-
-        if let Some(s) = &params.surname {
-            query = query.filter(user::surname.eq(s));
-        }
-
-        if let Some(e) = &params.email {
-            query = query.filter(user::email.eq(e));
-        }
-
-        if let Some(a) = &params.admin {
-            query = query.filter(user::admin.eq(a));
-        }
-
-        if let Some(d) = &params.disabled {
-            query = query.filter(user::disabled.eq(d));
-        }
-
-        if let Some(pagination) = params.pagination {
-            query = query.limit(pagination.limit.unwrap_or(i64::MAX));
-            query = query.offset(pagination.offset.unwrap_or(0));
-        }
+        let query = Self::build_select_many_query(params);
 
         let mut conn = self.pg_pool.get().await?;
         let users = query.order_by(user::id).load::<User>(&mut conn).await?;

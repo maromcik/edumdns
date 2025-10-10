@@ -89,7 +89,7 @@
             <!-- Owner ID -->
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">Owner</span>
-                <span class="font-mono text-code"><a href="/user/{{ probe.owner_id }}">{{ probe.owner_id }}</a></span>
+                <span class="font-mono text-code">{% if probe.owner_id is none%}<span class="text-muted-foreground text-sat-m">—</span>{% else %}<a href="/user/{{ probe.owner_id }}">{{ probe.owner_id }}</a>{% endif %}</span>
             </div>
 
 

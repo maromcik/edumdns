@@ -9,23 +9,25 @@ use crate::handlers::helpers::request_packet_transmit_helper;
 use crate::handlers::utilities::{
     get_template_name, parse_user_id, validate_has_groups, verify_transmit_request_client_ap,
 };
-use crate::templates::PageInfo;
 use crate::templates::device::{
     DeviceCreateTemplate, DeviceDetailTemplate, DeviceTemplate, DeviceTransmitTemplate,
 };
+use crate::templates::PageInfo;
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
+use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
 use edumdns_core::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
 use edumdns_core::error::CoreError;
 use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE,
-    Pagination,
+    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination,
+    PAGINATION_ELEMENTS_PER_PAGE,
 };
-use edumdns_db::repositories::device::models::{CreateDevice, DeviceDisplay, SelectManyDevices};
+use edumdns_db::repositories::device::models::{
+    CreateDevice, DeviceDisplay, SelectManyDevices,
+};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
@@ -57,7 +59,7 @@ pub async fn get_devices(
         .map(|(p, d)| (p, DeviceDisplay::from(d)))
         .collect();
 
-    let device_count = device_repo.get_device_count(params, &user_id).await?;
+    let device_count = device_repo.get_device_count(params).await?;
     let total_pages = (device_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
 
     let template_name = get_template_name(&request, "device");
@@ -115,7 +117,7 @@ pub async fn get_device(
         .read_packet_transmit_requests(&device.data.id)
         .await?;
 
-    let packet_count = packet_repo.get_packet_count(params, &user_id).await?;
+    let packet_count = packet_repo.get_packet_count(params).await?;
     let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
     let query_string = request.uri().query().unwrap_or("").to_string();
     let template_name = get_template_name(&request, "device/detail");
@@ -186,7 +188,9 @@ pub async fn request_custom_packet_transmit(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
-    let device = device_repo.read_one_auth(&path.0, &user_id).await?;
+    let device = device_repo
+        .read_one_auth(&path.0, &user_id)
+        .await?;
 
     request_packet_transmit_helper(
         device_repo.clone(),
@@ -216,13 +220,13 @@ pub async fn delete_request_packet_transmit(
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
 
-    let request = device_repo
-        .read_packet_transmit_request_by_user(&device_id, &user_id)
-        .await?;
+    let request = device_repo.read_packet_transmit_request_by_user(&device_id, &user_id).await?;
 
     let device = match request.first() {
-        None => device_repo.read_one_auth(&device_id, &user_id).await?.data,
-        Some(_) => device_repo.read_one(&device_id).await?,
+        None => device_repo
+                .read_one_auth(&device_id, &user_id)
+                .await?.data,
+        Some(_) => device_repo.read_one(&device_id).await?
     };
 
     let request = device_repo
@@ -275,7 +279,9 @@ pub async fn request_packet_transmit(
     let user_id = parse_user_id(&i)?;
     let device = device_repo.read_one(&path.0).await?;
     if !device.published {
-        device_repo.read_one_auth(&path.0, &user_id).await?;
+        device_repo
+            .read_one_auth(&path.0, &user_id)
+            .await?;
     }
     let target_ip = request
         .connection_info()
@@ -353,7 +359,9 @@ pub async fn get_device_for_transmit(
     let device = device_repo.read_one(&path.0).await?;
     let user_id = parse_user_id(&i)?;
     if !device.published {
-        device_repo.read_one_auth(&path.0, &user_id).await?;
+        device_repo
+            .read_one_auth(&path.0, &user_id)
+            .await?;
     }
     let target_ip = request
         .connection_info()
@@ -366,9 +374,7 @@ pub async fn get_device_for_transmit(
 
     let packet_transmit_request = device_repo
         .read_packet_transmit_request_by_user(&device.id, &user_id)
-        .await?
-        .into_iter()
-        .next();
+        .await?.into_iter().next();
 
     let template_name = get_template_name(&request, "device/public");
     let env = state.jinja.acquire_env()?;

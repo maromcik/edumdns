@@ -1,10 +1,10 @@
+use std::collections::HashMap;
 use crate::error::{WebError, WebErrorKind};
 use crate::forms::user::{
     UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm,
 };
 use crate::handlers::utilities::{get_template_name, parse_user_id};
 use crate::handlers::{BulkAddEntityForm, SearchEntityQuery};
-use crate::templates::PageInfo;
 use crate::templates::user::{
     UserDetailGroupsTemplate, UserDetailTemplate, UserManagePasswordTemplate,
     UserManageProfileTemplate, UserManageProfileUserFormTemplate, UserTemplate,
@@ -14,15 +14,13 @@ use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
-use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE,
-};
+use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE};
 use edumdns_db::repositories::user::models::{
     SelectManyUsers, UserCreate, UserDisplay, UserUpdate, UserUpdatePassword,
 };
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_db::repositories::utilities::validate_password;
-use std::collections::HashMap;
+use crate::templates::PageInfo;
 
 #[get("")]
 pub async fn get_users(

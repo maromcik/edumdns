@@ -24,5 +24,3 @@ alter table packet_transmit_request add column "user_id" bigint not null referen
 alter table probe add column "pre_shared_key" text;
 
 alter table device drop column "user_id";
-
-select probe_id from packet where probe_id = '0199d221-e935-7ad1-b6d1-e98b72a6a0af';

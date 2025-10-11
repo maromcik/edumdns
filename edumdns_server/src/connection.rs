@@ -91,9 +91,7 @@ impl ConnectionManager {
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
                         tx,
-                        NetworkAppPacket::Status(
-                            NetworkStatusPacket::ProbeInvalidConnectionInitiation(msg.to_string()),
-                        ),
+                        NetworkAppPacket::Status(NetworkStatusPacket::ProbeInvalidConnectionInitiation(msg.to_string())),
                     )
                 })
                 .await??;
@@ -112,9 +110,7 @@ impl ConnectionManager {
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
                         tx,
-                        NetworkAppPacket::Status(
-                            NetworkStatusPacket::ProbeInvalidConnectionInitiation(msg.to_string()),
-                        ),
+                        NetworkAppPacket::Status(NetworkStatusPacket::ProbeInvalidConnectionInitiation(msg.to_string())),
                     )
                 })
                 .await??;
@@ -151,10 +147,7 @@ impl ConnectionManager {
         let NetworkAppPacket::Status(NetworkStatusPacket::ProbeRequestConfig(config_metadata)) =
             packet
         else {
-            return error(
-                Some(hello_metadata.id),
-                "expected ProbeRequestConfig packet",
-            );
+            return error(Some(hello_metadata.id),"expected ProbeRequestConfig packet");
         };
 
         if config_metadata != hello_metadata {

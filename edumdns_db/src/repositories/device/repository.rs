@@ -1,3 +1,5 @@
+use diesel::BoolExpressionMethods;
+use itertools;
 use crate::error::DbError;
 use crate::models::{Device, GroupProbePermission, PacketTransmitRequest, Probe, User};
 use crate::repositories::common::{
@@ -15,7 +17,6 @@ use crate::schema::device::BoxedQuery;
 use crate::schema::{
     device, group_probe_permission, group_user, packet, packet_transmit_request, probe, user,
 };
-use diesel::BoolExpressionMethods;
 use diesel::pg::Pg;
 use diesel::{
     ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl,
@@ -25,9 +26,8 @@ use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
-use itertools;
-use itertools::Itertools;
 use std::collections::HashSet;
+use itertools::Itertools;
 use time::OffsetDateTime;
 
 #[derive(Clone)]
@@ -131,39 +131,14 @@ impl PgDeviceRepository {
             .map_err(DbError::from)
     }
 
-    pub async fn get_device_count(
-        &self,
-        mut params: SelectManyDevices,
-        user_id: &Id,
-    ) -> DbResultSingle<i64> {
+    pub async fn get_device_count(&self, mut params: SelectManyDevices) -> DbResultSingle<i64> {
         let mut conn = self.pg_pool.get().await?;
         params.pagination = None;
-        let shared = Self::build_select_many_query(&params)
-            .inner_join(probe::table)
-            .inner_join(
-                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
-            )
-            .filter(
-                group_probe_permission::permission
-                    .eq(Permission::Read)
-                    .or(group_probe_permission::permission.eq(Permission::Full)),
-            )
-            .inner_join(
-                group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
-            )
-            .filter(group_user::user_id.eq(user_id))
+        Self::build_select_many_query(&params)
             .count()
-            .get_result::<i64>(&mut conn)
-            .await?;
-
-        let owned = Self::build_select_many_query(&params)
-            .inner_join(probe::table)
-            .filter(probe::owner_id.eq(user_id))
-            .count()
-            .get_result::<i64>(&mut conn)
-            .await?;
-
-        Ok(shared + owned)
+            .get_result(&mut conn)
+            .await
+            .map_err(DbError::from)
     }
 
     pub async fn update_password(&self, params: &DeviceUpdatePassword) -> DbResultSingle<Device> {
@@ -309,7 +284,11 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
                 group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
             )
             .filter(group_user::user_id.eq(user_id))
-            .select((Probe::as_select(), Device::as_select()))
+            .order_by(device::id.asc())
+            .select((
+                Probe::as_select(),
+                Device::as_select(),
+            ))
             .load::<(Probe, Device)>(&mut conn)
             .await?;
 
@@ -317,19 +296,22 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
         let owned_devices = query
             .inner_join(probe::table)
             .filter(probe::owner_id.eq(user_id))
-            .select((Probe::as_select(), Device::as_select()))
+            .select((
+                Probe::as_select(),
+                Device::as_select(),
+            ))
             .load::<(Probe, Device)>(&mut conn)
             .await?;
 
         let mut devices: HashSet<(Probe, Device)> = HashSet::from_iter(devices);
         devices.extend(owned_devices);
 
-        let devices = devices
-            .into_iter()
-            .sorted_by_key(|(_, d)| d.id)
-            .collect::<Vec<_>>();
+        let devices = devices.into_iter().sorted_by_key(|(_, d) | d.id).collect::<Vec<_>>();
 
-        Ok(DbDataPerm::new(devices, (false, vec![])))
+        Ok(DbDataPerm::new(
+            devices,
+            (false, vec![]),
+        ))
     }
 }
 
@@ -441,6 +423,7 @@ impl DbCreate<CreatePacketTransmitRequest, PacketTransmitRequest> for PgDeviceRe
         data: &CreatePacketTransmitRequest,
         user_id: &Id,
     ) -> DbResultSingle<PacketTransmitRequest> {
+
         self.create(data).await
     }
 }

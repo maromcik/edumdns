@@ -60,7 +60,7 @@ pub async fn get_probes(
         .map(|p| ProbeDisplay::from(p))
         .collect();
 
-    let probe_count = probe_repo.get_probe_count(params, &user_id).await?;
+    let probe_count = probe_repo.get_probe_count(params).await?;
     let total_pages = (probe_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
 
     let template_name = get_template_name(&request, "probe");
@@ -125,7 +125,7 @@ pub async fn get_probe(
     let mut params = SelectManyDevices::from(query.clone());
     params.probe_id = Some(probe_id);
     let devices = device_repo.read_many(&params).await?;
-    let device_count = device_repo.get_device_count(params, &user_id).await?;
+    let device_count = device_repo.get_device_count(params).await?;
     let total_pages = (device_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
 
     let template_name = get_template_name(&request, "probe/detail");
@@ -345,16 +345,11 @@ pub async fn delete_probe(
         .unwrap_or("/probe");
 
     let uuid = session.get::<edumdns_core::bincode_types::Uuid>("session_id")?;
-    let _ = state
-        .command_channel
-        .send(AppPacket::Local(LocalAppPacket::Status(
-            LocalStatusPacket::OperationUpdateToWs {
-                probe_id: edumdns_core::bincode_types::Uuid(probe_id),
-                session_id: uuid,
-                message: format!("Deleting probe {} in the background.", probe_id),
-            },
-        )))
-        .await;
+        let _ = state.command_channel.send(AppPacket::Local(LocalAppPacket::Status(LocalStatusPacket::OperationUpdateToWs {
+            probe_id: edumdns_core::bincode_types::Uuid(probe_id),
+            session_id: uuid,
+            message: format!("Deleting probe {} in the background.", probe_id),
+        }))).await;
     probe_repo.delete_auth(&probe_id, &user_id).await?;
     reconnect_probe(state.command_channel.clone(), probe_id, session).await?;
     Ok(HttpResponse::SeeOther()

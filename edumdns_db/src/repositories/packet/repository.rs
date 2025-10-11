@@ -1,27 +1,18 @@
 use crate::error::DbError;
-use crate::models::{Packet, User};
-use crate::repositories::common::{
-    DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResultMultiple, DbResultSingle,
-    DbResultSinglePerm, Id, Permission,
-};
+use crate::models::{GroupProbePermission, Packet, User};
+use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResultMultiple, DbResultSingle, DbResultSinglePerm, Id, Permission, Permissions};
 use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSinglePacket};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::repositories::utilities::{validate_permissions, validate_user};
 use crate::schema;
-use crate::schema::packet::{BoxedQuery, SqlType};
+use crate::schema::packet::BoxedQuery;
 use crate::schema::{group_probe_permission, group_user, probe, user};
-use diesel::dsl::Nullable;
-use diesel::internal::table_macro::{Join, JoinOn};
 use diesel::pg::Pg;
-use diesel::query_builder::{BoxedSelectStatement, FromClause};
-use diesel::{
-    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, QueryDsl,
-    SelectableHelper,
-};
+use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, QueryDsl, SelectableHelper};
+use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
-use diesel_async::pooled_connection::deadpool::Pool;
 use itertools::Itertools;
 use schema::packet;
 
@@ -77,39 +68,14 @@ impl PgPacketRepository {
         query
     }
 
-    pub async fn get_packet_count(
-        &self,
-        mut params: SelectManyPackets,
-        user_id: &Id,
-    ) -> DbResultSingle<i64> {
+    pub async fn get_packet_count(&self, mut params: SelectManyPackets) -> DbResultSingle<i64> {
         let mut conn = self.pg_pool.get().await?;
         params.pagination = None;
-        let shared = Self::build_select_many_query(&params)
-            .inner_join(probe::table)
-            .inner_join(
-                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
-            )
-            .filter(
-                group_probe_permission::permission
-                    .eq(Permission::Read)
-                    .or(group_probe_permission::permission.eq(Permission::Full)),
-            )
-            .inner_join(
-                group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
-            )
-            .filter(group_user::user_id.eq(user_id))
+        Self::build_select_many_query(&params)
             .count()
-            .get_result::<i64>(&mut conn)
-            .await?;
-
-        let owned = Self::build_select_many_query(&params)
-            .inner_join(probe::table)
-            .filter(probe::owner_id.eq(user_id))
-            .count()
-            .get_result::<i64>(&mut conn)
-            .await?;
-
-        Ok(shared + owned)
+            .get_result(&mut conn)
+            .await
+            .map_err(DbError::from)
     }
 }
 
@@ -183,16 +149,16 @@ impl PgPacketRepository {
         validate_user(&user_entry)?;
 
         if user_entry.admin {
-            let packets = self.read_many(params).await?;
+            let packets = self
+                .read_many(params)
+                .await?;
             return Ok(packets);
         }
 
         let query = PgPacketRepository::build_select_many_query(params);
         let packets = query
             .inner_join(probe::table)
-            .inner_join(
-                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
-            )
+            .inner_join(group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)), )
             .filter(
                 group_probe_permission::permission
                     .eq(Permission::Read)
@@ -216,12 +182,11 @@ impl PgPacketRepository {
 
         let mut packets: HashSet<Packet> = HashSet::from_iter(packets);
         packets.extend(owned_packets);
-        let packets = packets
-            .into_iter()
-            .sorted_by_key(|p| p.id)
-            .collect::<Vec<_>>();
+
+        let packets = packets.into_iter().sorted_by_key(|p| p.id).collect::<Vec<_>>();
 
         Ok(packets)
+
     }
 }
 

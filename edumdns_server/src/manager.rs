@@ -184,14 +184,7 @@ impl PacketManager {
                     probe_id,
                     session_id,
                     message,
-                } => {
-                    self.send_response_to_ws(
-                        probe_id,
-                        session_id,
-                        ProbeResponse::new_ok_with_value(&message),
-                    )
-                    .await
-                }
+                } => self.send_response_to_ws(probe_id, session_id, ProbeResponse::new_ok_with_value(&message)).await,
             },
         }
     }

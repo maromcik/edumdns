@@ -4,7 +4,7 @@ use bincode::{Decode, Encode};
 use bytes::{Bytes, BytesMut};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
-use log::warn;
+use log::{warn};
 use rustls::{ClientConfig, ServerConfig};
 use rustls_pki_types::ServerName;
 use std::net::SocketAddr;
@@ -49,19 +49,11 @@ impl TcpConnectionMessage {
     }
 }
 
+
 pub struct TcpConnectionActorChannels {
-    pub command_channel: (
-        mpsc::Sender<TcpConnectionMessage>,
-        mpsc::Receiver<TcpConnectionMessage>,
-    ),
-    pub send_channel: (
-        mpsc::Sender<TcpConnectionMessage>,
-        mpsc::Receiver<TcpConnectionMessage>,
-    ),
-    pub recv_channel: (
-        mpsc::Sender<TcpConnectionMessage>,
-        mpsc::Receiver<TcpConnectionMessage>,
-    ),
+    pub command_channel: (mpsc::Sender<TcpConnectionMessage>, mpsc::Receiver<TcpConnectionMessage>),
+    pub send_channel: (mpsc::Sender<TcpConnectionMessage>, mpsc::Receiver<TcpConnectionMessage>),
+    pub recv_channel: (mpsc::Sender<TcpConnectionMessage>, mpsc::Receiver<TcpConnectionMessage>)
 }
 
 impl TcpConnectionActorChannels {
@@ -153,22 +145,27 @@ async fn run_message_multiplexer(
     Ok(())
 }
 
+
+
 #[derive(Clone)]
 pub struct TcpConnectionHandle {
     pub sender: mpsc::Sender<TcpConnectionMessage>,
 }
 
 impl TcpConnectionHandle {
-    pub fn spawn_actors<S>(
-        receiver: mpsc::Receiver<TcpConnectionMessage>,
-        send_channel: mpsc::Sender<TcpConnectionMessage>,
-        recv_channel: mpsc::Sender<TcpConnectionMessage>,
-        actors: (TcpConnectionSender<S>, TcpConnectionReceiver<S>),
-    ) where
-        S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+
+    pub fn spawn_actors<S>(receiver: mpsc::Receiver<TcpConnectionMessage>,
+                              send_channel: mpsc::Sender<TcpConnectionMessage>,
+                              recv_channel: mpsc::Sender<TcpConnectionMessage>,
+    actors: (TcpConnectionSender<S>, TcpConnectionReceiver<S>))
+    where
+        S: AsyncRead + AsyncWrite + Unpin + Send + 'static
+
     {
+
         tokio::spawn(async move {
-            if let Err(e) = run_message_multiplexer(receiver, send_channel, recv_channel).await {
+            if let Err(e) = run_message_multiplexer(receiver, send_channel, recv_channel).await
+            {
                 warn!("I/O message multiplexer failed: {e}");
             }
         });
@@ -197,16 +194,9 @@ impl TcpConnectionHandle {
             global_timeout,
         )?;
 
-        Self::spawn_actors(
-            channels.command_channel.1,
-            channels.send_channel.0,
-            channels.recv_channel.0,
-            actors,
-        );
+        Self::spawn_actors(channels.command_channel.1, channels.send_channel.0, channels.recv_channel.0, actors);
 
-        Ok(Self {
-            sender: channels.command_channel.0,
-        })
+        Ok(Self { sender: channels.command_channel.0 })
     }
 
     /// Unchanged public API: connect (plain TCP)
@@ -226,16 +216,9 @@ impl TcpConnectionHandle {
         )
         .await?;
 
-        Self::spawn_actors(
-            channels.command_channel.1,
-            channels.send_channel.0,
-            channels.recv_channel.0,
-            actors,
-        );
+        Self::spawn_actors(channels.command_channel.1, channels.send_channel.0, channels.recv_channel.0, actors);
 
-        Ok(Self {
-            sender: channels.command_channel.0,
-        })
+        Ok(Self { sender: channels.command_channel.0 })
     }
 
     /// New optional helper: create a connection handle from an already-established TcpStream,
@@ -258,16 +241,9 @@ impl TcpConnectionHandle {
         )
         .await?;
 
-        Self::spawn_actors(
-            channels.command_channel.1,
-            channels.send_channel.0,
-            channels.recv_channel.0,
-            actors,
-        );
+        Self::spawn_actors(channels.command_channel.1, channels.send_channel.0, channels.recv_channel.0, actors);
 
-        Ok(Self {
-            sender: channels.command_channel.0,
-        })
+        Ok(Self { sender: channels.command_channel.0 })
     }
 
     pub async fn stream_to_framed_tls_server(
@@ -286,16 +262,9 @@ impl TcpConnectionHandle {
         )
         .await?;
 
-        Self::spawn_actors(
-            channels.command_channel.1,
-            channels.send_channel.0,
-            channels.recv_channel.0,
-            actors,
-        );
+        Self::spawn_actors(channels.command_channel.1, channels.send_channel.0, channels.recv_channel.0, actors);
 
-        Ok(Self {
-            sender: channels.command_channel.0,
-        })
+        Ok(Self { sender: channels.command_channel.0 })
     }
 
     /// New optional helper: connect and then upgrade the stream with rustls.
@@ -319,16 +288,9 @@ impl TcpConnectionHandle {
         )
         .await?;
 
-        Self::spawn_actors(
-            channels.command_channel.1,
-            channels.send_channel.0,
-            channels.recv_channel.0,
-            actors,
-        );
+        Self::spawn_actors(channels.command_channel.1, channels.send_channel.0, channels.recv_channel.0, actors);
 
-        Ok(Self {
-            sender: channels.command_channel.0,
-        })
+        Ok(Self { sender: channels.command_channel.0 })
     }
 
     pub async fn send_message_with_response<T>(

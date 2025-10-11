@@ -19,9 +19,9 @@ use diesel::{
     BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgTextExpressionMethods, QueryDsl,
     SelectableHelper,
 };
-use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
+use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 
 #[derive(Clone)]

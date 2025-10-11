@@ -206,7 +206,9 @@ impl Permission {
     }
 
     pub fn admin() -> Vec<Permission> {
-        vec![Permission::Full]
+        vec![
+            Permission::Full,
+        ]
     }
 }
 

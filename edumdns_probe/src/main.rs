@@ -1,6 +1,4 @@
-use crate::connection::{
-    ConnectionInfo, ConnectionLimits, ConnectionManager, ReceivePacketTargets,
-};
+use crate::connection::{ConnectionInfo, ConnectionLimits, ConnectionManager, ReceivePacketTargets};
 use crate::error::{ProbeError, ProbeErrorKind};
 use crate::probe::ProbeCapture;
 use clap::Parser;
@@ -92,22 +90,26 @@ async fn main() -> Result<(), ProbeError> {
         ip: bind_ip.parse::<IpAddr>()?,
         mac: determine_mac(&bind_ip)?,
     };
-
+    
     let connection_info = ConnectionInfo {
         server_connection_string: format!("{}:{}", server_host, server_port),
         bind_ip: format!("{}:{}", bind_ip, bind_port),
         domain: server_domain,
-        pre_shared_key,
+        pre_shared_key
     };
-
+    
     let connection_limits = ConnectionLimits {
         max_retries,
         retry_interval,
         global_timeout,
     };
 
-    let mut connection_manager =
-        ConnectionManager::new(probe_metadata.clone(), connection_info, connection_limits).await?;
+    let mut connection_manager = ConnectionManager::new(
+        probe_metadata.clone(),
+        connection_info,
+        connection_limits,
+    )
+    .await?;
 
     let mut config = connection_manager.connection_init_probe().await?;
     let mut session_id = Some(Uuid(uuid::Uuid::nil()));

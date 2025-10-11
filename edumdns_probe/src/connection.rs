@@ -98,10 +98,8 @@ impl ConnectionManager {
             ProbeErrorKind::InvalidConnectionInitiation,
             "Invalid connection initiation",
         ));
-        let hello_packet = NetworkAppPacket::Status(NetworkStatusPacket::ProbeHello(
-            self.probe_metadata.clone(),
-            self.conn_info.pre_shared_key.clone(),
-        ));
+        let hello_packet =
+            NetworkAppPacket::Status(NetworkStatusPacket::ProbeHello(self.probe_metadata.clone(), self.conn_info.pre_shared_key.clone()));
 
         self.handle
             .send_message_with_response(|tx| TcpConnectionMessage::send_packet(tx, hello_packet))
@@ -115,10 +113,7 @@ impl ConnectionManager {
             return Box::pin(self.reconnect()).await;
         }
 
-        if let NetworkAppPacket::Status(NetworkStatusPacket::ProbeInvalidConnectionInitiation(
-            error,
-        )) = packet
-        {
+        if let NetworkAppPacket::Status(NetworkStatusPacket::ProbeInvalidConnectionInitiation(error)) = packet {
             warn!("Invalid connection initiation from server: {}", error);
             sleep(self.conn_limits.retry_interval).await;
             return Box::pin(self.reconnect()).await;
@@ -153,7 +148,10 @@ impl ConnectionManager {
         let packet = self
             .handle
             .send_message_with_response(|tx| {
-                TcpConnectionMessage::receive_packet(tx, Some(self.conn_limits.global_timeout))
+                TcpConnectionMessage::receive_packet(
+                    tx,
+                    Some(self.conn_limits.global_timeout),
+                )
             })
             .await??;
         let Some(app_packet) = packet else {

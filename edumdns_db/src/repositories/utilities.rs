@@ -2,9 +2,9 @@ use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::{GroupProbePermission, Probe, User};
 use crate::repositories::MIN_PASS_LEN;
 use crate::repositories::common::{DbResult, Id, Permission};
+use crate::schema::{group_probe_permission, probe};
 use crate::schema::group_user;
 use crate::schema::user;
-use crate::schema::{group_probe_permission, probe};
 use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -57,6 +57,7 @@ pub async fn validate_permissions(
     if user_entry.admin {
         return Ok((true, vec![GroupProbePermission::full()]));
     }
+    
 
     let permissions = group_user::table
         .filter(group_user::user_id.eq(user_id))

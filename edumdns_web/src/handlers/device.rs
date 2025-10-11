@@ -9,24 +9,24 @@ use crate::handlers::helpers::request_packet_transmit_helper;
 use crate::handlers::utilities::{
     get_template_name, parse_user_id, validate_has_groups, verify_transmit_request_client_ap,
 };
-use crate::templates::PageInfo;
 use crate::templates::device::{
     DeviceCreateTemplate, DeviceDetailTemplate, DeviceTemplate, DeviceTransmitTemplate,
 };
+use crate::templates::PageInfo;
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
+use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
 use edumdns_core::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
 use edumdns_core::error::CoreError;
 use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE,
-    Pagination,
+    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, Pagination,
+    PAGINATION_ELEMENTS_PER_PAGE,
 };
 use edumdns_db::repositories::device::models::{
-    CreateDevice, DeviceDisplay, SelectManyDevices, UpdateDevice,
+    CreateDevice, DeviceDisplay, SelectManyDevices,
 };
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
@@ -187,13 +187,15 @@ pub async fn request_custom_packet_transmit(
     form: web::Form<DeviceCustomPacketTransmitRequest>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
     let device = device_repo
-        .read_one_auth(&path.0, &parse_user_id(&i)?)
+        .read_one_auth(&path.0, &user_id)
         .await?;
 
     request_packet_transmit_helper(
         device_repo.clone(),
         &device.data,
+        &user_id,
         state.command_channel.clone(),
         &form,
     )
@@ -211,32 +213,44 @@ pub async fn delete_request_packet_transmit(
     device_repo: web::Data<PgDeviceRepository>,
     path: web::Path<(Id, Id)>,
     state: web::Data<AppState>,
+    mut query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, WebError> {
     let device_id = path.0;
     let request_id = path.1;
     let i = authorized!(identity, request);
-    let device = device_repo
-        .read_one_auth(&path.0, &parse_user_id(&i)?)
-        .await?;
+    let user_id = parse_user_id(&i)?;
+
+    let request = device_repo.read_packet_transmit_request_by_user(&device_id, &user_id).await?;
+
+    let device = match request.first() {
+        None => device_repo
+                .read_one_auth(&device_id, &user_id)
+                .await?.data,
+        Some(_) => device_repo.read_one(&device_id).await?
+    };
 
     let request = device_repo
         .delete_packet_transmit_request(&request_id)
         .await?;
 
+    let return_url = query
+        .remove("return_url")
+        .unwrap_or(format!("/device/{}", device_id));
+
     let Some(r) = request.first() else {
         return Ok(HttpResponse::SeeOther()
-            .insert_header((LOCATION, format!("/device/{}", device_id)))
+            .insert_header((LOCATION, return_url))
             .finish());
     };
 
     let packet = PacketTransmitRequestPacket::new(
-        device.data.probe_id,
-        device.data.mac,
-        device.data.ip,
+        device.probe_id,
+        device.mac,
+        device.ip,
         r.target_ip,
         r.target_port as u16,
-        device.data.proxy,
-        device.data.interval,
+        device.proxy,
+        device.interval,
     );
 
     state
@@ -248,7 +262,7 @@ pub async fn delete_request_packet_transmit(
         .map_err(CoreError::from)?;
 
     Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}", device_id)))
+        .insert_header((LOCATION, return_url))
         .finish())
 }
 
@@ -262,10 +276,11 @@ pub async fn request_packet_transmit(
     form: web::Form<DevicePacketTransmitRequest>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
     let device = device_repo.read_one(&path.0).await?;
     if !device.published {
         device_repo
-            .read_one_auth(&path.0, &parse_user_id(&i)?)
+            .read_one_auth(&path.0, &user_id)
             .await?;
     }
     let target_ip = request
@@ -320,6 +335,7 @@ pub async fn request_packet_transmit(
     request_packet_transmit_helper(
         device_repo.clone(),
         &device,
+        &user_id,
         state.command_channel.clone(),
         &form,
     )
@@ -341,9 +357,10 @@ pub async fn get_device_for_transmit(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let device = device_repo.read_one(&path.0).await?;
+    let user_id = parse_user_id(&i)?;
     if !device.published {
         device_repo
-            .read_one_auth(&path.0, &parse_user_id(&i)?)
+            .read_one_auth(&path.0, &user_id)
             .await?;
     }
     let target_ip = request
@@ -355,18 +372,18 @@ pub async fn get_device_for_transmit(
         "Could not determine target ip",
     ))?;
 
-    let packet_transmit_requests = device_repo
-        .read_packet_transmit_requests(&device.id)
-        .await?;
+    let packet_transmit_request = device_repo
+        .read_packet_transmit_request_by_user(&device.id, &user_id)
+        .await?.into_iter().next();
 
     let template_name = get_template_name(&request, "device/public");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(DeviceTransmitTemplate {
-        user: user_repo.read_one(&parse_user_id(&i)?).await?,
+        user: user_repo.read_one(&user_id).await?,
         device: DeviceDisplay::from(device),
         client_ip: target_ip,
-        packet_transmit_requests,
+        packet_transmit_request,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

@@ -94,6 +94,20 @@ impl PgDeviceRepository {
             .map_err(DbError::from)
     }
 
+    pub async fn read_packet_transmit_request_by_user(
+        &self,
+        device_id: &Id,
+        user_id: &Id,
+    ) -> DbResultMultiple<PacketTransmitRequest> {
+        let mut conn = self.pg_pool.get().await?;
+        packet_transmit_request::table
+            .filter(packet_transmit_request::device_id.eq(device_id))
+            .filter(packet_transmit_request::user_id.eq(user_id))
+            .load::<PacketTransmitRequest>(&mut conn)
+            .await
+            .map_err(DbError::from)
+    }
+
     pub async fn read_packet_transmit_requests(
         &self,
         device_id: &Id,
@@ -409,6 +423,7 @@ impl DbCreate<CreatePacketTransmitRequest, PacketTransmitRequest> for PgDeviceRe
         data: &CreatePacketTransmitRequest,
         user_id: &Id,
     ) -> DbResultSingle<PacketTransmitRequest> {
+
         self.create(data).await
     }
 }

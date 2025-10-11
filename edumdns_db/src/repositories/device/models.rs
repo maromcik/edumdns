@@ -140,6 +140,7 @@ impl From<Device> for DeviceDisplay {
 #[diesel(table_name = crate::schema::packet_transmit_request)]
 pub struct CreatePacketTransmitRequest {
     pub device_id: Id,
+    pub user_id: Id,
     pub target_ip: IpNetwork,
     pub target_port: i32,
     pub permanent: bool,

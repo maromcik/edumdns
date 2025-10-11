@@ -135,11 +135,13 @@ CREATE TABLE IF NOT EXISTS "packet_transmit_request"
 (
     id             bigserial    PRIMARY KEY,
     device_id      bigserial    NOT NULL,
+    user_id        bigserial    NOT NULL,
     target_ip      cidr         NOT NULL,
     target_port    int          NOT NULL,
     permanent      bool         NOT NULL DEFAULT FALSE,
     UNIQUE (device_id, target_ip, target_port),
-    FOREIGN KEY (device_id) REFERENCES "device" (id) ON DELETE CASCADE
+    FOREIGN KEY (device_id) REFERENCES "device" (id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES "user" (id) ON DELETE CASCADE
 );
 
 

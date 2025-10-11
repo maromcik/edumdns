@@ -8,7 +8,7 @@ use edumdns_core::app_packet::{
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
 use edumdns_db::models::Device;
-use edumdns_db::repositories::common::DbCreate;
+use edumdns_db::repositories::common::{DbCreate, Id};
 use edumdns_db::repositories::device::models::CreatePacketTransmitRequest;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use log::warn;
@@ -17,6 +17,7 @@ use tokio::sync::mpsc::Sender;
 pub async fn request_packet_transmit_helper(
     device_repo: web::Data<PgDeviceRepository>,
     device: &Device,
+    user_id: &Id,
     command_channel: Sender<AppPacket>,
     form: &DeviceCustomPacketTransmitRequest,
 ) -> Result<(), WebError> {
@@ -32,6 +33,7 @@ pub async fn request_packet_transmit_helper(
 
     let request = CreatePacketTransmitRequest {
         device_id: device.id,
+        user_id: *user_id,
         target_ip: form.target_ip,
         target_port: form.target_port as i32,
         permanent: form.permanent,
@@ -42,7 +44,7 @@ pub async fn request_packet_transmit_helper(
         Err(_) => {
             return Err(WebError::new(
                 WebErrorKind::BadRequest,
-                "Transmission already in progress to a different client, please try again later.",
+                "Transmission already in progress to the same client, please try again later.",
             ));
         }
     };

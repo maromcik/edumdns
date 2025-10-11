@@ -19,6 +19,8 @@ select count (*) from device where probe_id = '019911f9-2fa9-7469-942e-d0269c439
 
 select * from device where "name" ilike '%st%';
 
-alter table device alter column proxy set default false;
+alter table packet_transmit_request add column "user_id" bigint not null references "user" (id) default 1;
 
 alter table probe add column "pre_shared_key" text;
+
+alter table device drop column "user_id";

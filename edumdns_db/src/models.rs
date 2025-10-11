@@ -155,6 +155,7 @@ pub struct Packet {
 pub struct PacketTransmitRequest {
     pub id: Id,
     pub device_id: Id,
+    pub user_id: Id,
     pub target_ip: ipnetwork::IpNetwork,
     pub target_port: i32,
     pub permanent: bool,

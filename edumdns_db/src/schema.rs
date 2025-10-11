@@ -76,6 +76,7 @@ diesel::table! {
     packet_transmit_request (id) {
         id -> Int8,
         device_id -> Int8,
+        user_id -> Int8,
         target_ip -> Cidr,
         target_port -> Int4,
         permanent -> Bool,
@@ -129,6 +130,7 @@ diesel::joinable!(group_user -> group (group_id));
 diesel::joinable!(group_user -> user (user_id));
 diesel::joinable!(packet -> probe (probe_id));
 diesel::joinable!(packet_transmit_request -> device (device_id));
+diesel::joinable!(packet_transmit_request -> user (user_id));
 diesel::joinable!(probe -> location (location_id));
 diesel::joinable!(probe -> user (owner_id));
 diesel::joinable!(probe_config -> probe (probe_id));

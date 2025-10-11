@@ -73,7 +73,12 @@ impl GroupProbePermission {
     }
 
     pub fn create_web() -> Vec<Self> {
-        vec![Self::empty(Permission::Read), Self::empty(Permission::Update), Self::empty(Permission::Delete), Self::empty(Permission::Create)]
+        vec![
+            Self::empty(Permission::Read),
+            Self::empty(Permission::Update),
+            Self::empty(Permission::Delete),
+            Self::empty(Permission::Create),
+        ]
     }
 }
 
@@ -106,7 +111,18 @@ pub struct ProbeConfig {
     pub filter: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable, Associations, Hash, Eq, PartialEq, Debug)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Queryable,
+    Selectable,
+    Identifiable,
+    Associations,
+    Hash,
+    Eq,
+    PartialEq,
+    Debug,
+)]
 #[diesel(table_name = crate::schema::device)]
 #[diesel(belongs_to(Probe))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -128,7 +144,18 @@ pub struct Device {
     pub discovered_at: Option<OffsetDateTime>,
 }
 
-#[derive(Serialize, Deserialize, Queryable, Selectable, Identifiable, Associations, Debug, Eq, PartialEq, Hash)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Queryable,
+    Selectable,
+    Identifiable,
+    Associations,
+    Debug,
+    Eq,
+    PartialEq,
+    Hash,
+)]
 #[diesel(table_name = crate::schema::packet)]
 #[diesel(belongs_to(Probe))]
 #[diesel(check_for_backend(diesel::pg::Pg))]

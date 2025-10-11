@@ -1,5 +1,5 @@
 use crate::error::DbError;
-use crate::models::{GroupProbePermission, Location, Probe, ProbeConfig, User};
+use crate::models::{GroupProbePermission, Location, Packet, Probe, ProbeConfig, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
     DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission,
@@ -9,18 +9,23 @@ use crate::repositories::probe::models::{
     SelectSingleProbeConfig, UpdateProbe,
 };
 use crate::repositories::utilities::{validate_admin, validate_permissions, validate_user};
+use crate::schema::group_probe_permission;
 use crate::schema::group_user;
 use crate::schema::probe;
 use crate::schema::probe::BoxedQuery;
 use crate::schema::user;
-use crate::schema::group_probe_permission;
 use crate::schema::{location, probe_config};
 use diesel::pg::Pg;
-use diesel::{BoolExpressionMethods, CombineDsl, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl, SelectableHelper};
 use diesel::query_builder::AsQuery;
-use diesel_async::pooled_connection::deadpool::Pool;
+use diesel::{
+    BoolExpressionMethods, CombineDsl, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods,
+    PgTextExpressionMethods, QueryDsl, SelectableHelper,
+};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use diesel_async::pooled_connection::deadpool::Pool;
+use itertools::Itertools;
+use std::collections::HashSet;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -98,10 +103,7 @@ impl DbReadOne<Uuid, (Probe, Vec<ProbeConfig>)> for PgProbeRepository {
 }
 
 impl DbReadMany<SelectManyProbes, Probe> for PgProbeRepository {
-    async fn read_many(
-        &self,
-        params: &SelectManyProbes,
-    ) -> DbResultMultiple<Probe> {
+    async fn read_many(&self, params: &SelectManyProbes) -> DbResultMultiple<Probe> {
         let mut conn = self.pg_pool.get().await?;
         let query = PgProbeRepository::build_select_many_query(params);
 
@@ -120,7 +122,6 @@ impl DbReadMany<SelectManyProbes, Probe> for PgProbeRepository {
         user_id: &Id,
     ) -> DbResultMultiplePerm<Probe> {
         let mut conn = self.pg_pool.get().await?;
-        let query = PgProbeRepository::build_select_many_query(params);
 
         let user_entry = user::table
             .find(user_id)
@@ -138,10 +139,9 @@ impl DbReadMany<SelectManyProbes, Probe> for PgProbeRepository {
             ));
         }
 
-        let shared_probe_ids = probe::table
+        let probes = PgProbeRepository::build_select_many_query(params)
             .inner_join(
-                group_probe_permission::table
-                    .on(group_probe_permission::probe_id.eq(probe::id)),
+                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
             )
             .filter(
                 group_probe_permission::permission
@@ -152,26 +152,22 @@ impl DbReadMany<SelectManyProbes, Probe> for PgProbeRepository {
                 group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
             )
             .filter(group_user::user_id.eq(user_id))
-            .filter(
-                group_probe_permission::permission
-                    .eq(Permission::Read)
-                    .or(group_probe_permission::permission.eq(Permission::Full)),
-            )
-            .select(probe::id);
-
-        let owned_probe_ids = probe::table
-            .filter(probe::owner_id.eq(user_entry.id))
-            .select(probe::id);
-
-        let unioned_ids = shared_probe_ids.union(owned_probe_ids).load::<Uuid>(&mut conn).await?;
-
-        let probes = query
-            .filter(probe::id.eq_any(unioned_ids))
-            .distinct()
-            .order_by(probe::ip.asc())
             .select(Probe::as_select())
             .load::<Probe>(&mut conn)
             .await?;
+
+        let owned_probes = PgProbeRepository::build_select_many_query(params)
+            .filter(probe::owner_id.eq(user_entry.id))
+            .select(Probe::as_select())
+            .load::<Probe>(&mut conn)
+            .await?;
+
+        let mut probes: HashSet<Probe> = HashSet::from_iter(probes);
+        probes.extend(owned_probes);
+        let probes = probes
+            .into_iter()
+            .sorted_by_key(|p| p.id)
+            .collect::<Vec<_>>();
 
         Ok(DbDataPerm::new(probes, (false, vec![])))
     }
@@ -246,14 +242,36 @@ impl DbUpdate<UpdateProbe, Probe> for PgProbeRepository {
 }
 
 impl PgProbeRepository {
-    pub async fn get_probe_count(&self, mut params: SelectManyProbes) -> DbResultSingle<i64> {
+    pub async fn get_probe_count(
+        &self,
+        mut params: SelectManyProbes,
+        user_id: &Id,
+    ) -> DbResultSingle<i64> {
         let mut conn = self.pg_pool.get().await?;
         params.pagination = None;
-        Self::build_select_many_query(&params)
+        let shared = Self::build_select_many_query(&params)
+            .inner_join(
+                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
+            )
+            .filter(
+                group_probe_permission::permission
+                    .eq(Permission::Read)
+                    .or(group_probe_permission::permission.eq(Permission::Full)),
+            )
+            .inner_join(
+                group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
+            )
+            .filter(group_user::user_id.eq(user_id))
             .count()
-            .get_result(&mut conn)
-            .await
-            .map_err(DbError::from)
+            .get_result::<i64>(&mut conn)
+            .await?;
+        let owned = Self::build_select_many_query(&params)
+            .filter(probe::owner_id.eq(user_id))
+            .count()
+            .get_result::<i64>(&mut conn)
+            .await?;
+
+        Ok(shared + owned)
     }
 
     pub async fn forget(&self, params: &Uuid, user_id: &Id) -> DbResult<()> {
@@ -330,7 +348,11 @@ impl PgProbeRepository {
         Ok(())
     }
 
-    pub async fn check_permissions_for_reconnect(&self, params: &Uuid, user_id: &Id) -> DbResult<()> {
+    pub async fn check_permissions_for_reconnect(
+        &self,
+        params: &Uuid,
+        user_id: &Id,
+    ) -> DbResult<()> {
         validate_permissions(&self.pg_pool, user_id, params, Permission::Reconnect).await?;
         Ok(())
     }

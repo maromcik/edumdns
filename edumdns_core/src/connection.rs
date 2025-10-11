@@ -17,6 +17,8 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 use tokio_rustls::{TlsAcceptor, TlsConnector};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
+use tokio::io::BufStream;
+use crate::BUFFER_CAPACITY;
 
 pub enum TcpConnectionMessage {
     ReceivePacket {
@@ -185,7 +187,7 @@ impl TcpConnectionHandle {
         stream: TcpStream,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
-        let channels = TcpConnectionActorChannels::new(1000);
+        let channels = TcpConnectionActorChannels::new(BUFFER_CAPACITY);
 
         let actors = TcpConnection::stream_to_framed_plain(
             channels.send_channel.1,
@@ -205,7 +207,7 @@ impl TcpConnectionHandle {
         bind_ip: &str,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
-        let channels = TcpConnectionActorChannels::new(1000);
+        let channels = TcpConnectionActorChannels::new(BUFFER_CAPACITY);
 
         let actors = TcpConnection::connect_plain(
             addr,
@@ -229,7 +231,7 @@ impl TcpConnectionHandle {
         client_config: Arc<ClientConfig>,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
-        let channels = TcpConnectionActorChannels::new(1000);
+        let channels = TcpConnectionActorChannels::new(BUFFER_CAPACITY);
 
         let actors = TcpConnection::stream_to_framed_tls(
             channels.send_channel.1,
@@ -251,7 +253,7 @@ impl TcpConnectionHandle {
         server_config: Arc<ServerConfig>,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
-        let channels = TcpConnectionActorChannels::new(1000);
+        let channels = TcpConnectionActorChannels::new(BUFFER_CAPACITY);
 
         let actors = TcpConnection::stream_to_framed_tls_server(
             channels.send_channel.1,
@@ -275,7 +277,7 @@ impl TcpConnectionHandle {
         client_config: Arc<ClientConfig>,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
-        let channels = TcpConnectionActorChannels::new(1000);
+        let channels = TcpConnectionActorChannels::new(BUFFER_CAPACITY);
 
         let actors = TcpConnection::connect_tls(
             addr,
@@ -308,11 +310,10 @@ impl TcpConnectionHandle {
     }
 }
 
-// ---------- Generic Sender/Receiver implementations ----------
 
 pub struct TcpConnectionSender<S> {
     pub receiver: mpsc::Receiver<TcpConnectionMessage>,
-    pub framed_sink: SplitSink<Framed<S, LengthDelimitedCodec>, Bytes>,
+    pub framed_sink: SplitSink<Framed<BufStream<S>, LengthDelimitedCodec>, Bytes>,
     pub global_timeout: Duration,
 }
 
@@ -344,7 +345,7 @@ where
 
 pub struct TcpConnectionReceiver<S> {
     pub receiver: mpsc::Receiver<TcpConnectionMessage>,
-    pub framed_stream: SplitStream<Framed<S, LengthDelimitedCodec>>,
+    pub framed_stream: SplitStream<Framed<BufStream<S>, LengthDelimitedCodec>>,
     pub global_timeout: Duration,
 }
 
@@ -401,7 +402,8 @@ impl TcpConnection {
     where
         S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     {
-        let framed = Framed::new(stream, LengthDelimitedCodec::new()).split();
+        let buffered = BufStream::new(stream);
+        let framed = Framed::new(buffered, LengthDelimitedCodec::new()).split();
         Ok((
             TcpConnectionSender {
                 receiver: message_channel_sender,

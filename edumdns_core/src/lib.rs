@@ -8,3 +8,5 @@ pub mod metadata;
 pub mod network_packet;
 pub mod rewrite;
 pub mod utils;
+
+pub const BUFFER_CAPACITY: usize = 10000;

@@ -36,7 +36,7 @@ pub struct IpMetadata {
     pub dst_ip: IpNetwork,
 }
 
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, Debug, Clone, Default)]
 pub struct DataLinkMetadata {
     pub mac_metadata: MacMetadata,
     pub vlan_metadata: Option<VlanMetadata>,
@@ -63,13 +63,13 @@ impl PortMetadata {
     }
 }
 
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, Debug, Clone, Default)]
 pub struct MacMetadata {
     pub src_mac: MacAddr,
     pub dst_mac: MacAddr,
 }
 
-#[derive(Encode, Decode, Debug, Clone)]
+#[derive(Encode, Decode, Debug, Clone, Default)]
 pub struct VlanMetadata {
     pub vlan_id: u16,
 }

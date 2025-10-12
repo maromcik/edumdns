@@ -33,7 +33,6 @@ impl DatabaseManager {
 
     pub async fn handle_database(&mut self) {
         while let Some(command) = self.receiver.recv().await {
-            println!("BUFFER: {}", self.receiver.len());
             match command {
                 DbCommand::StoreDevice(device_packet) => {
                     self.store_device_in_database(device_packet).await;

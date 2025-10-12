@@ -10,7 +10,7 @@ use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::AppPacket;
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::TcpConnectionHandle;
-use log::{debug, error, info, warn};
+use log::{debug, info, warn};
 use rustls::ServerConfig;
 use rustls_pki_types::pem::PemObject;
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
@@ -19,8 +19,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::time::Instant;
+use tokio::sync::mpsc::{Sender};
 
 pub type ProbeHandles = Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>;
 
@@ -33,51 +32,16 @@ async fn handle_connection(mut connection_manager: ConnectionManager) -> Result<
 
 pub async fn listen(
     pool: Pool<AsyncPgConnection>,
-    (command_transmitter, command_receiver): (Sender<AppPacket>, Receiver<AppPacket>),
+    command_transmitter: Sender<AppPacket>,
+    data_transmitter: Sender<AppPacket>,
+    probe_handles: ProbeHandles,
+    tracker: SharedProbeTracker,
     config: Option<ServerTlsConfig>,
     global_timeout: Duration,
 ) -> Result<(), ServerError> {
     let host = parse_host();
     let listener = TcpListener::bind(host).await?;
     info!("Listening on {}", listener.local_addr()?);
-
-    let probe_handles: ProbeHandles = Arc::new(RwLock::new(HashMap::new()));
-    let tracker: SharedProbeTracker = Arc::new(RwLock::new(OrderedMap::new()));
-    let data_channel = tokio::sync::mpsc::channel(BUFFER_SIZE);
-    let db_channel = tokio::sync::mpsc::channel(BUFFER_SIZE);
-
-    let pool_local = pool.clone();
-    let probe_handles_local = probe_handles.clone();
-    let _packet_manager_task = tokio::task::spawn(async move {
-        match PacketManager::new(
-            command_receiver,
-            data_channel.1,
-            db_channel.0,
-            pool_local,
-            probe_handles_local,
-            global_timeout,
-        ) {
-            Ok(mut manager) => manager.handle_packets().await,
-            Err(e) => {
-                error!("Could not initialize packet manager: {e}");
-            }
-        }
-    });
-    let pool_local = pool.clone();
-    let _database_manager_task = tokio::task::spawn(async move {
-        DatabaseManager::new(db_channel.1, pool_local)
-            .handle_database()
-            .await;
-    });
-
-    let tracker_local: SharedProbeTracker = tracker.clone();
-    let probe_handles_local = probe_handles.clone();
-    let _probe_watchdog_task = tokio::task::spawn(async move {
-        info!("Starting the probe watchdog");
-        watchdog(tracker_local, probe_handles_local, global_timeout).await;
-    });
-    info!("Packet storage initialized");
-
     let server_config = match config {
         None => None,
         Some(config) => {
@@ -103,7 +67,7 @@ pub async fn listen(
             server_config.clone(),
             pool.clone(),
             command_transmitter.clone(),
-            data_channel.0.clone(),
+            data_transmitter.clone(),
             probe_handles.clone(),
             tracker.clone(),
             global_timeout,

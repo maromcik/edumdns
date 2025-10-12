@@ -1596,6 +1596,7 @@ dependencies = [
  "diesel_migrations",
  "edumdns_core",
  "hex",
+ "hickory-proto",
  "ipnetwork 0.21.1",
  "itertools 0.14.0",
  "log",

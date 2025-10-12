@@ -1,24 +1,21 @@
 use crate::error::DbError;
-use crate::models::{GroupProbePermission, Packet, User};
+use crate::models::{Packet, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResultMultiple, DbResultSingle,
-    DbResultSinglePerm, Id, Permission, Permissions,
+    DbResultSinglePerm, Id, Permission,
 };
 use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSinglePacket};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use crate::repositories::utilities::{validate_permissions, validate_user};
 use crate::schema;
 use crate::schema::packet::BoxedQuery;
 use crate::schema::{group_probe_permission, group_user, probe, user};
 use diesel::pg::Pg;
-use diesel::{
-    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, QueryDsl,
-    SelectableHelper,
-};
+use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl, SelectableHelper};
+use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
-use diesel_async::pooled_connection::deadpool::Pool;
 use itertools::Itertools;
 use schema::packet;
 
@@ -65,6 +62,10 @@ impl PgPacketRepository {
 
         if let Some(q) = &params.dst_port {
             query = query.filter(packet::dst_port.eq(q));
+        }
+
+        if let Some(q) = &params.payload_string {
+            query = query.filter(packet::payload_string.ilike(format!("%{q}%")))
         }
 
         if let Some(pagination) = params.pagination {
@@ -217,6 +218,7 @@ impl DbCreate<CreatePacket, Packet> for PgPacketRepository {
                 packet::dst_mac.eq(data.dst_mac),
                 packet::src_port.eq(data.src_port),
                 packet::payload.eq(&data.payload),
+                packet::payload_string.eq(data.payload_string.as_ref()),
             ))
             .get_result(&mut conn)
             .await
@@ -226,17 +228,7 @@ impl DbCreate<CreatePacket, Packet> for PgPacketRepository {
         validate_permissions(&self.pg_pool, user_id, &data.probe_id, Permission::Create).await?;
         let mut conn = self.pg_pool.get().await?;
         diesel::insert_into(packet::table)
-            .values((
-                packet::probe_id.eq(data.probe_id),
-                packet::src_mac.eq(data.src_mac),
-                packet::dst_mac.eq(data.dst_mac),
-                packet::src_addr.eq(data.src_addr),
-                packet::dst_addr.eq(data.dst_addr),
-                packet::src_port.eq(data.src_port),
-                packet::dst_port.eq(data.dst_port),
-                packet::payload.eq(&data.payload),
-                packet::payload_hash.eq(&data.payload_hash),
-            ))
+            .values(data)
             .returning(Packet::as_returning())
             .get_result(&mut conn)
             .await

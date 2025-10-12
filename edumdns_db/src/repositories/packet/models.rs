@@ -1,14 +1,15 @@
 use crate::models::Packet;
-use crate::repositories::common::{Id, Pagination, Permission, Permissions};
+use crate::repositories::common::{Id, Pagination, Permission};
 use crate::repositories::utilities::format_time;
 use diesel::{AsChangeset, Insertable};
+use hickory_proto::op::Message;
+use hickory_proto::serialize::binary::BinDecodable;
 use edumdns_core::bincode_types::MacAddr;
 use edumdns_core::error::CoreError;
 use edumdns_core::network_packet::ApplicationPacket;
 use ipnetwork::IpNetwork;
 use log::warn;
 use serde::{Deserialize, Serialize};
-use time::{OffsetDateTime, format_description};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
@@ -21,6 +22,7 @@ pub struct SelectManyPackets {
     pub dst_addr: Option<IpNetwork>,
     pub src_port: Option<i32>,
     pub dst_port: Option<i32>,
+    pub payload_string: Option<String>,
     pub pagination: Option<Pagination>,
 }
 
@@ -34,6 +36,7 @@ impl SelectManyPackets {
         dst_addr: Option<IpNetwork>,
         src_port: Option<i32>,
         dst_port: Option<i32>,
+        payload_string: Option<String>,
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
@@ -45,6 +48,7 @@ impl SelectManyPackets {
             dst_addr,
             src_port,
             dst_port,
+            payload_string,
             pagination,
         }
     }
@@ -79,6 +83,7 @@ pub struct CreatePacket {
     pub dst_port: i32,
     pub payload: Vec<u8>,
     pub payload_hash: String,
+    pub payload_string: Option<String>,
 }
 
 impl CreatePacket {
@@ -93,6 +98,7 @@ impl CreatePacket {
         payload: Vec<u8>,
         payload_hash: String,
     ) -> Self {
+        let payload_string = Message::from_bytes(&payload).ok().map(|m| m.to_string());
         Self {
             probe_id,
             src_mac,
@@ -103,6 +109,7 @@ impl CreatePacket {
             dst_port: dst_port as i32,
             payload,
             payload_hash,
+            payload_string,
         }
     }
 }
@@ -118,6 +125,7 @@ pub struct PacketDisplay {
     pub src_port: i32,
     pub dst_port: i32,
     pub payload: String,
+    pub payload_string: Option<String>,
     pub captured_at: Option<String>,
 }
 
@@ -140,6 +148,7 @@ impl PacketDisplay {
             src_port: value.src_port,
             dst_port: value.dst_port,
             payload: payload.read_content().trim().to_string(),
+            payload_string: value.payload_string,
             captured_at: value.captured_at.map(format_time),
         })
     }

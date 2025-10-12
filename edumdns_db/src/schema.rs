@@ -68,6 +68,7 @@ diesel::table! {
         dst_port -> Int4,
         payload -> Bytea,
         payload_hash -> Text,
+        payload_string -> Nullable<Text>,
         captured_at -> Nullable<Timestamptz>,
     }
 }

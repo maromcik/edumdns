@@ -101,6 +101,7 @@ pub async fn get_device(
         query.dst_addr,
         query.src_port,
         query.dst_port,
+        query.payload_string.clone(),
         Some(Pagination::default_pagination(query.page)),
     );
     let packets = packet_repo

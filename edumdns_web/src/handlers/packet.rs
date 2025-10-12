@@ -3,18 +3,18 @@ use crate::error::WebError;
 use crate::forms::packet::{CreatePacketForm, PacketDeviceDataForm, PacketQuery};
 use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
 use crate::header::LOCATION;
-use crate::templates::PageInfo;
 use crate::templates::packet::{PacketCreateTemplate, PacketDetailTemplate, PacketTemplate};
+use crate::templates::PageInfo;
 use crate::utils::AppState;
 use actix_identity::Identity;
-use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
+use actix_web::{delete, get, post, web, HttpRequest, HttpResponse};
 use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadMany, DbReadOne, Id, PAGINATION_ELEMENTS_PER_PAGE,
+    DbCreate, DbDelete, DbReadOne, Id, PAGINATION_ELEMENTS_PER_PAGE,
 };
 use edumdns_db::repositories::device::models::SelectSingleDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{
-    PacketDisplay, PacketDisplayPermissions, SelectManyPackets,
+    PacketDisplay, SelectManyPackets,
 };
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;

@@ -42,11 +42,11 @@
                 </th>
                 <th scope="col"
                     class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-sat-l text-muted-foreground">
-                    Captured At
+                    Payload
                 </th>
                 <th scope="col"
                     class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-sat-l text-muted-foreground">
-                    Payload
+                    Captured At
                 </th>
                 <th scope="col"
                     class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-sat-l text-muted-foreground">
@@ -62,7 +62,7 @@
                 <td class="px-4 py-2"><input type="text" id="filter-dst_addr"  value="{{ filters.dst_addr  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-src_port"    value="{{ filters.src_port    | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-dst_port"  value="{{ filters.dst_port  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
-                <td class="px-4 py-2"></td>
+                <td class="px-4 py-2"><input type="text" id="filter-payload_string"  value="{{ filters.payload_string  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"></td>
                 <td class="px-4 py-2 flex gap-2">
                     <button type="button" id="filter-button"
@@ -105,10 +105,10 @@
                     <span class="font-mono">{{ packet.dst_port }}</span>
                 </td>
                 <td class="px-4 py-3 text-sm text-sat-l">
-                    <span class="font-mono">{{ packet.captured_at }}</span>
+                    <span class="font-mono">{{ packet.payload_string[:42] }}</span>
                 </td>
                 <td class="px-4 py-3 text-sm text-sat-l">
-                    <span class="font-mono">{{ packet.payload[:42] }}</span>
+                    <span class="font-mono">{{ packet.captured_at }}</span>
                 </td>
                 <td class="px-4 py-2"></td>
             </tr>
@@ -195,7 +195,7 @@
     function runSearch() {
         const params = new URLSearchParams();
 
-        ["id", "probe_id","src_mac","dst_mac","src_addr","dst_addr","src_port","dst_port"].forEach(field => {
+        ["id", "probe_id","src_mac","dst_mac","src_addr","dst_addr","src_port","dst_port", "payload_string"].forEach(field => {
             const el = document.getElementById(`filter-${field}`);
             if (!el) return;
 
@@ -220,7 +220,7 @@
     });
 
     // Trigger search on Enter in any filter input
-    ["filter-id", "filter-probe_id","filter-src_mac","filter-dst_mac","filter-src_addr","filter-dst_addr","filter-src_port","filter-dst_port"].forEach(id => {
+    ["filter-id", "filter-probe_id","filter-src_mac","filter-dst_mac","filter-src_addr","filter-dst_addr","filter-src_port","filter-dst_port", "filter-payload_string"].forEach(id => {
         const input = document.getElementById(id);
         input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {

@@ -29,6 +29,8 @@ pub struct PacketQuery {
     pub src_port: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub dst_port: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub payload_string: Option<String>,
 }
 
 impl From<PacketQuery> for SelectManyPackets {
@@ -42,6 +44,7 @@ impl From<PacketQuery> for SelectManyPackets {
             dst_addr: value.dst_addr,
             src_port: value.src_port,
             dst_port: value.dst_port,
+            payload_string: value.payload_string,
             pagination: Some(Pagination::default_pagination(value.page)),
         }
     }
@@ -65,6 +68,7 @@ pub struct CreatePacketForm {
 }
 impl CreatePacketForm {
     pub fn to_db_params(self) -> Result<CreatePacket, WebError> {
+        let payload_string = Some(self.message.to_string());
         let payload = self.message.to_bytes()?;
         let payload_hash = edumdns_core::app_packet::calculate_hash(&payload);
         Ok(CreatePacket {
@@ -77,6 +81,7 @@ impl CreatePacketForm {
             dst_port: self.dst_port as i32,
             payload,
             payload_hash,
+            payload_string,
         })
     }
 }

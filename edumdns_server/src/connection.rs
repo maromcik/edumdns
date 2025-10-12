@@ -26,7 +26,8 @@ use tokio::sync::mpsc::Sender;
 pub struct ConnectionManager {
     handle: TcpConnectionHandle,
     pg_probe_repository: PgProbeRepository,
-    tx: Sender<AppPacket>,
+    command_transmitter: Sender<AppPacket>,
+    data_transmitter: Sender<AppPacket>,
     probe_handles: ProbeHandles,
     probe_last_seen: SharedProbeTracker,
     global_timeout: Duration,
@@ -37,7 +38,8 @@ impl ConnectionManager {
         stream: TcpStream,
         config: Option<ServerConfig>,
         pool: Pool<AsyncPgConnection>,
-        tx: Sender<AppPacket>,
+        command_transmitter: Sender<AppPacket>,
+        data_transmitter: Sender<AppPacket>,
         handles: ProbeHandles,
         probe_last_seen: SharedProbeTracker,
         global_timeout: Duration,
@@ -56,7 +58,8 @@ impl ConnectionManager {
         Ok(Self {
             handle,
             pg_probe_repository: PgProbeRepository::new(pool.clone()),
-            tx,
+            command_transmitter,
+            data_transmitter,
             probe_handles: handles,
             probe_last_seen,
             global_timeout,
@@ -199,13 +202,13 @@ impl ConnectionManager {
                 None => return Ok(()),
                 Some(app_packet) => match &app_packet {
                     NetworkAppPacket::Command(_) => {
-                        self.tx
+                        self.command_transmitter
                             .send(AppPacket::Network(app_packet))
                             .await
                             .map_err(CoreError::from)?;
                     }
                     NetworkAppPacket::Data(_) => {
-                        self.tx
+                        self.data_transmitter
                             .send(AppPacket::Network(app_packet))
                             .await
                             .map_err(CoreError::from)?;
@@ -228,7 +231,7 @@ impl ConnectionManager {
                                 .await??;
                         }
                         NetworkStatusPacket::ProbeResponse(_, _, _) => {
-                            self.tx
+                            self.command_transmitter
                                 .send(AppPacket::Network(app_packet))
                                 .await
                                 .map_err(CoreError::from)?;

@@ -3,7 +3,7 @@ use crate::error::{ServerError, ServerErrorKind};
 use crate::manager::PacketManager;
 use crate::ordered_map::OrderedMap;
 use crate::probe_tracker::{SharedProbeTracker, watchdog};
-use crate::{ServerTlsConfig, parse_host};
+use crate::{ServerTlsConfig, parse_host, BUFFER_SIZE};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::AppPacket;
@@ -32,7 +32,7 @@ async fn handle_connection(mut connection_manager: ConnectionManager) -> Result<
 
 pub async fn listen(
     pool: Pool<AsyncPgConnection>,
-    (tx, rx): (Sender<AppPacket>, Receiver<AppPacket>),
+    (command_transmitter, command_receiver): (Sender<AppPacket>, Receiver<AppPacket>),
     config: Option<ServerTlsConfig>,
     global_timeout: Duration,
 ) -> Result<(), ServerError> {
@@ -42,11 +42,11 @@ pub async fn listen(
 
     let probe_handles: ProbeHandles = Arc::new(RwLock::new(HashMap::new()));
     let tracker: SharedProbeTracker = Arc::new(RwLock::new(OrderedMap::new()));
-
+    let data_channel = tokio::sync::mpsc::channel(BUFFER_SIZE);
     let pool_local = pool.clone();
     let probe_handles_local = probe_handles.clone();
     let _packet_storage_task = tokio::task::spawn(async move {
-        match PacketManager::new(rx, pool_local, probe_handles_local, global_timeout) {
+        match PacketManager::new(command_receiver, data_channel.1, pool_local, probe_handles_local, global_timeout) {
             Ok(mut manager) => manager.handle_packets().await,
             Err(e) => {
                 error!("Could not initialize packet manager: {e}");
@@ -86,7 +86,8 @@ pub async fn listen(
             stream,
             server_config.clone(),
             pool.clone(),
-            tx.clone(),
+            command_transmitter.clone(),
+            data_channel.0.clone(),
             probe_handles.clone(),
             tracker.clone(),
             global_timeout,
@@ -104,6 +105,7 @@ pub async fn listen(
             match handle_connection(connection_manager).await {
                 Ok(uuid) => {
                     probe_handles_local.write().await.remove(&uuid);
+                    debug!("Probe {uuid} removed from the map");
                 }
                 Err(err) => {
                     if let ServerErrorKind::ProbeNotAdopted = err.error_kind {

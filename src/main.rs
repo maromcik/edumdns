@@ -1,13 +1,12 @@
 use crate::error::AppError;
 use clap::Parser;
 use edumdns_db::db_init;
-use edumdns_server::server_init;
+use edumdns_server::{server_init, BUFFER_SIZE};
 use edumdns_web::web_init;
 use tracing::log::error;
 use tracing_subscriber::EnvFilter;
 
 mod error;
-pub const CHANNEL_BUFFER_SIZE: usize = 10000;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -25,7 +24,7 @@ async fn main() -> Result<(), AppError> {
         dotenvy::from_filename(env_file).expect("failed to load .env file");
         Cli::parse();
     }
-    let command_channel = tokio::sync::mpsc::channel(CHANNEL_BUFFER_SIZE);
+    let command_channel = tokio::sync::mpsc::channel(BUFFER_SIZE);
     let env = EnvFilter::try_from_env("EDUMDNS_LOG_LEVEL").unwrap_or(EnvFilter::new("info"));
     let timer = tracing_subscriber::fmt::time::LocalTime::rfc_3339();
     tracing_subscriber::fmt()

@@ -27,6 +27,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
+use tokio::task::yield_now;
 
 #[derive(Clone)]
 pub struct Proxy {
@@ -37,7 +38,8 @@ pub struct Proxy {
 
 pub struct PacketManager {
     pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
-    pub packet_receiver: Receiver<AppPacket>,
+    pub command_receiver: Receiver<AppPacket>,
+    pub data_receiver: Receiver<AppPacket>,
     pub transmitter_tasks: Arc<Mutex<HashMap<PacketTransmitRequestPacket, PacketTransmitterTask>>>,
     pub probe_handles: ProbeHandles,
     pub probe_ws_handles: HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<ProbeResponse>>>,
@@ -49,7 +51,8 @@ pub struct PacketManager {
 
 impl PacketManager {
     pub fn new(
-        receiver: Receiver<AppPacket>,
+        command_receiver: Receiver<AppPacket>,
+        data_receiver: Receiver<AppPacket>,
         db_pool: Pool<AsyncPgConnection>,
         handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
         global_timeout: Duration,
@@ -78,7 +81,8 @@ impl PacketManager {
 
         Ok(Self {
             packets: HashMap::new(),
-            packet_receiver: receiver,
+            command_receiver,
+            data_receiver,
             transmitter_tasks: Arc::new(Mutex::new(HashMap::new())),
             probe_handles: handles,
             probe_ws_handles: HashMap::new(),
@@ -90,13 +94,36 @@ impl PacketManager {
     }
 
     pub async fn handle_packets(&mut self) {
-        while let Some(packet) = self.packet_receiver.recv().await {
-            match packet {
-                AppPacket::Network(network_packet) => {
-                    self.handle_network_packet(network_packet).await
-                }
-                AppPacket::Local(local_packet) => self.handle_local_packet(local_packet).await,
+        loop {
+            let packet = self.command_receiver.try_recv();
+            if let Ok(packet) = packet {
+                self.route_packets(packet).await;
+                continue;
             }
+            let packet = self.data_receiver.try_recv();
+            if let Ok(packet) = packet {
+                self.route_packets(packet).await;
+                continue;
+            }
+            tokio::select! {
+                packet = self.command_receiver.recv() => {
+                    if let Some(packet) = packet {
+                     self.route_packets(packet).await;
+                    }
+                }
+                packet = self.data_receiver.recv() => {
+                    if let Some(packet) = packet {
+                     self.route_packets(packet).await;
+                    }
+                }
+            }
+        }
+    }
+
+    pub async fn route_packets(&mut self, packet: AppPacket) {
+        match packet {
+            AppPacket::Network(network_packet) => self.handle_network_packet(network_packet).await,
+            AppPacket::Local(local_packet) => self.handle_local_packet(local_packet).await,
         }
     }
 
@@ -184,7 +211,14 @@ impl PacketManager {
                     probe_id,
                     session_id,
                     message,
-                } => self.send_response_to_ws(probe_id, session_id, ProbeResponse::new_ok_with_value(&message)).await,
+                } => {
+                    self.send_response_to_ws(
+                        probe_id,
+                        session_id,
+                        ProbeResponse::new_ok_with_value(&message),
+                    )
+                    .await
+                }
             },
         }
     }

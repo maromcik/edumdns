@@ -185,7 +185,6 @@ impl PacketManager {
                         if let Some(handle) = self.probe_handles.read().await.get(&id) {
                             let _ = handle.close().await;
                         }
-                        self.probe_handles.write().await.remove(&id);
                         self.send_response_to_ws(
                             id,
                             session_id,
@@ -303,7 +302,7 @@ impl PacketManager {
         id: Uuid,
         session_id: Option<Uuid>,
     ) -> Result<(), ServerError> {
-        if let Some(handle) = self.probe_handles.read().await.get(&id) {
+        if let Some(handle) = self.probe_handles.write().await.remove(&id) {
             handle
                 .send_message_with_response(|tx| {
                     TcpConnectionMessage::send_packet(
@@ -315,6 +314,7 @@ impl PacketManager {
                 })
                 .await
                 .map_err(ServerError::from)??;
+            handle.close().await?;
         } else {
             warn!("Probe not found: {}", id);
             return Err(ServerError::new(

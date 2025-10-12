@@ -1,9 +1,10 @@
 use crate::connection::ConnectionManager;
+use crate::database::DatabaseManager;
 use crate::error::{ServerError, ServerErrorKind};
 use crate::manager::PacketManager;
 use crate::ordered_map::OrderedMap;
 use crate::probe_tracker::{SharedProbeTracker, watchdog};
-use crate::{ServerTlsConfig, parse_host, BUFFER_SIZE};
+use crate::{BUFFER_SIZE, ServerTlsConfig, parse_host};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::AppPacket;
@@ -43,15 +44,30 @@ pub async fn listen(
     let probe_handles: ProbeHandles = Arc::new(RwLock::new(HashMap::new()));
     let tracker: SharedProbeTracker = Arc::new(RwLock::new(OrderedMap::new()));
     let data_channel = tokio::sync::mpsc::channel(BUFFER_SIZE);
+    let db_channel = tokio::sync::mpsc::channel(BUFFER_SIZE);
+
     let pool_local = pool.clone();
     let probe_handles_local = probe_handles.clone();
-    let _packet_storage_task = tokio::task::spawn(async move {
-        match PacketManager::new(command_receiver, data_channel.1, pool_local, probe_handles_local, global_timeout) {
+    let _packet_manager_task = tokio::task::spawn(async move {
+        match PacketManager::new(
+            command_receiver,
+            data_channel.1,
+            db_channel.0,
+            pool_local,
+            probe_handles_local,
+            global_timeout,
+        ) {
             Ok(mut manager) => manager.handle_packets().await,
             Err(e) => {
                 error!("Could not initialize packet manager: {e}");
             }
         }
+    });
+    let pool_local = pool.clone();
+    let _database_manager_task = tokio::task::spawn(async move {
+        DatabaseManager::new(db_channel.1, pool_local)
+            .handle_database()
+            .await;
     });
 
     let tracker_local: SharedProbeTracker = tracker.clone();

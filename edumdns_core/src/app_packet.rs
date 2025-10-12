@@ -52,7 +52,7 @@ pub enum LocalStatusPacket {
     OperationUpdateToWs {
         probe_id: Uuid,
         session_id: Option<Uuid>,
-        message: String
+        message: String,
     },
 }
 

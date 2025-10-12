@@ -9,18 +9,21 @@ use crate::repositories::probe::models::{
     SelectSingleProbeConfig, UpdateProbe,
 };
 use crate::repositories::utilities::{validate_admin, validate_permissions, validate_user};
+use crate::schema::group_probe_permission;
 use crate::schema::group_user;
 use crate::schema::probe;
 use crate::schema::probe::BoxedQuery;
 use crate::schema::user;
-use crate::schema::group_probe_permission;
 use crate::schema::{location, probe_config};
 use diesel::pg::Pg;
-use diesel::{BoolExpressionMethods, CombineDsl, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl, SelectableHelper};
 use diesel::query_builder::AsQuery;
-use diesel_async::pooled_connection::deadpool::Pool;
+use diesel::{
+    BoolExpressionMethods, CombineDsl, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods,
+    PgTextExpressionMethods, QueryDsl, SelectableHelper,
+};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use diesel_async::pooled_connection::deadpool::Pool;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -98,10 +101,7 @@ impl DbReadOne<Uuid, (Probe, Vec<ProbeConfig>)> for PgProbeRepository {
 }
 
 impl DbReadMany<SelectManyProbes, Probe> for PgProbeRepository {
-    async fn read_many(
-        &self,
-        params: &SelectManyProbes,
-    ) -> DbResultMultiple<Probe> {
+    async fn read_many(&self, params: &SelectManyProbes) -> DbResultMultiple<Probe> {
         let mut conn = self.pg_pool.get().await?;
         let query = PgProbeRepository::build_select_many_query(params);
 
@@ -140,8 +140,7 @@ impl DbReadMany<SelectManyProbes, Probe> for PgProbeRepository {
 
         let shared_probe_ids = probe::table
             .inner_join(
-                group_probe_permission::table
-                    .on(group_probe_permission::probe_id.eq(probe::id)),
+                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
             )
             .filter(
                 group_probe_permission::permission
@@ -163,7 +162,10 @@ impl DbReadMany<SelectManyProbes, Probe> for PgProbeRepository {
             .filter(probe::owner_id.eq(user_entry.id))
             .select(probe::id);
 
-        let unioned_ids = shared_probe_ids.union(owned_probe_ids).load::<Uuid>(&mut conn).await?;
+        let unioned_ids = shared_probe_ids
+            .union(owned_probe_ids)
+            .load::<Uuid>(&mut conn)
+            .await?;
 
         let probes = query
             .filter(probe::id.eq_any(unioned_ids))
@@ -330,7 +332,11 @@ impl PgProbeRepository {
         Ok(())
     }
 
-    pub async fn check_permissions_for_reconnect(&self, params: &Uuid, user_id: &Id) -> DbResult<()> {
+    pub async fn check_permissions_for_reconnect(
+        &self,
+        params: &Uuid,
+        user_id: &Id,
+    ) -> DbResult<()> {
         validate_permissions(&self.pg_pool, user_id, params, Permission::Reconnect).await?;
         Ok(())
     }

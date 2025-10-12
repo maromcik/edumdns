@@ -345,11 +345,16 @@ pub async fn delete_probe(
         .unwrap_or("/probe");
 
     let uuid = session.get::<edumdns_core::bincode_types::Uuid>("session_id")?;
-        let _ = state.command_channel.send(AppPacket::Local(LocalAppPacket::Status(LocalStatusPacket::OperationUpdateToWs {
-            probe_id: edumdns_core::bincode_types::Uuid(probe_id),
-            session_id: uuid,
-            message: format!("Deleting probe {} in the background.", probe_id),
-        }))).await;
+    let _ = state
+        .command_channel
+        .send(AppPacket::Local(LocalAppPacket::Status(
+            LocalStatusPacket::OperationUpdateToWs {
+                probe_id: edumdns_core::bincode_types::Uuid(probe_id),
+                session_id: uuid,
+                message: format!("Deleting probe {} in the background.", probe_id),
+            },
+        )))
+        .await;
     probe_repo.delete_auth(&probe_id, &user_id).await?;
     reconnect_probe(state.command_channel.clone(), probe_id, session).await?;
     Ok(HttpResponse::SeeOther()

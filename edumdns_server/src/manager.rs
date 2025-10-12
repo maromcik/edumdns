@@ -1,4 +1,5 @@
 use crate::BUFFER_SIZE;
+use crate::database::DbCommand;
 use crate::ebpf::EbpfUpdater;
 use crate::error::{ServerError, ServerErrorKind};
 use crate::listen::ProbeHandles;
@@ -40,6 +41,7 @@ pub struct PacketManager {
     pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
     pub command_receiver: Receiver<AppPacket>,
     pub data_receiver: Receiver<AppPacket>,
+    pub db_transmitter: Sender<DbCommand>,
     pub transmitter_tasks: Arc<Mutex<HashMap<PacketTransmitRequestPacket, PacketTransmitterTask>>>,
     pub probe_handles: ProbeHandles,
     pub probe_ws_handles: HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<ProbeResponse>>>,
@@ -53,6 +55,7 @@ impl PacketManager {
     pub fn new(
         command_receiver: Receiver<AppPacket>,
         data_receiver: Receiver<AppPacket>,
+        db_transmitter: Sender<DbCommand>,
         db_pool: Pool<AsyncPgConnection>,
         handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
         global_timeout: Duration,
@@ -83,6 +86,7 @@ impl PacketManager {
             packets: HashMap::new(),
             command_receiver,
             data_receiver,
+            db_transmitter,
             transmitter_tasks: Arc::new(Mutex::new(HashMap::new())),
             probe_handles: handles,
             probe_ws_handles: HashMap::new(),
@@ -252,8 +256,9 @@ impl PacketManager {
                                 }
                                 if !device_entry.get().contains(&probe_packet) {
                                     device_entry.get_mut().insert(probe_packet.clone());
+                                    self.send_db_packet(DbCommand::StorePacket(probe_packet))
+                                        .await;
                                     debug!("Probe and device found; stored packet in database");
-                                    self.store_packet_in_database(probe_packet.clone()).await;
                                 } else {
                                     debug!("Probe, device and packet found; no action");
                                 }
@@ -261,9 +266,11 @@ impl PacketManager {
                             Entry::Vacant(device_entry) => {
                                 let device_entry = device_entry.insert(HashSet::new());
                                 device_entry.insert(probe_packet.clone());
+                                self.send_db_packet(DbCommand::StoreDevice(probe_packet.clone()))
+                                    .await;
+                                self.send_db_packet(DbCommand::StorePacket(probe_packet))
+                                    .await;
                                 debug!("Probe found; stored device and packet in database");
-                                self.store_device_in_database(probe_packet.clone()).await;
-                                self.store_packet_in_database(probe_packet.clone()).await;
                             }
                         }
                     }
@@ -273,13 +280,21 @@ impl PacketManager {
                             .entry((src_mac, src_ip))
                             .or_default()
                             .insert(probe_packet.clone());
-                        self.store_device_in_database(probe_packet.clone()).await;
-                        self.store_packet_in_database(probe_packet.clone()).await;
+                        self.send_db_packet(DbCommand::StoreDevice(probe_packet.clone()))
+                            .await;
+                        self.send_db_packet(DbCommand::StorePacket(probe_packet))
+                            .await;
                         debug!("Probe not found in hashmap; stored device and packet in database");
                     }
                 }
                 debug!("Packet <MAC: {src_mac}, IP: {src_ip}> stored in memory");
             }
+        }
+    }
+
+    pub async fn send_db_packet(&self, db_command: DbCommand) {
+        if let Err(e) = self.db_transmitter.send(db_command).await {
+            error!("Could not send commands to the DB handler: {e}");
         }
     }
 
@@ -308,83 +323,6 @@ impl PacketManager {
             ));
         }
         Ok(())
-    }
-
-    pub async fn store_device_in_database(&self, packet: ProbePacket) {
-        let device_repo = self.pg_device_repository.clone();
-        tokio::task::spawn(async move {
-            let src_mac = packet
-                .packet_metadata
-                .datalink_metadata
-                .mac_metadata
-                .src_mac;
-            let src_ip = packet.packet_metadata.ip_metadata.src_ip;
-            let device = device_repo
-                .create(&CreateDevice::new_discover(
-                    packet.probe_metadata.id.0,
-                    src_mac.to_octets(),
-                    src_ip.0,
-                    packet.packet_metadata.transport_metadata.dst_port,
-                ))
-                .await;
-            match device {
-                Ok(d) => {
-                    debug!(
-                        "Device <ID: {}, MAC: {}, IP: {}> stored in database",
-                        d.id, src_mac, d.ip
-                    );
-                    d
-                }
-                Err(e) => {
-                    error!(
-                        "Could not store device <MAC: {}, IP: {}> in database: {e}",
-                        src_mac, src_ip
-                    );
-                    return;
-                }
-            };
-        });
-    }
-
-    pub async fn store_packet_in_database(&self, packet: ProbePacket) {
-        let packet_repo = self.pg_packet_repository.clone();
-        tokio::task::spawn(async move {
-            let src_mac = packet
-                .packet_metadata
-                .datalink_metadata
-                .mac_metadata
-                .src_mac;
-            let src_ip = packet.packet_metadata.ip_metadata.src_ip;
-            let packet = packet_repo
-                .create(&CreatePacket::new(
-                    packet.probe_metadata.id.0,
-                    src_mac.to_octets(),
-                    packet
-                        .packet_metadata
-                        .datalink_metadata
-                        .mac_metadata
-                        .dst_mac
-                        .0
-                        .octets(),
-                    src_ip.0,
-                    packet.packet_metadata.ip_metadata.dst_ip.0,
-                    packet.packet_metadata.transport_metadata.src_port,
-                    packet.packet_metadata.transport_metadata.dst_port,
-                    packet.payload,
-                    packet.payload_hash,
-                ))
-                .await;
-            match packet {
-                Ok(p) => debug!(
-                    "Packet <ProbeID: {}, MAC: {}, IP: {}> stored in database",
-                    p.probe_id, src_mac, p.src_addr
-                ),
-                Err(e) => error!(
-                    "Could not store packet <MAC: {}, IP: {}> in database: {e}",
-                    src_mac, src_ip
-                ),
-            }
-        });
     }
 
     pub async fn send_response_to_ws(

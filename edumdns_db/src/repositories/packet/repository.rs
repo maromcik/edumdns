@@ -1,6 +1,9 @@
 use crate::error::DbError;
 use crate::models::{GroupProbePermission, Packet, User};
-use crate::repositories::common::{DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResultMultiple, DbResultSingle, DbResultSinglePerm, Id, Permission, Permissions};
+use crate::repositories::common::{
+    DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResultMultiple, DbResultSingle,
+    DbResultSinglePerm, Id, Permission, Permissions,
+};
 use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSinglePacket};
 use std::collections::{HashMap, HashSet};
 
@@ -9,10 +12,13 @@ use crate::schema;
 use crate::schema::packet::BoxedQuery;
 use crate::schema::{group_probe_permission, group_user, probe, user};
 use diesel::pg::Pg;
-use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, QueryDsl, SelectableHelper};
-use diesel_async::pooled_connection::deadpool::Pool;
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, QueryDsl,
+    SelectableHelper,
+};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use diesel_async::pooled_connection::deadpool::Pool;
 use itertools::Itertools;
 use schema::packet;
 
@@ -149,16 +155,16 @@ impl PgPacketRepository {
         validate_user(&user_entry)?;
 
         if user_entry.admin {
-            let packets = self
-                .read_many(params)
-                .await?;
+            let packets = self.read_many(params).await?;
             return Ok(packets);
         }
 
         let query = PgPacketRepository::build_select_many_query(params);
         let packets = query
             .inner_join(probe::table)
-            .inner_join(group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)), )
+            .inner_join(
+                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
+            )
             .filter(
                 group_probe_permission::permission
                     .eq(Permission::Read)
@@ -183,10 +189,12 @@ impl PgPacketRepository {
         let mut packets: HashSet<Packet> = HashSet::from_iter(packets);
         packets.extend(owned_packets);
 
-        let packets = packets.into_iter().sorted_by_key(|p| p.id).collect::<Vec<_>>();
+        let packets = packets
+            .into_iter()
+            .sorted_by_key(|p| p.id)
+            .collect::<Vec<_>>();
 
         Ok(packets)
-
     }
 }
 

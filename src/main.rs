@@ -1,7 +1,7 @@
 use crate::error::AppError;
 use clap::Parser;
 use edumdns_db::db_init;
-use edumdns_server::{server_init, BUFFER_SIZE};
+use edumdns_server::{BUFFER_SIZE, server_init};
 use edumdns_web::web_init;
 use tracing::log::error;
 use tracing_subscriber::EnvFilter;

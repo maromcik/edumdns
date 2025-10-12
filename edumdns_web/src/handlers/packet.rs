@@ -13,7 +13,9 @@ use edumdns_db::repositories::common::{
 };
 use edumdns_db::repositories::device::models::SelectSingleDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use edumdns_db::repositories::packet::models::{PacketDisplay, PacketDisplayPermissions, SelectManyPackets};
+use edumdns_db::repositories::packet::models::{
+    PacketDisplay, PacketDisplayPermissions, SelectManyPackets,
+};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use std::collections::HashMap;

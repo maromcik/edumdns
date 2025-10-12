@@ -148,14 +148,17 @@ impl PacketDisplay {
 #[derive(Serialize)]
 pub struct PacketDisplayPermissions {
     pub data: PacketDisplay,
-    pub permissions: Vec<Permission>
+    pub permissions: Vec<Permission>,
 }
 
 impl PacketDisplayPermissions {
-    pub fn from(value: Packet, permissions: Vec<Permission>) -> Result<PacketDisplayPermissions, CoreError> {
+    pub fn from(
+        value: Packet,
+        permissions: Vec<Permission>,
+    ) -> Result<PacketDisplayPermissions, CoreError> {
         Ok(Self {
             data: PacketDisplay::from(value)?,
-            permissions
+            permissions,
         })
     }
 }

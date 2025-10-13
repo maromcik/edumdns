@@ -131,7 +131,7 @@ pub struct PacketDisplay {
 
 impl PacketDisplay {
     pub fn from(value: Packet) -> Result<PacketDisplay, CoreError> {
-        let payload = match ApplicationPacket::from_bytes(value.dst_port, &value.payload) {
+        let payload = match ApplicationPacket::from_bytes(&value.payload, value.src_port, value.dst_port) {
             Ok(p) => p,
             Err(e) => {
                 warn!("Unable to parse packet payload: {}", e);

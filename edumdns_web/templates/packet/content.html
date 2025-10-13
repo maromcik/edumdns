@@ -105,7 +105,7 @@
                     <span class="font-mono">{{ packet.dst_port }}</span>
                 </td>
                 <td class="px-4 py-3 text-sm text-sat-l">
-                    {% if probe.payload_string %}
+                    {% if packet.payload_string %}
                     <span class="font-mono">{{ packet.payload_string[:42] }}</span>
                     {% else %}
                     <span class="text-muted-foreground">—</span>

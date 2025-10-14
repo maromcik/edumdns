@@ -375,4 +375,9 @@ impl PgProbeRepository {
             .await?;
         Ok(permissions)
     }
+
+    pub async fn update_owner_auth(&self, params: &UpdateProbe, user_id: &Id) -> DbResultMultiple<Probe> {
+        validate_admin(&self.pg_pool, user_id).await?;
+        self.update(params).await
+    }
 }

@@ -1,6 +1,6 @@
 use crate::error::WebError;
 use crate::forms::device::DeviceQuery;
-use crate::forms::probe::{CreateProbeForm, ProbeConfigForm, ProbePermissionForm, ProbeQuery};
+use crate::forms::probe::{CreateProbeForm, ProbeConfigForm, ProbePermissionForm, ProbeQuery, UpdateProbeForm, UpdateProbeOwnerForm};
 use crate::handlers::helpers::reconnect_probe;
 use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
 use crate::templates::PageInfo;
@@ -317,12 +317,29 @@ pub async fn update_probe(
     request: HttpRequest,
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
-    form: web::Form<UpdateProbe>,
+    form: web::Form<UpdateProbeForm>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
-    probe_repo.update_auth(&form, &parse_user_id(&i)?).await?;
+    let probe_id = form.id;
+    probe_repo.update_auth(&UpdateProbe::from(form.into_inner()), &parse_user_id(&i)?).await?;
     Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/probe/{}", form.id)))
+        .insert_header((LOCATION, format!("/probe/{}", probe_id)))
+        .finish())
+}
+
+#[post("update-owner")]
+pub async fn update_probe_owner(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    probe_repo: web::Data<PgProbeRepository>,
+    form: web::Form<UpdateProbeOwnerForm>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request);
+    let probe_id = form.id;
+    println!("KOKOT: {:?}", form);
+    probe_repo.update_owner_auth(&UpdateProbe::from(form.into_inner()), &parse_user_id(&i)?).await?;
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/probe/{}", probe_id)))
         .finish())
 }
 

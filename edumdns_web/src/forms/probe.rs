@@ -1,6 +1,7 @@
+use edumdns_db::repositories::utilities::{empty_string_is_none};
 use edumdns_core::bincode_types::MacAddr;
 use edumdns_db::repositories::common::{Id, Pagination, Permission};
-use edumdns_db::repositories::probe::models::SelectManyProbes;
+use edumdns_db::repositories::probe::models::{SelectManyProbes, UpdateProbe};
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -57,4 +58,42 @@ pub struct ProbePermissionForm {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CreateProbeForm {
     pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UpdateProbeForm {
+    pub id: Uuid,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
+    pub name: Option<String>,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
+    pub pre_shared_key: Option<String>,
+}
+
+impl From<UpdateProbeForm> for UpdateProbe {
+    fn from(value: UpdateProbeForm) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            pre_shared_key: value.pre_shared_key,
+            owner_id: None
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UpdateProbeOwnerForm {
+    pub id: Uuid,
+    #[serde(default, deserialize_with = "empty_string_is_none")]
+    pub owner_id: Option<Id>,
+}
+
+impl From<UpdateProbeOwnerForm> for UpdateProbe {
+    fn from(value: UpdateProbeOwnerForm) -> Self {
+        Self {
+            id: value.id,
+            name: None,
+            pre_shared_key: None,
+            owner_id: value.owner_id
+        }
+    }
 }

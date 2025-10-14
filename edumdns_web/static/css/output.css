@@ -1527,6 +1527,11 @@ pre code {
   color: rgb(107 114 128 / var(--tw-text-opacity, 1));
 }
 
+.text-green-600 {
+  --tw-text-opacity: 1;
+  color: rgb(22 163 74 / var(--tw-text-opacity, 1));
+}
+
 .text-green-700 {
   --tw-text-opacity: 1;
   color: rgb(21 128 61 / var(--tw-text-opacity, 1));
@@ -2009,6 +2014,11 @@ pre code {
   background-color: rgb(254 202 202 / var(--tw-bg-opacity, 1));
 }
 
+.hover\:bg-red-600:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(220 38 38 / var(--tw-bg-opacity, 1));
+}
+
 .hover\:bg-red-700:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(185 28 28 / var(--tw-bg-opacity, 1));
@@ -2019,9 +2029,9 @@ pre code {
   background-color: rgb(234 179 8 / var(--tw-bg-opacity, 1));
 }
 
-.hover\:bg-red-600:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(220 38 38 / var(--tw-bg-opacity, 1));
+.hover\:text-green-800:hover {
+  --tw-text-opacity: 1;
+  color: rgb(22 101 52 / var(--tw-text-opacity, 1));
 }
 
 .hover\:text-stone-400:hover {

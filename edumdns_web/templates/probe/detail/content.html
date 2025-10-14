@@ -86,12 +86,26 @@
                 <span class="font-mono text-code"><code>{{ probe.id }}</code></span>
             </div>
 
-            <!-- Owner ID -->
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">Owner</span>
-                <span class="font-mono text-code">{% if probe.owner_id is none%}<span class="text-muted-foreground text-sat-m">—</span>{% else %}<a href="/user/{{ probe.owner_id }}">{{ probe.owner_id }}</a>{% endif %}</span>
+                <span id="owner-field" class="font-mono text-code flex items-center gap-2">
+                    {% if probe.owner_id is none %}
+                      <span class="text-muted-foreground text-sat-m">—</span>
+                    {% else %}
+                      <a href="/user/{{ probe.owner_id }}" id="owner-link">{{ probe.owner_id }}</a>
+                    {% endif %}
+                    {% if user.user.admin %}
+                      <button
+                              id="edit-owner-btn"
+                              class="text-xs text-acc hover:text-acc-xl"
+                              title="Edit owner"
+                              type="button"
+                      >
+                        <i class="fa-solid fa-pen"></i>
+                      </button>
+                    {% endif %}
+                </span>
             </div>
-
 
             <!-- MAC -->
             <div class="flex flex-col">
@@ -159,7 +173,8 @@
 
             <!-- pre_shared_key -->
             <div class="flex flex-col">
-                <label for="pre_shared_key" class="text-xs uppercase tracking-wide text-sat-m">Pre-Shared Secret Key</label>
+                <label for="pre_shared_key" class="text-xs uppercase tracking-wide text-sat-m">Pre-Shared Secret
+                    Key</label>
                 <input
                         id="pre_shared_key"
                         name="pre_shared_key"
@@ -168,7 +183,8 @@
                         placeholder="{{ probe.pre_shared_key }}"
                         class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
                 />
-                <p class="text-xs text-sat-m mt-1">Optional Pre-Shared Key for increased security (probe traffic is encrypted nonetheless).</p>
+                <p class="text-xs text-sat-m mt-1">Optional Pre-Shared Key for increased security (probe traffic is
+                    encrypted nonetheless).</p>
             </div>
 
             {% if permissions|has_perm("Update") %}
@@ -461,7 +477,6 @@
     </div>
 
 
-
     <!-- Devices Table -->
     <div class="overflow-x-auto rounded-lg border border-base bg-cards mt-8">
         <div class="flex flex-col justify-center items-center py-4">
@@ -659,7 +674,7 @@
     function runSearch() {
         const params = new URLSearchParams();
 
-        ["id", "name","mac","ip","port"].forEach(field => {
+        ["id", "name", "mac", "ip", "port"].forEach(field => {
             const value = document.getElementById(`filter-${field}`).value.trim();
             if (value) {
                 params.set(field, value);
@@ -681,7 +696,7 @@
     });
 
     // Trigger search on Enter in any filter input
-    ["filter-id", "filter-name","filter-mac","filter-ip","filter-port"].forEach(id => {
+    ["filter-id", "filter-name", "filter-mac", "filter-ip", "filter-port"].forEach(id => {
         const input = document.getElementById(id);
         input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
@@ -690,4 +705,42 @@
             }
         });
     });
+
+    function initEditOwnerButton() {
+        const editBtn = document.getElementById("edit-owner-btn");
+        if (!editBtn) return;
+
+        editBtn.addEventListener("click", () => {
+            const ownerField = document.getElementById("owner-field");
+            const currentOwner = document.getElementById("owner-link")?.textContent?.trim() || "";
+            const probeId = "{{ probe.id }}";
+
+            ownerField.innerHTML = `
+          <form method="post" action="/probe/update-owner" class="flex items-center gap-2">
+            <input type="hidden" name="id" value="${probeId}">
+            <input
+              type="number"
+              name="owner_id"
+              class="rounded-md border border-base bg-panes px-2 py-1 w-24 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+              placeholder="ID"
+            />
+            <button type="submit" title="Save" class="text-xs text-green-600 hover:text-green-800">
+              <i class="fa-solid fa-check"></i>
+            </button>
+          </form>
+        `;
+        });
+    }
+
+    // Run when page initially loads
+    document.addEventListener("DOMContentLoaded", initEditOwnerButton);
+
+    // Re-run whenever HTMX swaps content into #probe-content-area
+    document.body.addEventListener("htmx:afterSwap", (evt) => {
+        if (evt.detail.target.id === "probe-content-area") {
+            initEditOwnerButton();
+        }
+    });
+
+
 </script>

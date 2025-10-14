@@ -207,52 +207,6 @@
         </form>
     </div>
 
-    {% if user.user.admin %}
-    <!-- Make these fields editable -->
-    <div id="probe-owner-form" class="rounded-lg border border-base bg-cards p-6 mb-8">
-        <h3 class="text-2xl font-medium mb-4 text-sat-l">Probe Owner</h3>
-        <form
-                method="post"
-                hx-post="/probe/update-owner"
-                hx-target="#probe-content-area"
-                hx-target-error="#probe-owner-form"
-                class="grid grid-cols-1 md:grid-cols-2 gap-4"
-        >
-            <input type="hidden" id="owner_form_probe_id" name="id" value="{{ probe.id }}"/>
-
-            <!-- owner -->
-            <div class="flex flex-col">
-                <label for="owner_id" class="text-xs uppercase tracking-wide text-sat-m">Owner</label>
-                <input
-                        id="owner_id"
-                        name="owner_id"
-                        type="number"
-                        value="{{ probe.owner_id }}"
-                        placeholder="{{ probe.owner_id }}"
-                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
-                />
-                <p class="text-xs text-sat-m mt-1">Optional Owner of the probe</p>
-            </div>
-
-            <!-- Actions -->
-            <div class="md:col-span-2 flex items-center gap-2 pt-2">
-                <button
-                        type="submit"
-                        class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
-                >
-                    Save
-                </button>
-                <button
-                        type="reset"
-                        class="inline-flex items-center rounded-md border border-base bg-cards px-4 py-2 text-sm font-medium text-sat-l hover:bg-panes transition-colors"
-                >
-                    Reset
-                </button>
-            </div>
-        </form>
-    </div>
-    {% endif %}
-
     <!-- Permissions Table -->
     {% if user.user.admin %}
     <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards mb-8">

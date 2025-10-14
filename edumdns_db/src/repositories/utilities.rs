@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::{GroupProbePermission, Probe, User};
 use crate::repositories::MIN_PASS_LEN;
@@ -68,12 +69,7 @@ pub async fn validate_permissions(
         .select(GroupProbePermission::as_select())
         .load::<GroupProbePermission>(&mut conn)
         .await?;
-    if permissions
-        .iter()
-        .any(|p| p.permission == permission || p.permission == Permission::Full)
-    {
-        return Ok((false, permissions));
-    }
+
     let probe = probe::table
         .find(probe_id)
         .select(Probe::as_select())
@@ -81,7 +77,16 @@ pub async fn validate_permissions(
         .await?;
 
     if probe.owner_id == Some(*user_id) {
-        return Ok((false, GroupProbePermission::create_web()));
+        let mut perms: HashSet<GroupProbePermission> = HashSet::from_iter(permissions);
+        perms.extend(GroupProbePermission::create_web());
+        return Ok((false, Vec::from_iter(perms)));
+    }
+
+    if permissions
+        .iter()
+        .any(|p| p.permission == permission || p.permission == Permission::Full)
+    {
+        return Ok((false, permissions));
     }
 
     Err(no_permission_error(&user_entry.email, permission))

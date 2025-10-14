@@ -335,11 +335,9 @@ pub async fn update_probe_owner(
     form: web::Form<UpdateProbeOwnerForm>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
-    let probe_id = form.id;
-    println!("KOKOT: {:?}", form);
-    probe_repo.update_owner_auth(&UpdateProbe::from(form.into_inner()), &parse_user_id(&i)?).await?;
+    probe_repo.update_owner_auth(&form.id, &form.owner_id, &parse_user_id(&i)?).await?;
     Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/probe/{}", probe_id)))
+        .insert_header((LOCATION, format!("/probe/{}", form.id)))
         .finish())
 }
 

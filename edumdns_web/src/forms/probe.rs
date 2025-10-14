@@ -75,7 +75,6 @@ impl From<UpdateProbeForm> for UpdateProbe {
             id: value.id,
             name: value.name,
             pre_shared_key: value.pre_shared_key,
-            owner_id: None
         }
     }
 }
@@ -85,15 +84,4 @@ pub struct UpdateProbeOwnerForm {
     pub id: Uuid,
     #[serde(default, deserialize_with = "empty_string_is_none")]
     pub owner_id: Option<Id>,
-}
-
-impl From<UpdateProbeOwnerForm> for UpdateProbe {
-    fn from(value: UpdateProbeOwnerForm) -> Self {
-        Self {
-            id: value.id,
-            name: None,
-            pre_shared_key: None,
-            owner_id: value.owner_id
-        }
-    }
 }

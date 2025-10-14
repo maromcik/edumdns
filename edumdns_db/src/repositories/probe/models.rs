@@ -219,7 +219,4 @@ pub struct UpdateProbe {
     #[serde(default, deserialize_with = "empty_string_is_none")]
     #[diesel(treat_none_as_null = true)]
     pub pre_shared_key: Option<String>,
-    #[serde(default, deserialize_with = "empty_string_is_none")]
-    #[diesel(treat_none_as_null = true)]
-    pub owner_id: Option<Id>,
 }

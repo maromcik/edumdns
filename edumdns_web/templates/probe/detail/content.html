@@ -7,7 +7,7 @@
         </h1>
     </div>
 
-    <div class="flex items- gap-2 mb-6">
+    <div class="flex items-center gap-2 mb-6">
         <div class="flex items-center gap-2">
             <a href="/probe"
                class="flex items-center justify-center w-10 h-10 rounded-md border border-base bg-cards text-sm font-medium text-acc hover:text-acc-xl transition-colors">
@@ -416,9 +416,9 @@
                             Add config
                         </button>
                     </form>
-                    {% endif %}
                 </td>
             </tr>
+            {% endif %}
             </tbody>
         </table>
 
@@ -666,7 +666,6 @@
 
         editBtn.addEventListener("click", () => {
             const ownerField = document.getElementById("owner-field");
-            const currentOwner = document.getElementById("owner-link")?.textContent?.trim() || "";
             const probeId = "{{ probe.id }}";
 
             ownerField.innerHTML = `

@@ -28,6 +28,7 @@ pub enum TcpConnectionMessage {
     SendPacket {
         respond_to: oneshot::Sender<Result<(), CoreError>>,
         packet: NetworkAppPacket,
+        immediate: bool,
     },
     Close,
 }
@@ -37,7 +38,14 @@ impl TcpConnectionMessage {
         respond_to: oneshot::Sender<Result<(), CoreError>>,
         packet: NetworkAppPacket,
     ) -> Self {
-        Self::SendPacket { respond_to, packet }
+        Self::SendPacket { respond_to, packet, immediate: true }
+    }
+
+    pub fn send_packet_buffered(
+        respond_to: oneshot::Sender<Result<(), CoreError>>,
+        packet: NetworkAppPacket,
+    ) -> Self {
+        Self::SendPacket { respond_to, packet, immediate: false }
     }
 
     pub fn receive_packet(
@@ -116,9 +124,9 @@ where
 {
     while let Some(msg) = actor.receiver.recv().await {
         match msg {
-            TcpConnectionMessage::SendPacket { respond_to, packet } => {
+            TcpConnectionMessage::SendPacket { respond_to, packet, immediate } => {
                 respond_to
-                    .send(actor.send_packet(&packet).await)
+                    .send(actor.send_packet(&packet, immediate).await)
                     .map_err(|e| {
                         CoreError::new(
                             CoreErrorKind::TokioOneshotChannelError,
@@ -358,16 +366,25 @@ impl<S> TcpConnectionSender<S>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    pub async fn send_packet<T>(&mut self, packet: T) -> Result<(), CoreError>
+    pub async fn send_packet<T>(&mut self, packet: T, immediate: bool) -> Result<(), CoreError>
     where
         T: Encode,
     {
         let encoded = Self::encode_frame(packet)?;
-        timeout(
-            self.global_timeout,
-            self.framed_sink.send(Bytes::from(encoded)),
-        )
-        .await
+        let res = if immediate {
+            timeout(
+                self.global_timeout,
+                self.framed_sink.send(Bytes::from(encoded)),
+            )
+                .await
+        } else {
+            timeout(
+                self.global_timeout,
+                self.framed_sink.feed(Bytes::from(encoded)),
+            )
+                .await
+        };
+        res
         .map_err(|_| CoreError::new(CoreErrorKind::TimeoutError, "Sending a packet timed out"))??;
         Ok(())
     }

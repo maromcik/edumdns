@@ -290,12 +290,23 @@ impl ConnectionManager {
     ) -> Result<(), ProbeError> {
         let mut counter = 0;
         loop {
-            match handle
-                .send_message_with_response(|tx| {
-                    TcpConnectionMessage::send_packet(tx, packet.clone())
-                })
-                .await?
-            {
+            let res = match packet {
+                NetworkAppPacket::Data(_) => {
+                    handle
+                        .send_message_with_response(|tx| {
+                            TcpConnectionMessage::send_packet_buffered(tx, packet.clone())
+                        })
+                        .await?
+                }
+                _ => {
+                    handle
+                        .send_message_with_response(|tx| {
+                            TcpConnectionMessage::send_packet(tx, packet.clone())
+                        })
+                        .await?
+                }
+            };
+            match res {
                 Ok(_) => return Ok(()),
                 Err(e) => {
                     error!("Failed to send packet: {e}");

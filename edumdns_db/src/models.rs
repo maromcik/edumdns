@@ -169,7 +169,7 @@ pub struct Packet {
     pub src_port: i32,
     pub dst_port: i32,
     pub payload: Vec<u8>,
-    pub payload_hash: String,
+    pub payload_hash: i64,
     pub payload_string: Option<String>,
     pub captured_at: Option<OffsetDateTime>,
 }

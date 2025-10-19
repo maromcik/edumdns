@@ -82,7 +82,7 @@ pub struct CreatePacket {
     pub src_port: i32,
     pub dst_port: i32,
     pub payload: Vec<u8>,
-    pub payload_hash: String,
+    pub payload_hash: i64,
     pub payload_string: Option<String>,
 }
 
@@ -96,7 +96,7 @@ impl CreatePacket {
         src_port: u16,
         dst_port: u16,
         payload: Vec<u8>,
-        payload_hash: String,
+        payload_hash: i64,
     ) -> Self {
         let payload_string = Message::from_bytes(&payload).ok().map(|m| m.to_string());
         Self {

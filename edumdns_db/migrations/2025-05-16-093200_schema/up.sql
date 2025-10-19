@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS "packet"
     src_port       int          NOT NULL,
     dst_port       int          NOT NULL,
     payload        bytea        NOT NULL,
-    payload_hash   text         NOT NULL,
+    payload_hash   bigint       NOT NULL,
     payload_string text,
     captured_at    timestamptz  DEFAULT now(),
 

@@ -1569,6 +1569,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "bytes",
+ "fnv",
  "futures",
  "hex",
  "hickory-proto",
@@ -1639,6 +1640,7 @@ dependencies = [
  "diesel-async",
  "edumdns_core",
  "edumdns_db",
+ "fnv",
  "hickory-proto",
  "ipnetwork 0.21.1",
  "log",

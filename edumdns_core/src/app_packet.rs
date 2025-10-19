@@ -3,7 +3,7 @@ use crate::bincode_types::Uuid;
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};
 use crate::network_packet::{DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};
-use sha2::{Digest, Sha256};
+// use sha2::{Digest, Sha256};
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 use tokio::sync::{mpsc, oneshot};
@@ -163,7 +163,7 @@ pub struct ProbePacket {
     pub probe_metadata: ProbeMetadata,
     pub packet_metadata: PacketMetadata,
     pub payload: Vec<u8>,
-    pub payload_hash: String,
+    pub payload_hash: u64,
 }
 
 impl ProbePacket {
@@ -204,14 +204,14 @@ impl Hash for ProbePacket {
         self.packet_metadata.ip_metadata.src_ip.hash(state);
         self.packet_metadata.ip_metadata.dst_ip.hash(state);
         self.packet_metadata.transport_metadata.dst_port.hash(state);
-        self.payload.hash(state);
+        self.payload_hash.hash(state);
     }
 }
 
 impl PartialEq for ProbePacket {
     fn eq(&self, other: &Self) -> bool {
         self.probe_metadata.id == other.probe_metadata.id
-            && self.payload == other.payload
+            && self.payload_hash == other.payload_hash
             && self.packet_metadata.datalink_metadata.mac_metadata.src_mac
                 == other.packet_metadata.datalink_metadata.mac_metadata.src_mac
             && self.packet_metadata.ip_metadata.src_ip == other.packet_metadata.ip_metadata.src_ip
@@ -279,6 +279,9 @@ impl Display for PacketTransmitRequestPacket {
     }
 }
 
-pub fn calculate_hash(value: &[u8]) -> String {
-    hex::encode(Sha256::digest(value))
+pub fn calculate_hash(value: &[u8]) -> u64 {
+    // hex::encode(Sha256::digest(value))
+    let mut hasher = fnv::FnvHasher::default();
+    value.hash(&mut hasher);
+    hasher.finish()
 }

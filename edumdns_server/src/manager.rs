@@ -26,6 +26,7 @@ use std::env;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 use std::time::Duration;
+use fnv::{FnvHashMap, FnvHashSet};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
 use tokio::task::yield_now;
@@ -38,7 +39,7 @@ pub struct Proxy {
 }
 
 pub struct PacketManager {
-    pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
+    pub packets: FnvHashMap<Uuid, FnvHashMap<(MacAddr, IpNetwork), FnvHashSet<ProbePacket>>>,
     pub command_receiver: Receiver<AppPacket>,
     pub data_receiver: Receiver<AppPacket>,
     pub db_transmitter: Sender<DbCommand>,
@@ -83,7 +84,7 @@ impl PacketManager {
         };
 
         Ok(Self {
-            packets: HashMap::new(),
+            packets: FnvHashMap::default(),
             command_receiver,
             data_receiver,
             db_transmitter,
@@ -263,7 +264,7 @@ impl PacketManager {
                                 }
                             }
                             Entry::Vacant(device_entry) => {
-                                let device_entry = device_entry.insert(HashSet::new());
+                                let device_entry = device_entry.insert(FnvHashSet::default());
                                 device_entry.insert(probe_packet.clone());
                                 self.send_db_packet(DbCommand::StoreDevice(probe_packet.clone()))
                                     .await;
@@ -274,7 +275,7 @@ impl PacketManager {
                         }
                     }
                     Entry::Vacant(probe_entry) => {
-                        let probe_entry = probe_entry.insert(HashMap::new());
+                        let probe_entry = probe_entry.insert(FnvHashMap::default());
                         probe_entry
                             .entry((src_mac, src_ip))
                             .or_default()

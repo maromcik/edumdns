@@ -102,7 +102,7 @@ impl DatabaseManager {
                 packet.packet_metadata.transport_metadata.src_port,
                 packet.packet_metadata.transport_metadata.dst_port,
                 packet.payload,
-                packet.payload_hash,
+                packet.payload_hash as i64,
             ))
             .await;
         match packet {

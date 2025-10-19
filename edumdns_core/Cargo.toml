@@ -22,3 +22,4 @@ hex = "0.4.3"
 rustls = { version = "0.23.32", features = ["ring"] }
 tokio-rustls = "0.26.3"
 rustls-pki-types = "1.12.0"
+fnv = "1.0.7"

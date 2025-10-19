@@ -80,7 +80,7 @@ impl CreatePacketForm {
             src_port: 0,
             dst_port: self.dst_port as i32,
             payload,
-            payload_hash,
+            payload_hash: payload_hash as i64,
             payload_string,
         })
     }

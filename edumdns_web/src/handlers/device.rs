@@ -304,7 +304,7 @@ pub async fn request_packet_transmit(
                 "ACL password is required to request packets from this device",
             ));
         };
-        if !verify_password_hash(acl_pwd_hash, pwd)? {
+        if acl_pwd_hash != pwd {
             return Err(WebError::new(
                 WebErrorKind::DeviceTransmitRequestDenied,
                 "ACL password is incorrect",

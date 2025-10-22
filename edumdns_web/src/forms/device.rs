@@ -98,14 +98,14 @@ pub struct UpdateDeviceForm {
 
 impl UpdateDeviceForm {
     pub fn to_db_params(self) -> Result<UpdateDevice, WebError> {
-        let (hash, salt) = match self.acl_password {
-            None => (None, None),
-            Some(password) => {
-                let salt = generate_salt();
-                let password_hash = hash_password(password, &salt)?;
-                (Some(password_hash), Some(salt.to_string()))
-            }
-        };
+        // let (hash, salt) = match self.acl_password {
+        //     None => (None, None),
+        //     Some(password) => {
+        //         let salt = generate_salt();
+        //         let password_hash = hash_password(password, &salt)?;
+        //         (Some(password_hash), Some(salt.to_string()))
+        //     }
+        // };
 
         Ok(UpdateDevice {
             id: self.id,
@@ -118,8 +118,8 @@ impl UpdateDeviceForm {
             published: None,
             acl_src_cidr: self.acl_src_cidr,
             acl_ap_hostname_regex: self.acl_ap_hostname_regex,
-            acl_pwd_hash: hash,
-            acl_pwd_salt: salt,
+            acl_pwd_hash: self.acl_password,
+            acl_pwd_salt: None,
             proxy: Some(self.proxy),
         })
     }

@@ -164,8 +164,8 @@
                         id="name"
                         name="name"
                         type="text"
-                        value="{{ probe.name }}"
-                        placeholder="{{ probe.name }}"
+                        value="{% if probe.name is none %}{% else %}{{ probe.name }}{% endif %}"
+                        placeholder="Friendly name"
                         class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
                 />
                 <p class="text-xs text-sat-m mt-1">Optional friendly name for the probe.</p>
@@ -179,8 +179,8 @@
                         id="pre_shared_key"
                         name="pre_shared_key"
                         type="text"
-                        value="{{ probe.pre_shared_key }}"
-                        placeholder="{{ probe.pre_shared_key }}"
+                        value="{% if probe.pre_shared_key is none %}{% else %}{{ probe.pre_shared_key }}{% endif %}"
+                        placeholder="Optional pre-shared key"
                         class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
                 />
                 <p class="text-xs text-sat-m mt-1">Optional Pre-Shared Key for increased security (probe traffic is

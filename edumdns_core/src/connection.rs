@@ -38,14 +38,22 @@ impl TcpConnectionMessage {
         respond_to: oneshot::Sender<Result<(), CoreError>>,
         packet: NetworkAppPacket,
     ) -> Self {
-        Self::SendPacket { respond_to, packet, immediate: true }
+        Self::SendPacket {
+            respond_to,
+            packet,
+            immediate: true,
+        }
     }
 
     pub fn send_packet_buffered(
         respond_to: oneshot::Sender<Result<(), CoreError>>,
         packet: NetworkAppPacket,
     ) -> Self {
-        Self::SendPacket { respond_to, packet, immediate: false }
+        Self::SendPacket {
+            respond_to,
+            packet,
+            immediate: false,
+        }
     }
 
     pub fn receive_packet(
@@ -124,7 +132,11 @@ where
 {
     while let Some(msg) = actor.receiver.recv().await {
         match msg {
-            TcpConnectionMessage::SendPacket { respond_to, packet, immediate } => {
+            TcpConnectionMessage::SendPacket {
+                respond_to,
+                packet,
+                immediate,
+            } => {
                 respond_to
                     .send(actor.send_packet(&packet, immediate).await)
                     .map_err(|e| {
@@ -376,16 +388,17 @@ where
                 self.global_timeout,
                 self.framed_sink.send(Bytes::from(encoded)),
             )
-                .await
+            .await
         } else {
             timeout(
                 self.global_timeout,
                 self.framed_sink.feed(Bytes::from(encoded)),
             )
-                .await
+            .await
         };
-        res
-        .map_err(|_| CoreError::new(CoreErrorKind::TimeoutError, "Sending a packet timed out"))??;
+        res.map_err(|_| {
+            CoreError::new(CoreErrorKind::TimeoutError, "Sending a packet timed out")
+        })??;
         Ok(())
     }
 

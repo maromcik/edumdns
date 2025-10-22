@@ -376,7 +376,12 @@ impl PgProbeRepository {
         Ok(permissions)
     }
 
-    pub async fn update_owner_auth(&self, params: &Uuid, owner_id: &Option<Id>, user_id: &Id) -> DbResult<()> {
+    pub async fn update_owner_auth(
+        &self,
+        params: &Uuid,
+        owner_id: &Option<Id>,
+        user_id: &Id,
+    ) -> DbResult<()> {
         validate_admin(&self.pg_pool, user_id).await?;
         let mut conn = self.pg_pool.get().await?;
         diesel::update(probe::table.find(params))

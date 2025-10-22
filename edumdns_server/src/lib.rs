@@ -7,7 +7,7 @@ use crate::probe_tracker::{SharedProbeTracker, watchdog};
 use crate::utilities::load_all_packet_transmit_requests;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{AppPacket};
+use edumdns_core::app_packet::AppPacket;
 use log::{error, info};
 use std::collections::HashMap;
 use std::env;

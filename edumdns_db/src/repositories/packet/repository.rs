@@ -12,10 +12,13 @@ use crate::schema;
 use crate::schema::packet::BoxedQuery;
 use crate::schema::{group_probe_permission, group_user, probe, user};
 use diesel::pg::Pg;
-use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl, SelectableHelper};
-use diesel_async::pooled_connection::deadpool::Pool;
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods,
+    PgTextExpressionMethods, QueryDsl, SelectableHelper,
+};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use diesel_async::pooled_connection::deadpool::Pool;
 use itertools::Itertools;
 use schema::packet;
 

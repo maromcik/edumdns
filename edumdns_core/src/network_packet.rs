@@ -595,9 +595,13 @@ impl<'a> ApplicationPacket<'a> {
             _ => None,
         }
     }
-    pub fn from_bytes(bytes: &'_ [u8], src_port: i32, dst_port: i32) -> Result<ApplicationPacket<'_>, CoreError> {
+    pub fn from_bytes(
+        bytes: &'_ [u8],
+        src_port: i32,
+        dst_port: i32,
+    ) -> Result<ApplicationPacket<'_>, CoreError> {
         match (src_port, dst_port) {
-            (53 | 5353, _ ) | (_, 53 | 5353 ) => Ok(ApplicationPacket {
+            (53 | 5353, _) | (_, 53 | 5353) => Ok(ApplicationPacket {
                 application_packet_type: ApplicationPacketType::DnsPacket(Message::from_bytes(
                     bytes,
                 )?),

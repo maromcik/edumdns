@@ -19,6 +19,7 @@ use edumdns_db::repositories::device::models::{CreateDevice, SelectSingleDevice}
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
+use fnv::{FnvHashMap, FnvHashSet};
 use log::{debug, error, info, warn};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
@@ -26,7 +27,6 @@ use std::env;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 use std::time::Duration;
-use fnv::{FnvHashMap, FnvHashSet};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
 use tokio::task::yield_now;

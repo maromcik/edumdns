@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::{GroupProbePermission, Probe, User};
 use crate::repositories::MIN_PASS_LEN;
@@ -15,6 +14,7 @@ use pbkdf2::Pbkdf2;
 use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
 use rand_core::OsRng;
 use serde::{Deserialize, Deserializer};
+use std::collections::HashSet;
 use std::ops::DerefMut;
 use std::str::FromStr;
 use time::{OffsetDateTime, UtcOffset, format_description};

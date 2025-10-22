@@ -5,8 +5,8 @@ use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
-use std::env;
 use log::info;
+use std::env;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 

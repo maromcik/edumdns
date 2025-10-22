@@ -2,11 +2,11 @@ use crate::models::Packet;
 use crate::repositories::common::{Id, Pagination, Permission};
 use crate::repositories::utilities::format_time;
 use diesel::{AsChangeset, Insertable};
-use hickory_proto::op::Message;
-use hickory_proto::serialize::binary::BinDecodable;
 use edumdns_core::bincode_types::MacAddr;
 use edumdns_core::error::CoreError;
 use edumdns_core::network_packet::ApplicationPacket;
+use hickory_proto::op::Message;
+use hickory_proto::serialize::binary::BinDecodable;
 use ipnetwork::IpNetwork;
 use log::warn;
 use serde::{Deserialize, Serialize};
@@ -131,13 +131,14 @@ pub struct PacketDisplay {
 
 impl PacketDisplay {
     pub fn from(value: Packet) -> Result<PacketDisplay, CoreError> {
-        let payload = match ApplicationPacket::from_bytes(&value.payload, value.src_port, value.dst_port) {
-            Ok(p) => p,
-            Err(e) => {
-                warn!("Unable to parse packet payload: {}", e);
-                return Err(e);
-            }
-        };
+        let payload =
+            match ApplicationPacket::from_bytes(&value.payload, value.src_port, value.dst_port) {
+                Ok(p) => p,
+                Err(e) => {
+                    warn!("Unable to parse packet payload: {}", e);
+                    return Err(e);
+                }
+            };
         Ok(Self {
             id: value.id,
             probe_id: value.probe_id,

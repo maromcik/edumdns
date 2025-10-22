@@ -1,7 +1,7 @@
-use edumdns_db::repositories::utilities::{empty_string_is_none};
 use edumdns_core::bincode_types::MacAddr;
 use edumdns_db::repositories::common::{Id, Pagination, Permission};
 use edumdns_db::repositories::probe::models::{SelectManyProbes, UpdateProbe};
+use edumdns_db::repositories::utilities::empty_string_is_none;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

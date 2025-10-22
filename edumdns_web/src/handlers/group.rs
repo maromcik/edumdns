@@ -86,10 +86,10 @@ pub async fn create_group(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let g = group_repo
-        .create_auth(&CreateGroup::new(
-            &form.name,
-            form.description.as_ref(),
-        ), &parse_user_id(&i)?)
+        .create_auth(
+            &CreateGroup::new(&form.name, form.description.as_ref()),
+            &parse_user_id(&i)?,
+        )
         .await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/group/{}", g.id)))

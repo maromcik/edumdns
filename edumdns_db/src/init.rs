@@ -6,6 +6,7 @@ use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use std::env;
+use log::info;
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
@@ -23,6 +24,7 @@ pub fn run_migrations() -> Result<(), DbError> {
     connection
         .run_pending_migrations(MIGRATIONS)
         .map_err(|e| DbError::new(DbErrorKind::MigrationError, e.to_string().as_str()))?;
+    info!("Migrations ran successfully.");
     Ok(())
 }
 

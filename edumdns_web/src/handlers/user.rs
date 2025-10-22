@@ -92,7 +92,7 @@ pub async fn create_user(
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
-    user_repo
+    let u = user_repo
         .create_auth(
             &UserCreate::new_from_admin(
                 &form.email,
@@ -106,7 +106,7 @@ pub async fn create_user(
         )
         .await?;
     Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, "/user"))
+        .insert_header((LOCATION, format!("/user/{}", u.id)))
         .finish())
 }
 

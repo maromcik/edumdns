@@ -17,18 +17,16 @@ impl SelectManyGroups {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CreateGroup {
-    pub user_id: Id,
     pub name: String,
     #[serde(default, deserialize_with = "empty_string_is_none")]
     pub description: Option<String>,
 }
 
 impl CreateGroup {
-    pub fn new(user_id: Id, name: &String, description: Option<&String>) -> Self {
+    pub fn new<S: AsRef<str>>(name: &str, description: Option<S>) -> Self {
         Self {
-            user_id,
             name: name.to_string(),
-            description: description.map(|s| s.to_string()),
+            description: description.map(|s| s.as_ref().to_string()),
         }
     }
 }

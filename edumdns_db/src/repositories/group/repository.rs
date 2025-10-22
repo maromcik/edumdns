@@ -83,8 +83,6 @@ impl DbCreate<CreateGroup, Group> for PgGroupRepository {
             .deref_mut()
             .transaction::<_, DbError, _>(|c| {
                 async move {
-                    validate_admin_transaction(c, &data.user_id).await?;
-
                     let g = diesel::insert_into(group::table)
                         .values((
                             group::name.eq(&data.name),

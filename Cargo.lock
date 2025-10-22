@@ -1641,6 +1641,7 @@ dependencies = [
  "edumdns_core",
  "edumdns_db",
  "fnv",
+ "futures",
  "hickory-proto",
  "ipnetwork 0.21.1",
  "log",

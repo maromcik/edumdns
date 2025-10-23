@@ -42,4 +42,5 @@ pub struct DeviceTransmitTemplate {
 #[derive(Serialize)]
 pub struct DeviceCreateTemplate {
     pub probe_id: Uuid,
+    pub user: UserDisplay,
 }

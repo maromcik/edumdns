@@ -443,13 +443,16 @@ pub async fn create_device(
 pub async fn create_device_form(
     request: HttpRequest,
     identity: Option<Identity>,
+    user_repo: web::Data<PgUserRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
-    let _ = authorized!(identity, request);
+    let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
+    let user = user_repo.read_one(&user_id).await?;
     let template_name = get_template_name(&request, "device/create");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
-    let body = template.render(DeviceCreateTemplate { probe_id: path.0 })?;
+    let body = template.render(DeviceCreateTemplate { probe_id: path.0, user })?;
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

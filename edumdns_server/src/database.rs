@@ -53,7 +53,7 @@ impl DatabaseManager {
                 }
                 ret = futs.next() => {
                     if ret.is_none() {
-                            sleep(Duration::from_millis(50)).await;
+                            sleep(Duration::from_millis(1)).await;
                         }
                 }
 

@@ -28,7 +28,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
-use tokio::task::yield_now;
 
 #[derive(Clone)]
 pub struct Proxy {

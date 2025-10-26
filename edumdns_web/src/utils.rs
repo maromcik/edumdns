@@ -16,6 +16,8 @@ use minijinja_autoreload::AutoReloader;
 use serde::Deserialize;
 use std::env;
 use std::sync::Arc;
+use actix_web::ResponseError;
+use actix_web::web::{JsonConfig, PathConfig, QueryConfig};
 use tokio::sync::mpsc::Sender;
 
 #[derive(Clone)]
@@ -169,4 +171,38 @@ pub fn parse_host() -> String {
     let hostname = env::var("EDUMDNS_WEB_HOSTNAME").unwrap_or(DEFAULT_HOSTNAME.to_string());
     let port = env::var("EDUMDNS_WEB_PORT").unwrap_or(DEFAULT_PORT.to_string());
     format!("{hostname}:{port}")
+}
+
+pub fn json_config() -> JsonConfig {
+    JsonConfig::default()
+        .error_handler(|err, _req| {
+            let web_error = WebError::new(WebErrorKind::ParseError, &err.to_string());
+            actix_web::error::InternalError::from_response(
+                err,
+                web_error.error_response(),
+            )
+                .into()
+        })
+}
+
+pub fn query_config() -> QueryConfig {
+    QueryConfig::default().error_handler(|err, _req| {
+        let web_error = WebError::new(WebErrorKind::ParseError, &err.to_string());
+        actix_web::error::InternalError::from_response(
+            err,
+            web_error.error_response(),
+        )
+            .into()
+    })
+}
+
+pub fn path_config() -> PathConfig {
+    PathConfig::default().error_handler(|err, _req| {
+        let web_error = WebError::new(WebErrorKind::ParseError, &err.to_string());
+        actix_web::error::InternalError::from_response(
+            err,
+            web_error.error_response(),
+        )
+            .into()
+    })
 }

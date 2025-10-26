@@ -1,4 +1,4 @@
-use crate::error::ServerError;
+use crate::error::{ServerError, ServerErrorKind};
 use aya::maps::{HashMap, Map, MapData};
 use ipnetwork::IpNetwork;
 use log::{error, info};
@@ -35,18 +35,19 @@ impl EbpfUpdater {
     }
 
     pub fn add_ip(&mut self, a: IpNetwork, b: IpNetwork) -> Result<(), ServerError> {
+        let err = |ip_a, ip_b, e| ServerError::new(ServerErrorKind::EbpfMapError, format!("Could not add IP pair <{ip_a}, {ip_b}> to the eBPF map: {e}" ).as_str());
         match (a.ip(), b.ip()) {
-            (IpAddr::V4(a), IpAddr::V4(b)) => {
-                let a: u32 = a.into();
-                let b: u32 = b.into();
-                self.rewrite_map_v4.insert(a, b, 0)?;
-                self.rewrite_map_v4.insert(b, a, 0)?;
+            (IpAddr::V4(a_ipv4), IpAddr::V4(b_ipv4)) => {
+                let a_bytes: u32 = a_ipv4.into();
+                let b_bytes: u32 = b_ipv4.into();
+                self.rewrite_map_v4.insert(a_bytes, b_bytes, 0).map_err(|e| err(a,b, e))?;
+                self.rewrite_map_v4.insert(b_bytes, a_bytes, 0).map_err(|e| err(b,a, e))?;
             }
-            (IpAddr::V6(a), IpAddr::V6(b)) => {
-                let a: [u8; 16] = a.octets();
-                let b: [u8; 16] = b.octets();
-                self.rewrite_map_v6.insert(a, b, 0)?;
-                self.rewrite_map_v6.insert(b, a, 0)?;
+            (IpAddr::V6(a_ipv6), IpAddr::V6(b_ipv6)) => {
+                let a_bytes: [u8; 16] = a_ipv6.octets();
+                let b_bytes: [u8; 16] = b_ipv6.octets();
+                self.rewrite_map_v6.insert(a_bytes, b_bytes, 0).map_err(|e| err(a,b, e))?;
+                self.rewrite_map_v6.insert(b_bytes, a_bytes, 0).map_err(|e| err(b,a, e))?;
             }
             _ => {}
         }
@@ -55,18 +56,19 @@ impl EbpfUpdater {
     }
 
     pub fn remove_ip(&mut self, a: IpNetwork, b: IpNetwork) -> Result<(), ServerError> {
+        let err = |ip, e| ServerError::new(ServerErrorKind::EbpfMapError, format!("Could not remove IP {ip} from the eBPF map: {e}" ).as_str());
         match (a.ip(), b.ip()) {
-            (IpAddr::V4(a), IpAddr::V4(b)) => {
-                let a: u32 = a.into();
-                let b: u32 = b.into();
-                self.rewrite_map_v4.remove(&a)?;
-                self.rewrite_map_v4.remove(&b)?;
+            (IpAddr::V4(a_ipv4), IpAddr::V4(b_ipv4)) => {
+                let a_bytes: u32 = a_ipv4.into();
+                let b_bytes: u32 = b_ipv4.into();
+                self.rewrite_map_v4.remove(&a_bytes).map_err(|e| err(a, e))?;
+                self.rewrite_map_v4.remove(&b_bytes).map_err(|e| err(b, e))?;
             }
-            (IpAddr::V6(a), IpAddr::V6(b)) => {
-                let a: [u8; 16] = a.octets();
-                let b: [u8; 16] = b.octets();
-                self.rewrite_map_v6.remove(&a)?;
-                self.rewrite_map_v6.remove(&b)?;
+            (IpAddr::V6(a_ipv6), IpAddr::V6(b_ipv6)) => {
+                let a_bytes: [u8; 16] = a_ipv6.octets();
+                let b_bytes: [u8; 16] = b_ipv6.octets();
+                self.rewrite_map_v6.remove(&a_bytes).map_err(|e| err(a, e))?;
+                self.rewrite_map_v6.remove(&b_bytes).map_err(|e| err(b, e))?;
             }
             _ => {}
         }

@@ -175,7 +175,7 @@ impl PacketManager {
                             .await
                             .remove_ip(target.device_ip, target.target_ip)
                     {
-                        error!("Could not remove IP from an ebpf map: {}", e);
+                        error!("{e}");
                     };
                 }
                 LocalCommandPacket::ReconnectProbe(id, session_id) => {

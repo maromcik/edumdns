@@ -214,7 +214,8 @@ impl ResponseError for WebError {
         match self.error_kind {
             WebErrorKind::BadRequest
             | WebErrorKind::EmailAddressError
-            | WebErrorKind::DeviceTransmitRequestDenied => StatusCode::BAD_REQUEST,
+            | WebErrorKind::DeviceTransmitRequestDenied
+            | WebErrorKind::ParseError => StatusCode::BAD_REQUEST,
             WebErrorKind::NotFound => StatusCode::NOT_FOUND,
             WebErrorKind::Conflict => StatusCode::CONFLICT,
             WebErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
@@ -228,6 +229,7 @@ impl ResponseError for WebError {
                     BackendErrorKind::UserPasswordVerificationFailed => StatusCode::UNAUTHORIZED,
                     BackendErrorKind::PermissionDenied => StatusCode::UNAUTHORIZED,
                 },
+                DbErrorKind::ForeignKeyError | DbErrorKind::UniqueConstraintError | DbErrorKind::NotNullError => StatusCode::BAD_REQUEST,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             },
             WebErrorKind::TemplatingError
@@ -238,7 +240,6 @@ impl ResponseError for WebError {
             | WebErrorKind::EmailError
             | WebErrorKind::FileError
             | WebErrorKind::ZipError
-            | WebErrorKind::ParseError
             | WebErrorKind::EnvVarError
             | WebErrorKind::ApDatabaseError
             | WebErrorKind::DnsPacketManipulationError

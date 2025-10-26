@@ -1,11 +1,11 @@
-use crate::models::Device;
+use crate::models::{Device, PacketTransmitRequest};
 use crate::repositories::common::{Id, Pagination};
 use crate::repositories::utilities::format_time;
 use diesel::{AsChangeset, Identifiable, Insertable};
 use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
-use time::{OffsetDateTime, format_description};
+use time::{Duration, OffsetDateTime, format_description};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
@@ -144,6 +144,38 @@ pub struct CreatePacketTransmitRequest {
     pub target_ip: IpNetwork,
     pub target_port: i32,
     pub permanent: bool,
+    pub created_at: Option<OffsetDateTime>,
+}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PacketTransmitRequestDisplay {
+    pub id: Id,
+    pub user_id: Id,
+    pub target_ip: IpNetwork,
+    pub target_port: i32,
+    pub permanent: bool,
+    pub until: Option<String>,
+}
+
+impl PacketTransmitRequestDisplay {
+    pub fn from(value: PacketTransmitRequest, duration: i64) -> Self {
+        let until = if let Some(d) = value.created_at {
+            if value.permanent {
+                None
+            } else {
+                Some(format_time(d + Duration::seconds(duration)))
+            }
+        } else {
+            None
+        };
+        Self {
+            id: value.id,
+            user_id: value.user_id,
+            target_ip: value.target_ip,
+            target_port: value.target_port,
+            permanent: value.permanent,
+            until,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, AsChangeset, Identifiable, Debug)]

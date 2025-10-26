@@ -7,7 +7,10 @@
         <!-- Device Info Card -->
         <div class="rounded-xl border border-base bg-cards p-8 shadow-lg mb-10 text-left">
             <h3 class="text-xl md:text-2xl font-semibold mb-6 text-sat-l flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-acc" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2a4 4 0 014-4h6" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-acc" fill="none" viewBox="0 0 24 24"
+                     stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2a4 4 0 014-4h6"/>
+                </svg>
                 Device Information
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -29,30 +32,55 @@
 
         <!-- Client IP + Transmission Controls -->
         <div class="rounded-xl border border-base bg-cards p-8 shadow-lg">
-            <div class="flex flex-col items-center space-y-2">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Your IP</span>
-                <span class="font-mono text-code"><code>{{ client_ip }}</code></span>
-            </div>
+            <div class="flex flex-col items-center justify-center space-y-6">
 
-            {% if another_in_progress and packet_transmit_request is none %}
-            <!-- Warning: Transmission in progress -->
-            <div class="mt-10 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-5 rounded-md shadow-sm text-left">
-                <div class="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M1 12a11 11 0 1122 0A11 11 0 011 12z" />
-                    </svg>
-                    <h3 class="text-lg font-semibold">Transmission In Progress</h3>
+                <!-- Your IP -->
+                <div class="flex flex-col items-center space-y-3">
+            <span class="text-sm uppercase tracking-wide text-sat-l font-semibold flex items-center gap-2">
+                <i class="fa-solid fa-network-wired text-acc"></i>
+                Your IP Address
+            </span>
+                    <div class="px-6 py-3 bg-green-50 border border-green-200 rounded-lg shadow-sm">
+                        <span class="text-2xl font-mono text-green-700 tracking-tight select-all">{{ client_ip }}</span>
+                    </div>
                 </div>
-                <p class="mt-2 text-sm">
-                    Another packet transmission for this device is currently running.
-                    Please wait until it completes before starting a new one.
-                </p>
-            </div>
-            {% else %}
-            <div class="mt-10">
-                {% if packet_transmit_request is not none %}
-                <!-- Stop Transmission Button -->
-                <div class="mt-6">
+
+                {% if another_in_progress and packet_transmit_request is none %}
+                <!-- Warning: Transmission in progress -->
+                <div class="w-full max-w-md bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-5 rounded-md shadow-sm text-left">
+                    <div class="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3 text-yellow-500" fill="none"
+                             viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M1 12a11 11 0 1122 0A11 11 0 011 12z"/>
+                        </svg>
+                        <h3 class="text-lg font-semibold">Transmission In Progress</h3>
+                    </div>
+                    <p class="mt-2 text-sm">
+                        Another packet transmission for this device is currently running.
+                        Please wait until it completes before starting a new one.
+                    </p>
+                </div>
+                {% else %}
+
+                <!-- Transmission Controls -->
+                <div class="flex flex-col items-center justify-center space-y-5">
+
+                    {% if packet_transmit_request is not none %}
+                    <!-- Validity Info -->
+                    {% if packet_transmit_request.until is not none %}
+                    <div class="text-center">
+                        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-50 border border-green-200 text-green-800 shadow-sm">
+                            <i class="fa-solid fa-clock text-green-600"></i>
+                            <span class="font-medium">
+                        Transmission active until
+                        <span class="font-mono text-green-700">{{ packet_transmit_request.until }}</span>
+                    </span>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Stop Button -->
                     <button
                             hx-delete="/device/{{ device.id }}/transmit/{{ packet_transmit_request.id }}?return_url=/device/{{ device.id }}/transmit"
                             hx-target="#transmit-form"
@@ -60,53 +88,58 @@
                             type="submit"
                             class="inline-flex items-center justify-center gap-2 rounded-md border border-red-600 bg-red-500 text-white px-6 py-3 text-lg font-medium hover:bg-red-600 focus:ring-2 focus:ring-red-400 transition-colors duration-150"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                             stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                         Stop Transmitting
                     </button>
-                </div>
-                {% else %}
-                <!-- Transmit Form -->
-                <form
-                        method="post"
-                        hx-post="/device/{{ device.id }}/transmit"
-                        hx-target="#transmit-form"
-                        hx-target-error="#transmit-result"
-                        class="space-y-6 mt-6"
-                >
-                    {% if device.acl_pwd_hash is not none %}
-                    <div class="flex flex-col text-left">
-                        <label for="acl_pwd" class="text-xs uppercase tracking-wide text-sat-l mb-1">
-                            Password
-                        </label>
-                        <input
-                                id="acl_pwd"
-                                name="acl_pwd"
-                                type="password"
-                                class="rounded-md border border-base bg-bg px-3 py-2 text-code focus:outline-none focus:ring-2 focus:ring-acc placeholder-sat-m"
-                                placeholder="Enter password"
-                        >
-                    </div>
-                    {% endif %}
 
-                    <!-- Transmit Button -->
-                    <div>
+                    {% else %}
+                    <!-- Transmit Form -->
+                    <form
+                            method="post"
+                            hx-post="/device/{{ device.id }}/transmit"
+                            hx-target="#transmit-form"
+                            hx-target-error="#transmit-result"
+                            class="flex flex-col items-center space-y-5 w-full max-w-sm"
+                    >
+                        {% if device.acl_pwd_hash is not none %}
+                        <div class="w-full text-left">
+                            <label for="acl_pwd" class="text-xs uppercase tracking-wide text-sat-l mb-1 block">
+                                Password
+                            </label>
+                            <input
+                                    id="acl_pwd"
+                                    name="acl_pwd"
+                                    type="password"
+                                    class="w-full rounded-md border border-base bg-bg px-3 py-2 text-code focus:outline-none focus:ring-2 focus:ring-acc placeholder-sat-m"
+                                    placeholder="Enter password"
+                            >
+                        </div>
+                        {% endif %}
+
                         <button
                                 type="submit"
                                 class="inline-flex items-center justify-center gap-2 rounded-md border border-green-600 bg-green-500 text-white px-6 py-3 text-lg font-medium hover:bg-green-600 focus:ring-2 focus:ring-green-400 transition-colors duration-150"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                 stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M5 13l4 4L19 7"/>
                             </svg>
                             Transmit to Your Device
                         </button>
-                    </div>
-                </form>
+                    </form>
+                    {% endif %}
+                </div>
+
+                <div id="transmit-result" class="mt-6 text-sm text-sat-m text-center"></div>
+
                 {% endif %}
-                <div id="transmit-result" class="mt-6 text-sm text-sat-m italic"></div>
             </div>
-            {% endif %}
         </div>
+
     </section>
 </div>

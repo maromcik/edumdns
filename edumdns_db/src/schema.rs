@@ -81,6 +81,7 @@ diesel::table! {
         target_ip -> Cidr,
         target_port -> Int4,
         permanent -> Bool,
+        created_at -> Nullable<Timestamptz>,
     }
 }
 

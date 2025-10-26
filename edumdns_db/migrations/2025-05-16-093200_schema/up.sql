@@ -140,6 +140,7 @@ CREATE TABLE IF NOT EXISTS "packet_transmit_request"
     target_ip      cidr         NOT NULL,
     target_port    int          NOT NULL,
     permanent      bool         NOT NULL DEFAULT FALSE,
+    created_at     timestamptz,
     UNIQUE (device_id),
     FOREIGN KEY (device_id) REFERENCES "device" (id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES "user" (id) ON DELETE CASCADE

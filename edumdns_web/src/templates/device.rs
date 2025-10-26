@@ -3,7 +3,7 @@ use crate::forms::packet::PacketQuery;
 use crate::templates::PageInfo;
 use edumdns_db::models::{PacketTransmitRequest, Probe, User};
 use edumdns_db::repositories::common::Permissions;
-use edumdns_db::repositories::device::models::DeviceDisplay;
+use edumdns_db::repositories::device::models::{DeviceDisplay, PacketTransmitRequestDisplay};
 use edumdns_db::repositories::packet::models::PacketDisplay;
 use edumdns_db::repositories::user::models::UserDisplay;
 use serde::Serialize;
@@ -25,7 +25,7 @@ pub struct DeviceDetailTemplate {
     pub permissions: Permissions,
     pub device: DeviceDisplay,
     pub packets: Vec<PacketDisplay>,
-    pub packet_transmit_requests: Vec<PacketTransmitRequest>,
+    pub packet_transmit_requests: Vec<PacketTransmitRequestDisplay>,
     pub page_info: PageInfo,
     pub filters: PacketQuery,
     pub query_string: String,
@@ -36,7 +36,7 @@ pub struct DeviceTransmitTemplate {
     pub user: UserDisplay,
     pub device: DeviceDisplay,
     pub client_ip: String,
-    pub packet_transmit_request: Option<PacketTransmitRequest>,
+    pub packet_transmit_request: Option<PacketTransmitRequestDisplay>,
     pub another_in_progress: bool,
 }
 

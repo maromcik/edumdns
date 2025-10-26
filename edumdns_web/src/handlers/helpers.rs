@@ -12,6 +12,7 @@ use edumdns_db::repositories::common::{DbCreate, Id};
 use edumdns_db::repositories::device::models::CreatePacketTransmitRequest;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use log::warn;
+use time::OffsetDateTime;
 use tokio::sync::mpsc::Sender;
 
 pub async fn request_packet_transmit_helper(
@@ -37,6 +38,7 @@ pub async fn request_packet_transmit_helper(
         target_ip: form.target_ip,
         target_port: form.target_port as i32,
         permanent: form.permanent,
+        created_at: (!form.permanent).then_some(OffsetDateTime::now_utc()),
     };
 
     let packet_transmit_request = match device_repo.create(&request).await {

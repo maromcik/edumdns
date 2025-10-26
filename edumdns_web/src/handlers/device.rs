@@ -25,13 +25,14 @@ use edumdns_db::repositories::common::{
     DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE,
     Pagination,
 };
-use edumdns_db::repositories::device::models::{CreateDevice, DeviceDisplay, SelectManyDevices};
+use edumdns_db::repositories::device::models::{CreateDevice, DeviceDisplay, PacketTransmitRequestDisplay, SelectManyDevices};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_db::repositories::utilities::verify_password_hash;
 use std::collections::HashMap;
+use std::time::Duration;
 use uuid::Uuid;
 
 #[get("")]
@@ -114,7 +115,10 @@ pub async fn get_device(
 
     let packet_transmit_requests = device_repo
         .read_packet_transmit_requests(&device.data.id)
-        .await?;
+        .await?
+        .into_iter()
+        .map(|r| PacketTransmitRequestDisplay::from(r, device.data.duration))
+        .collect();
 
     let packet_count = packet_repo.get_packet_count(params).await?;
     let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
@@ -371,6 +375,9 @@ pub async fn get_device_for_transmit(
         .read_packet_transmit_request_by_user(&device.id, &user_id)
         .await?
         .into_iter()
+        .map(|r| {
+            PacketTransmitRequestDisplay::from(r, device.duration)
+        })
         .next();
 
     let template_name = get_template_name(&request, "device/public");

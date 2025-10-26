@@ -187,6 +187,7 @@ pub struct PacketTransmitRequest {
     pub target_ip: ipnetwork::IpNetwork,
     pub target_port: i32,
     pub permanent: bool,
+    pub created_at: Option<OffsetDateTime>,
 }
 
 #[derive(

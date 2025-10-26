@@ -1,78 +1,79 @@
-<div id="transmit-form" class="max-w-7xl mx-auto mb-10 md:mb-5">
+<div id="transmit-form" class="max-w-5xl mx-auto mb-12 md:mb-8 px-4">
     <section class="text-center py-12 mb-3">
-        <h2 class="text-2xl md:text-3xl font-extrabold text-sat-xl mb-8">Transmit</h2>
+        <h2 class="text-3xl md:text-4xl font-extrabold text-sat-xl mb-10 tracking-tight">
+            Discover the device {% if device.name is none %} {{ device.id }} {% else %} {{ device.name }} {% endif %}
+        </h2>
 
-        <!-- Card -->
-        <div class="rounded-lg border border-base bg-cards p-6 shadow-md mb-8">
-            <h3 class="text-2xl font-medium mb-4 text-sat-l">Device Info</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- ID -->
+        <!-- Device Info Card -->
+        <div class="rounded-xl border border-base bg-cards p-8 shadow-lg mb-10 text-left">
+            <h3 class="text-xl md:text-2xl font-semibold mb-6 text-sat-l flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-acc" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2a4 4 0 014-4h6" /></svg>
+                Device Information
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% for label, value in [
+                ("ID", device.id),
+                ("Name", device.name),
+                ("Device MAC", device.mac),
+                ("Device IP", device.ip),
+                ("Transmit Duration", device.duration ~ " seconds"),
+                ("Transmit Interval", device.interval ~ " ms")
+                ] %}
                 <div class="flex flex-col">
-                    <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
-                    <span class="font-mono text-code"><code>{{ device.id }}</code></span>
+                    <span class="text-xs uppercase tracking-wide text-sat-m">{{ label }}</span>
+                    <span class="font-mono text-code truncate"><code>{{ value }}</code></span>
                 </div>
-
-                <!-- MAC -->
-                <div class="flex flex-col">
-                    <span class="text-xs uppercase tracking-wide text-sat-m">Name</span>
-                    <span class="font-mono text-code"><code>{{ device.name }}</code></span>
-                </div>
-
-                <!-- MAC -->
-                <div class="flex flex-col">
-                    <span class="text-xs uppercase tracking-wide text-sat-m">Device MAC</span>
-                    <span class="font-mono text-code"><code>{{ device.mac }}</code></span>
-                </div>
-
-                <!-- IP -->
-                <div class="flex flex-col">
-                    <span class="text-xs uppercase tracking-wide text-sat-m">Device IP</span>
-                    <span class="font-mono text-code"><code>{{ device.ip }}</code></span>
-                </div>
-
-                <!-- MAC -->
-                <div class="flex flex-col">
-                    <span class="text-xs uppercase tracking-wide text-sat-m">Transmit duration</span>
-                    <span class="text-sat-l">{{ device.duration }} seconds</span>
-                </div>
-
-                <!-- IP -->
-                <div class="flex flex-col">
-                    <span class="text-xs uppercase tracking-wide text-sat-m">Transmit interval</span>
-                    <span class="text-sat-l">{{ device.interval }} milliseconds</span>
-                </div>
-
+                {% endfor %}
             </div>
         </div>
 
-        <div class="rounded-lg border border-base bg-cards p-6 shadow-md mb-8">
+        <!-- Client IP + Transmission Controls -->
+        <div class="rounded-xl border border-base bg-cards p-8 shadow-lg">
             <div class="flex flex-col items-center space-y-2">
                 <span class="text-xs uppercase tracking-wide text-sat-m">Your IP</span>
                 <span class="font-mono text-code"><code>{{ client_ip }}</code></span>
             </div>
 
-
-            <div class="mt-8">
+            {% if another_in_progress and packet_transmit_request is none %}
+            <!-- Warning: Transmission in progress -->
+            <div class="mt-10 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-5 rounded-md shadow-sm text-left">
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M1 12a11 11 0 1122 0A11 11 0 011 12z" />
+                    </svg>
+                    <h3 class="text-lg font-semibold">Transmission In Progress</h3>
+                </div>
+                <p class="mt-2 text-sm">
+                    Another packet transmission for this device is currently running.
+                    Please wait until it completes before starting a new one.
+                </p>
+            </div>
+            {% else %}
+            <div class="mt-10">
                 {% if packet_transmit_request is not none %}
+                <!-- Stop Transmission Button -->
                 <div class="mt-6">
                     <button
                             hx-delete="/device/{{ device.id }}/transmit/{{ packet_transmit_request.id }}?return_url=/device/{{ device.id }}/transmit"
                             hx-target="#transmit-form"
                             hx-target-error="#transmit-result"
                             type="submit"
-                            class="inline-flex items-center rounded-md border border-base bg-red-500 px-6 py-3 text-lg font-medium text-button hover:bg-red-600 transition-colors"
+                            class="inline-flex items-center justify-center gap-2 rounded-md border border-red-600 bg-red-500 text-white px-6 py-3 text-lg font-medium hover:bg-red-600 focus:ring-2 focus:ring-red-400 transition-colors duration-150"
                     >
-                        Stop transmitting
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Stop Transmitting
                     </button>
                 </div>
                 {% else %}
-                <!-- Conditional Form -->
+                <!-- Transmit Form -->
                 <form
                         method="post"
                         hx-post="/device/{{ device.id }}/transmit"
                         hx-target="#transmit-form"
                         hx-target-error="#transmit-result"
-                        class="space-y-4 mb-6"
+                        class="space-y-6 mt-6"
                 >
                     {% if device.acl_pwd_hash is not none %}
                     <div class="flex flex-col text-left">
@@ -83,26 +84,29 @@
                                 id="acl_pwd"
                                 name="acl_pwd"
                                 type="password"
-                                class="rounded-md border border-base bg-bg px-3 py-2 text-code focus:outline-none focus:ring-2 focus:ring-acc"
+                                class="rounded-md border border-base bg-bg px-3 py-2 text-code focus:outline-none focus:ring-2 focus:ring-acc placeholder-sat-m"
                                 placeholder="Enter password"
                         >
                     </div>
                     {% endif %}
 
                     <!-- Transmit Button -->
-                    <div class="mt-6">
+                    <div>
                         <button
                                 type="submit"
-                                class="inline-flex items-center rounded-md border border-base bg-green-500 px-6 py-3 text-lg font-medium text-button hover:bg-green-600 transition-colors"
+                                class="inline-flex items-center justify-center gap-2 rounded-md border border-green-600 bg-green-500 text-white px-6 py-3 text-lg font-medium hover:bg-green-600 focus:ring-2 focus:ring-green-400 transition-colors duration-150"
                         >
-                            Transmit to your device
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Transmit to Your Device
                         </button>
                     </div>
                 </form>
                 {% endif %}
-                <div id="transmit-result" class="mt-4 text-sat-m"></div>
+                <div id="transmit-result" class="mt-6 text-sm text-sat-m italic"></div>
             </div>
+            {% endif %}
         </div>
-
     </section>
 </div>

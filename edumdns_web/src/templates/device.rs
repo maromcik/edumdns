@@ -37,6 +37,7 @@ pub struct DeviceTransmitTemplate {
     pub device: DeviceDisplay,
     pub client_ip: String,
     pub packet_transmit_request: Option<PacketTransmitRequest>,
+    pub another_in_progress: bool,
 }
 
 #[derive(Serialize)]

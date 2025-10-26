@@ -365,6 +365,8 @@ pub async fn get_device_for_transmit(
         "Could not determine target ip",
     ))?;
 
+    let in_progress = device_repo.read_packet_transmit_requests(&device.id).await?;
+
     let packet_transmit_request = device_repo
         .read_packet_transmit_request_by_user(&device.id, &user_id)
         .await?
@@ -379,6 +381,7 @@ pub async fn get_device_for_transmit(
         device: DeviceDisplay::from(device),
         client_ip: target_ip,
         packet_transmit_request,
+        another_in_progress: !in_progress.is_empty(),
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

@@ -39,7 +39,7 @@ pub struct Proxy {
 }
 
 pub struct PacketManager {
-    pub packets: FnvHashMap<Uuid, FnvHashMap<(MacAddr, IpNetwork), FnvHashSet<ProbePacket>>>,
+    pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
     pub command_receiver: Receiver<AppPacket>,
     pub data_receiver: Receiver<AppPacket>,
     pub db_transmitter: Sender<DbCommand>,
@@ -84,7 +84,7 @@ impl PacketManager {
         };
 
         Ok(Self {
-            packets: FnvHashMap::default(),
+            packets: HashMap::default(),
             command_receiver,
             data_receiver,
             db_transmitter,
@@ -263,7 +263,7 @@ impl PacketManager {
                                 }
                             }
                             Entry::Vacant(device_entry) => {
-                                let device_entry = device_entry.insert(FnvHashSet::default());
+                                let device_entry = device_entry.insert(HashSet::default());
                                 device_entry.insert(probe_packet.clone());
                                 self.send_db_packet(DbCommand::StoreDevice(probe_packet.clone()))
                                     .await;
@@ -274,7 +274,7 @@ impl PacketManager {
                         }
                     }
                     Entry::Vacant(probe_entry) => {
-                        let probe_entry = probe_entry.insert(FnvHashMap::default());
+                        let probe_entry = probe_entry.insert(HashMap::default());
                         probe_entry
                             .entry((src_mac, src_ip))
                             .or_default()

@@ -3,9 +3,8 @@ use crate::bincode_types::Uuid;
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};
 use crate::network_packet::{DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};
-// use sha2::{Digest, Sha256};
 use std::fmt::{Display, Formatter};
-use std::hash::{Hash, Hasher};
+use std::hash::{DefaultHasher, Hash, Hasher};
 use tokio::sync::{mpsc, oneshot};
 
 #[derive(Debug)]
@@ -280,8 +279,7 @@ impl Display for PacketTransmitRequestPacket {
 }
 
 pub fn calculate_hash(value: &[u8]) -> u64 {
-    // hex::encode(Sha256::digest(value))
-    let mut hasher = fnv::FnvHasher::default();
+    let mut hasher = DefaultHasher::default();
     value.hash(&mut hasher);
     hasher.finish()
 }

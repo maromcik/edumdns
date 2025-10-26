@@ -19,7 +19,6 @@ use edumdns_db::repositories::device::models::{CreateDevice, SelectSingleDevice}
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
-use fnv::{FnvHashMap, FnvHashSet};
 use log::{debug, error, info, warn};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};

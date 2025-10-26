@@ -25,7 +25,9 @@ use edumdns_db::repositories::common::{
     DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE,
     Pagination,
 };
-use edumdns_db::repositories::device::models::{CreateDevice, DeviceDisplay, PacketTransmitRequestDisplay, SelectManyDevices};
+use edumdns_db::repositories::device::models::{
+    CreateDevice, DeviceDisplay, PacketTransmitRequestDisplay, SelectManyDevices,
+};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
@@ -369,15 +371,18 @@ pub async fn get_device_for_transmit(
         "Could not determine target ip",
     ))?;
 
-    let in_progress = device_repo.read_packet_transmit_requests(&device.id).await?;
+    let in_progress = device_repo
+        .read_packet_transmit_requests(&device.id)
+        .await?
+        .into_iter()
+        .map(|r| PacketTransmitRequestDisplay::from(r, device.duration))
+        .next();
 
     let packet_transmit_request = device_repo
         .read_packet_transmit_request_by_user(&device.id, &user_id)
         .await?
         .into_iter()
-        .map(|r| {
-            PacketTransmitRequestDisplay::from(r, device.duration)
-        })
+        .map(|r| PacketTransmitRequestDisplay::from(r, device.duration))
         .next();
 
     let template_name = get_template_name(&request, "device/public");
@@ -388,7 +393,7 @@ pub async fn get_device_for_transmit(
         device: DeviceDisplay::from(device),
         client_ip: target_ip,
         packet_transmit_request,
-        another_in_progress: !in_progress.is_empty(),
+        in_progress,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -463,6 +468,9 @@ pub async fn create_device_form(
     let template_name = get_template_name(&request, "device/create");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
-    let body = template.render(DeviceCreateTemplate { probe_id: path.0, user })?;
+    let body = template.render(DeviceCreateTemplate {
+        probe_id: path.0,
+        user,
+    })?;
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

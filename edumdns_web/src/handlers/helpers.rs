@@ -46,7 +46,7 @@ pub async fn request_packet_transmit_helper(
         Err(_) => {
             return Err(WebError::new(
                 WebErrorKind::BadRequest,
-                "Transmission already in progress to the same client, please try again later.",
+                "Transmission already in progress to another client, please try again later.",
             ));
         }
     };

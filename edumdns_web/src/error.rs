@@ -229,7 +229,9 @@ impl ResponseError for WebError {
                     BackendErrorKind::UserPasswordVerificationFailed => StatusCode::UNAUTHORIZED,
                     BackendErrorKind::PermissionDenied => StatusCode::UNAUTHORIZED,
                 },
-                DbErrorKind::ForeignKeyError | DbErrorKind::UniqueConstraintError | DbErrorKind::NotNullError => StatusCode::BAD_REQUEST,
+                DbErrorKind::ForeignKeyError
+                | DbErrorKind::UniqueConstraintError
+                | DbErrorKind::NotNullError => StatusCode::BAD_REQUEST,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             },
             WebErrorKind::TemplatingError

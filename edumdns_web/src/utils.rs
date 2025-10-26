@@ -5,8 +5,10 @@ use actix_identity::IdentityMiddleware;
 use actix_session::SessionMiddleware;
 use actix_session::config::PersistentSession;
 use actix_session::storage::CookieSessionStore;
+use actix_web::ResponseError;
 use actix_web::dev::ServiceRequest;
 use actix_web::http::header;
+use actix_web::web::{JsonConfig, PathConfig, QueryConfig};
 use actix_web_openidconnect::ActixWebOpenId;
 use edumdns_core::app_packet::AppPacket;
 use edumdns_db::models::GroupProbePermission;
@@ -16,8 +18,6 @@ use minijinja_autoreload::AutoReloader;
 use serde::Deserialize;
 use std::env;
 use std::sync::Arc;
-use actix_web::ResponseError;
-use actix_web::web::{JsonConfig, PathConfig, QueryConfig};
 use tokio::sync::mpsc::Sender;
 
 #[derive(Clone)]
@@ -174,35 +174,22 @@ pub fn parse_host() -> String {
 }
 
 pub fn json_config() -> JsonConfig {
-    JsonConfig::default()
-        .error_handler(|err, _req| {
-            let web_error = WebError::new(WebErrorKind::ParseError, &err.to_string());
-            actix_web::error::InternalError::from_response(
-                err,
-                web_error.error_response(),
-            )
-                .into()
-        })
+    JsonConfig::default().error_handler(|err, _req| {
+        let web_error = WebError::new(WebErrorKind::ParseError, &err.to_string());
+        actix_web::error::InternalError::from_response(err, web_error.error_response()).into()
+    })
 }
 
 pub fn query_config() -> QueryConfig {
     QueryConfig::default().error_handler(|err, _req| {
         let web_error = WebError::new(WebErrorKind::ParseError, &err.to_string());
-        actix_web::error::InternalError::from_response(
-            err,
-            web_error.error_response(),
-        )
-            .into()
+        actix_web::error::InternalError::from_response(err, web_error.error_response()).into()
     })
 }
 
 pub fn path_config() -> PathConfig {
     PathConfig::default().error_handler(|err, _req| {
         let web_error = WebError::new(WebErrorKind::ParseError, &err.to_string());
-        actix_web::error::InternalError::from_response(
-            err,
-            web_error.error_response(),
-        )
-            .into()
+        actix_web::error::InternalError::from_response(err, web_error.error_response()).into()
     })
 }

@@ -1,6 +1,10 @@
 use crate::error::WebError;
 use crate::init::configure_webapp;
-use crate::utils::{AppState, DeviceAclApDatabase, create_oidc, create_reloader, get_cors_middleware, get_identity_middleware, get_session_middleware, parse_host, json_config, query_config, path_config};
+use crate::utils::{
+    AppState, DeviceAclApDatabase, create_oidc, create_reloader, get_cors_middleware,
+    get_identity_middleware, get_session_middleware, json_config, parse_host, path_config,
+    query_config,
+};
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_multipart::form::MultipartFormConfig;
@@ -87,8 +91,8 @@ pub async fn web_init(
                     .app_data(FormConfig::default().limit(FORM_LIMIT))
                     .app_data(PayloadConfig::new(PAYLOAD_LIMIT))
                     .app_data(json_config())
-                    .app_data(query_config())// <-- attach custom handler// <- important
-                    .app_data(path_config())// <-- attach custom handler// <- important
+                    .app_data(query_config()) // <-- attach custom handler// <- important
+                    .app_data(path_config()) // <-- attach custom handler// <- important
                     .wrap(NormalizePath::new(TrailingSlash::Trim))
                     .wrap(get_identity_middleware())
                     .wrap(get_session_middleware(key.clone(), use_secure_cookie))
@@ -119,7 +123,7 @@ pub async fn web_init(
                     .app_data(FormConfig::default().limit(FORM_LIMIT))
                     .app_data(PayloadConfig::new(PAYLOAD_LIMIT))
                     .app_data(json_config())
-                    .app_data(query_config())// <-- attach custom handler// <- important
+                    .app_data(query_config()) // <-- attach custom handler// <- important
                     .app_data(path_config())
                     .wrap(NormalizePath::new(TrailingSlash::Trim))
                     .wrap(get_identity_middleware())

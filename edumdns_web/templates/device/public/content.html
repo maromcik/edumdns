@@ -45,7 +45,7 @@
                     </div>
                 </div>
 
-                {% if another_in_progress and packet_transmit_request is none %}
+                {% if in_progress is not none and packet_transmit_request is none %}
                 <!-- Warning: Transmission in progress -->
                 <div class="w-full max-w-md bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-5 rounded-md shadow-sm text-left">
                     <div class="flex items-center">
@@ -54,11 +54,11 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M1 12a11 11 0 1122 0A11 11 0 011 12z"/>
                         </svg>
-                        <h3 class="text-lg font-semibold">Transmission In Progress</h3>
+                        <h3 class="text-lg font-semibold">Discovery In Progress</h3>
                     </div>
                     <p class="mt-2 text-sm">
-                        Another packet transmission for this device is currently running.
-                        Please wait until it completes before starting a new one.
+                        Another discovery for this device is currently running.
+                        Please wait until it completes on {{ in_progress.until }}.
                     </p>
                 </div>
                 {% else %}
@@ -73,7 +73,7 @@
                         <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-50 border border-green-200 text-green-800 shadow-sm">
                             <i class="fa-solid fa-clock text-green-600"></i>
                             <span class="font-medium">
-                        Transmission active until
+                        Discovery active until
                         <span class="font-mono text-green-700">{{ packet_transmit_request.until }}</span>
                     </span>
                         </div>
@@ -93,7 +93,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M6 18L18 6M6 6l12 12"/>
                         </svg>
-                        Stop Transmitting
+                        Stop Discovery
                     </button>
 
                     {% else %}
@@ -129,7 +129,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M5 13l4 4L19 7"/>
                             </svg>
-                            Transmit to Your Device
+                            Discover the device {% if device.name is none %} {{ device.id }} {% else %} {{ device.name }} {% endif %}
                         </button>
                     </form>
                     {% endif %}

@@ -99,10 +99,7 @@ impl EbpfUpdater {
                     .remove(&b_bytes)
                     .map_err(|e| err(b, e))?;
             }
-            _ => {
-                warn!("Could not remove IPs {a} and {b} from the eBPF map - both IPs must be of the same type");
-                return Ok(())
-            }
+            _ => { }
         }
         info!("Removed IPs from eBPF maps: {} and {} ", a, b);
         Ok(())

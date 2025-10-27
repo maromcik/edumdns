@@ -1,7 +1,7 @@
 use crate::error::{ServerError, ServerErrorKind};
 use aya::maps::{HashMap, Map, MapData};
 use ipnetwork::IpNetwork;
-use log::{error, info};
+use log::{error, info, warn};
 use std::env;
 use std::net::IpAddr;
 use std::path::Path;
@@ -62,7 +62,10 @@ impl EbpfUpdater {
                     .insert(b_bytes, a_bytes, 0)
                     .map_err(|e| err(b, a, e))?;
             }
-            _ => {}
+            _ => {
+                warn!("Could not add IP pair <{a}, {b}> to the eBPF map - both IPs must be of the same type");
+                return Ok(())
+            }
         }
         info!("Added IPs to eBPF maps: {} and {} ", a, b);
         Ok(())
@@ -96,7 +99,10 @@ impl EbpfUpdater {
                     .remove(&b_bytes)
                     .map_err(|e| err(b, e))?;
             }
-            _ => {}
+            _ => {
+                warn!("Could not remove IPs {a} and {b} from the eBPF map - both IPs must be of the same type");
+                return Ok(())
+            }
         }
         info!("Removed IPs from eBPF maps: {} and {} ", a, b);
         Ok(())

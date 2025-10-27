@@ -15,7 +15,7 @@ use crate::schema::device::BoxedQuery;
 use crate::schema::{
     device, group_probe_permission, group_user, packet, packet_transmit_request, probe, user,
 };
-use diesel::BoolExpressionMethods;
+use diesel::{BoolExpressionMethods};
 use diesel::pg::Pg;
 use diesel::{
     ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl,
@@ -92,6 +92,18 @@ impl PgDeviceRepository {
             .load::<(Device, PacketTransmitRequest)>(&mut conn)
             .await
             .map_err(DbError::from)
+    }
+
+    pub async fn update_time_all_packet_transmit_requests(
+        &self,
+    ) -> DbResult<()> {
+        let mut conn = self.pg_pool.get().await?;
+        diesel::update(packet_transmit_request::table)
+            .set(packet_transmit_request::created_at.eq(OffsetDateTime::now_utc()))
+            .execute(&mut conn)
+            .await
+            .map_err(DbError::from)?;
+        Ok(())
     }
 
     pub async fn read_packet_transmit_request_by_user(

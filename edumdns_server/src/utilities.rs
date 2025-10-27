@@ -51,6 +51,7 @@ pub async fn load_all_packet_transmit_requests(
     tx: Sender<AppPacket>,
 ) -> Result<(), ServerError> {
     let device_repo = PgDeviceRepository::new(pool);
+    device_repo.update_time_all_packet_transmit_requests().await?;
     let requests = device_repo.get_all_packet_transmit_requests().await?;
     for (device, request) in requests {
         let packet_transmit_request = PacketTransmitRequestPacket::new(

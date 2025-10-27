@@ -7,7 +7,6 @@ use serde::Serialize;
 #[derive(Serialize)]
 pub struct GroupTemplate {
     pub user: UserDisplay,
-    pub permissions: Permissions,
     pub groups: Vec<Group>,
     pub filters: GroupQuery,
 }
@@ -16,7 +15,6 @@ pub struct GroupTemplate {
 pub struct GroupDetailTemplate {
     pub user: UserDisplay,
     pub users: Vec<User>,
-    pub permissions: Permissions,
     pub group: Group,
 }
 

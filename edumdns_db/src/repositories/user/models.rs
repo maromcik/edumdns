@@ -162,3 +162,9 @@ pub struct UserDisplay {
     pub user: User,
     pub has_groups: bool,
 }
+
+impl UserDisplay {
+    pub fn from(user: User, has_groups: bool) -> Self {
+        Self { user, has_groups }
+    }
+}

@@ -49,7 +49,7 @@ pub async fn get_users(
     let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(UserTemplate {
         user,
-        users: users.data,
+        users,
         filters: query,
         page_info: PageInfo::new(page, total_pages),
         query_string,
@@ -244,15 +244,11 @@ pub async fn user_manage(
             "",
         ))));
     };
-    let user = UserDisplay {
-        has_groups: user_repo.get_groups(&user_valid.id).await?.is_empty(),
-        user: user_valid,
-    };
     let template_name = get_template_name(&request, "user/manage/profile");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(UserManageProfileUserFormTemplate {
-        user,
+        user: user_valid,
         message: "Profile successfully updated".to_string(),
         success: true,
     })?;

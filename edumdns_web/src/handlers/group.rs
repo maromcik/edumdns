@@ -42,8 +42,7 @@ pub async fn get_groups(
     let template = env.get_template(&template_name)?;
     let body = template.render(GroupTemplate {
         user,
-        permissions: groups.permissions,
-        groups: groups.data,
+        groups,
         filters: query.into_inner(),
     })?;
 
@@ -70,8 +69,7 @@ pub async fn get_group(
     let body = template.render(GroupDetailTemplate {
         user,
         users,
-        permissions: group.permissions,
-        group: group.data,
+        group,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

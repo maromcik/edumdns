@@ -40,17 +40,15 @@ pub fn validate_user(user: &User) -> Result<(), DbError> {
 }
 
 pub async fn validate_permissions(
-    pool: &Pool<AsyncPgConnection>,
+    conn: &mut AsyncPgConnection,
     user_id: &Id,
     probe_id: &Uuid,
     permission: Permission,
 ) -> Result<(bool, Vec<GroupProbePermission>), DbError> {
-    let mut conn = pool.get().await?;
-
     let user_entry = user::table
         .find(user_id)
         .select(User::as_select())
-        .first(&mut conn)
+        .first(conn)
         .await?;
 
     validate_user(&user_entry)?;
@@ -67,13 +65,13 @@ pub async fn validate_permissions(
         )
         .filter(group_probe_permission::probe_id.eq(probe_id))
         .select(GroupProbePermission::as_select())
-        .load::<GroupProbePermission>(&mut conn)
+        .load::<GroupProbePermission>(conn)
         .await?;
 
     let probe = probe::table
         .find(probe_id)
         .select(Probe::as_select())
-        .first(&mut conn)
+        .first(conn)
         .await?;
 
     if probe.owner_id == Some(*user_id) {
@@ -106,7 +104,7 @@ pub fn no_permission_error(email: &str, permission: Permission) -> DbError {
     )
 }
 
-pub async fn validate_admin_transaction(
+pub async fn validate_admin_conn(
     conn: &mut AsyncPgConnection,
     user_id: &Id,
 ) -> DbResult<()> {
@@ -134,20 +132,6 @@ pub async fn validate_admin_transaction(
         )));
     }
     Ok(())
-}
-
-pub async fn validate_admin(pool: &Pool<AsyncPgConnection>, user_id: &Id) -> Result<(), DbError> {
-    pool.get()
-        .await?
-        .deref_mut()
-        .transaction(|c| {
-            async move {
-                validate_admin_transaction(c, user_id).await?;
-                Ok::<(), DbError>(())
-            }
-            .scope_boxed()
-        })
-        .await
 }
 
 pub fn generate_salt() -> SaltString {

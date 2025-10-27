@@ -87,29 +87,61 @@ impl PgPacketRepository {
             .await
             .map_err(DbError::from)
     }
-}
 
-impl DbReadOne<SelectSinglePacket, Packet> for PgPacketRepository {
-    async fn read_one(&self, params: &SelectSinglePacket) -> DbResultSingle<Packet> {
-        let mut conn = self.pg_pool.get().await?;
+
+    async fn select_one(conn: &mut AsyncPgConnection, params: &Id) -> DbResultSingle<Packet> {
+        let p = packet::table
+            .find(params)
+            .select(Packet::as_select())
+            .first(conn)
+            .await?;
+        Ok(p)
+    }
+
+    async fn select_one_param(conn: &mut AsyncPgConnection, params: &SelectSinglePacket) -> DbResultSingle<Packet> {
         let p = packet::table
             .filter(packet::probe_id.eq(params.probe_id))
             .filter(packet::src_mac.eq(params.src_mac))
             .filter(packet::src_addr.eq(params.src_addr))
             .select(Packet::as_select())
-            .first(&mut conn)
+            .first(conn)
             .await?;
         Ok(p)
+    }
+
+    async fn select_many(conn: &mut AsyncPgConnection, params: &SelectManyPackets) -> DbResultMultiple<Packet> {
+        let query = PgPacketRepository::build_select_many_query(params);
+        let packets = query
+            .order_by(packet::id.asc())
+            .select(Packet::as_select())
+            .load::<Packet>(conn)
+            .await?;
+        Ok(packets)
+    }
+
+    async fn drop(conn: &mut AsyncPgConnection, params: &Id) -> DbResultMultiple<Packet> {
+        diesel::delete(packet::table.find(params))
+            .get_results(conn)
+            .await
+            .map_err(DbError::from)
+    }
+}
+
+impl DbReadOne<SelectSinglePacket, Packet> for PgPacketRepository {
+    async fn read_one(&self, params: &SelectSinglePacket) -> DbResultSingle<Packet> {
+        let mut conn = self.pg_pool.get().await?;
+        Self::select_one_param(&mut conn, params).await
     }
     async fn read_one_auth(
         &self,
         params: &SelectSinglePacket,
         user_id: &Id,
     ) -> DbResultSinglePerm<Packet> {
+        let mut conn = self.pg_pool.get().await?;
         let permissions =
-            validate_permissions(&self.pg_pool, user_id, &params.probe_id, Permission::Read)
+            validate_permissions(&mut conn, user_id, &params.probe_id, Permission::Read)
                 .await?;
-        let p = self.read_one(params).await?;
+        let p = Self::select_one_param(&mut conn, params).await?;
         Ok(DbDataPerm::new(p, permissions))
     }
 }
@@ -117,17 +149,12 @@ impl DbReadOne<SelectSinglePacket, Packet> for PgPacketRepository {
 impl DbReadOne<Id, Packet> for PgPacketRepository {
     async fn read_one(&self, params: &Id) -> DbResultSingle<Packet> {
         let mut conn = self.pg_pool.get().await?;
-        let p = packet::table
-            .find(params)
-            .select(Packet::as_select())
-            .first(&mut conn)
-            .await?;
-        Ok(p)
+        Self::select_one(&mut conn, params).await
     }
     async fn read_one_auth(&self, params: &Id, user_id: &Id) -> DbResultSinglePerm<Packet> {
-        let p = self.read_one(params).await?;
-        let permissions =
-            validate_permissions(&self.pg_pool, user_id, &p.probe_id, Permission::Read).await?;
+        let mut conn = self.pg_pool.get().await?;
+        let p = Self::select_one(&mut conn, params).await?;
+        let permissions = validate_permissions(&mut conn, user_id, &p.probe_id, Permission::Read).await?;
         Ok(DbDataPerm::new(p, permissions))
     }
 }
@@ -135,13 +162,7 @@ impl DbReadOne<Id, Packet> for PgPacketRepository {
 impl PgPacketRepository {
     pub async fn read_many(&self, params: &SelectManyPackets) -> DbResultMultiple<Packet> {
         let mut conn = self.pg_pool.get().await?;
-        let query = PgPacketRepository::build_select_many_query(params);
-        let packets = query
-            .order_by(packet::id.asc())
-            .select(Packet::as_select())
-            .load::<Packet>(&mut conn)
-            .await?;
-        Ok(packets)
+        Self::select_many(&mut conn, params).await
     }
 
     pub async fn read_many_auth(
@@ -159,7 +180,7 @@ impl PgPacketRepository {
         validate_user(&user_entry)?;
 
         if user_entry.admin {
-            let packets = self.read_many(params).await?;
+            let packets = Self::select_many(&mut conn, params).await?;
             return Ok(packets);
         }
 
@@ -228,8 +249,8 @@ impl DbCreate<CreatePacket, Packet> for PgPacketRepository {
             .map_err(DbError::from)
     }
     async fn create_auth(&self, data: &CreatePacket, user_id: &Id) -> DbResultSingle<Packet> {
-        validate_permissions(&self.pg_pool, user_id, &data.probe_id, Permission::Create).await?;
         let mut conn = self.pg_pool.get().await?;
+        validate_permissions(&mut conn, user_id, &data.probe_id, Permission::Create).await?;
         diesel::insert_into(packet::table)
             .values(data)
             .returning(Packet::as_returning())
@@ -242,15 +263,13 @@ impl DbCreate<CreatePacket, Packet> for PgPacketRepository {
 impl DbDelete<Id, Packet> for PgPacketRepository {
     async fn delete(&self, params: &Id) -> DbResultMultiple<Packet> {
         let mut conn = self.pg_pool.get().await?;
-        diesel::delete(packet::table.find(params))
-            .get_results(&mut conn)
-            .await
-            .map_err(DbError::from)
+        Self::drop(&mut conn, params).await
     }
 
     async fn delete_auth(&self, params: &Id, user_id: &Id) -> DbResultMultiple<Packet> {
-        let p = self.read_one(params).await?;
-        validate_permissions(&self.pg_pool, user_id, &p.probe_id, Permission::Delete).await?;
-        self.delete(params).await
+        let mut conn = self.pg_pool.get().await?;
+        let p = Self::select_one(&mut conn, params).await?;
+        validate_permissions(&mut conn, user_id, &p.probe_id, Permission::Delete).await?;
+        Self::drop(&mut conn, params).await
     }
 }

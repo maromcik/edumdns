@@ -8,9 +8,10 @@ use edumdns_core::app_packet::{
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
 use edumdns_db::models::Device;
-use edumdns_db::repositories::common::Id;
+use edumdns_db::repositories::common::{DbCreate, Id};
 use edumdns_db::repositories::device::models::CreatePacketTransmitRequest;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
+use log::warn;
 use time::OffsetDateTime;
 use tokio::sync::mpsc::Sender;
 
@@ -29,7 +30,6 @@ pub async fn request_packet_transmit_helper(
         form.target_port,
         device.proxy,
         device.interval,
-        device.duration,
     );
 
     let request = CreatePacketTransmitRequest {
@@ -41,7 +41,7 @@ pub async fn request_packet_transmit_helper(
         created_at: (!form.permanent).then_some(OffsetDateTime::now_utc()),
     };
 
-    match device_repo.create_packet_transmit_request(&request).await {
+    let packet_transmit_request = match device_repo.create_packet_transmit_request(&request).await {
         Ok(p) => p,
         Err(_) => {
             return Err(WebError::new(
@@ -50,7 +50,31 @@ pub async fn request_packet_transmit_helper(
             ));
         }
     };
-    
+    let command_channel_local = command_channel.clone();
+    let packet_local = packet.clone();
+    let device_duration = device.duration as u64;
+    if !form.permanent {
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(device_duration)).await;
+            if let Err(e) = device_repo
+                .delete_packet_transmit_request(&packet_transmit_request.id)
+                .await
+            {
+                warn!(
+                    "Could not delete packet transmit request {:?}: {}",
+                    request,
+                    WebError::from(e)
+                );
+            }
+
+            command_channel_local
+                .send(AppPacket::Local(LocalAppPacket::Command(
+                    LocalCommandPacket::StopTransmitDevicePackets(packet_local),
+                )))
+                .await
+        });
+    }
+
     command_channel
         .send(AppPacket::Local(LocalAppPacket::Command(
             LocalCommandPacket::TransmitDevicePackets(packet),

@@ -9,7 +9,6 @@ use std::time::Duration;
 
 use crate::DEFAULT_INTERVAL_MULTIPLICATOR;
 use tokio::task::JoinHandle;
-use tokio::time::Instant;
 
 pub struct PacketTransmitterTask {
     pub transmitter_task: JoinHandle<()>,
@@ -29,6 +28,7 @@ pub struct PacketTransmitter {
     pub payloads: HashSet<Vec<u8>>,
     pub transmit_request: PacketTransmitRequestPacket,
     pub udp_connection: UdpConnection,
+    pub interval: Duration,
     pub global_timeout: Duration,
 }
 
@@ -36,12 +36,14 @@ impl PacketTransmitter {
     pub async fn new(
         payloads: HashSet<Vec<u8>>,
         target: PacketTransmitRequestPacket,
+        interval: Duration,
         global_timeout: Duration,
     ) -> Result<Self, ServerError> {
         Ok(Self {
             payloads,
             transmit_request: target.clone(),
             udp_connection: UdpConnection::new(global_timeout).await?,
+            interval,
             global_timeout,
         })
     }
@@ -53,9 +55,6 @@ impl PacketTransmitter {
             self.transmit_request.target_port
         );
         info!("Initiating packet transmission to: {}", host);
-        let total_time = Instant::now();
-        let duration = Duration::from_secs(self.transmit_request.duration);
-        let interval = Duration::from_millis(self.transmit_request.interval);
         loop {
             for payload in self.payloads.iter() {
                 match self
@@ -73,21 +72,14 @@ impl PacketTransmitter {
                     "Packet sent from device: {} to client: {}",
                     self.transmit_request.device_ip, self.transmit_request.target_ip
                 );
-                if total_time.elapsed() > duration {
-                    break;
-                }
-                tokio::time::sleep(interval).await;
+                tokio::time::sleep(self.interval).await;
             }
             debug!(
                 "All packets sent; waiting for: {:?}",
-                interval * DEFAULT_INTERVAL_MULTIPLICATOR
+                self.interval * DEFAULT_INTERVAL_MULTIPLICATOR
             );
-            if total_time.elapsed() > duration {
-                return;
-            }
-            tokio::time::sleep(interval * DEFAULT_INTERVAL_MULTIPLICATOR).await;
+            tokio::time::sleep(self.interval * DEFAULT_INTERVAL_MULTIPLICATOR).await;
             debug!("Repeating packet transmission...");
-            
         }
     }
 }

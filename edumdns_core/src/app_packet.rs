@@ -231,7 +231,6 @@ pub struct PacketTransmitRequestPacket {
     pub target_port: u16,
     pub proxy: bool,
     pub interval: u64,
-    pub duration: u64
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -256,7 +255,6 @@ impl PacketTransmitRequestPacket {
         target_port: u16,
         proxy: bool,
         interval: i64,
-        duration: i64,
     ) -> Self {
         Self {
             probe_uuid: Uuid(probe_uuid),
@@ -266,7 +264,6 @@ impl PacketTransmitRequestPacket {
             target_port,
             proxy,
             interval: interval as u64,
-            duration: duration as u64,
         }
     }
 }

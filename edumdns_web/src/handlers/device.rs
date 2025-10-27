@@ -254,6 +254,7 @@ pub async fn delete_request_packet_transmit(
         r.target_port as u16,
         device.proxy,
         device.interval,
+        device.duration,
     );
 
     state

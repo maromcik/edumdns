@@ -417,7 +417,6 @@ impl PacketManager {
             let transmitter = PacketTransmitter::new(
                 payloads,
                 transmit_request.clone(),
-                Duration::from_millis(transmit_request.interval),
                 global_timeout,
             )
             .await;

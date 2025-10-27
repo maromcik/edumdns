@@ -73,18 +73,34 @@ impl PgProbeRepository {
         }
         query
     }
+
+    async fn select_one(conn: &mut AsyncPgConnection, params: &Uuid) -> DbResultSingle<(Probe, Vec<ProbeConfig>)> {
+        let probe_data = probe::table
+            .find(params)
+            .select(Probe::as_select())
+            .first(conn)
+            .await?;
+        let configs = Self::get_probe_configs(conn, params).await?;
+        Ok((probe_data, configs))
+    }
+
+
+    async fn select_many(conn: &mut AsyncPgConnection, params: &SelectManyProbes) -> DbResultMultiple<Probe> {
+        let query = PgProbeRepository::build_select_many_query(params);
+        let probes = query
+            .order_by(probe::ip.asc())
+            .select(Probe::as_select())
+            .load::<Probe>(conn)
+            .await?;
+
+        Ok(probes)
+    }
 }
 
 impl DbReadOne<Uuid, (Probe, Vec<ProbeConfig>)> for PgProbeRepository {
     async fn read_one(&self, params: &Uuid) -> DbResultSingle<(Probe, Vec<ProbeConfig>)> {
         let mut conn = self.pg_pool.get().await?;
-        let probe_data = probe::table
-            .find(params)
-            .select(Probe::as_select())
-            .first(&mut conn)
-            .await?;
-        let configs = self.get_probe_configs_no_auth(params).await?;
-        Ok((probe_data, configs))
+        Self::select_one(&mut conn, params).await
     }
 
     async fn read_one_auth(
@@ -95,7 +111,7 @@ impl DbReadOne<Uuid, (Probe, Vec<ProbeConfig>)> for PgProbeRepository {
         let mut conn = self.pg_pool.get().await?;
         let permissions =
             validate_permissions(&mut conn, user_id, params, Permission::Read).await?;
-        let data = self.read_one(params).await?;
+        let data = Self::select_one(&mut conn, params).await?;
         Ok(DbDataPerm::new(data, permissions))
     }
 }
@@ -103,15 +119,7 @@ impl DbReadOne<Uuid, (Probe, Vec<ProbeConfig>)> for PgProbeRepository {
 impl DbReadMany<SelectManyProbes, Probe> for PgProbeRepository {
     async fn read_many(&self, params: &SelectManyProbes) -> DbResultMultiple<Probe> {
         let mut conn = self.pg_pool.get().await?;
-        let query = PgProbeRepository::build_select_many_query(params);
-
-        let probes = query
-            .order_by(probe::ip.asc())
-            .select(Probe::as_select())
-            .load::<Probe>(&mut conn)
-            .await?;
-
-        Ok(probes)
+        Self::select_many(&mut conn, params).await
     }
 
     async fn read_many_auth(
@@ -131,7 +139,7 @@ impl DbReadMany<SelectManyProbes, Probe> for PgProbeRepository {
         validate_user(&user_entry)?;
 
         if user_entry.admin {
-            let probes = self.read_many(params).await?;
+            let probes = Self::select_many(&mut conn, params).await?;
             return Ok(DbDataPerm::new(
                 probes,
                 (true, vec![GroupProbePermission::full()]),

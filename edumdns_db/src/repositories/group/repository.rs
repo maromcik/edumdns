@@ -1,8 +1,7 @@
 use crate::error::DbError;
 use crate::models::{Group, User};
 use crate::repositories::common::{
-    DbCreate, DbDelete, DbResult, DbResultMultiple
-    , DbResultSingle, DbUpdate, Id,
+    DbCreate, DbDelete, DbResult, DbResultMultiple, DbResultSingle, DbUpdate, Id,
 };
 use crate::repositories::group::models::{CreateGroup, SelectManyGroups, UpdateGroup};
 
@@ -12,9 +11,9 @@ use diesel::{
     BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgTextExpressionMethods, QueryDsl,
     SelectableHelper,
 };
-use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
+use diesel_async::pooled_connection::deadpool::Pool;
 
 #[derive(Clone)]
 pub struct PgGroupRepository {
@@ -26,12 +25,9 @@ impl PgGroupRepository {
         Self { pg_pool }
     }
 
-    pub async fn read_many(
-        &self,
-        params: &SelectManyGroups,
-    ) -> DbResultMultiple<Group> {
+    pub async fn read_many(&self, params: &SelectManyGroups) -> DbResultMultiple<Group> {
         let mut conn = self.pg_pool.get().await?;
-        Self::select_many(&mut conn, params).await
+        GroupBackend::select_many(&mut conn, params).await
     }
     pub async fn read_many_auth(
         &self,
@@ -40,116 +36,19 @@ impl PgGroupRepository {
     ) -> DbResultMultiple<Group> {
         let mut conn = self.pg_pool.get().await?;
         validate_admin_conn(&mut conn, user_id).await?;
-        Self::select_many(&mut conn, params).await
+        GroupBackend::select_many(&mut conn, params).await
     }
 
     pub async fn read_one(&self, params: &Id) -> DbResultSingle<Group> {
         let mut conn = self.pg_pool.get().await?;
-        Self::select_one(&mut conn, params).await
+        GroupBackend::select_one(&mut conn, params).await
     }
     pub async fn read_one_auth(&self, params: &Id, user_id: &Id) -> DbResultSingle<Group> {
         let mut conn = self.pg_pool.get().await?;
         validate_admin_conn(&mut conn, user_id).await?;
-        Self::select_one(&mut conn, params).await
+        GroupBackend::select_one(&mut conn, params).await
     }
 
-}
-
-impl PgGroupRepository {
-
-    async fn select_one(conn: &mut AsyncPgConnection, params: &Id) -> DbResultSingle<Group> {
-        let g = group::table
-            .find(params)
-            .select(Group::as_select())
-            .first(conn)
-            .await?;
-        Ok(g)
-    }
-
-    async fn select_many(conn: &mut AsyncPgConnection, params: &SelectManyGroups) -> DbResultMultiple<Group> {
-        let mut query = group::table.into_boxed();
-
-        if let Some(n) = &params.name {
-            query = query.filter(group::name.ilike(format!("%{n}%")));
-        }
-
-        if let Some(pagination) = params.pagination {
-            query = query.limit(pagination.limit.unwrap_or(i64::MAX));
-            query = query.offset(pagination.offset.unwrap_or(0));
-        }
-
-        let groups = query.order_by(group::id).load::<Group>(conn).await?;
-
-        Ok(groups)
-    }
-
-    async fn insert(conn: &mut AsyncPgConnection, data: &CreateGroup) -> DbResultSingle<Group> {
-        let g = diesel::insert_into(group::table)
-            .values((
-                group::name.eq(&data.name),
-                group::description.eq(&data.description),
-            ))
-            .returning(Group::as_returning())
-            .get_result(conn)
-            .await?;
-        Ok(g)
-    }
-
-    async fn update(conn: &mut AsyncPgConnection, params: &UpdateGroup) -> DbResultMultiple<Group> {
-        let groups = diesel::update(group::table.find(&params.id))
-            .set(params)
-            .get_results(conn)
-            .await?;
-        Ok(groups)
-    }
-    async fn drop(conn: &mut AsyncPgConnection, params: &Id) -> DbResultMultiple<Group> {
-        diesel::delete(group::table.find(params))
-            .get_results(conn)
-            .await
-            .map_err(DbError::from)
-    }
-}
-
-
-impl DbCreate<CreateGroup, Group> for PgGroupRepository {
-    async fn create(&self, data: &CreateGroup) -> DbResultSingle<Group> {
-        let mut conn = self.pg_pool.get().await?;
-        Self::insert(&mut conn, data).await
-    }
-    async fn create_auth(&self, data: &CreateGroup, user_id: &Id) -> DbResultSingle<Group> {
-        let mut conn = self.pg_pool.get().await?;
-        validate_admin_conn(&mut conn, user_id).await?;
-        Self::insert(&mut conn, data).await
-    }
-}
-
-impl DbDelete<Id, Group> for PgGroupRepository {
-    async fn delete(&self, params: &Id) -> DbResultMultiple<Group> {
-        let mut conn = self.pg_pool.get().await?;
-        Self::drop(&mut conn, params).await
-    }
-
-    async fn delete_auth(&self, params: &Id, user_id: &Id) -> DbResultMultiple<Group> {
-        let mut conn = self.pg_pool.get().await?;
-        validate_admin_conn(&mut conn, user_id).await?;
-        Self::drop(&mut conn, params).await
-    }
-}
-
-impl DbUpdate<UpdateGroup, Group> for PgGroupRepository {
-    async fn update(&self, params: &UpdateGroup) -> DbResultMultiple<Group> {
-        let mut conn = self.pg_pool.get().await?;
-        Self::update(&mut conn, params).await
-    }
-
-    async fn update_auth(&self, params: &UpdateGroup, user_id: &Id) -> DbResultMultiple<Group> {
-        let mut conn = self.pg_pool.get().await?;
-        validate_admin_conn(&mut conn, user_id).await?;
-        Self::update(&mut conn, params).await
-    }
-}
-
-impl PgGroupRepository {
     pub async fn add_users(&self, group_id: &Id, user_ids: &[Id], admin_id: &Id) -> DbResult<()> {
         let mut conn = self.pg_pool.get().await?;
         validate_admin_conn(&mut conn, admin_id).await?;
@@ -225,5 +124,102 @@ impl PgGroupRepository {
             .load::<User>(&mut conn)
             .await?;
         Ok(users)
+    }
+}
+
+struct GroupBackend {}
+
+impl GroupBackend {
+    async fn select_one(conn: &mut AsyncPgConnection, params: &Id) -> DbResultSingle<Group> {
+        let g = group::table
+            .find(params)
+            .select(Group::as_select())
+            .first(conn)
+            .await?;
+        Ok(g)
+    }
+
+    async fn select_many(
+        conn: &mut AsyncPgConnection,
+        params: &SelectManyGroups,
+    ) -> DbResultMultiple<Group> {
+        let mut query = group::table.into_boxed();
+
+        if let Some(n) = &params.name {
+            query = query.filter(group::name.ilike(format!("%{n}%")));
+        }
+
+        if let Some(pagination) = params.pagination {
+            query = query.limit(pagination.limit.unwrap_or(i64::MAX));
+            query = query.offset(pagination.offset.unwrap_or(0));
+        }
+
+        let groups = query.order_by(group::id).load::<Group>(conn).await?;
+
+        Ok(groups)
+    }
+
+    async fn insert(conn: &mut AsyncPgConnection, data: &CreateGroup) -> DbResultSingle<Group> {
+        let g = diesel::insert_into(group::table)
+            .values((
+                group::name.eq(&data.name),
+                group::description.eq(&data.description),
+            ))
+            .returning(Group::as_returning())
+            .get_result(conn)
+            .await?;
+        Ok(g)
+    }
+
+    async fn update(conn: &mut AsyncPgConnection, params: &UpdateGroup) -> DbResultMultiple<Group> {
+        let groups = diesel::update(group::table.find(&params.id))
+            .set(params)
+            .get_results(conn)
+            .await?;
+        Ok(groups)
+    }
+    async fn drop(conn: &mut AsyncPgConnection, params: &Id) -> DbResultMultiple<Group> {
+        diesel::delete(group::table.find(params))
+            .get_results(conn)
+            .await
+            .map_err(DbError::from)
+    }
+}
+
+impl DbCreate<CreateGroup, Group> for PgGroupRepository {
+    async fn create(&self, data: &CreateGroup) -> DbResultSingle<Group> {
+        let mut conn = self.pg_pool.get().await?;
+        GroupBackend::insert(&mut conn, data).await
+    }
+    async fn create_auth(&self, data: &CreateGroup, user_id: &Id) -> DbResultSingle<Group> {
+        let mut conn = self.pg_pool.get().await?;
+        validate_admin_conn(&mut conn, user_id).await?;
+        GroupBackend::insert(&mut conn, data).await
+    }
+}
+
+impl DbDelete<Id, Group> for PgGroupRepository {
+    async fn delete(&self, params: &Id) -> DbResultMultiple<Group> {
+        let mut conn = self.pg_pool.get().await?;
+        GroupBackend::drop(&mut conn, params).await
+    }
+
+    async fn delete_auth(&self, params: &Id, user_id: &Id) -> DbResultMultiple<Group> {
+        let mut conn = self.pg_pool.get().await?;
+        validate_admin_conn(&mut conn, user_id).await?;
+        GroupBackend::drop(&mut conn, params).await
+    }
+}
+
+impl DbUpdate<UpdateGroup, Group> for PgGroupRepository {
+    async fn update(&self, params: &UpdateGroup) -> DbResultMultiple<Group> {
+        let mut conn = self.pg_pool.get().await?;
+        GroupBackend::update(&mut conn, params).await
+    }
+
+    async fn update_auth(&self, params: &UpdateGroup, user_id: &Id) -> DbResultMultiple<Group> {
+        let mut conn = self.pg_pool.get().await?;
+        validate_admin_conn(&mut conn, user_id).await?;
+        GroupBackend::update(&mut conn, params).await
     }
 }

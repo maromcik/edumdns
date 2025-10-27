@@ -15,15 +15,15 @@ use crate::schema::device::BoxedQuery;
 use crate::schema::{
     device, group_probe_permission, group_user, packet, packet_transmit_request, probe, user,
 };
-use diesel::pg::Pg;
 use diesel::BoolExpressionMethods;
+use diesel::pg::Pg;
 use diesel::{
     ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl,
     SelectableHelper,
 };
+use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
-use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 use itertools;
 use itertools::Itertools;
@@ -39,49 +39,6 @@ pub struct PgDeviceRepository {
 impl PgDeviceRepository {
     pub fn new(pg_pool: Pool<AsyncPgConnection>) -> Self {
         Self { pg_pool }
-    }
-
-    pub fn build_select_many_query<'a>(params: &'a SelectManyDevices) -> BoxedQuery<'a, Pg> {
-        let mut query = device::table.into_boxed();
-
-        if let Some(q) = &params.id {
-            query = query.filter(device::id.eq(q));
-        }
-
-        if let Some(q) = &params.probe_id {
-            query = query.filter(device::probe_id.eq(q));
-        }
-
-        if let Some(q) = &params.mac {
-            query = query.filter(device::mac.eq(q));
-        }
-
-        if let Some(q) = &params.ip {
-            query = query.filter(device::ip.is_contained_by_or_eq(q));
-        }
-
-        if let Some(q) = &params.port {
-            query = query.filter(device::port.eq(q));
-        }
-
-        if let Some(q) = &params.name {
-            query = query.filter(device::name.ilike(format!("%{q}%")))
-        }
-
-        if let Some(p) = &params.published {
-            query = query.filter(device::published.eq(p))
-        }
-
-        if let Some(p) = &params.proxy {
-            query = query.filter(device::proxy.eq(p))
-        }
-
-        if let Some(pagination) = params.pagination {
-            query = query.limit(pagination.limit.unwrap_or(i64::MAX));
-            query = query.offset(pagination.offset.unwrap_or(0));
-        }
-
-        query
     }
 
     pub async fn get_all_packet_transmit_requests(
@@ -148,7 +105,7 @@ impl PgDeviceRepository {
     pub async fn get_device_count(&self, mut params: SelectManyDevices) -> DbResultSingle<i64> {
         let mut conn = self.pg_pool.get().await?;
         params.pagination = None;
-        Self::build_select_many_query(&params)
+        build_select_many_query(&params)
             .count()
             .get_result(&mut conn)
             .await
@@ -201,80 +158,30 @@ impl PgDeviceRepository {
         Ok(())
     }
 
-    async fn select_one(conn: &mut AsyncPgConnection, params: &Id) -> DbResultSingle<Device> {
-        let d = device::table
-            .find(params)
-            .select(Device::as_select())
-            .first(conn)
-            .await?;
-        Ok(d)
-    }
-
-    async fn select_one_param(
-        conn: &mut AsyncPgConnection,
-        params: &SelectSingleDevice,
-    ) -> DbResultSingle<Device> {
-        let d = device::table
-            .filter(device::probe_id.eq(params.probe_id))
-            .filter(device::mac.eq(params.mac))
-            .filter(device::ip.eq(params.ip))
-            .select(Device::as_select())
-            .first(conn)
-            .await?;
-        Ok(d)
-    }
-
-    async fn select_many(
-        conn: &mut AsyncPgConnection,
-        params: &SelectManyDevices,
-    ) -> DbResultMultiple<(Probe, Device)> {
-        let query = PgDeviceRepository::build_select_many_query(params);
-        let devices = query
-            .inner_join(probe::table)
-            .order_by(device::id.asc())
-            .select((Probe::as_select(), Device::as_select()))
-            .load::<(Probe, Device)>(conn)
-            .await?;
-
-        Ok(devices)
-    }
-
-    async fn drop(conn: &mut AsyncPgConnection, params: &Id) -> DbResultMultiple<Device> {
-        conn.transaction::<_, DbError, _>(|c| {
-            async move {
-                let deleted_devices = diesel::delete(device::table.find(params))
-                    .get_results::<Device>(c)
-                    .await?;
-
-                for d in &deleted_devices {
-                    diesel::delete(
-                        packet::table
-                            .filter(packet::probe_id.eq(d.probe_id))
-                            .filter(packet::src_mac.eq(d.mac))
-                            .filter(packet::src_addr.eq(d.ip)),
-                    )
-                    .execute(c)
-                    .await?;
-                }
-
-                Ok::<Vec<Device>, DbError>(deleted_devices)
-            }
-            .scope_boxed()
-        })
-        .await
+    pub async fn create_packet_transmit_request(
+        &self,
+        data: &CreatePacketTransmitRequest,
+    ) -> DbResultSingle<PacketTransmitRequest> {
+        let mut conn = self.pg_pool.get().await?;
+        diesel::insert_into(packet_transmit_request::table)
+            .values(data)
+            .returning(PacketTransmitRequest::as_returning())
+            .get_result(&mut conn)
+            .await
+            .map_err(DbError::from)
     }
 }
 
 impl DbReadOne<Id, Device> for PgDeviceRepository {
     async fn read_one(&self, params: &Id) -> DbResultSingle<Device> {
         let mut conn = self.pg_pool.get().await?;
-        let d = Self::select_one(&mut conn, params).await?;
+        let d = DeviceBackend::select_one(&mut conn, params).await?;
         Ok(d)
     }
 
     async fn read_one_auth(&self, params: &Id, user_id: &Id) -> DbResultSinglePerm<Device> {
         let mut conn = self.pg_pool.get().await?;
-        let d = Self::select_one(&mut conn, params).await?;
+        let d = DeviceBackend::select_one(&mut conn, params).await?;
         let permissions =
             validate_permissions(&mut conn, user_id, &d.probe_id, Permission::Read).await?;
         Ok(DbDataPerm::new(d, permissions))
@@ -284,7 +191,7 @@ impl DbReadOne<Id, Device> for PgDeviceRepository {
 impl DbReadOne<SelectSingleDevice, Device> for PgDeviceRepository {
     async fn read_one(&self, params: &SelectSingleDevice) -> DbResultSingle<Device> {
         let mut conn = self.pg_pool.get().await?;
-        let d = Self::select_one_param(&mut conn, params).await?;
+        let d = DeviceBackend::select_one_param(&mut conn, params).await?;
         Ok(d)
     }
 
@@ -296,7 +203,7 @@ impl DbReadOne<SelectSingleDevice, Device> for PgDeviceRepository {
         let mut conn = self.pg_pool.get().await?;
         let permissions =
             validate_permissions(&mut conn, user_id, &params.probe_id, Permission::Read).await?;
-        let d = Self::select_one_param(&mut conn, params).await?;
+        let d = DeviceBackend::select_one_param(&mut conn, params).await?;
         Ok(DbDataPerm::new(d, permissions))
     }
 }
@@ -304,7 +211,7 @@ impl DbReadOne<SelectSingleDevice, Device> for PgDeviceRepository {
 impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
     async fn read_many(&self, params: &SelectManyDevices) -> DbResultMultiple<(Probe, Device)> {
         let mut conn = self.pg_pool.get().await?;
-        let devices = Self::select_many(&mut conn, params).await?;
+        let devices = DeviceBackend::select_many(&mut conn, params).await?;
         Ok(devices)
     }
 
@@ -323,14 +230,14 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
         validate_user(&user_entry)?;
 
         if user_entry.admin {
-            let devices = Self::select_many(&mut conn, params).await?;
+            let devices = DeviceBackend::select_many(&mut conn, params).await?;
             return Ok(DbDataPerm::new(
                 devices,
                 (true, vec![GroupProbePermission::full()]),
             ));
         }
 
-        let query = PgDeviceRepository::build_select_many_query(params);
+        let query = build_select_many_query(params);
         let devices = query
             .inner_join(probe::table)
             .inner_join(
@@ -350,7 +257,7 @@ impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
             .load::<(Probe, Device)>(&mut conn)
             .await?;
 
-        let query = PgDeviceRepository::build_select_many_query(params);
+        let query = build_select_many_query(params);
         let owned_devices = query
             .inner_join(probe::table)
             .filter(probe::owner_id.eq(user_id))
@@ -405,61 +312,148 @@ impl DbCreate<CreateDevice, Device> for PgDeviceRepository {
 impl DbUpdate<UpdateDevice, Device> for PgDeviceRepository {
     async fn update(&self, params: &UpdateDevice) -> DbResultMultiple<Device> {
         let mut conn = self.pg_pool.get().await?;
-        let devices = diesel::update(device::table.find(&params.id))
-            .set(params)
-            .get_results(&mut conn)
-            .await?;
-        Ok(devices)
+        DeviceBackend::update(&mut conn, params).await
     }
 
     async fn update_auth(&self, params: &UpdateDevice, user_id: &Id) -> DbResultMultiple<Device> {
         let mut conn = self.pg_pool.get().await?;
-        let d = device::table
-            .find(&params.id)
-            .first::<Device>(&mut conn)
-            .await?;
+        let d = DeviceBackend::select_one(&mut conn, &params.id).await?;
         validate_permissions(&mut conn, user_id, &d.probe_id, Permission::Update).await?;
-        let devices = diesel::update(device::table.find(&params.id))
-            .set(params)
-            .get_results(&mut conn)
-            .await?;
-        Ok(devices)
+        DeviceBackend::update(&mut conn, params).await
     }
 }
 
 impl DbDelete<Id, Device> for PgDeviceRepository {
     async fn delete(&self, params: &Id) -> DbResultMultiple<Device> {
         let mut conn = self.pg_pool.get().await?;
-        Self::drop(&mut conn, params).await
+        DeviceBackend::drop(&mut conn, params).await
     }
 
     async fn delete_auth(&self, params: &Id, user_id: &Id) -> DbResultMultiple<Device> {
         let mut conn = self.pg_pool.get().await?;
-        let d = Self::select_one(&mut conn, params).await?;
+        let d = DeviceBackend::select_one(&mut conn, params).await?;
         validate_permissions(&mut conn, user_id, &d.probe_id, Permission::Delete).await?;
-        Self::drop(&mut conn, params).await
+        DeviceBackend::drop(&mut conn, params).await
     }
 }
 
-impl DbCreate<CreatePacketTransmitRequest, PacketTransmitRequest> for PgDeviceRepository {
-    async fn create(
-        &self,
-        data: &CreatePacketTransmitRequest,
-    ) -> DbResultSingle<PacketTransmitRequest> {
-        let mut conn = self.pg_pool.get().await?;
-        diesel::insert_into(packet_transmit_request::table)
-            .values(data)
-            .returning(PacketTransmitRequest::as_returning())
-            .get_result(&mut conn)
-            .await
-            .map_err(DbError::from)
+struct DeviceBackend {}
+
+impl DeviceBackend {
+    async fn select_one(conn: &mut AsyncPgConnection, params: &Id) -> DbResultSingle<Device> {
+        let d = device::table
+            .find(params)
+            .select(Device::as_select())
+            .first(conn)
+            .await?;
+        Ok(d)
     }
 
-    async fn create_auth(
-        &self,
-        data: &CreatePacketTransmitRequest,
-        user_id: &Id,
-    ) -> DbResultSingle<PacketTransmitRequest> {
-        self.create(data).await
+    async fn select_one_param(
+        conn: &mut AsyncPgConnection,
+        params: &SelectSingleDevice,
+    ) -> DbResultSingle<Device> {
+        let d = device::table
+            .filter(device::probe_id.eq(params.probe_id))
+            .filter(device::mac.eq(params.mac))
+            .filter(device::ip.eq(params.ip))
+            .select(Device::as_select())
+            .first(conn)
+            .await?;
+        Ok(d)
     }
+
+    async fn select_many(
+        conn: &mut AsyncPgConnection,
+        params: &SelectManyDevices,
+    ) -> DbResultMultiple<(Probe, Device)> {
+        let query = build_select_many_query(params);
+        let devices = query
+            .inner_join(probe::table)
+            .order_by(device::id.asc())
+            .select((Probe::as_select(), Device::as_select()))
+            .load::<(Probe, Device)>(conn)
+            .await?;
+
+        Ok(devices)
+    }
+
+    async fn update(
+        conn: &mut AsyncPgConnection,
+        params: &UpdateDevice,
+    ) -> DbResultMultiple<Device> {
+        let devices = diesel::update(device::table.find(&params.id))
+            .set(params)
+            .get_results(conn)
+            .await?;
+        Ok(devices)
+    }
+
+    async fn drop(conn: &mut AsyncPgConnection, params: &Id) -> DbResultMultiple<Device> {
+        conn.transaction::<_, DbError, _>(|c| {
+            async move {
+                let deleted_devices = diesel::delete(device::table.find(params))
+                    .get_results::<Device>(c)
+                    .await?;
+
+                for d in &deleted_devices {
+                    diesel::delete(
+                        packet::table
+                            .filter(packet::probe_id.eq(d.probe_id))
+                            .filter(packet::src_mac.eq(d.mac))
+                            .filter(packet::src_addr.eq(d.ip)),
+                    )
+                    .execute(c)
+                    .await?;
+                }
+
+                Ok::<Vec<Device>, DbError>(deleted_devices)
+            }
+            .scope_boxed()
+        })
+        .await
+    }
+}
+
+fn build_select_many_query<'a>(params: &'a SelectManyDevices) -> BoxedQuery<'a, Pg> {
+    let mut query = device::table.into_boxed();
+
+    if let Some(q) = &params.id {
+        query = query.filter(device::id.eq(q));
+    }
+
+    if let Some(q) = &params.probe_id {
+        query = query.filter(device::probe_id.eq(q));
+    }
+
+    if let Some(q) = &params.mac {
+        query = query.filter(device::mac.eq(q));
+    }
+
+    if let Some(q) = &params.ip {
+        query = query.filter(device::ip.is_contained_by_or_eq(q));
+    }
+
+    if let Some(q) = &params.port {
+        query = query.filter(device::port.eq(q));
+    }
+
+    if let Some(q) = &params.name {
+        query = query.filter(device::name.ilike(format!("%{q}%")))
+    }
+
+    if let Some(p) = &params.published {
+        query = query.filter(device::published.eq(p))
+    }
+
+    if let Some(p) = &params.proxy {
+        query = query.filter(device::proxy.eq(p))
+    }
+
+    if let Some(pagination) = params.pagination {
+        query = query.limit(pagination.limit.unwrap_or(i64::MAX));
+        query = query.offset(pagination.offset.unwrap_or(0));
+    }
+
+    query
 }

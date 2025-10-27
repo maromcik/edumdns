@@ -66,11 +66,7 @@ pub async fn get_group(
     let template_name = get_template_name(&request, "group/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
-    let body = template.render(GroupDetailTemplate {
-        user,
-        users,
-        group,
-    })?;
+    let body = template.render(GroupDetailTemplate { user, users, group })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

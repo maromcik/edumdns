@@ -104,10 +104,7 @@ pub fn no_permission_error(email: &str, permission: Permission) -> DbError {
     )
 }
 
-pub async fn validate_admin_conn(
-    conn: &mut AsyncPgConnection,
-    user_id: &Id,
-) -> DbResult<()> {
+pub async fn validate_admin_conn(conn: &mut AsyncPgConnection, user_id: &Id) -> DbResult<()> {
     let user_entry = user::table
         .find(user_id)
         .select(User::as_select())

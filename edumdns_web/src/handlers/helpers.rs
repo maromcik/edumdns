@@ -41,7 +41,7 @@ pub async fn request_packet_transmit_helper(
         created_at: (!form.permanent).then_some(OffsetDateTime::now_utc()),
     };
 
-    let packet_transmit_request = match device_repo.create(&request).await {
+    let packet_transmit_request = match device_repo.create_packet_transmit_request(&request).await {
         Ok(p) => p,
         Err(_) => {
             return Err(WebError::new(

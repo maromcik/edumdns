@@ -63,8 +63,10 @@ impl EbpfUpdater {
                     .map_err(|e| err(b, a, e))?;
             }
             _ => {
-                warn!("Could not add IP pair <{a}, {b}> to the eBPF map - both IPs must be of the same type");
-                return Ok(())
+                warn!(
+                    "Could not add IP pair <{a}, {b}> to the eBPF map - both IPs must be of the same type"
+                );
+                return Ok(());
             }
         }
         info!("Added IPs to eBPF maps: {} and {} ", a, b);
@@ -99,7 +101,7 @@ impl EbpfUpdater {
                     .remove(&b_bytes)
                     .map_err(|e| err(b, e))?;
             }
-            _ => { }
+            _ => {}
         }
         info!("Removed IPs from eBPF maps: {} and {} ", a, b);
         Ok(())

@@ -32,137 +32,19 @@ impl PgPacketRepository {
         Self { pg_pool }
     }
 
-    pub fn build_select_many_query<'a>(params: &'a SelectManyPackets) -> BoxedQuery<'a, Pg> {
-        let mut query = packet::table.into_boxed();
-
-        if let Some(q) = &params.id {
-            query = query.filter(packet::id.eq(q));
-        }
-
-        if let Some(q) = &params.probe_id {
-            query = query.filter(packet::probe_id.eq(q));
-        }
-
-        if let Some(q) = &params.src_mac {
-            query = query.filter(packet::src_mac.eq(q));
-        }
-
-        if let Some(q) = &params.dst_mac {
-            query = query.filter(packet::dst_mac.eq(q));
-        }
-
-        if let Some(q) = &params.src_addr {
-            query = query.filter(packet::src_addr.is_contained_by_or_eq(q));
-        }
-
-        if let Some(q) = &params.dst_addr {
-            query = query.filter(packet::dst_addr.is_contained_by_or_eq(q));
-        }
-
-        if let Some(q) = &params.src_port {
-            query = query.filter(packet::src_port.eq(q));
-        }
-
-        if let Some(q) = &params.dst_port {
-            query = query.filter(packet::dst_port.eq(q));
-        }
-
-        if let Some(q) = &params.payload_string {
-            query = query.filter(packet::payload_string.ilike(format!("%{q}%")))
-        }
-
-        if let Some(pagination) = params.pagination {
-            query = query.limit(pagination.limit.unwrap_or(i64::MAX));
-            query = query.offset(pagination.offset.unwrap_or(0));
-        }
-        query
-    }
-
     pub async fn get_packet_count(&self, mut params: SelectManyPackets) -> DbResultSingle<i64> {
         let mut conn = self.pg_pool.get().await?;
         params.pagination = None;
-        Self::build_select_many_query(&params)
+        build_select_many_query(&params)
             .count()
             .get_result(&mut conn)
             .await
             .map_err(DbError::from)
     }
 
-
-    async fn select_one(conn: &mut AsyncPgConnection, params: &Id) -> DbResultSingle<Packet> {
-        let p = packet::table
-            .find(params)
-            .select(Packet::as_select())
-            .first(conn)
-            .await?;
-        Ok(p)
-    }
-
-    async fn select_one_param(conn: &mut AsyncPgConnection, params: &SelectSinglePacket) -> DbResultSingle<Packet> {
-        let p = packet::table
-            .filter(packet::probe_id.eq(params.probe_id))
-            .filter(packet::src_mac.eq(params.src_mac))
-            .filter(packet::src_addr.eq(params.src_addr))
-            .select(Packet::as_select())
-            .first(conn)
-            .await?;
-        Ok(p)
-    }
-
-    async fn select_many(conn: &mut AsyncPgConnection, params: &SelectManyPackets) -> DbResultMultiple<Packet> {
-        let query = PgPacketRepository::build_select_many_query(params);
-        let packets = query
-            .order_by(packet::id.asc())
-            .select(Packet::as_select())
-            .load::<Packet>(conn)
-            .await?;
-        Ok(packets)
-    }
-
-    async fn drop(conn: &mut AsyncPgConnection, params: &Id) -> DbResultMultiple<Packet> {
-        diesel::delete(packet::table.find(params))
-            .get_results(conn)
-            .await
-            .map_err(DbError::from)
-    }
-}
-
-impl DbReadOne<SelectSinglePacket, Packet> for PgPacketRepository {
-    async fn read_one(&self, params: &SelectSinglePacket) -> DbResultSingle<Packet> {
-        let mut conn = self.pg_pool.get().await?;
-        Self::select_one_param(&mut conn, params).await
-    }
-    async fn read_one_auth(
-        &self,
-        params: &SelectSinglePacket,
-        user_id: &Id,
-    ) -> DbResultSinglePerm<Packet> {
-        let mut conn = self.pg_pool.get().await?;
-        let permissions =
-            validate_permissions(&mut conn, user_id, &params.probe_id, Permission::Read)
-                .await?;
-        let p = Self::select_one_param(&mut conn, params).await?;
-        Ok(DbDataPerm::new(p, permissions))
-    }
-}
-
-impl DbReadOne<Id, Packet> for PgPacketRepository {
-    async fn read_one(&self, params: &Id) -> DbResultSingle<Packet> {
-        let mut conn = self.pg_pool.get().await?;
-        Self::select_one(&mut conn, params).await
-    }
-    async fn read_one_auth(&self, params: &Id, user_id: &Id) -> DbResultSinglePerm<Packet> {
-        let mut conn = self.pg_pool.get().await?;
-        let p = Self::select_one(&mut conn, params).await?;
-        let permissions = validate_permissions(&mut conn, user_id, &p.probe_id, Permission::Read).await?;
-        Ok(DbDataPerm::new(p, permissions))
-    }
-}
-
-impl PgPacketRepository {
     pub async fn read_many(&self, params: &SelectManyPackets) -> DbResultMultiple<Packet> {
         let mut conn = self.pg_pool.get().await?;
-        Self::select_many(&mut conn, params).await
+        PacketBackend::select_many(&mut conn, params).await
     }
 
     pub async fn read_many_auth(
@@ -180,11 +62,11 @@ impl PgPacketRepository {
         validate_user(&user_entry)?;
 
         if user_entry.admin {
-            let packets = Self::select_many(&mut conn, params).await?;
+            let packets = PacketBackend::select_many(&mut conn, params).await?;
             return Ok(packets);
         }
 
-        let query = PgPacketRepository::build_select_many_query(params);
+        let query = build_select_many_query(params);
         let packets = query
             .inner_join(probe::table)
             .inner_join(
@@ -203,7 +85,7 @@ impl PgPacketRepository {
             .load::<Packet>(&mut conn)
             .await?;
 
-        let query = PgPacketRepository::build_select_many_query(params);
+        let query = build_select_many_query(params);
         let owned_packets = query
             .inner_join(probe::table)
             .filter(probe::owner_id.eq(user_id))
@@ -220,6 +102,38 @@ impl PgPacketRepository {
             .collect::<Vec<_>>();
 
         Ok(packets)
+    }
+}
+
+impl DbReadOne<Id, Packet> for PgPacketRepository {
+    async fn read_one(&self, params: &Id) -> DbResultSingle<Packet> {
+        let mut conn = self.pg_pool.get().await?;
+        PacketBackend::select_one(&mut conn, params).await
+    }
+    async fn read_one_auth(&self, params: &Id, user_id: &Id) -> DbResultSinglePerm<Packet> {
+        let mut conn = self.pg_pool.get().await?;
+        let p = PacketBackend::select_one(&mut conn, params).await?;
+        let permissions =
+            validate_permissions(&mut conn, user_id, &p.probe_id, Permission::Read).await?;
+        Ok(DbDataPerm::new(p, permissions))
+    }
+}
+
+impl DbReadOne<SelectSinglePacket, Packet> for PgPacketRepository {
+    async fn read_one(&self, params: &SelectSinglePacket) -> DbResultSingle<Packet> {
+        let mut conn = self.pg_pool.get().await?;
+        PacketBackend::select_one_param(&mut conn, params).await
+    }
+    async fn read_one_auth(
+        &self,
+        params: &SelectSinglePacket,
+        user_id: &Id,
+    ) -> DbResultSinglePerm<Packet> {
+        let mut conn = self.pg_pool.get().await?;
+        let permissions =
+            validate_permissions(&mut conn, user_id, &params.probe_id, Permission::Read).await?;
+        let p = PacketBackend::select_one_param(&mut conn, params).await?;
+        Ok(DbDataPerm::new(p, permissions))
     }
 }
 
@@ -263,13 +177,106 @@ impl DbCreate<CreatePacket, Packet> for PgPacketRepository {
 impl DbDelete<Id, Packet> for PgPacketRepository {
     async fn delete(&self, params: &Id) -> DbResultMultiple<Packet> {
         let mut conn = self.pg_pool.get().await?;
-        Self::drop(&mut conn, params).await
+        PacketBackend::drop(&mut conn, params).await
     }
 
     async fn delete_auth(&self, params: &Id, user_id: &Id) -> DbResultMultiple<Packet> {
         let mut conn = self.pg_pool.get().await?;
-        let p = Self::select_one(&mut conn, params).await?;
+        let p = PacketBackend::select_one(&mut conn, params).await?;
         validate_permissions(&mut conn, user_id, &p.probe_id, Permission::Delete).await?;
-        Self::drop(&mut conn, params).await
+        PacketBackend::drop(&mut conn, params).await
     }
+}
+
+struct PacketBackend {}
+
+impl PacketBackend {
+    async fn select_one(conn: &mut AsyncPgConnection, params: &Id) -> DbResultSingle<Packet> {
+        let p = packet::table
+            .find(params)
+            .select(Packet::as_select())
+            .first(conn)
+            .await?;
+        Ok(p)
+    }
+
+    async fn select_one_param(
+        conn: &mut AsyncPgConnection,
+        params: &SelectSinglePacket,
+    ) -> DbResultSingle<Packet> {
+        let p = packet::table
+            .filter(packet::probe_id.eq(params.probe_id))
+            .filter(packet::src_mac.eq(params.src_mac))
+            .filter(packet::src_addr.eq(params.src_addr))
+            .select(Packet::as_select())
+            .first(conn)
+            .await?;
+        Ok(p)
+    }
+
+    async fn select_many(
+        conn: &mut AsyncPgConnection,
+        params: &SelectManyPackets,
+    ) -> DbResultMultiple<Packet> {
+        let query = build_select_many_query(params);
+        let packets = query
+            .order_by(packet::id.asc())
+            .select(Packet::as_select())
+            .load::<Packet>(conn)
+            .await?;
+        Ok(packets)
+    }
+
+    async fn drop(conn: &mut AsyncPgConnection, params: &Id) -> DbResultMultiple<Packet> {
+        diesel::delete(packet::table.find(params))
+            .get_results(conn)
+            .await
+            .map_err(DbError::from)
+    }
+}
+
+fn build_select_many_query<'a>(params: &'a SelectManyPackets) -> BoxedQuery<'a, Pg> {
+    let mut query = packet::table.into_boxed();
+
+    if let Some(q) = &params.id {
+        query = query.filter(packet::id.eq(q));
+    }
+
+    if let Some(q) = &params.probe_id {
+        query = query.filter(packet::probe_id.eq(q));
+    }
+
+    if let Some(q) = &params.src_mac {
+        query = query.filter(packet::src_mac.eq(q));
+    }
+
+    if let Some(q) = &params.dst_mac {
+        query = query.filter(packet::dst_mac.eq(q));
+    }
+
+    if let Some(q) = &params.src_addr {
+        query = query.filter(packet::src_addr.is_contained_by_or_eq(q));
+    }
+
+    if let Some(q) = &params.dst_addr {
+        query = query.filter(packet::dst_addr.is_contained_by_or_eq(q));
+    }
+
+    if let Some(q) = &params.src_port {
+        query = query.filter(packet::src_port.eq(q));
+    }
+
+    if let Some(q) = &params.dst_port {
+        query = query.filter(packet::dst_port.eq(q));
+    }
+
+    if let Some(q) = &params.payload_string {
+        query = query.filter(packet::payload_string.ilike(format!("%{q}%")))
+    }
+
+    if let Some(pagination) = params.pagination {
+        query = query.limit(pagination.limit.unwrap_or(i64::MAX));
+        query = query.offset(pagination.offset.unwrap_or(0));
+    }
+    query
 }

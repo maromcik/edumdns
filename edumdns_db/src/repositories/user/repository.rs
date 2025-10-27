@@ -1,24 +1,28 @@
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::{Group, GroupProbePermission, GroupUser, User};
 use crate::repositories::common::{
-    DbDataPerm, DbDelete, DbReadOne, DbResult, DbResultMultiple
-    , DbResultSingle, DbResultSinglePerm, DbUpdate, Id,
+    DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResult, DbResultMultiple, DbResultSingle,
+    DbResultSinglePerm, DbUpdate, Id,
 };
 
 use crate::error::BackendErrorKind::UserPasswordDoesNotMatch;
 use crate::repositories::user::models::{
     SelectManyUsers, UserCreate, UserDisplay, UserLogin, UserUpdate, UserUpdatePassword,
 };
-use crate::repositories::utilities::{generate_salt, hash_password, validate_admin_conn, validate_user, verify_password_hash};
+use crate::repositories::utilities::{
+    generate_salt, hash_password, validate_admin_conn, validate_user, verify_password_hash,
+};
 use crate::schema::user::BoxedQuery;
 use crate::schema::{group, group_user, user};
 use diesel::pg::Pg;
-use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgTextExpressionMethods, QueryDsl, SelectableHelper};
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgTextExpressionMethods, QueryDsl,
+    SelectableHelper,
+};
+use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
-use diesel_async::RunQueryDsl;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
-use pbkdf2::hmac::digest::generic_array::functional::FunctionalSequence;
 
 #[derive(Clone)]
 pub struct PgUserRepository {
@@ -28,40 +32,6 @@ pub struct PgUserRepository {
 impl PgUserRepository {
     pub fn new(pg_pool: Pool<AsyncPgConnection>) -> Self {
         Self { pg_pool }
-    }
-
-    pub fn build_select_many_query<'a>(params: &'a SelectManyUsers) -> BoxedQuery<'a, Pg> {
-        let mut query = user::table.into_boxed();
-
-        if let Some(id) = &params.id {
-            query = query.filter(user::id.eq(id));
-        }
-
-        if let Some(n) = &params.name {
-            query = query.filter(user::name.ilike(format!("%{n}%")))
-        }
-
-        if let Some(s) = &params.surname {
-            query = query.filter(user::surname.ilike(format!("%{s}%")))
-        }
-
-        if let Some(e) = &params.email {
-            query = query.filter(user::email.ilike(format!("%{e}%")))
-        }
-
-        if let Some(a) = &params.admin {
-            query = query.filter(user::admin.eq(a));
-        }
-
-        if let Some(d) = &params.disabled {
-            query = query.filter(user::disabled.eq(d));
-        }
-
-        if let Some(pagination) = params.pagination {
-            query = query.limit(pagination.limit.unwrap_or(i64::MAX));
-            query = query.offset(pagination.offset.unwrap_or(0));
-        }
-        query
     }
 
     pub async fn login(&self, params: &UserLogin) -> DbResultSingle<User> {
@@ -85,7 +55,7 @@ impl PgUserRepository {
     pub async fn get_user_count(&self, mut params: SelectManyUsers) -> DbResultSingle<i64> {
         let mut conn = self.pg_pool.get().await?;
         params.pagination = None;
-        Self::build_select_many_query(&params)
+        build_select_many_query(&params)
             .count()
             .get_result(&mut conn)
             .await
@@ -140,16 +110,6 @@ impl PgUserRepository {
             })
             .await?;
         Ok(user)
-    }
-
-    pub async fn has_groups(conn: &mut AsyncPgConnection, user_id: &Id) -> DbResult<bool> {
-        let group = group_user::table
-            .filter(group_user::user_id.eq(user_id))
-            .select(GroupUser::as_select())
-            .first(conn)
-            .await;
-        group.map(|_| true).or_else(|_| Ok(false))
-
     }
 
     pub async fn search_user_groups(
@@ -215,50 +175,10 @@ impl PgUserRepository {
     ) -> DbResultMultiple<User> {
         let mut conn = self.pg_pool.get().await?;
         validate_admin_conn(&mut conn, user_id).await?;
-        let query = Self::build_select_many_query(params);
+        let query = build_select_many_query(params);
         let users = query.order_by(user::id).load::<User>(&mut conn).await?;
         Ok(users)
     }
-
-
-    pub async fn insert(conn: &mut AsyncPgConnection, data: &UserCreate) -> DbResultSingle<User> {
-        diesel::insert_into(user::table)
-            .values(data)
-            .on_conflict(user::id)
-            .do_update()
-            .set((
-                user::email.eq(&data.email),
-                user::name.eq(&data.name),
-                user::surname.eq(&data.surname),
-            ))
-            .returning(User::as_returning())
-            .get_result(conn)
-            .await
-            .map_err(DbError::from)
-    }
-
-    pub async fn create_auth(&self, data: &UserCreate, user_id: &Id) -> DbResultSingle<User> {
-        let mut conn = self.pg_pool.get().await?;
-        validate_admin_conn(&mut conn, user_id).await?;
-        Self::insert(&mut conn, data).await
-    }
-
-    pub async fn create(&self, data: &UserCreate) -> DbResultSingle<User> {
-        let mut conn = self.pg_pool.get().await?;
-        Self::insert(&mut conn, data).await
-    }
-
-    async fn update(conn: &mut AsyncPgConnection, params: &UserUpdate, has_groups: bool) -> DbResultMultiple<UserDisplay> {
-        let updated_users = diesel::update(user::table.find(&params.id))
-            .set(params)
-            .get_results(conn)
-            .await?
-            .into_iter()
-            .map(|u| UserDisplay::from(u, has_groups))
-            .collect::<Vec<_>>();
-        Ok(updated_users)
-    }
-
 }
 
 impl DbReadOne<Id, UserDisplay> for PgUserRepository {
@@ -267,7 +187,7 @@ impl DbReadOne<Id, UserDisplay> for PgUserRepository {
         let u = user::table.find(&params).first::<User>(&mut conn).await?;
         validate_user(&u)?;
         let u = UserDisplay {
-            has_groups: Self::has_groups(&mut conn, &u.id).await?,
+            has_groups: UserBackend::has_groups(&mut conn, &u.id).await?,
             user: u,
         };
         Ok(u)
@@ -278,7 +198,7 @@ impl DbReadOne<Id, UserDisplay> for PgUserRepository {
         validate_admin_conn(&mut conn, user_id).await?;
         let u = user::table.find(&params).first::<User>(&mut conn).await?;
         let u = UserDisplay {
-            has_groups: Self::has_groups(&mut conn, &u.id).await?,
+            has_groups: UserBackend::has_groups(&mut conn, &u.id).await?,
             user: u,
         };
         Ok(DbDataPerm::new(
@@ -288,23 +208,41 @@ impl DbReadOne<Id, UserDisplay> for PgUserRepository {
     }
 }
 
+impl DbCreate<UserCreate, User> for PgUserRepository {
+    async fn create(&self, data: &UserCreate) -> DbResultSingle<User> {
+        let mut conn = self.pg_pool.get().await?;
+        UserBackend::insert(&mut conn, data).await
+    }
+
+    async fn create_auth(&self, data: &UserCreate, user_id: &Id) -> DbResultSingle<User> {
+        let mut conn = self.pg_pool.get().await?;
+        validate_admin_conn(&mut conn, user_id).await?;
+        UserBackend::insert(&mut conn, data).await
+    }
+}
 
 impl DbUpdate<UserUpdate, UserDisplay> for PgUserRepository {
     async fn update(&self, params: &UserUpdate) -> DbResultMultiple<UserDisplay> {
         let mut conn = self.pg_pool.get().await?;
-        let u = user::table.find(&params.id).first::<User>(&mut conn).await?;
+        let u = user::table
+            .find(&params.id)
+            .first::<User>(&mut conn)
+            .await?;
         validate_user(&u)?;
-        let has_groups =  Self::has_groups(&mut conn, &u.id).await?;
-        Self::update(&mut conn, params, has_groups).await
+        let has_groups = UserBackend::has_groups(&mut conn, &u.id).await?;
+        UserBackend::update(&mut conn, params, has_groups).await
     }
 
-    async fn update_auth(&self, params: &UserUpdate, user_id: &Id) -> DbResultMultiple<UserDisplay> {
+    async fn update_auth(
+        &self,
+        params: &UserUpdate,
+        user_id: &Id,
+    ) -> DbResultMultiple<UserDisplay> {
         let mut conn = self.pg_pool.get().await?;
         validate_admin_conn(&mut conn, user_id).await?;
-        Self::update(&mut conn, params, true).await
+        UserBackend::update(&mut conn, params, true).await
     }
 }
-
 
 impl DbDelete<Id, User> for PgUserRepository {
     async fn delete(&self, params: &Id) -> DbResultMultiple<User> {
@@ -324,4 +262,82 @@ impl DbDelete<Id, User> for PgUserRepository {
             .await
             .map_err(DbError::from)
     }
+}
+
+struct UserBackend {}
+
+impl UserBackend {
+    pub async fn has_groups(conn: &mut AsyncPgConnection, user_id: &Id) -> DbResult<bool> {
+        let group = group_user::table
+            .filter(group_user::user_id.eq(user_id))
+            .select(GroupUser::as_select())
+            .first(conn)
+            .await;
+        group.map(|_| true).or_else(|_| Ok(false))
+    }
+
+    async fn insert(conn: &mut AsyncPgConnection, data: &UserCreate) -> DbResultSingle<User> {
+        diesel::insert_into(user::table)
+            .values(data)
+            .on_conflict(user::id)
+            .do_update()
+            .set((
+                user::email.eq(&data.email),
+                user::name.eq(&data.name),
+                user::surname.eq(&data.surname),
+            ))
+            .returning(User::as_returning())
+            .get_result(conn)
+            .await
+            .map_err(DbError::from)
+    }
+
+    async fn update(
+        conn: &mut AsyncPgConnection,
+        params: &UserUpdate,
+        has_groups: bool,
+    ) -> DbResultMultiple<UserDisplay> {
+        let updated_users = diesel::update(user::table.find(&params.id))
+            .set(params)
+            .get_results(conn)
+            .await?
+            .into_iter()
+            .map(|u| UserDisplay::from(u, has_groups))
+            .collect::<Vec<_>>();
+        Ok(updated_users)
+    }
+}
+
+fn build_select_many_query<'a>(params: &'a SelectManyUsers) -> BoxedQuery<'a, Pg> {
+    let mut query = user::table.into_boxed();
+
+    if let Some(id) = &params.id {
+        query = query.filter(user::id.eq(id));
+    }
+
+    if let Some(n) = &params.name {
+        query = query.filter(user::name.ilike(format!("%{n}%")))
+    }
+
+    if let Some(s) = &params.surname {
+        query = query.filter(user::surname.ilike(format!("%{s}%")))
+    }
+
+    if let Some(e) = &params.email {
+        query = query.filter(user::email.ilike(format!("%{e}%")))
+    }
+
+    if let Some(a) = &params.admin {
+        query = query.filter(user::admin.eq(a));
+    }
+
+    if let Some(d) = &params.disabled {
+        query = query.filter(user::disabled.eq(d));
+    }
+
+    if let Some(pagination) = params.pagination {
+        query = query.limit(pagination.limit.unwrap_or(i64::MAX));
+        query = query.offset(pagination.offset.unwrap_or(0));
+    }
+    query
 }

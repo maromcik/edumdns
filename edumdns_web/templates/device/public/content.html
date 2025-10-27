@@ -1,4 +1,4 @@
-<div id="transmit-form" class="max-w-5xl mx-auto mb-12 md:mb-8 px-4">
+<div id="transmit-form" class="max-w-7xl mx-auto px-4 sm:px-8">
     <section class="text-center py-12 mb-3">
         <h2 class="text-3xl md:text-4xl font-extrabold text-sat-xl mb-10 tracking-tight">
             Discover the device {% if device.name is none %} {{ device.id }} {% else %} {{ device.name }} {% endif %}
@@ -74,7 +74,7 @@
                             <i class="fa-solid fa-clock text-green-600"></i>
                             <span class="font-medium">
                         Discovery active until
-                        <span class="font-mono text-green-700">{{ packet_transmit_request.until }}</span>
+                                <span class="text-green-700"><p class="font-mono">{{ packet_transmit_request.until }}</p></span>
                     </span>
                         </div>
                     </div>
@@ -83,7 +83,7 @@
                     <!-- Stop Button -->
                     <button
                             hx-delete="/device/{{ device.id }}/transmit/{{ packet_transmit_request.id }}?return_url=/device/{{ device.id }}/transmit"
-                            hx-target="#transmit-form"
+                            hx-target="#content-area"
                             hx-target-error="#transmit-result"
                             type="submit"
                             class="inline-flex items-center justify-center gap-2 rounded-md border border-red-600 bg-red-500 text-white px-6 py-3 text-lg font-medium hover:bg-red-600 focus:ring-2 focus:ring-red-400 transition-colors duration-150"
@@ -101,7 +101,7 @@
                     <form
                             method="post"
                             hx-post="/device/{{ device.id }}/transmit"
-                            hx-target="#transmit-form"
+                            hx-target="#content-area"
                             hx-target-error="#transmit-result"
                             class="flex flex-col items-center space-y-5 w-full max-w-sm"
                     >

@@ -1,23 +1,21 @@
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::{GroupProbePermission, Probe, User};
+use crate::repositories::common::{DbResult, Permission};
 use crate::repositories::MIN_PASS_LEN;
-use crate::repositories::common::{DbResult, Id, Permission};
 use crate::schema::group_user;
 use crate::schema::user;
 use crate::schema::{group_probe_permission, probe};
 use diesel::{ExpressionMethods, JoinOnDsl, QueryDsl, SelectableHelper};
 use diesel_async::RunQueryDsl;
-use diesel_async::pooled_connection::deadpool::Pool;
-use diesel_async::scoped_futures::ScopedFutureExt;
-use diesel_async::{AsyncConnection, AsyncPgConnection};
-use pbkdf2::Pbkdf2;
+use diesel_async::AsyncPgConnection;
+use edumdns_core::app_packet::Id;
 use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
+use pbkdf2::Pbkdf2;
 use rand_core::OsRng;
 use serde::{Deserialize, Deserializer};
 use std::collections::HashSet;
-use std::ops::DerefMut;
 use std::str::FromStr;
-use time::{OffsetDateTime, UtcOffset, format_description};
+use time::{format_description, OffsetDateTime, UtcOffset};
 use uuid::Uuid;
 
 pub const WEAK_PASSWORD_MESSAGE: &str = "Weak Password! Must contain at least one char from: {lower, upper, number, special} and be at least 6 characters long.";

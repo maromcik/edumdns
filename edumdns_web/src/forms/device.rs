@@ -1,11 +1,10 @@
 use crate::error::WebError;
+use edumdns_core::app_packet::Id;
 use edumdns_core::bincode_types::MacAddr;
-use edumdns_db::repositories::common::{Id, Pagination};
+use edumdns_db::repositories::common::Pagination;
 use edumdns_db::repositories::device::models::{CreateDevice, SelectManyDevices, UpdateDevice};
 use edumdns_db::repositories::utilities::empty_string_is_none;
-use edumdns_db::repositories::utilities::{generate_salt, hash_password};
 use ipnetwork::IpNetwork;
-use log::error;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 

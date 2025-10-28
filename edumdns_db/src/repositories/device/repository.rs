@@ -2,7 +2,7 @@ use crate::error::DbError;
 use crate::models::{Device, GroupProbePermission, PacketTransmitRequest, Probe, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
-    DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission,
+    DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Permission,
 };
 use crate::repositories::device::models::{
     CreateDevice, CreatePacketTransmitRequest, DeviceUpdatePassword, SelectManyDevices,
@@ -30,6 +30,7 @@ use itertools::Itertools;
 use std::collections::HashSet;
 use std::ops::DerefMut;
 use time::OffsetDateTime;
+use edumdns_core::app_packet::Id;
 
 #[derive(Clone)]
 pub struct PgDeviceRepository {

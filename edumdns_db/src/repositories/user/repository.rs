@@ -2,9 +2,9 @@ use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::{Group, GroupProbePermission, GroupUser, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResult, DbResultMultiple, DbResultSingle,
-    DbResultSinglePerm, DbUpdate, Id,
+    DbResultSinglePerm, DbUpdate,
 };
-
+use edumdns_core::app_packet::Id;
 use crate::error::BackendErrorKind::UserPasswordDoesNotMatch;
 use crate::repositories::user::models::{
     SelectManyUsers, UserCreate, UserDisplay, UserLogin, UserUpdate, UserUpdatePassword,
@@ -273,7 +273,7 @@ impl UserBackend {
             .select(GroupUser::as_select())
             .first(conn)
             .await;
-        group.map(|_| true).or_else(|_| Ok(false))
+        group.map(|_| true).or(Ok(false))
     }
 
     async fn insert(conn: &mut AsyncPgConnection, data: &UserCreate) -> DbResultSingle<User> {

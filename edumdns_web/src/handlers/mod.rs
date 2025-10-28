@@ -1,4 +1,4 @@
-use edumdns_db::repositories::common::Id;
+use edumdns_core::app_packet::Id;
 use serde::{Deserialize, Deserializer};
 use std::collections::HashSet;
 

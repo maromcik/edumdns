@@ -1,5 +1,4 @@
-use crate::repositories::common::{Id, Pagination};
-use crate::repositories::utilities::empty_string_is_false;
+use crate::repositories::common::{Pagination};
 use crate::repositories::utilities::{
     empty_string_is_none, generate_salt, hash_password, validate_password,
 };
@@ -8,6 +7,7 @@ use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::User;
 use diesel::{AsChangeset, Identifiable, Insertable};
 use serde::{Deserialize, Serialize};
+use edumdns_core::app_packet::Id;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyUsers {

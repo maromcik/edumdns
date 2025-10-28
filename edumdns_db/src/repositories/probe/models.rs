@@ -1,5 +1,6 @@
 use crate::models::Probe;
-use crate::repositories::common::{Id, Pagination, Permission};
+use edumdns_core::app_packet::Id;
+use crate::repositories::common::{Pagination, Permission};
 use crate::repositories::utilities::{empty_string_is_none, format_time};
 use diesel::{AsChangeset, Identifiable, Insertable};
 use edumdns_core::bincode_types::MacAddr;

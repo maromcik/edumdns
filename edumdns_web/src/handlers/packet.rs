@@ -8,8 +8,9 @@ use crate::templates::packet::{PacketCreateTemplate, PacketDetailTemplate, Packe
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
+use edumdns_core::app_packet::Id;
 use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadOne, Id, PAGINATION_ELEMENTS_PER_PAGE,
+    DbCreate, DbDelete, DbReadOne, PAGINATION_ELEMENTS_PER_PAGE,
 };
 use edumdns_db::repositories::device::models::SelectSingleDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;

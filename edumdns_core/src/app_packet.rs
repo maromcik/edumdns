@@ -8,6 +8,8 @@ use std::fmt::{Display, Formatter};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use tokio::sync::{mpsc, oneshot};
 
+pub type Id = i64;
+
 #[derive(Debug)]
 pub enum AppPacket {
     Network(NetworkAppPacket),
@@ -43,6 +45,7 @@ pub enum LocalCommandPacket {
         respond_to: oneshot::Sender<Result<(), CoreError>>,
     },
     StopTransmitDevicePackets(i64),
+    InvalidateCache(EntityType)
 }
 
 #[derive(Debug)]
@@ -75,6 +78,13 @@ pub enum NetworkStatusPacket {
     ProbeRequestConfig(ProbeMetadata),
     ProbeResponseConfig(ProbeConfigPacket),
     ProbeResponse(Uuid, Option<Uuid>, ProbeResponse),
+}
+
+#[derive(Debug)]
+pub enum EntityType {
+    Probe { probe_id: Uuid },
+    Device { probe_id: Uuid, device_mac: MacAddr, device_ip: IpNetwork },
+    Packet(Id)
 }
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
@@ -210,7 +220,7 @@ impl Eq for ProbePacket {}
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct PacketTransmitRequestDevice {
-    pub id: i64,
+    pub id: Id,
     pub probe_id: uuid::Uuid,
     pub mac: [u8; 6],
     pub ip: ipnetwork::IpNetwork,
@@ -221,13 +231,13 @@ pub struct PacketTransmitRequestDevice {
 
 impl PacketTransmitRequestDevice {
     pub fn new(
-        id: i64,
+        id: Id,
         probe_id: uuid::Uuid,
         mac: [u8; 6],
         ip: ipnetwork::IpNetwork,
         proxy: bool,
-        interval: i64,
-        duration: i64,
+        interval: Id,
+        duration: Id,
     ) -> Self {
         Self {
             id,
@@ -243,7 +253,7 @@ impl PacketTransmitRequestDevice {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct PacketTransmitRequestPacket {
-    pub id: i64,
+    pub id: Id,
     pub device: PacketTransmitRequestDevice,
     pub target_ip: ipnetwork::IpNetwork,
     pub target_port: u16,
@@ -257,7 +267,7 @@ pub struct PacketTransmitTarget {
 
 impl PacketTransmitRequestPacket {
     pub fn new(
-        id: i64,
+        id: Id,
         device: PacketTransmitRequestDevice,
         target_ip: ipnetwork::IpNetwork,
         target_port: u16,

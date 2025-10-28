@@ -2,7 +2,7 @@ use crate::error::DbError;
 use crate::models::{Packet, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResultMultiple, DbResultSingle,
-    DbResultSinglePerm, Id, Permission,
+    DbResultSinglePerm, Permission,
 };
 use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSinglePacket};
 use std::collections::HashSet;
@@ -21,7 +21,7 @@ use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use itertools::Itertools;
 use schema::packet;
-
+use edumdns_core::app_packet::Id;
 #[derive(Clone)]
 pub struct PgPacketRepository {
     pg_pool: Pool<AsyncPgConnection>,

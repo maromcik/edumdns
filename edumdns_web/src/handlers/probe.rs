@@ -16,12 +16,13 @@ use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, rt, web};
 use actix_ws::AggregatedMessage;
 use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket};
+use edumdns_core::app_packet::{EntityType, Id};
+use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
-use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
+use edumdns_db::error::{DbError, DbErrorKind};
 use edumdns_db::models::Group;
 use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE,
-    Permission,
+    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE, Permission,
 };
 use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
@@ -37,7 +38,6 @@ use log::{info, warn};
 use std::collections::{HashMap, HashSet};
 use strum::IntoEnumIterator;
 use tokio::sync::mpsc;
-use uuid::{Timestamp, Uuid};
 
 #[get("")]
 pub async fn get_probes(
@@ -91,7 +91,7 @@ pub async fn get_probe(
     device_repo: web::Data<PgDeviceRepository>,
     user_repo: web::Data<PgUserRepository>,
     state: web::Data<AppState>,
-    path: web::Path<(Uuid,)>,
+    path: web::Path<(uuid::Uuid,)>,
     query: web::Query<DeviceQuery>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
@@ -159,7 +159,7 @@ pub async fn adopt(
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
-    path: web::Path<(Uuid,)>,
+    path: web::Path<(uuid::Uuid,)>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
@@ -176,7 +176,7 @@ pub async fn forget(
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
-    path: web::Path<(Uuid,)>,
+    path: web::Path<(uuid::Uuid,)>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
@@ -193,7 +193,7 @@ pub async fn reconnect(
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
-    path: web::Path<(Uuid,)>,
+    path: web::Path<(uuid::Uuid,)>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
@@ -214,7 +214,7 @@ pub async fn create_config(
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
     form: web::Form<ProbeConfigForm>,
-    path: web::Path<(Uuid,)>,
+    path: web::Path<(uuid::Uuid,)>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let probe_id = path.0;
@@ -240,7 +240,7 @@ pub async fn save_config(
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
     form: web::Form<ProbeConfigForm>,
-    path: web::Path<(Uuid, Id)>,
+    path: web::Path<(uuid::Uuid, Id)>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let probe_id = path.0;
@@ -270,7 +270,7 @@ pub async fn delete_config(
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
-    path: web::Path<(Uuid, Id)>,
+    path: web::Path<(uuid::Uuid, Id)>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let probe_id = path.0;
@@ -295,7 +295,7 @@ pub async fn change_probe_permission(
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
     form: web::Form<ProbePermissionForm>,
-    path: web::Path<(Uuid,)>,
+    path: web::Path<(uuid::Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
     let probe_id = path.0;
     let i = authorized!(identity, request);
@@ -353,7 +353,7 @@ pub async fn delete_probe(
     request: HttpRequest,
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
-    path: web::Path<(Uuid,)>,
+    path: web::Path<(uuid::Uuid,)>,
     state: web::Data<AppState>,
     query: web::Query<HashMap<String, String>>,
     session: Session,
@@ -366,17 +366,27 @@ pub async fn delete_probe(
         .map(String::as_str)
         .unwrap_or("/probe");
 
-    let uuid = session.get::<edumdns_core::bincode_types::Uuid>("session_id")?;
+    let uuid = session.get::<Uuid>("session_id")?;
     let _ = state
         .command_channel
         .send(AppPacket::Local(LocalAppPacket::Status(
             LocalStatusPacket::OperationUpdateToWs {
-                probe_id: edumdns_core::bincode_types::Uuid(probe_id),
+                probe_id: Uuid(probe_id),
                 session_id: uuid,
                 message: format!("Deleting probe {} in the background.", probe_id),
             },
         )))
         .await;
+
+    let _ = state
+        .command_channel
+        .send(AppPacket::Local(LocalAppPacket::Command(
+            LocalCommandPacket::InvalidateCache(EntityType::Probe {
+                probe_id: Uuid(probe_id),
+            }),
+        )))
+        .await;
+
     probe_repo.delete_auth(&probe_id, &user_id).await?;
     reconnect_probe(state.command_channel.clone(), probe_id, session).await?;
     Ok(HttpResponse::SeeOther()
@@ -389,15 +399,15 @@ pub async fn get_probe_ws(
     request: HttpRequest,
     identity: Option<Identity>,
     state: web::Data<AppState>,
-    path: web::Path<(Uuid,)>,
+    path: web::Path<(uuid::Uuid,)>,
     stream: web::Payload,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let _ = authorized!(identity, request);
     let probe_id = path.0;
 
-    let ts = Timestamp::now(uuid::NoContext);
-    let session_id = Uuid::new_v7(ts);
+    let ts = uuid::Timestamp::now(uuid::NoContext);
+    let session_id = uuid::Uuid::new_v7(ts);
 
     let (res, ws_session, stream) = actix_ws::handle(&request, stream)?;
     let mut stream = stream

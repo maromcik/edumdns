@@ -1,8 +1,9 @@
 use crate::forms::packet::PacketQuery;
 use crate::templates::PageInfo;
+use edumdns_core::app_packet::Id;
 use edumdns_core::bincode_types::MacAddr;
-use edumdns_db::repositories::common::{Id, Permissions};
-use edumdns_db::repositories::packet::models::{PacketDisplay, PacketDisplayPermissions};
+use edumdns_db::repositories::common::Permissions;
+use edumdns_db::repositories::packet::models::PacketDisplay;
 use edumdns_db::repositories::user::models::UserDisplay;
 use ipnetwork::IpNetwork;
 use serde::Serialize;

@@ -1,14 +1,13 @@
 use crate::error::WebError;
 use edumdns_core::bincode_types::{IpNetwork as EdumdnsIpNetwork, MacAddr};
-use edumdns_db::repositories::common::{Id, Pagination};
+use edumdns_db::repositories::common::Pagination;
 use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
 use hickory_proto::op::Message;
-use hickory_proto::rr::RecordType;
-use hickory_proto::serialize::binary::{BinDecodable, BinEncodable};
+use hickory_proto::serialize::binary::BinEncodable;
 use ipnetwork::IpNetwork;
-use log::error;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use edumdns_core::app_packet::Id;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PacketQuery {

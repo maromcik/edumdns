@@ -2,7 +2,7 @@ use crate::error::DbError;
 use crate::models::Location;
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResultMultiple, DbResultMultiplePerm,
-    DbResultSingle, DbResultSinglePerm, Id,
+    DbResultSingle, DbResultSinglePerm,
 };
 use crate::repositories::location::models::{CreateLocation, SelectManyFilter};
 use crate::schema::location;
@@ -10,7 +10,7 @@ use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
-
+use edumdns_core::app_packet::Id;
 #[derive(Clone)]
 pub struct PgLocationRepository {
     pg_pool: Pool<AsyncPgConnection>,

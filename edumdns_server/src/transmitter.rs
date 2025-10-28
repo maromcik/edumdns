@@ -10,7 +10,7 @@ use std::collections::HashSet;
 
 use crate::DEFAULT_INTERVAL_MULTIPLICATOR;
 use edumdns_core::error::CoreError;
-use edumdns_db::repositories::common::Id;
+use edumdns_core::app_packet::Id;
 use std::time::Duration;
 use tokio::sync::mpsc::Sender;
 use tokio::task::JoinHandle;

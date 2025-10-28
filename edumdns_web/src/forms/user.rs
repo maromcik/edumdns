@@ -1,9 +1,9 @@
-use edumdns_db::repositories::common::{Id, Pagination};
+use edumdns_db::repositories::common::Pagination;
 use edumdns_db::repositories::user::models::{SelectManyUsers, UserUpdate};
 use edumdns_db::repositories::utilities::empty_string_is_none;
 use serde::{Deserialize, Deserializer, Serialize};
-use std::collections::HashSet;
 use std::fmt::Display;
+use edumdns_core::app_packet::Id;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct UserQuery {

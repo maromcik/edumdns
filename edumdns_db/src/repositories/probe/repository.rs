@@ -1,8 +1,9 @@
 use crate::error::DbError;
 use crate::models::{GroupProbePermission, Probe, ProbeConfig, User};
+use edumdns_core::app_packet::Id;
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
-    DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Id, Permission,
+    DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Permission,
 };
 use crate::repositories::probe::models::{
     AlterProbePermission, CreateProbe, CreateProbeConfig, SelectManyProbes,

@@ -1,3 +1,4 @@
+use edumdns_core::app_packet::{EntityType, Id};
 use crate::authorized;
 use crate::error::{WebError, WebErrorKind};
 use crate::forms::device::{
@@ -20,7 +21,7 @@ use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
 use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket};
 use edumdns_core::error::CoreError;
 use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE,
+    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE,
     Pagination,
 };
 use edumdns_db::repositories::device::models::{
@@ -32,6 +33,7 @@ use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use std::collections::HashMap;
 use uuid::Uuid;
+use edumdns_core::bincode_types::{IpNetwork, MacAddr};
 
 #[get("")]
 pub async fn get_devices(
@@ -160,6 +162,7 @@ pub async fn delete_device(
     request: HttpRequest,
     identity: Option<Identity>,
     device_repo: web::Data<PgDeviceRepository>,
+    state: web::Data<AppState>,
     path: web::Path<(Id,)>,
     query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, WebError> {
@@ -170,9 +173,23 @@ pub async fn delete_device(
         .map(String::as_str)
         .unwrap_or("/device");
 
-    device_repo
+    let devices = device_repo
         .delete_auth(&path.0, &parse_user_id(&i)?)
         .await?;
+
+    for device in devices {
+        let _ = state
+            .command_channel
+            .send(AppPacket::Local(LocalAppPacket::Command(
+                LocalCommandPacket::InvalidateCache(EntityType::Device {
+                    probe_id: edumdns_core::bincode_types::Uuid(device.probe_id),
+                    device_mac: MacAddr::from_octets(device.mac),
+                    device_ip: IpNetwork(device.ip)
+                }),
+            )))
+            .await;
+    }
+
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, return_url))
         .finish())

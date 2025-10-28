@@ -1,3 +1,4 @@
+use edumdns_core::app_packet::Id;
 use crate::error::DbError;
 use crate::models::GroupProbePermission;
 use diesel::backend::Backend;
@@ -11,7 +12,6 @@ use strum_macros::EnumIter;
 
 pub const PAGINATION_ELEMENTS_PER_PAGE: i64 = 10;
 
-pub type Id = i64;
 pub type Permissions = Vec<GroupProbePermission>;
 
 pub type DbResult<T> = Result<T, DbError>;

@@ -1,4 +1,5 @@
-use crate::repositories::common::{Id, Permission};
+use edumdns_core::app_packet::Id;
+use crate::repositories::common::{Permission};
 use diesel::prelude::*;
 use edumdns_core::app_packet::PacketTransmitRequestDevice;
 use serde::{Deserialize, Serialize};

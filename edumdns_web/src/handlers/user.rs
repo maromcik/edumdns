@@ -1,3 +1,4 @@
+use edumdns_core::app_packet::Id;
 use crate::error::{WebError, WebErrorKind};
 use crate::forms::user::{
     UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm,
@@ -15,7 +16,7 @@ use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
 use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, Id, PAGINATION_ELEMENTS_PER_PAGE,
+    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE,
 };
 use edumdns_db::repositories::user::models::{
     SelectManyUsers, UserCreate, UserDisplay, UserUpdate, UserUpdatePassword,

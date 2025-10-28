@@ -1,7 +1,8 @@
-use crate::repositories::common::{Id, Pagination};
+use crate::repositories::common::{Pagination};
 use crate::repositories::utilities::empty_string_is_none;
 use diesel::{AsChangeset, Identifiable};
 use serde::{Deserialize, Serialize};
+use edumdns_core::app_packet::Id;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyGroups {

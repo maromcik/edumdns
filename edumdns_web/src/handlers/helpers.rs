@@ -9,11 +9,11 @@ use edumdns_core::app_packet::{
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
 use edumdns_db::models::Device;
-use edumdns_db::repositories::common::Id;
 use edumdns_db::repositories::device::models::CreatePacketTransmitRequest;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use time::OffsetDateTime;
 use tokio::sync::mpsc::Sender;
+use edumdns_core::app_packet::Id;
 
 pub async fn request_packet_transmit_helper(
     device_repo: web::Data<PgDeviceRepository>,

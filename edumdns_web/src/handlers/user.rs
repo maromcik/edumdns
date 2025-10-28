@@ -1,4 +1,3 @@
-use edumdns_core::app_packet::Id;
 use crate::error::{WebError, WebErrorKind};
 use crate::forms::user::{
     UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm,
@@ -14,6 +13,7 @@ use crate::{AppState, authorized};
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
+use edumdns_core::app_packet::Id;
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
 use edumdns_db::repositories::common::{
     DbCreate, DbDelete, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE,
@@ -166,6 +166,10 @@ pub async fn user_manage_form_page(
     state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
     let i = authorized!(identity, request);
+    let oidc = request
+        .cookie("auth")
+        .map(|c| c.value() == "oidc")
+        .unwrap_or(false);
     let user_id = parse_user_id(&i)?;
     let user = user_repo.read_one(&user_id).await?;
 
@@ -176,7 +180,7 @@ pub async fn user_manage_form_page(
         user,
         message: String::new(),
         success: true,
-        oidc: state.oidc,
+        oidc
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -201,7 +205,6 @@ pub async fn user_manage_password_form(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
-
 #[post("/manage")]
 pub async fn user_manage(
     request: HttpRequest,
@@ -211,6 +214,12 @@ pub async fn user_manage(
     state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
     let u = authorized!(identity, request);
+
+    let oidc = request
+        .cookie("auth")
+        .map(|c| c.value() == "oidc")
+        .unwrap_or(false);
+
     let user_update = UserUpdate::new(
         &parse_user_id(&u)?,
         Some(&form.email),
@@ -233,7 +242,7 @@ pub async fn user_manage(
         user: user_valid,
         message: "Profile successfully updated".to_string(),
         success: true,
-        oidc: state.oidc,
+        oidc,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

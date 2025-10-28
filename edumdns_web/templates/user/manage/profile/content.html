@@ -29,9 +29,9 @@
                 <div id="success-area" class="text-success mb-3" onclick=" { this.style.display = 'none'; }">
                     {% else %}
                     <div id="error-area2" class="text-error mb-3" onclick=" { this.style.display = 'none'; }">
-                        {% endif %}
+                {% endif %}
                         {{ message }}
-                    </div>
+                </div>
                     <div class="flex flex-wrap justify-between text-center">
                         <div class="px-2">
                             <table class="w-full">
@@ -43,7 +43,7 @@
                                     <td class="pb-2">
                                         <input type="text" id="profile-id-name" name="name" value="{{ user.user.name }}"
                                                placeholder="Name"
-                                               class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
+                                               class="p-3 rounded border  bg-forms-fields text-forms  focus:outline-none focus:border-amber-500">
                                     </td>
                                 </tr>
                                 <tr>

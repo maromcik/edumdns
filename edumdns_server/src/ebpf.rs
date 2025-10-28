@@ -63,10 +63,7 @@ impl EbpfUpdater {
                     .map_err(|e| err(b, a, e))?;
             }
             _ => {
-                warn!(
-                    "Could not add IP pair <{a}, {b}> to the eBPF map - both IPs must be of the same type"
-                );
-                return Ok(());
+                return Err(ServerError::new(ServerErrorKind::EbpfMapError, format!("Could not add IP pair <{a}, {b}> to the eBPF map - both IPs must be of the same type").as_str()));
             }
         }
         info!("Added IPs to eBPF maps: {} and {} ", a, b);

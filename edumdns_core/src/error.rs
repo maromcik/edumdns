@@ -43,12 +43,12 @@ pub enum CoreErrorKind {
     TokioOneshotChannelError,
     #[error("Tokio mpsc channel error")]
     TokioMpscChannelError,
-    #[error("dns packet manipulation error")]
+    #[error("DNS packet manipulation error")]
     DnsPacketManipulationError,
-    #[error("dns error")]
+    #[error("DNS error")]
     DnsError,
-    #[error("Error in higher level code")]
-    HighLevelError,
+    #[error("Error")]
+    OtherError,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -71,6 +71,13 @@ impl CoreError {
             error_kind,
             message: message.to_owned(),
         }
+    }
+
+    pub fn from_any<T>(value: T) -> Self
+    where
+        T: AsRef<str>,
+    {
+        Self::new(CoreErrorKind::OtherError, value.as_ref())
     }
 }
 

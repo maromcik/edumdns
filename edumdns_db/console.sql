@@ -23,10 +23,11 @@ alter table packet_transmit_request add column "user_id" bigint not null referen
 
 alter table probe add column "pre_shared_key" text;
 
-alter table device drop column "user_id";
 
 alter table packet add column payload_string text;
 
 alter table packet_transmit_request add column "created_at" timestamptz;
 
 alter table packet_transmit_request drop column "created_at";
+
+alter table packet_transmit_request add constraint "packet_transmit_request_device_id" unique ("device_id");

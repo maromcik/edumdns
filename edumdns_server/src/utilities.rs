@@ -1,6 +1,6 @@
 use crate::error::ServerError;
-use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
+use diesel_async::AsyncPgConnection;
 use edumdns_core::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestDevice,
     PacketTransmitRequestPacket,
@@ -11,10 +11,8 @@ use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use hickory_proto::op::Message;
 use hickory_proto::rr::{RData, Record};
 use hickory_proto::serialize::binary::BinDecodable;
-use log::warn;
 use std::collections::HashSet;
 use std::net::{Ipv4Addr, Ipv6Addr};
-use std::time::Duration;
 use tokio::sync::mpsc::Sender;
 
 pub fn rewrite_records(record: &mut Record, ipv4: Ipv4Addr, ipv6: Ipv6Addr) {
@@ -69,8 +67,12 @@ pub async fn load_all_packet_transmit_requests(
             request.target_ip,
             request.target_port as u16,
         );
+        let channel = tokio::sync::oneshot::channel();
         tx.send(AppPacket::Local(LocalAppPacket::Command(
-            LocalCommandPacket::TransmitDevicePackets(packet_transmit_request.clone()),
+            LocalCommandPacket::TransmitDevicePackets {
+                request: packet_transmit_request,
+                respond_to: channel.0,
+            },
         )))
         .await
         .map_err(CoreError::from)?;

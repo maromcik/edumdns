@@ -26,7 +26,7 @@ pub enum LocalAppPacket {
     Command(LocalCommandPacket),
     Status(LocalStatusPacket),
 }
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum LocalCommandPacket {
     RegisterForEvents {
         probe_id: uuid::Uuid,
@@ -38,7 +38,10 @@ pub enum LocalCommandPacket {
         session_id: uuid::Uuid,
     },
     ReconnectProbe(Uuid, Option<Uuid>),
-    TransmitDevicePackets(PacketTransmitRequestPacket),
+    TransmitDevicePackets {
+        request: PacketTransmitRequestPacket,
+        respond_to: oneshot::Sender<Result<(), CoreError>>,
+    },
     StopTransmitDevicePackets(i64),
 }
 

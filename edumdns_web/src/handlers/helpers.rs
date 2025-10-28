@@ -9,10 +9,9 @@ use edumdns_core::app_packet::{
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
 use edumdns_db::models::Device;
-use edumdns_db::repositories::common::{DbCreate, Id};
+use edumdns_db::repositories::common::Id;
 use edumdns_db::repositories::device::models::CreatePacketTransmitRequest;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use log::warn;
 use time::OffsetDateTime;
 use tokio::sync::mpsc::Sender;
 
@@ -49,12 +48,30 @@ pub async fn request_packet_transmit_helper(
         form.target_port,
     );
 
+    let channel = tokio::sync::oneshot::channel();
     command_channel
         .send(AppPacket::Local(LocalAppPacket::Command(
-            LocalCommandPacket::TransmitDevicePackets(request),
+            LocalCommandPacket::TransmitDevicePackets {
+                request,
+                respond_to: channel.0,
+            },
         )))
         .await
         .map_err(CoreError::from)?;
+
+    if let Err(e) = channel.1.await.map_err(CoreError::from)? {
+        device_repo
+            .delete_packet_transmit_request(&packet_transmit_request.id)
+            .await?;
+        return Err(WebError::new(
+            WebErrorKind::BadRequest,
+            format!(
+                "An error occurred while processing your request: {}",
+                e.message
+            )
+            .as_str(),
+        ));
+    }
 
     Ok(())
 }

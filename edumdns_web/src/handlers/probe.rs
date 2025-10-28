@@ -404,10 +404,6 @@ pub async fn get_probe_ws(
         .aggregate_continuations()
         .max_continuation_size(2_usize.pow(20));
     let mut channel = mpsc::channel(100);
-    let unregister_packet = LocalCommandPacket::UnregisterFromEvents {
-        probe_id,
-        session_id,
-    };
     let sender = channel.0.clone();
     state
         .command_channel
@@ -421,7 +417,6 @@ pub async fn get_probe_ws(
         .await
         .map_err(CoreError::from)?;
     let command_channel = state.command_channel.clone();
-    let unregister_packet_local = unregister_packet.clone();
     session.insert("session_id", session_id.to_string())?;
     let mut ws_session_local = ws_session.clone();
     rt::spawn(async move {
@@ -433,7 +428,10 @@ pub async fn get_probe_ws(
 
             let Err(e) = command_channel
                 .send(AppPacket::Local(LocalAppPacket::Command(
-                    unregister_packet_local.clone(),
+                    LocalCommandPacket::UnregisterFromEvents {
+                        probe_id,
+                        session_id,
+                    },
                 )))
                 .await
             else {
@@ -443,14 +441,16 @@ pub async fn get_probe_ws(
         }
     });
     let command_channel = state.command_channel.clone();
-    let unregister_packet_local = unregister_packet.clone();
     rt::spawn(async move {
         while let Some(msg) = stream.recv().await {
             match msg {
                 Ok(AggregatedMessage::Close(_)) | Err(_) => {
                     let _ = command_channel
                         .send(AppPacket::Local(LocalAppPacket::Command(
-                            unregister_packet_local,
+                            LocalCommandPacket::UnregisterFromEvents {
+                                probe_id,
+                                session_id,
+                            },
                         )))
                         .await;
                     break;

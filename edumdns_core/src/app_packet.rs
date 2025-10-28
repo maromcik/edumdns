@@ -1,5 +1,6 @@
-use crate::bincode_types::MacAddr;
 use crate::bincode_types::Uuid;
+use crate::bincode_types::{IpNetwork, MacAddr};
+use crate::error::CoreError;
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};
 use crate::network_packet::{DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};
@@ -38,7 +39,7 @@ pub enum LocalCommandPacket {
     },
     ReconnectProbe(Uuid, Option<Uuid>),
     TransmitDevicePackets(PacketTransmitRequestPacket),
-    StopTransmitDevicePackets(PacketTransmitRequestPacket),
+    StopTransmitDevicePackets(i64),
 }
 
 #[derive(Debug)]
@@ -107,24 +108,6 @@ impl Display for ProbeResponse {
         }
     }
 }
-
-// #[derive(Clone, Debug)]
-// pub struct SenderWrapper(pub mpsc::Sender<AppPacket>);
-//
-// impl PartialEq for SenderWrapper {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.0.same_channel(&other.0)
-//     }
-// }
-// impl Eq for SenderWrapper {}
-//
-// impl Hash for SenderWrapper {
-//     fn hash<H: Hasher>(&self, state: &mut H) {
-//         // hash by pointer address
-//         (&self.0 as *const mpsc::Sender<AppPacket>).hash(state);
-//     }
-// }
-//
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]
 pub struct ProbeConfigElement {
@@ -223,14 +206,44 @@ impl PartialEq for ProbePacket {
 impl Eq for ProbePacket {}
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct PacketTransmitRequestPacket {
-    pub probe_uuid: Uuid,
-    pub device_mac: MacAddr,
-    pub device_ip: ipnetwork::IpNetwork,
-    pub target_ip: ipnetwork::IpNetwork,
-    pub target_port: u16,
+pub struct PacketTransmitRequestDevice {
+    pub id: i64,
+    pub probe_id: uuid::Uuid,
+    pub mac: [u8; 6],
+    pub ip: ipnetwork::IpNetwork,
     pub proxy: bool,
     pub interval: u64,
+    pub duration: u64,
+}
+
+impl PacketTransmitRequestDevice {
+    pub fn new(
+        id: i64,
+        probe_id: uuid::Uuid,
+        mac: [u8; 6],
+        ip: ipnetwork::IpNetwork,
+        proxy: bool,
+        interval: i64,
+        duration: i64,
+    ) -> Self {
+        Self {
+            id,
+            probe_id,
+            mac,
+            ip,
+            proxy,
+            interval: interval as u64,
+            duration: duration as u64,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct PacketTransmitRequestPacket {
+    pub id: i64,
+    pub device: PacketTransmitRequestDevice,
+    pub target_ip: ipnetwork::IpNetwork,
+    pub target_port: u16,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -239,31 +252,18 @@ pub struct PacketTransmitTarget {
     pub port: u16,
 }
 
-// #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq, Hash)]
-// pub struct PacketTransmitDevice {
-//     pub probe_uuid: Uuid,
-//     pub mac: MacAddr,
-//     pub ip: IpNetwork,
-// }
-//
 impl PacketTransmitRequestPacket {
     pub fn new(
-        probe_uuid: uuid::Uuid,
-        device_mac: [u8; 6],
-        device_ip: ipnetwork::IpNetwork,
+        id: i64,
+        device: PacketTransmitRequestDevice,
         target_ip: ipnetwork::IpNetwork,
         target_port: u16,
-        proxy: bool,
-        interval: i64,
     ) -> Self {
         Self {
-            probe_uuid: Uuid(probe_uuid),
-            device_mac: MacAddr::from_octets(device_mac),
-            device_ip,
+            id,
+            device,
             target_ip,
             target_port,
-            proxy,
-            interval: interval as u64,
         }
     }
 }
@@ -273,7 +273,11 @@ impl Display for PacketTransmitRequestPacket {
         write!(
             f,
             "Device Probe_ID: {}, MAC: {}, IP: {}; Target: {}:{}",
-            self.probe_uuid, self.device_mac, self.device_ip, self.target_ip, self.target_port
+            self.device.probe_id,
+            MacAddr::from_octets(self.device.mac),
+            self.device.ip,
+            self.target_ip,
+            self.target_port
         )
     }
 }

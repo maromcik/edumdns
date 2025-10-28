@@ -47,6 +47,8 @@ pub enum CoreErrorKind {
     DnsPacketManipulationError,
     #[error("dns error")]
     DnsError,
+    #[error("Error in higher level code")]
+    HighLevelError,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

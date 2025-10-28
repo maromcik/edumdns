@@ -1,5 +1,6 @@
 use crate::repositories::common::{Id, Permission};
 use diesel::prelude::*;
+use edumdns_core::app_packet::PacketTransmitRequestDevice;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use time::OffsetDateTime;
@@ -122,6 +123,7 @@ pub struct ProbeConfig {
     Eq,
     PartialEq,
     Debug,
+    Clone,
 )]
 #[diesel(table_name = crate::schema::device)]
 #[diesel(belongs_to(Probe))]
@@ -142,6 +144,20 @@ pub struct Device {
     pub acl_pwd_salt: Option<String>,
     pub acl_ap_hostname_regex: Option<String>,
     pub discovered_at: Option<OffsetDateTime>,
+}
+
+impl From<Device> for PacketTransmitRequestDevice {
+    fn from(value: Device) -> Self {
+        Self {
+            id: value.id,
+            probe_id: value.probe_id,
+            mac: value.mac,
+            ip: value.ip,
+            proxy: value.proxy,
+            interval: value.interval as u64,
+            duration: value.duration as u64,
+        }
+    }
 }
 
 #[derive(

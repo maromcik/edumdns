@@ -14,7 +14,8 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
-use edumdns_db::repositories::common::{DbCreate, DbReadMany, DbReadOne};
+use edumdns_core::error::CoreError;
+use edumdns_db::repositories::common::{DbCreate, DbReadMany, DbReadOne, Id};
 use edumdns_db::repositories::device::models::{CreateDevice, SelectSingleDevice};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
@@ -36,12 +37,18 @@ pub struct Proxy {
     pub ebpf_updater: Arc<Mutex<EbpfUpdater>>,
 }
 
+pub struct PacketTransmitJob {
+    pub request: PacketTransmitRequestPacket,
+    pub task: PacketTransmitterTask,
+}
+
 pub struct PacketManager {
     pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
+    pub command_transmitter: Sender<AppPacket>,
     pub command_receiver: Receiver<AppPacket>,
     pub data_receiver: Receiver<AppPacket>,
     pub db_transmitter: Sender<DbCommand>,
-    pub transmitter_tasks: Arc<Mutex<HashMap<PacketTransmitRequestPacket, PacketTransmitterTask>>>,
+    pub transmitter_tasks: Arc<Mutex<HashMap<Id, PacketTransmitJob>>>,
     pub probe_handles: ProbeHandles,
     pub probe_ws_handles: HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<ProbeResponse>>>,
     pub pg_device_repository: PgDeviceRepository,
@@ -52,6 +59,7 @@ pub struct PacketManager {
 
 impl PacketManager {
     pub fn new(
+        command_transmitter: Sender<AppPacket>,
         command_receiver: Receiver<AppPacket>,
         data_receiver: Receiver<AppPacket>,
         db_transmitter: Sender<DbCommand>,
@@ -83,6 +91,7 @@ impl PacketManager {
 
         Ok(Self {
             packets: HashMap::default(),
+            command_transmitter,
             command_receiver,
             data_receiver,
             db_transmitter,
@@ -155,28 +164,11 @@ impl PacketManager {
                         }
                     }
                 }
-                LocalCommandPacket::TransmitDevicePackets(target) => {
-                    if self.transmitter_tasks.lock().await.contains_key(&target) {
-                        warn!("Transmitter task already exists for target: {}", target);
-                    } else {
-                        self.transmit_device_packets(target)
-                    }
+                LocalCommandPacket::TransmitDevicePackets(request) => {
+                    self.transmit_device_packets(request).await
                 }
-                LocalCommandPacket::StopTransmitDevicePackets(target) => {
-                    if let Some(t) = self.transmitter_tasks.lock().await.get(&target) {
-                        t.transmitter_task.abort();
-                    }
-                    self.transmitter_tasks.lock().await.remove(&target);
-                    if let Some(proxy) = &self.proxy
-                        && target.proxy
-                        && let Err(e) = proxy
-                            .ebpf_updater
-                            .lock()
-                            .await
-                            .remove_ip(target.device_ip, target.target_ip)
-                    {
-                        error!("{e}");
-                    };
+                LocalCommandPacket::StopTransmitDevicePackets(request_id) => {
+                    self.stop_device_packets(request_id).await
                 }
                 LocalCommandPacket::ReconnectProbe(id, session_id) => {
                     if let Err(e) = self.send_reconnect(id, session_id).await {
@@ -355,20 +347,29 @@ impl PacketManager {
         }
     }
 
-    pub fn transmit_device_packets(&mut self, transmit_request: PacketTransmitRequestPacket) {
+    pub async fn transmit_device_packets(&mut self, request: PacketTransmitRequestPacket) {
+        if self
+            .transmitter_tasks
+            .lock()
+            .await
+            .contains_key(&request.id)
+        {
+            warn!("Transmitter task already exists for target: {}", request);
+            return;
+        }
         let packet_repo = self.pg_packet_repository.clone();
-        let probe_id = transmit_request.probe_uuid.0;
         let proxy = self.proxy.clone();
         let transmitter_tasks = self.transmitter_tasks.clone();
         let global_timeout = self.global_timeout;
+        let command_transmitter_local = self.command_transmitter.clone();
         tokio::task::spawn(async move {
             let packets = match packet_repo
                 .read_many(&SelectManyPackets::new(
                     None,
-                    Some(probe_id),
-                    Some(transmit_request.device_mac.to_octets()),
+                    Some(request.device.probe_id),
+                    Some(request.device.mac),
                     None,
-                    Some(transmit_request.device_ip),
+                    Some(request.device.ip),
                     None,
                     None,
                     None,
@@ -379,14 +380,14 @@ impl PacketManager {
             {
                 Ok(p) => p,
                 Err(e) => {
-                    warn!("No packets found for target: {transmit_request}: {e}");
+                    warn!("No packets found for target: {request}: {e}");
                     return;
                 }
             };
 
-            info!("Packets found for target: {}", transmit_request);
+            info!("Packets found for target: {}", request);
             let payloads = if let Some(p) = &proxy
-                && transmit_request.proxy
+                && request.device.proxy
             {
                 rewrite_payloads(packets, p.proxy_ipv4, p.proxy_ipv6)
             } else {
@@ -394,18 +395,18 @@ impl PacketManager {
             };
 
             if payloads.is_empty() {
-                warn!("No packets left after processing for target: {transmit_request}");
+                warn!("No packets left after processing for target: {request}");
                 return;
             }
 
             if let Some(p) = proxy
-                && transmit_request.proxy
+                && request.device.proxy
             {
                 match p
                     .ebpf_updater
                     .lock()
                     .await
-                    .add_ip(transmit_request.device_ip, transmit_request.target_ip)
+                    .add_ip(request.device.ip, request.target_ip)
                 {
                     Ok(_) => {}
                     Err(e) => {
@@ -414,26 +415,50 @@ impl PacketManager {
                 }
             }
 
-            let transmitter = PacketTransmitter::new(
-                payloads,
-                transmit_request.clone(),
-                Duration::from_millis(transmit_request.interval),
-                global_timeout,
-            )
-            .await;
+            let transmitter =
+                PacketTransmitter::new(payloads, request.clone(), global_timeout).await;
 
             let Ok(transmitter) = transmitter else {
-                error!("Could not create transmitter for target: {transmit_request}");
+                error!("Could not create transmitter for target: {request}");
                 return;
             };
-            let task = PacketTransmitterTask::new(transmitter);
-            info!("Transmitter task created for target: {}", transmit_request);
+            let task =
+                PacketTransmitterTask::new(transmitter, command_transmitter_local, request.id);
+            info!("Transmitter task created for target: {}", request);
+            let job = PacketTransmitJob { request, task };
             transmitter_tasks
                 .lock()
                 .await
-                .entry(transmit_request)
-                .or_insert(task);
-            info!("Transmitter task inserted for target");
+                .entry(job.request.id)
+                .or_insert(job);
         });
+    }
+
+    pub async fn stop_device_packets(&mut self, request_id: i64) {
+        let device_repo = self.pg_device_repository.clone();
+        let Some(job) = self.transmitter_tasks.lock().await.remove(&request_id) else {
+            warn!("Transmitter task not found for request ID: {}", request_id);
+            return;
+        };
+
+        job.task.transmitter_task.abort();
+
+        if let Err(e) = device_repo
+            .delete_packet_transmit_request(&request_id)
+            .await
+        {
+            error!("Could not delete packet transmit request ID: {request_id}: {e}");
+        }
+
+        if let Some(proxy) = &self.proxy
+            && job.request.device.proxy
+            && let Err(e) = proxy
+                .ebpf_updater
+                .lock()
+                .await
+                .remove_ip(job.request.device.ip, job.request.target_ip)
+        {
+            error!("{e}");
+        };
     }
 }

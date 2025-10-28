@@ -14,6 +14,7 @@ use tokio::time::sleep;
 pub enum DbCommand {
     StoreDevice(ProbePacket),
     StorePacket(ProbePacket),
+    // RemovePacketTransmitRequest
 }
 
 pub struct DatabaseManager {

@@ -194,10 +194,10 @@ pub async fn request_custom_packet_transmit(
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     let device = device_repo.read_one_auth(&path.0, &user_id).await?;
-
+    let device_id = device.data.id;
     request_packet_transmit_helper(
         device_repo.clone(),
-        &device.data,
+        device.data,
         &user_id,
         state.command_channel.clone(),
         &form,
@@ -205,7 +205,7 @@ pub async fn request_custom_packet_transmit(
     .await?;
 
     Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}", device.data.id)))
+        .insert_header((LOCATION, format!("/device/{}", device_id)))
         .finish())
 }
 
@@ -227,42 +227,22 @@ pub async fn delete_request_packet_transmit(
         .read_packet_transmit_request_by_user(&device_id, &user_id)
         .await?;
 
-    let device = match request.first() {
+    let _ = match request.first() {
         None => device_repo.read_one_auth(&device_id, &user_id).await?.data,
         Some(_) => device_repo.read_one(&device_id).await?,
     };
 
-    let request = device_repo
-        .delete_packet_transmit_request(&request_id)
-        .await?;
+    state
+        .command_channel
+        .send(AppPacket::Local(LocalAppPacket::Command(
+            LocalCommandPacket::StopTransmitDevicePackets(request_id),
+        )))
+        .await
+        .map_err(CoreError::from)?;
 
     let return_url = query
         .remove("return_url")
         .unwrap_or(format!("/device/{}", device_id));
-
-    let Some(r) = request.first() else {
-        return Ok(HttpResponse::SeeOther()
-            .insert_header((LOCATION, return_url))
-            .finish());
-    };
-
-    let packet = PacketTransmitRequestPacket::new(
-        device.probe_id,
-        device.mac,
-        device.ip,
-        r.target_ip,
-        r.target_port as u16,
-        device.proxy,
-        device.interval,
-    );
-
-    state
-        .command_channel
-        .send(AppPacket::Local(LocalAppPacket::Command(
-            LocalCommandPacket::StopTransmitDevicePackets(packet),
-        )))
-        .await
-        .map_err(CoreError::from)?;
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, return_url))
@@ -284,6 +264,7 @@ pub async fn request_packet_transmit(
     if !device.published {
         device_repo.read_one_auth(&path.0, &user_id).await?;
     }
+    let device_id = device.id;
     let target_ip = request
         .connection_info()
         .realip_remote_addr()
@@ -335,7 +316,7 @@ pub async fn request_packet_transmit(
     let form = DeviceCustomPacketTransmitRequest::new(target_ip, device.port as u16, false);
     request_packet_transmit_helper(
         device_repo.clone(),
-        &device,
+        device,
         &user_id,
         state.command_channel.clone(),
         &form,
@@ -343,7 +324,7 @@ pub async fn request_packet_transmit(
     .await?;
 
     Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}/transmit", device.id)))
+        .insert_header((LOCATION, format!("/device/{}/transmit", device_id)))
         .finish())
 }
 

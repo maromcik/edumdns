@@ -31,6 +31,7 @@ pub struct AppState {
     pub jinja: Arc<AutoReloader>,
     pub command_channel: Sender<AppPacket>,
     pub device_acl_ap_database: DeviceAclApDatabase,
+    pub oidc: bool,
 }
 
 impl AppState {
@@ -43,6 +44,7 @@ impl AppState {
             jinja,
             command_channel,
             device_acl_ap_database,
+            oidc: false,
         }
     }
 }

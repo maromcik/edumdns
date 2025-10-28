@@ -47,14 +47,15 @@ pub struct UserManageProfileTemplate {
     pub user: UserDisplay,
     pub message: String,
     pub success: bool,
+    pub oidc: bool,
 }
 
-#[derive(Serialize)]
-pub struct UserManageProfileUserFormTemplate {
-    pub user: UserDisplay,
-    pub message: String,
-    pub success: bool,
-}
+// #[derive(Serialize)]
+// pub struct UserManageProfileUserFormTemplate {
+//     pub user: UserDisplay,
+//     pub message: String,
+//     pub success: bool,
+// }
 
 #[derive(Serialize)]
 pub struct UserDetailGroupsTemplate {

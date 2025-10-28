@@ -72,7 +72,7 @@ pub async fn web_init(
             .unwrap_or_default(),
         query: env::var("EDUMDNS_ACL_AP_DATABASE_QUERY").unwrap_or_default(),
     };
-    let app_state = AppState::new(
+    let mut app_state = AppState::new(
         jinja.clone(),
         command_channel.clone(),
         device_acl_ap_database,
@@ -112,6 +112,7 @@ pub async fn web_init(
             .await?;
         }
         Ok(oidc) => {
+            app_state.oidc = true;
             info!("starting server on {host} with OIDC support");
             HttpServer::new(move || {
                 App::new()

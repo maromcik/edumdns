@@ -8,7 +8,7 @@ use crate::handlers::{BulkAddEntityForm, SearchEntityQuery};
 use crate::templates::PageInfo;
 use crate::templates::user::{
     UserDetailGroupsTemplate, UserDetailTemplate, UserManagePasswordTemplate,
-    UserManageProfileTemplate, UserManageProfileUserFormTemplate, UserTemplate,
+    UserManageProfileTemplate, UserTemplate,
 };
 use crate::{AppState, authorized};
 use actix_identity::Identity;
@@ -16,10 +16,10 @@ use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
 use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
 use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE,
+    DbCreate, DbDelete, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE,
 };
 use edumdns_db::repositories::user::models::{
-    SelectManyUsers, UserCreate, UserDisplay, UserUpdate, UserUpdatePassword,
+    SelectManyUsers, UserCreate, UserUpdate, UserUpdatePassword,
 };
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_db::repositories::utilities::validate_password;
@@ -176,6 +176,7 @@ pub async fn user_manage_form_page(
         user,
         message: String::new(),
         success: true,
+        oidc: state.oidc,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
@@ -200,26 +201,6 @@ pub async fn user_manage_password_form(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
-#[get("/manage/profile")]
-pub async fn user_manage_profile_form(
-    request: HttpRequest,
-    identity: Option<Identity>,
-    user_repo: web::Data<PgUserRepository>,
-    state: web::Data<AppState>,
-) -> Result<impl Responder, WebError> {
-    let u = authorized!(identity, request);
-    let user = user_repo.read_one(&parse_user_id(&u)?).await?;
-    let template_name = get_template_name(&request, "user/manage/profile");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(UserManageProfileUserFormTemplate {
-        user,
-        message: String::new(),
-        success: true,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
-}
 
 #[post("/manage")]
 pub async fn user_manage(
@@ -248,10 +229,11 @@ pub async fn user_manage(
     let template_name = get_template_name(&request, "user/manage/profile");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
-    let body = template.render(UserManageProfileUserFormTemplate {
+    let body = template.render(UserManageProfileTemplate {
         user: user_valid,
         message: "Profile successfully updated".to_string(),
         success: true,
+        oidc: state.oidc,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

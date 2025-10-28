@@ -21,7 +21,7 @@ use crate::handlers::probe::{
 use crate::handlers::user::{
     add_user_groups, create_user, delete_user, get_user, get_users, search_user_groups,
     update_user, user_manage, user_manage_form_page, user_manage_password,
-    user_manage_password_form, user_manage_profile_form,
+    user_manage_password_form,
 };
 use crate::utils::AppState;
 use actix_files::Files;
@@ -63,7 +63,6 @@ pub fn configure_webapp(
         .app_data(web::Data::new(user_repo.clone()))
         .service(user_manage_form_page)
         .service(user_manage_password_form)
-        .service(user_manage_profile_form)
         .service(user_manage)
         .service(user_manage_password)
         .service(get_users)

@@ -1,6 +1,28 @@
 <div id="profile-update-fields" class="max-w-5xl mx-auto">
     <div id="user-mgmt-profile-form">
-        <div class="p-4 text-center bg-forms rounded-lg ">
+        <div class="p-4 text-center bg-cards rounded-lg ">
+            {% if oidc %}
+            <!-- OIDC mode: show user info only -->
+            <div class="text-left mx-auto">
+                <h3 class="text-sat-xl">User Information</h3>
+                <table class="w-full">
+                    <tbody>
+                    <tr>
+                        <td class="text-right pr-2 font-bold text-acc">Name:</td>
+                        <td class="text-sat-xl">{{ user.user.name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-right pr-2 font-bold text-acc">Surname:</td>
+                        <td class="text-sat-xl">{{ user.user.surname }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-right pr-2 font-bold text-acc">Email:</td>
+                        <td class="text-sat-xl">{{ user.user.email }}</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
             <form hx-post="/user/manage" hx-target="#user-mgmt-profile-form" hx-target-error="#content-area"
                   class="rounded-lg flex flex-col items-center mx-auto">
                 {% if success %}
@@ -16,31 +38,31 @@
                                 <tbody>
                                 <tr>
                                     <td class="text-right pr-2">
-                                        <label for="profile-id-name" class="font-bold text-forms">Name</label>
+                                        <label for="profile-id-name" class="font-bold text-acc">Name</label>
                                     </td>
                                     <td class="pb-2">
                                         <input type="text" id="profile-id-name" name="name" value="{{ user.user.name }}"
-                                               placeholder="{{ user.user.name }}"
+                                               placeholder="Name"
                                                class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
                                     </td>
                                 </tr>
                                 <tr>
                                     <td class="text-right pr-2">
-                                        <label for="profile-id-surname" class="font-bold text-forms">Surname</label>
+                                        <label for="profile-id-surname" class="font-bold text-acc">Surname</label>
                                     </td>
                                     <td class="pb-2">
                                         <input type="text" id="profile-id-surname" name="surname"
-                                               value="{{ user.user.surname }}" placeholder="{{ user.user.surname }}"
+                                               value="{{ user.user.surname }}" placeholder="Surname"
                                                class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
                                     </td>
                                 </tr>
                                 <tr>
                                     <td class="text-right pr-2">
-                                        <label for="profile-id-email" class="font-bold text-forms">Email</label>
+                                        <label for="profile-id-email" class="font-bold text-acc">Email</label>
                                     </td>
                                     <td class="pb-2">
-                                        <input type="text" id="profile-id-email" name="email" value="{{ user.user.email }}"
-                                               placeholder="{{ user.user.email }}"
+                                        <input type="email" id="profile-id-email" name="email" value="{{ user.user.email }}"
+                                               placeholder="email"
                                                class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
                                     </td>
                                 </tr>
@@ -63,6 +85,7 @@
                     </div>
                 </div>
             </form>
+            {% endif %}
         </div>
     </div>
 </div>

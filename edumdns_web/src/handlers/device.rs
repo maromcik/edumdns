@@ -243,11 +243,13 @@ pub async fn get_device_for_transmit(
         .map(|r| PacketTransmitRequestDisplay::from(r, device.duration))
         .next();
 
+    let user = user_repo.read_one(&user_id).await?;
+
     let template_name = get_template_name(&request, "device/public");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let body = template.render(DeviceTransmitTemplate {
-        user: user_repo.read_one(&user_id).await?,
+        user,
         device: DeviceDisplay::from(device),
         client_ip: target_ip,
         packet_transmit_request,

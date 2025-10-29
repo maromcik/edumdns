@@ -92,7 +92,7 @@
 }
 
 .bg-cards {
-    @apply bg-gray-200 dark:bg-gray-600;
+    @apply bg-gray-200 dark:bg-gray-700;
 }
 
 /*.bg-cards:hover {*/
@@ -100,11 +100,11 @@
 /*}*/
 
 .bg-table {
-    @apply bg-gray-200 dark:bg-gray-600;
+    @apply bg-gray-200 dark:bg-gray-700;
 }
 
 .bg-table:hover {
-    @apply bg-gray-300 dark:bg-gray-700;
+    @apply bg-gray-300 dark:bg-gray-600;
 }
 
 
@@ -205,6 +205,9 @@
     @apply  text-green-800 dark:text-green-500
 }
 
+.divide-y {
+    @apply divide-gray-600 dark:divide-gray-300
+}
 
 .notification {
     opacity: 0;

@@ -215,9 +215,10 @@ impl ResponseError for WebError {
             WebErrorKind::BadRequest
             | WebErrorKind::EmailAddressError
             | WebErrorKind::ParseError => StatusCode::BAD_REQUEST,
+            WebErrorKind::DeviceTransmitRequestDenied => StatusCode::FORBIDDEN,
             WebErrorKind::NotFound => StatusCode::NOT_FOUND,
             WebErrorKind::Conflict => StatusCode::CONFLICT,
-            WebErrorKind::Unauthorized | WebErrorKind::DeviceTransmitRequestDenied  => StatusCode::UNAUTHORIZED,
+            WebErrorKind::Unauthorized  => StatusCode::UNAUTHORIZED,
             WebErrorKind::CoreError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             WebErrorKind::DbError(ref db_e) => match &db_e.error_kind {
                 DbErrorKind::BackendError(be_e) => match &be_e.error_kind {

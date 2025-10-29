@@ -313,13 +313,13 @@ pub async fn request_packet_transmit(
     if let Some(acl_pwd_hash) = &device.acl_pwd_hash {
         let Some(pwd) = &form.acl_pwd else {
             return Err(WebError::new(
-                WebErrorKind::DeviceTransmitRequestDenied,
+                WebErrorKind::Unauthorized,
                 "ACL password is required to request packets from this device",
             ));
         };
         if acl_pwd_hash != pwd {
             return Err(WebError::new(
-                WebErrorKind::DeviceTransmitRequestDenied,
+                WebErrorKind::Unauthorized,
                 "ACL password is incorrect",
             ));
         }

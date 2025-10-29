@@ -125,7 +125,7 @@
 }
 
 .bg-forms-fields {
-    @apply bg-gray-800 dark:bg-gray-100;
+    @apply bg-gray-700 dark:bg-gray-100;
 }
 
 .bg-acc {
@@ -175,7 +175,7 @@
 }
 
 .text-code {
-    @apply text-gray-100 dark:text-gray-800
+    @apply text-gray-50 dark:text-gray-900
 }
 
 .text-button {
@@ -191,7 +191,7 @@
 }
 
 .border-base {
-    @apply border-gray-300 dark:border-gray-700
+    @apply border-gray-200 dark:border-gray-700
 }
 
 .border-base:hover {

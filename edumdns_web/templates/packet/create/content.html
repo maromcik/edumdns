@@ -16,36 +16,36 @@
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block text-xs text-forms uppercase mb-1">Probe ID</label>
-                <div class="p-2 bg-forms rounded border break-all"><code class="text-code">{{ probe_id }}</code></div>
+                <div class="p-2 bg-forms-fields rounded border break-all"><code class="text-code">{{ probe_id }}</code></div>
             </div>
             <div>
                 <label class="block text-xs text-forms uppercase mb-1">Source MAC</label>
-                <div class="p-2 rounded border bg-forms break-all"><code class="text-code">{{ mac }}</code></div>
+                <div class="p-2 rounded border bg-forms-fields break-all"><code class="text-code">{{ mac }}</code></div>
             </div>
             <div>
                 <label class="block text-xs text-forms uppercase mb-1">Source IP</label>
-                <div class="p-2 rounded border bg-forms break-all"><code class="text-code">{{ ip }}</code></div>
+                <div class="p-2 rounded border bg-forms-fields break-all"><code class="text-code">{{ ip }}</code></div>
             </div>
             <div>
                 <label class="block text-xs text-forms uppercase mb-1">Dest Port</label>
-                <div class="p-2 rounded border bg-forms break-all"><code class="text-code">{{ port }}</code></div>
+                <div class="p-2 rounded border bg-forms-fields break-all"><code class="text-code">{{ port }}</code></div>
             </div>
         </div>
 
         <!-- Header -->
-        <fieldset class="border-4 rounded p-4">
-            <legend class="text-sm text-forms font-semibold">DNS Header</legend>
+        <fieldset class="border-gray-500 dark:border-gray-300 border-4 dark:border-2 rounded p-4">
+            <legend class="text-lg text-sat-xl font-semibold">DNS Header</legend>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs text-forms uppercase mb-1">Message Type</label>
-                    <select id="header-message_type" class="w-full rounded border px-2 py-1">
+                    <select id="header-message_type" class="w-full rounded border bg-gray-50 px-2 py-1">
                         <option value="Query" selected>Query</option>
                         <option value="Response">Response</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-xs text-forms uppercase mb-1">Op Code</label>
-                    <select id="header-op_code" class="w-full rounded border px-2 py-1">
+                    <select id="header-op_code" class="w-full bg-gray-50 rounded border px-2 py-1">
                         <option value="Query" selected>Query</option>
                         <option value="IQuery">IQuery</option>
                         <option value="Status">Status</option>
@@ -53,7 +53,7 @@
                 </div>
                 <div>
                     <label class="block text-xs text-forms uppercase mb-1">Response Code</label>
-                    <select id="header-response_code" class="w-full rounded border px-2 py-1">
+                    <select id="header-response_code" class="w-full bg-gray-50 rounded border px-2 py-1">
                         <option value="NoError" selected>NoError</option>
                         <option value="FormErr">FormErr</option>
                         <option value="ServFail">ServFail</option>
@@ -62,42 +62,27 @@
                 </div>
                 <div>
                     <label class="block text-xs text-forms uppercase mb-1">ID</label>
-                    <input id="header-id" type="number" min="0" max="65535" value="0" class="w-full text-forms-input rounded border px-2 py-1" />
+                    <input id="header-id" type="number" min="0" max="65535" value="0" class="w-full text-forms-input bg-gray-50 rounded border px-2 py-1" />
                 </div>
             </div>
         </fieldset>
 
         <!-- Queries -->
-        <fieldset class="border-4 rounded p-4">
-            <legend class="text-sm text-sat-xl font-semibold">Queries</legend>
+        <fieldset class="border-gray-500 dark:border-gray-300 border-4 dark:border-2 rounded p-4">
+            <legend class="text-lg text-sat-xl font-semibold">Queries</legend>
 
             <div id="queries-list" class="space-y-3">
-                <div class="query-row border-2 rounded p-3 gap-2 items-center">
-                    <input type="text" placeholder="name (example.com.)" class="query-name rounded border px-2 py-1" />
-                    <select class="query-type w-28 rounded border px-2 py-1">
-                        <option value="A" selected>A</option>
-                        <option value="AAAA">AAAA</option>
-                        <option value="ANY">ANY</option>
-                        <option value="CNAME">CNAME</option>
-                        <option value="MX">MX</option>
-                        <option value="TXT">TXT</option>
-                        <option value="PTR">PTR</option>
-                        <option value="SRV">SRV</option>
-                    </select>
-                    <input type="text" placeholder="class (IN)" class="query-class w-20 rounded border px-2 py-1" value="IN" />
-                    <button type="button" data-action="delete" class="btn-del text-xs px-2 py-1 bg-red-500 text-forms rounded">Del</button>
-                </div>
+
             </div>
 
             <div class="mt-2 flex gap-2">
                 <button type="button" id="add-query-btn" class="bg-acc text-button px-3 py-1 rounded">+ Query</button>
-                <button type="button" id="clear-queries-btn" class="px-3 py-1 text-forms rounded border">Clear</button>
             </div>
         </fieldset>
 
         <!-- Answers -->
-        <fieldset class="border-4 rounded p-4">
-            <legend class="text-sm text-forms font-semibold">Answers</legend>
+        <fieldset class="border-gray-500 dark:border-gray-300 border-4 dark:border-2 rounded p-4">
+            <legend class="text-lg text-forms font-semibold">Answers</legend>
 
             <div id="answers-list" class="space-y-3"></div>
 
@@ -107,8 +92,8 @@
         </fieldset>
 
         <!-- Additionals -->
-        <fieldset class="border-4 rounded p-4">
-            <legend class="text-sm text-forms font-semibold">Additionals</legend>
+        <fieldset class="border-gray-500 dark:border-gray-300 border-4 dark:border-2 rounded p-4">
+            <legend class="text-lg text-forms font-semibold">Additionals</legend>
 
             <div id="additionals-list" class="space-y-3"></div>
 
@@ -148,9 +133,9 @@
     /* add query */
     document.getElementById('add-query-btn').addEventListener('click', () => {
         const html = `
-    <div class="query-row border-2 rounded p-3 gap-2 items-center">
+    <div class="query-row border-gray-500 dark:border-gray-300 border-2 dark:border rounded p-3 gap-2 items-center">
       <input type="text" placeholder="name (example.com.)" class="query-name flex-1 rounded border px-2 py-1" />
-      <select class="query-type w-28 rounded border px-2 py-1">
+      <select class="query-type w-28 rounded bg-gray-50 border px-2 py-1">
         <option value="A" selected>A</option>
         <option value="AAAA">AAAA</option>
         <option value="ANY">ANY</option>
@@ -161,25 +146,23 @@
         <option value="SRV">SRV</option>
       </select>
       <input type="text" placeholder="class (IN)" class="text-forms-input query-class w-20 rounded border px-2 py-1" value="IN" />
-      <button type="button" data-action="delete" class="btn-del text-xs px-2 py-1 bg-red-500 text-button rounded">Del</button>
+      <button type="button" data-action="delete" class="inline-flex items-center rounded-md px-3 py-1 text-sm text-red-400 hover:text-red-500 hover:bg-muted/20 transition-colors">
+        <i class="fa-solid fa-trash"></i>
+      </button>
     </div>`;
         document.getElementById('queries-list').appendChild(createEl(html));
     });
 
-    /* clear queries */
-    document.getElementById('clear-queries-btn').addEventListener('click', () => {
-        document.getElementById('queries-list').innerHTML = '';
-    });
 
     /* answer / additional row factory */
     function answerRowHtml(kind = 'answer') {
         return `
-  <div class="${kind}-row border-2 rounded p-3">
+  <div class="${kind}-row border-gray-500 dark:border-gray-300 border-2 dark:border rounded p-3">
     <div class="grid grid-cols-6 gap-2 items-start">
       <input type="text" placeholder="name_labels (example.com.)" class="${kind}-name col-span-2 rounded border px-2 py-1" />
       <input type="text" placeholder="class (IN)" class="${kind}-class w-20 rounded border px-2 py-1" value="IN" />
       <input type="number" placeholder="ttl" class="${kind}-ttl w-24 rounded border px-2 py-1" value="300" />
-      <select class="${kind}-type w-24 rounded border px-2 py-1">
+      <select class="${kind}-type w-24 rounded bg-gray-50 border px-2 py-1">
         <option value="A">A</option>
         <option value="AAAA">AAAA</option>
         <option value="CNAME">CNAME</option>
@@ -203,8 +186,10 @@
       </div>
 
       <div class="col-span-6 mt-2 flex justify-end">
-        <button type="button" data-action="delete" class="btn-del text-xs px-2 py-1 bg-red-500 text-button rounded">Del</button>
-      </div>
+        <button type="button" data-action="delete" class="inline-flex items-center rounded-md px-3 py-1 text-sm text-red-400 hover:text-red-500 hover:bg-muted/20 transition-colors">
+            <i class="fa-solid fa-trash"></i>
+        </button>
+    </div>
     </div>
   </div>`;
     }

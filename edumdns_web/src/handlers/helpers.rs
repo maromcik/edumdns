@@ -35,7 +35,7 @@ pub async fn request_packet_transmit_helper(
         Ok(p) => p,
         Err(_) => {
             return Err(WebError::new(
-                WebErrorKind::BadRequest,
+                WebErrorKind::DeviceTransmitRequestDenied,
                 "Transmission already in progress to another client, please try again later.",
             ));
         }

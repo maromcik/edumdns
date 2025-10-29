@@ -214,11 +214,10 @@ impl ResponseError for WebError {
         match self.error_kind {
             WebErrorKind::BadRequest
             | WebErrorKind::EmailAddressError
-            | WebErrorKind::DeviceTransmitRequestDenied
             | WebErrorKind::ParseError => StatusCode::BAD_REQUEST,
             WebErrorKind::NotFound => StatusCode::NOT_FOUND,
             WebErrorKind::Conflict => StatusCode::CONFLICT,
-            WebErrorKind::Unauthorized => StatusCode::UNAUTHORIZED,
+            WebErrorKind::Unauthorized | WebErrorKind::DeviceTransmitRequestDenied  => StatusCode::UNAUTHORIZED,
             WebErrorKind::CoreError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             WebErrorKind::DbError(ref db_e) => match &db_e.error_kind {
                 DbErrorKind::BackendError(be_e) => match &be_e.error_kind {
@@ -226,8 +225,8 @@ impl ResponseError for WebError {
                     BackendErrorKind::Deleted => StatusCode::BAD_REQUEST,
                     BackendErrorKind::UpdateParametersEmpty => StatusCode::BAD_REQUEST,
                     BackendErrorKind::UserPasswordDoesNotMatch => StatusCode::UNAUTHORIZED,
-                    BackendErrorKind::UserPasswordVerificationFailed => StatusCode::UNAUTHORIZED,
-                    BackendErrorKind::PermissionDenied => StatusCode::UNAUTHORIZED,
+                    BackendErrorKind::UserPasswordVerificationFailed => StatusCode::BAD_REQUEST,
+                    BackendErrorKind::PermissionDenied  => StatusCode::FORBIDDEN,
                 },
                 DbErrorKind::ForeignKeyError
                 | DbErrorKind::UniqueConstraintError
@@ -262,7 +261,8 @@ fn render_generic(error: &WebError) -> HttpResponse {
         .get_template("error.html")
         .expect("Failed to read the error template");
     let context = GenericError {
-        code: error.status_code().to_string(),
+        code: error.status_code().as_u16(),
+        status_code: error.status_code().to_string(),
         description: error.to_string(),
     };
     let body = template.render(context).unwrap_or_default();

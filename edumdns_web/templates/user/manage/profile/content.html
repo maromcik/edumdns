@@ -1,20 +1,20 @@
 <div id="profile-update-fields" class="max-w-5xl mx-auto">
     <div id="user-mgmt-profile-form">
-        <div class="p-4 bg-cards border border-base rounded-lg">
+        <div class="rounded-lg border border-base bg-cards p-6 mt-6">
             {% if oidc %}
             <!-- OIDC mode: show user info only -->
-            <div class="text-left mx-auto">
+            <div class="w-full px-4 sm:px-6">
                 <h3 class="text-sat-xl mb-4">User Information</h3>
-                <div class="space-y-2">
-                    <div class="flex justify-between border-b border-base pb-1">
+                <div class="space-y-2 w-full">
+                    <div class="flex justify-between border-b border-base pb-1 w-full">
                         <span class="font-bold text-acc">Name:</span>
                         <span class="text-sat-xl">{{ user.user.name }}</span>
                     </div>
-                    <div class="flex justify-between border-b border-base pb-1">
+                    <div class="flex justify-between border-b border-base pb-1 w-full">
                         <span class="font-bold text-acc">Surname:</span>
                         <span class="text-sat-xl">{{ user.user.surname }}</span>
                     </div>
-                    <div class="flex justify-between pb-1">
+                    <div class="flex justify-between pb-1 w-full">
                         <span class="font-bold text-acc">Email:</span>
                         <span class="text-sat-xl">{{ user.user.email }}</span>
                     </div>

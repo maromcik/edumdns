@@ -2,8 +2,8 @@
 <html lang="en">
 {% include "head.html" %}
 <body class="h-screen flex justify-center items-center bg-page">
-<div id="generic-error">
-    <div class="bg-cards shadow-2xl rounded-2xl p-8 flex flex-col items-center text-center space-y-6 max-w-lg w-full">
+<div id="generic-error" class="w-full h-full flex justify-center">
+    <div class="bg-cards shadow-2xl rounded-2xl p-4 flex flex-col items-center text-center space-y-6 max-w-lg w-full">
 
         {% if code|int >= 500 %}
         <!-- Server Error -->

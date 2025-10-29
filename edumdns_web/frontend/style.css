@@ -191,7 +191,7 @@
 }
 
 .border-base {
-    @apply border-gray-300 dark:border-gray-600
+    @apply border-gray-300 dark:border-gray-700
 }
 
 .border-base:hover {

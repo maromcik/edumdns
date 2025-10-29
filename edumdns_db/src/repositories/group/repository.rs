@@ -150,6 +150,10 @@ impl GroupBackend {
             query = query.filter(group::name.ilike(format!("%{n}%")));
         }
 
+        if let Some(n) = &params.description {
+            query = query.filter(group::description.ilike(format!("%{n}%")));
+        }
+
         if let Some(pagination) = params.pagination {
             query = query.limit(pagination.limit.unwrap_or(i64::MAX));
             query = query.offset(pagination.offset.unwrap_or(0));

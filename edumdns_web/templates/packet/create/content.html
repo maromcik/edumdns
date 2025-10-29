@@ -2,9 +2,9 @@
     <form id="create-packet-json-form"
           action="/packet/create"
           method="post"
-          class="space-y-6 bg-forms shadow-md rounded px-8 pt-6 pb-8">
+          class="space-y-6 bg-cards shadow-md rounded px-8 pt-6 pb-8">
 
-        <h2 class="text-xl font-bold text-center mb-4">Craft Packet</h2>
+        <h2 class="text-xl text-sat-l font-bold text-center mb-4">Craft Packet</h2>
 
         <!-- Hidden fields provided by server -->
         <input type="hidden" name="probe_id" id="probe_id" value="{{ probe_id }}" />
@@ -16,7 +16,7 @@
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block text-xs text-forms uppercase mb-1">Probe ID</label>
-                <div class="p-2 rounded border bg-forms break-all"><code class="text-code">{{ probe_id }}</code></div>
+                <div class="p-2 bg-forms rounded border break-all"><code class="text-code">{{ probe_id }}</code></div>
             </div>
             <div>
                 <label class="block text-xs text-forms uppercase mb-1">Source MAC</label>
@@ -33,7 +33,7 @@
         </div>
 
         <!-- Header -->
-        <fieldset class="border rounded p-4">
+        <fieldset class="border-4 rounded p-4">
             <legend class="text-sm text-forms font-semibold">DNS Header</legend>
             <div class="grid grid-cols-2 gap-4">
                 <div>
@@ -62,17 +62,17 @@
                 </div>
                 <div>
                     <label class="block text-xs text-forms uppercase mb-1">ID</label>
-                    <input id="header-id" type="number" min="0" max="65535" value="0" class="w-full rounded border px-2 py-1" />
+                    <input id="header-id" type="number" min="0" max="65535" value="0" class="w-full text-forms-input rounded border px-2 py-1" />
                 </div>
             </div>
         </fieldset>
 
         <!-- Queries -->
-        <fieldset class="border rounded p-4">
-            <legend class="text-sm text-forms font-semibold">Queries</legend>
+        <fieldset class="border-4 rounded p-4">
+            <legend class="text-sm text-sat-xl font-semibold">Queries</legend>
 
             <div id="queries-list" class="space-y-3">
-                <div class="query-row border rounded p-3 bg-forms gap-2 items-center">
+                <div class="query-row border-2 rounded p-3 gap-2 items-center">
                     <input type="text" placeholder="name (example.com.)" class="query-name rounded border px-2 py-1" />
                     <select class="query-type w-28 rounded border px-2 py-1">
                         <option value="A" selected>A</option>
@@ -96,7 +96,7 @@
         </fieldset>
 
         <!-- Answers -->
-        <fieldset class="border rounded p-4">
+        <fieldset class="border-4 rounded p-4">
             <legend class="text-sm text-forms font-semibold">Answers</legend>
 
             <div id="answers-list" class="space-y-3"></div>
@@ -107,7 +107,7 @@
         </fieldset>
 
         <!-- Additionals -->
-        <fieldset class="border rounded p-4">
+        <fieldset class="border-4 rounded p-4">
             <legend class="text-sm text-forms font-semibold">Additionals</legend>
 
             <div id="additionals-list" class="space-y-3"></div>
@@ -148,7 +148,7 @@
     /* add query */
     document.getElementById('add-query-btn').addEventListener('click', () => {
         const html = `
-    <div class="query-row border rounded p-3 bg-forms gap-2 items-center">
+    <div class="query-row border-2 rounded p-3 gap-2 items-center">
       <input type="text" placeholder="name (example.com.)" class="query-name flex-1 rounded border px-2 py-1" />
       <select class="query-type w-28 rounded border px-2 py-1">
         <option value="A" selected>A</option>
@@ -160,7 +160,7 @@
         <option value="PTR">PTR</option>
         <option value="SRV">SRV</option>
       </select>
-      <input type="text" placeholder="class (IN)" class="query-class w-20 rounded border px-2 py-1" value="IN" />
+      <input type="text" placeholder="class (IN)" class="text-forms-input query-class w-20 rounded border px-2 py-1" value="IN" />
       <button type="button" data-action="delete" class="btn-del text-xs px-2 py-1 bg-red-500 text-button rounded">Del</button>
     </div>`;
         document.getElementById('queries-list').appendChild(createEl(html));
@@ -174,7 +174,7 @@
     /* answer / additional row factory */
     function answerRowHtml(kind = 'answer') {
         return `
-  <div class="${kind}-row border rounded p-3 bg-forms">
+  <div class="${kind}-row border-2 rounded p-3">
     <div class="grid grid-cols-6 gap-2 items-start">
       <input type="text" placeholder="name_labels (example.com.)" class="${kind}-name col-span-2 rounded border px-2 py-1" />
       <input type="text" placeholder="class (IN)" class="${kind}-class w-20 rounded border px-2 py-1" value="IN" />

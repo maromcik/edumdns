@@ -9,57 +9,57 @@
         <h3 class="text-2xl font-semibold text-sat-l mb-4">New User</h3>
         <form action="/user/create" method="post" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
             <div class="flex flex-col">
-                <label for="email" class="text-xs uppercase tracking-wide text-sat-m">Email</label>
+                <label for="email" class="text-xs uppercase tracking-wide text-sat-l">Email</label>
                 <input
                         id="email"
                         name="email"
                         type="email"
                         required
-                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        class="mt-1 rounded-md border border-base px-3 py-2 text-forms-input focus:outline-none focus:ring-2 focus:ring-acc"
                         placeholder="Enter email"
                 />
             </div>
             <div class="flex flex-col">
-                <label for="name" class="text-xs uppercase tracking-wide text-sat-m">Name</label>
+                <label for="name" class="text-xs uppercase tracking-wide text-sat-l">Name</label>
                 <input
                         id="name"
                         name="name"
                         type="text"
                         required
-                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        class="mt-1 rounded-md border border-base px-3 py-2 text-forms-input focus:outline-none focus:ring-2 focus:ring-acc"
                         placeholder="Enter name"
                 />
             </div>
             <div class="flex flex-col">
-                <label for="surname" class="text-xs uppercase tracking-wide text-sat-m">Surname</label>
+                <label for="surname" class="text-xs uppercase tracking-wide text-sat-l">Surname</label>
                 <input
                         id="surname"
                         name="surname"
                         type="text"
                         required
-                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        class="mt-1 rounded-md border border-base px-3 py-2 text-forms-input focus:outline-none focus:ring-2 focus:ring-acc"
                         placeholder="Enter surname"
                 />
             </div>
             <div class="flex flex-col">
-                <label for="password" class="text-xs uppercase tracking-wide text-sat-m">Password</label>
+                <label for="password" class="text-xs uppercase tracking-wide text-sat-l">Password</label>
                 <input
                         id="password"
                         name="password"
                         type="password"
                         required
-                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        class="mt-1 rounded-md border border-base text-forms-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-acc"
                         placeholder="Enter password"
                 />
             </div>
             <div class="flex flex-col">
-                <label for="confirm_password" class="text-xs uppercase tracking-wide text-sat-m">Confirm Password</label>
+                <label for="confirm_password" class="text-xs uppercase tracking-wide text-sat-l">Confirm Password</label>
                 <input
                         id="confirm_password"
                         name="confirm_password"
                         type="password"
                         required
-                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        class="mt-1 rounded-md border border-base text-forms-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-acc"
                         placeholder="Enter password again"
                 />
             </div>
@@ -69,14 +69,14 @@
                         name="admin"
                         type="checkbox"
                         value="true"
-                        class="h-4 w-4 rounded border-base bg-panes text-acc focus:ring-2 focus:ring-acc"
+                        class="h-4 w-4 rounded border-base text-forms-input text-acc focus:ring-2 focus:ring-acc"
                 />
-                <label for="admin" class="ml-2 text-xs uppercase tracking-wide text-sat-m">Admin</label>
+                <label for="admin" class="ml-2 text-xs uppercase tracking-wide text-sat-l">Admin</label>
             </div>
             <div class="md:col-span-2">
                 <button
                         type="submit"
-                        class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-cards hover:bg-acc-xl transition-colors"
+                        class="inline-flex items-center rounded-md text-button bg-acc px-4 py-2 text-sm font-medium hover:bg-acc-xl transition-colors"
                 >
                     Create User
                 </button>
@@ -138,11 +138,11 @@
                 </td>
                 <td class="px-4 py-2 flex gap-2">
                     <button type="button" id="filter-button"
-                            class="px-3 py-1 rounded-md border border-base bg-acc text-sm bg-primary text-black hover:bg-primary/90 transition-colors">
+                            class="px-3 py-1 rounded-md bg-acc text-sm bg-primary text-button hover:bg-primary/90 transition-colors">
                         Search
                     </button>
                     <button type="button" id="reset-button"
-                            class="px-3 py-1 rounded-md border border-base text-sm bg-acc-l hover:bg-muted/20 transition-colors">
+                            class="px-3 py-1 rounded-md text-sm bg-acc-l  text-button hover:bg-muted/20 transition-colors">
                         Reset
                     </button>
                 </td>
@@ -151,7 +151,7 @@
 
             <tbody class="divide-y divide-base">
             {% for user in users %}
-            <tr class="hover:bg-muted/5 transition-colors">
+            <tr class="bg-table rounded-lg transition-colors">
                 <td class="px-4 py-3 font-mono text-sm text-sat-l">
                     <a href="/user/{{ user.id }}" class="text-primary hover:underline">
                         {{ user.id }}
@@ -187,7 +187,7 @@
                             hx-target="#content-area"
                             hx-target-error="#content-area"
                             hx-push-url="/user?page={{ page_info.page }}"
-                            class="inline-flex items-center rounded-md border border-base px-3 py-1 text-sm text-red-400 hover:bg-muted/20 transition-colors"
+                            class="inline-flex items-center rounded-md px-3 py-1 text-sm text-red-400 hover:text-red-500 hover:bg-muted/20 transition-colors"
                             title="Delete user"
 
                     >

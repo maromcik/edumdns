@@ -7,12 +7,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyGroups {
     pub name: Option<String>,
+    pub description: Option<String>,
     pub pagination: Option<Pagination>,
 }
 
 impl SelectManyGroups {
-    pub fn new(name: Option<String>, pagination: Option<Pagination>) -> Self {
-        Self { name, pagination }
+    pub fn new(name: Option<String>, description: Option<String>, pagination: Option<Pagination>) -> Self {
+        Self { name, description, pagination }
     }
 }
 

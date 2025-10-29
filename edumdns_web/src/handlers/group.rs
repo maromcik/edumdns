@@ -31,6 +31,7 @@ pub async fn get_groups(
         .read_many_auth(
             &SelectManyGroups::new(
                 query.name.clone(),
+                query.description.clone(),
                 Some(Pagination::default_pagination(query.page)),
             ),
             &user_id,

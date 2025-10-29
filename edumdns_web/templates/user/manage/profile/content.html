@@ -1,89 +1,72 @@
-<div id="profile-update-fields" class="max-w-5xl mx-auto">
+<div id="profile-update-fields" class="max-w-3xl mx-auto">
     <div id="user-mgmt-profile-form">
-        <div class="p-4 text-center bg-cards rounded-lg ">
+        <div class="p-4 bg-cards border border-base rounded-lg">
             {% if oidc %}
             <!-- OIDC mode: show user info only -->
             <div class="text-left mx-auto">
-                <h3 class="text-sat-xl">User Information</h3>
-                <table class="w-full">
-                    <tbody>
-                    <tr>
-                        <td class="text-right pr-2 font-bold text-acc">Name:</td>
-                        <td class="text-sat-xl">{{ user.user.name }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-right pr-2 font-bold text-acc">Surname:</td>
-                        <td class="text-sat-xl">{{ user.user.surname }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-right pr-2 font-bold text-acc">Email:</td>
-                        <td class="text-sat-xl">{{ user.user.email }}</td>
-                    </tr>
-                    </tbody>
-                </table>
+                <h3 class="text-sat-xl mb-4">User Information</h3>
+                <div class="space-y-2">
+                    <div class="flex justify-between border-b border-base pb-1">
+                        <span class="font-bold text-acc">Name:</span>
+                        <span class="text-sat-xl">{{ user.user.name }}</span>
+                    </div>
+                    <div class="flex justify-between border-b border-base pb-1">
+                        <span class="font-bold text-acc">Surname:</span>
+                        <span class="text-sat-xl">{{ user.user.surname }}</span>
+                    </div>
+                    <div class="flex justify-between pb-1">
+                        <span class="font-bold text-acc">Email:</span>
+                        <span class="text-sat-xl">{{ user.user.email }}</span>
+                    </div>
+                </div>
             </div>
             {% else %}
             <form hx-post="/user/manage" hx-target="#user-mgmt-profile-form" hx-target-error="#content-area"
-                  class="rounded-lg flex flex-col items-center mx-auto">
+                  class="flex flex-col w-full items-center mx-auto p-4 space-y-4">
                 {% if success %}
-                <div id="success-area" class="text-success mb-3" onclick=" { this.style.display = 'none'; }">
+                <div id="success-area" class="text-success mb-3" onclick="{ this.style.display = 'none'; }">
                     {% else %}
-                    <div id="error-area2" class="text-error mb-3" onclick=" { this.style.display = 'none'; }">
-                {% endif %}
+                    <div id="error-area2" class="text-error mb-3" onclick="{ this.style.display = 'none'; }">
+                        {% endif %}
                         {{ message }}
-                </div>
-                    <div class="flex flex-wrap justify-between text-center">
-                        <div class="px-2">
-                            <table class="w-full">
-                                <tbody>
-                                <tr>
-                                    <td class="text-right pr-2">
-                                        <label for="profile-id-name" class="font-bold text-acc">Name</label>
-                                    </td>
-                                    <td class="pb-2">
-                                        <input type="text" id="profile-id-name" name="name" value="{{ user.user.name }}"
-                                               placeholder="Name"
-                                               class="p-3 rounded border  bg-forms-fields text-forms  focus:outline-none focus:border-amber-500">
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="text-right pr-2">
-                                        <label for="profile-id-surname" class="font-bold text-acc">Surname</label>
-                                    </td>
-                                    <td class="pb-2">
-                                        <input type="text" id="profile-id-surname" name="surname"
-                                               value="{{ user.user.surname }}" placeholder="Surname"
-                                               class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="text-right pr-2">
-                                        <label for="profile-id-email" class="font-bold text-acc">Email</label>
-                                    </td>
-                                    <td class="pb-2">
-                                        <input type="email" id="profile-id-email" name="email" value="{{ user.user.email }}"
-                                               placeholder="email"
-                                               class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
-                                    </td>
-                                </tr>
-                                </tbody>
-                            </table>
+                    </div>
+
+                    <div class="flex flex-col w-full space-y-3 px-2">
+                        <div class="flex flex-col">
+                            <label for="profile-id-name" class="font-bold text-acc mb-1 text-left">Name</label>
+                            <input type="text" id="profile-id-name" name="name" value="{{ user.user.name }}"
+                                   placeholder="Name"
+                                   class="p-3 rounded border border-base text-forms-input  w-full">
+                        </div>
+
+                        <div class="flex flex-col">
+                            <label for="profile-id-surname" class="font-bold text-acc mb-1 text-left">Surname</label>
+                            <input type="text" id="profile-id-surname" name="surname"
+                                   value="{{ user.user.surname }}" placeholder="Surname"
+                                   class="p-3 rounded border border-base text-forms-input w-full">
+                        </div>
+
+                        <div class="flex flex-col">
+                            <label for="profile-id-email" class="font-bold text-acc mb-1 text-left">Email</label>
+                            <input type="email" id="profile-id-email" name="email" value="{{ user.user.email }}"
+                                   placeholder="Email"
+                                   class="p-3 rounded border border-base text-forms-input w-full">
                         </div>
                     </div>
-                    <div class="flex gap-4 mt-2">
+
+                    <div class="flex gap-4 mt-4">
                         <button type="submit"
-                                class="bg-acc  rounded-md p-2 text-button text-md shadow-md">
+                                class="bg-acc rounded-md p-2 text-button text-md shadow-md">
                             Update Profile
                         </button>
                         <a hx-get="/user/manage/password" hx-replace-url="false" hx-target="#profile-update-fields"
                            hx-target-error="#content-area" hx-swap="innerHTML" hx-boost="true">
-                            <button type="submit"
-                                    class="bg-acc  rounded-md p-2 text-button text-md shadow-md">
+                            <button type="button"
+                                    class="bg-acc rounded-md p-2 text-button text-md shadow-md">
                                 Change Password
                             </button>
                         </a>
                     </div>
-                </div>
             </form>
             {% endif %}
         </div>

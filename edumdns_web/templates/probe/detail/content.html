@@ -192,13 +192,13 @@
             <div class="md:col-span-2 flex items-center gap-2 pt-2">
                 <button
                         type="submit"
-                        class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                        class="inline-flex items-center rounded-md text-button bg-acc px-4 py-2 text-sm font-medium transition-colors"
                 >
                     Save
                 </button>
                 <button
                         type="reset"
-                        class="inline-flex items-center rounded-md border border-base bg-cards px-4 py-2 text-sm font-medium text-sat-l hover:bg-panes transition-colors"
+                        class="inline-flex items-center rounded-md text-button bg-acc-l px-4 py-2 text-sm font-medium transition-colors"
                 >
                     Reset
                 </button>
@@ -213,7 +213,7 @@
         <div class="flex flex-col justify-center items-center py-4">
             <h2 class="text-3xl font-medium text-sat-xl">Permissions</h2>
         </div>
-        <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards">
+        <div class="max-w-7xl overflow-x-auto rounded-lg">
             <table class="w-full divide-y divide-base">
                 <thead class="bg-muted/10">
                 <tr>
@@ -261,7 +261,7 @@
                 </thead>
                 <tbody class="divide-y divide-base">
                 {% for permissions, group in permission_matrix %}
-                <tr class="hover:bg-muted/5 transition-colors">
+                <tr class="bg-table rounded-lg transition-colors">
                     <td class="px-4 py-3 text-sm text-sat-l">
                         {{ group.name }}
                     </td>
@@ -322,7 +322,7 @@
             </thead>
             <tbody class="divide-y divide-base">
             {% for cfg in configs %}
-            <tr class="hover:bg-muted/5 transition-colors">
+            <tr class="bg-table rounded-lg transition-colors">
                 <td class="px-4 py-3 text-sm text-code">
                     <input
                             type="text"
@@ -353,14 +353,14 @@
                         {% if permissions|has_perm("ModifyConfig") %}
                         <button
                                 type="submit"
-                                class="inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-green-700 bg-green-50 hover:bg-green-200 text-primary hover:bg-muted/10 transition-colors"
+                                class="inline-flex items-center rounded-md bg-background px-3 py-1.5 text-m font-medium text-green-700 bg-green-50 hover:bg-green-200 text-primary hover:bg-muted/10 transition-colors"
                                 aria-label="Save config"
                                 title="Save"
                         >
                             <i class="fa-solid fa-floppy-disk mr-1.5"></i>
                         </button>
                         <button
-                                class="ml-2 inline-flex items-center rounded-md border border-base bg-background px-3 py-1.5 text-m font-medium text-red-700 bg-red-50 hover:bg-red-200 transition-colors"
+                                class="ml-2 inline-flex items-center rounded-md bg-background px-3 py-1.5 text-m font-medium text-red-700 bg-red-50 hover:bg-red-200 transition-colors"
                                 type="button"
                                 hx-delete="/probe/{{ probe.id }}/config/{{ cfg.id }}"
                                 hx-target-error="#probe-content-area"
@@ -483,11 +483,11 @@
                 <td class="px-4 py-2"></td>
                 <td class="px-4 py-2 flex gap-2">
                     <button type="button" id="filter-button"
-                            class="px-3 py-1 rounded-md border border-base bg-acc text-sm bg-primary text-black hover:bg-primary/90 transition-colors">
+                            class="px-3 py-1 rounded-md bg-acc text-sm bg-primary text-button hover:bg-primary/90 transition-colors">
                         Search
                     </button>
                     <button type="button" id="reset-button"
-                            class="px-3 py-1 rounded-md border border-base text-sm bg-acc-l hover:bg-muted/20 transition-colors">
+                            class="px-3 py-1 rounded-md text-sm bg-acc-l text-button hover:bg-muted/20 transition-colors">
                         Reset
                     </button>
                 </td>
@@ -495,7 +495,7 @@
             </thead>
             <tbody class="divide-y divide-base">
             {% for device in devices %}
-            <tr class="hover:bg-muted/5 transition-colors">
+            <tr class="bg-table rounded-lg transition-colors">
                 <td class="px-4 py-3 font-mono text-sm text-sat-l">
                     <a href="/device/{{ device.id }}" class="text-primary hover:underline">
                         {{ device.id }}
@@ -519,7 +519,7 @@
                             hx-target="#probe-content-area"
                             hx-target-error="#probe-content-area"
                             hx-push-url="/probe/{{ probe.id }}?page={{ page_info.page }}"
-                            class="inline-flex items-center rounded-md border border-base px-3 py-1 text-sm text-red-400 hover:bg-muted/20 transition-colors"
+                            class="inline-flex items-center rounded-md px-3 py-1 text-sm text-red-400 hover:text-red-500 hover:bg-muted/20 transition-colors"
                             title="Delete device"
 
                     >

@@ -1,7 +1,7 @@
 <div id="user-mgmt-password">
-    <div class="max-w-5xl mx-auto">
+    <div class="max-w-3xl mx-auto bg-cards border rounded-lg border-base">
         <form hx-post="/user/manage/password" hx-target="#user-mgmt-password" hx-target-error="#content-area"
-              class="bg-forms mx-auto bg-black shadow-lg border border-gray-800 rounded-lg p-5 flex flex-col items-center max-w-full w-96md:w-96 sm:w-96 lg:w-96 min-w-lg">
+              class="  p-5 flex flex-col items-center">
             {% if success %}
             <div id="success-area" class="text-success mb-3" onclick=" { this.style.display = 'none'; }">
 
@@ -13,11 +13,11 @@
                 <div class="justify-between w-full">
                     <div class="flex flex-col space-y-2 w-full px-2">
                         <input type="password" name="old_password" placeholder="Old Password"
-                               class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
+                               class="p-3 rounded border border-base text-forms-input ">
                         <input type="password" name="new_password" placeholder="New Password"
-                               class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
+                               class="p-3 rounded border border-base text-forms-input ">
                         <input type="password" name="confirm_password" placeholder="Confirm New Password"
-                               class="p-3 rounded border border-gray-400 bg-forms-fields text-forms placeholder-gray-600 focus:outline-none focus:border-amber-500">
+                               class="p-3 rounded border border-base text-forms-input">
                     </div>
                 </div>
                 <span>
@@ -25,14 +25,12 @@
                       <button hx-get="/user/manage" hx-replace-url="false" hx-target="#profile-update-fields"
                          hx-target-error="#content-area" hx-swap="innerHTML"
                          hx-boost="true"
-                         class="bg-acc  rounded-md p-2 text-forms text-md shadow-md mr-2">
+                         class="bg-acc  rounded-md p-2 text-button text-md mr-2">
                             Back
                         </button>
                     <button type="submit"
-                            class="bg-acc  rounded-md p-2 text-forms text-md shadow-md mr-2">
-                        <img class="htmx-indicator inline" src="/static/images/bars.svg"/>
+                            class="bg-acc  rounded-md p-2 text-button text-md mr-2">
                         Change Password
-                        <img class="htmx-indicator inline" src="/static/images/bars.svg"/>
                      </button>
                 </div>
         </span>

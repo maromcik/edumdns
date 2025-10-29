@@ -1,6 +1,6 @@
 <div class="container mx-auto p-6 max-w-7xl">
     <form hx-post="/device/create" hx-push-url="/device" hx-target="#content-area" hx-target-error="#content-area"
-          class="bg-forms shadow-md rounded px-8 pt-6 pb-8 mb-4">
+          class="bg-cards shadow-md rounded px-8 pt-6 pb-8 mb-4">
         <h2 class="block text-forms text-xl font-bold mb-2 text-center">Add a New Device</h2>
 
             <!-- Hidden Probe ID -->
@@ -13,7 +13,7 @@
                         name="name"
                         type="text"
                         placeholder="Friendly name"
-                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        class="mt-1 rounded-md border border-base px-3 py-2 text-forms-input focus:outline-none focus:ring-2 focus:ring-acc"
                 />
                 <p class="text-xs text-forms mt-1">Optional friendly name for the device.</p>
             </div>
@@ -27,7 +27,7 @@
                         type="text"
                         placeholder="AA:BB:CC:DD:EE:FF"
                         pattern="^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"
-                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        class="mt-1 rounded-md border border-base text-forms-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-acc"
                         required
                 />
                 <p class="text-xs text-forms mt-1">Enter the device MAC address in standard format.</p>
@@ -41,7 +41,7 @@
                         name="ip"
                         type="text"
                         placeholder="192.168.1.100/24"
-                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        class="mt-1 rounded-md border border-base text-forms-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-acc"
                         required
                 />
                 <p class="text-xs text-forms mt-1">Use CIDR notation (e.g. <code>192.168.1.100/24</code>).</p>
@@ -56,7 +56,7 @@
                         type="number"
                         min="1"
                         max="65535"
-                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        class="mt-1 rounded-md border border-base text-forms-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-acc"
                         required
                 />
             </div>

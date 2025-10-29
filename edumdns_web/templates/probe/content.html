@@ -18,23 +18,23 @@
     {% if user.has_groups or user.user.admin %}
     <!-- New Probe -->
     <div class="rounded-lg border border-base bg-cards p-6 mb-6">
-        <h3 class="text-2xl font-semibold text-sat-l mb-4">New Probe</h3>
+        <h3 class="text-2xl font-semibold text-forms mb-4">New Probe</h3>
         <form action="/probe/create" method="post" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="flex flex-col">
-                <label for="name" class="text-xs uppercase tracking-wide text-sat-m">Name</label>
+                <label for="name" class="text-xs uppercase text-forms tracking-wide">Name</label>
                 <input
                         id="name"
                         name="name"
                         type="text"
                         required
-                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        class="mt-1 rounded-md border border-base text-forms-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-acc"
                         placeholder="Enter probe name"
                 />
             </div>
             <div class="md:col-span-2">
                 <button
                         type="submit"
-                        class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-cards hover:bg-acc-xl transition-colors"
+                        class="inline-flex items-center rounded-md bg-acc px-4 py-2 text-sm font-medium text-button hover:bg-acc-xl transition-colors"
                 >
                     Create Probe
                 </button>
@@ -109,11 +109,11 @@
                 <td class="px-4 py-2"></td>
                 <td class="px-4 py-2 flex gap-2">
                     <button type="button" id="filter-button"
-                            class="px-3 py-1 rounded-md border border-base bg-acc text-sm bg-primary text-black hover:bg-primary/90 transition-colors">
+                            class="px-3 py-1 rounded-md bg-acc text-sm bg-primary text-button hover:bg-primary/90 transition-colors">
                         Search
                     </button>
                     <button type="button" id="reset-button"
-                            class="px-3 py-1 rounded-md border border-base text-sm bg-acc-l hover:bg-muted/20 transition-colors">
+                            class="px-3 py-1 rounded-md text-sm bg-acc-l text-button hover:bg-muted/20 transition-colors">
                         Reset
                     </button>
                 </td>
@@ -121,7 +121,7 @@
             </thead>
             <tbody class="divide-y divide-base">
             {% for probe in probes %}
-            <tr class="hover:bg-muted/5 transition-colors">
+            <tr class="bg-table rounded-lg transition-colors">
                 <!-- probe[1] is Probe -->
                 <td class="px-4 py-3 font-mono text-sm text-sat-l whitespace-nowrap">
                     <a href="/probe/{{ probe.id }}" class="text-primary hover:underline">
@@ -149,6 +149,7 @@
                 </td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ probe.first_connected_at }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ probe.last_connected_at }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l"></td>
 
 
             </tr>

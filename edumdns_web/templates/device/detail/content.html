@@ -101,7 +101,7 @@
             <input type="hidden" id="device_id" name="id" value="{{ device.id }}"/>
             <!-- Name -->
             <div class="flex flex-col">
-                <label for="name" class="text-xs uppercase tracking-wide text-sat-m">Name</label>
+                <label for="name" class="text-xs uppercase tracking-wide text-forms">Name</label>
                 <input
                         id="name"
                         name="name"
@@ -115,7 +115,7 @@
 
             <!-- Port -->
             <div class="flex flex-col">
-                <label for="mac" class="text-xs uppercase tracking-wide text-sat-m">MAC</label>
+                <label for="mac" class="text-xs uppercase tracking-wide text-forms">MAC</label>
                 <input
                         id="mac"
                         name="mac"
@@ -127,7 +127,7 @@
 
             <!-- Port -->
             <div class="flex flex-col">
-                <label for="ip" class="text-xs uppercase tracking-wide text-sat-m">IP</label>
+                <label for="ip" class="text-xs uppercase tracking-wide text-forms">IP</label>
                 <input
                         id="ip"
                         name="ip"
@@ -138,7 +138,7 @@
             </div>
             <!-- Port -->
             <div class="flex flex-col">
-                <label for="port" class="text-xs uppercase tracking-wide text-sat-m">Port</label>
+                <label for="port" class="text-xs uppercase tracking-wide text-forms">Port</label>
                 <input
                         id="port"
                         name="port"
@@ -153,7 +153,7 @@
 
             <!-- Duration -->
             <div class="flex flex-col">
-                <label for="duration" class="text-xs uppercase tracking-wide text-sat-m">Duration</label>
+                <label for="duration" class="text-xs uppercase tracking-wide text-forms">Duration</label>
                 <input
                         id="duration"
                         name="duration"
@@ -169,7 +169,7 @@
 
             <!-- Interval -->
             <div class="flex flex-col">
-                <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">Interval</label>
+                <label for="interval" class="text-xs uppercase tracking-wide text-forms">Interval</label>
                 <input
                         id="interval"
                         name="interval"
@@ -185,7 +185,7 @@
 
             <!-- Password -->
             <div class="flex flex-col">
-                <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">ACL Password</label>
+                <label for="interval" class="text-xs uppercase tracking-wide text-forms">ACL Password</label>
                 <input
                         id="acl_password"
                         name="acl_password"
@@ -198,7 +198,7 @@
 
             <!-- Src CIDS -->
             <div class="flex flex-col">
-                <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">ACL SRC SUBNET</label>
+                <label for="interval" class="text-xs uppercase tracking-wide text-forms">ACL SRC SUBNET</label>
                 <input
                         id="acl_src_cidr"
                         name="acl_src_cidr"
@@ -211,7 +211,7 @@
 
             <!-- AP hostname regex -->
             <div class="flex flex-col">
-                <label for="interval" class="text-xs uppercase tracking-wide text-sat-m">ACL AP Hostname REGEX</label>
+                <label for="interval" class="text-xs uppercase tracking-wide text-forms">ACL AP Hostname REGEX</label>
                 <input
                         id="acl_ap_hostname_regex"
                         name="acl_ap_hostname_regex"
@@ -238,13 +238,13 @@
             <div class="md:col-span-2 flex items-center gap-2 pt-2">
                 <button
                         type="submit"
-                        class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                        class="inline-flex items-center rounded-md bg-acc px-4 py-2 text-sm font-medium text-button transition-colors"
                 >
                     Save
                 </button>
                 <button
                         type="reset"
-                        class="inline-flex items-center rounded-md border border-base bg-cards px-4 py-2 text-sm font-medium text-sat-l hover:bg-panes transition-colors"
+                        class="inline-flex items-center rounded-md bg-acc-l px-4 py-2 text-sm font-medium text-button transition-colors"
                 >
                     Reset
                 </button>
@@ -261,7 +261,7 @@
         <form class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Target IP -->
             <div class="flex flex-col">
-                <label for="target_ip" class="text-xs uppercase tracking-wide text-sat-m">Target IP</label>
+                <label for="target_ip" class="text-xs uppercase tracking-wide text-forms">Target IP</label>
                 <input
                         id="target_ip"
                         name="target_ip"
@@ -276,7 +276,7 @@
 
             <!-- Target Port -->
             <div class="flex flex-col">
-                <label for="target_port" class="text-xs uppercase tracking-wide text-sat-m">Target Port</label>
+                <label for="target_port" class="text-xs uppercase tracking-wide text-forms">Target Port</label>
                 <input
                         id="target_port"
                         name="target_port"
@@ -306,7 +306,7 @@
             <div class="md:col-span-2 flex items-center gap-2">
                 <button
                         type="button"
-                        class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                        class="inline-flex items-center rounded-md bg-acc px-4 py-2 text-sm font-medium text-button transition-colors"
                         hx-post="/device/{{ device.id }}/transmit-custom"
                         hx-target="#content-area"
                         hx-target-error="#content-area"
@@ -320,7 +320,7 @@
     <div class="rounded-lg border border-base bg-cards p-6 mb-6">
         <h3 class="text-2xl font-medium mb-4 text-sat-l">Packet Transmissions in progress</h3>
 
-        <div class="overflow-x-auto rounded-md border border-base">
+        <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-base">
                 <thead class="bg-panes">
                 <tr>
@@ -337,10 +337,10 @@
                     <th class="px-4 py-2 text-right text-xs font-medium text-sat-m uppercase tracking-wide">Actions</th>
                 </tr>
                 </thead>
-                <tbody class="divide-y divide-base bg-bg">
+                <tbody class="divide-y divide-base">
                 {% if packet_transmit_requests and packet_transmit_requests | length > 0 %}
                 {% for r in packet_transmit_requests %}
-                <tr>
+                <tr class="bg-table rounded-lg transition-colors">
                     <td class="px-4 py-2 text-sat-l"><a href="/user/{{ r.user_id }}">{{ r.user_id }}</a></td>
                     <td class="px-4 py-2 text-sat-l">{{ r.target_ip }}</td>
                     <td class="px-4 py-2 text-sat-l">{{ r.target_port }}</td>
@@ -350,14 +350,14 @@
                         <div class="flex justify-end">
                             <button
                                     type="button"
-                                    class="inline-flex items-center gap-2 rounded-md border border-danger/20 bg-danger/10 px-3 py-1.5 text-sm text-danger hover:bg-danger/20 transition-colors"
+                                    class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm  transition-colors"
                                     title="Delete"
                                     hx-delete="/device/{{ device.id }}/transmit/{{ r.id }}"
                                     hx-vals='{"target_ip":"{{ r.target_ip }}","target_port":"{{ r.target_port }}"}'
                                     hx-target="#content-area"
                                     hx-target-error="#content-area"
                             >
-                                <i class="fa fa-trash text-sat-l"></i>
+                                <i class="fa fa-trash text-red-400 hover:text-red-500"></i>
                             </button>
                         </div>
                     </td>
@@ -376,7 +376,7 @@
 
 
     <!-- Packets Table -->
-    <div class="overflow-x-auto rounded-lg border border-base bg-cards p-6">
+    <div class="overflow-x-auto rounded-lg border border-base bg-cards">
         <div class="flex flex-col justify-center items-center py-4">
             <h2 class="text-3xl font-medium text-sat-xl">Packets</h2>
         </div>
@@ -453,11 +453,11 @@
                 <td class="px-4 py-2"></td>
                 <td class="px-4 py-2 flex gap-2">
                     <button type="button" id="filter-button"
-                            class="px-3 py-1 rounded-md border border-base bg-acc text-sm bg-primary text-black hover:bg-primary/90 transition-colors">
+                            class="px-3 py-1 rounded-md bg-acc text-sm bg-primary text-button hover:bg-primary/90 transition-colors">
                         Search
                     </button>
                     <button type="button" id="reset-button"
-                            class="px-3 py-1 rounded-md border border-base text-sm bg-acc-l hover:bg-muted/20 transition-colors">
+                            class="px-3 py-1 rounded-md text-button text-sm bg-acc-l hover:bg-muted/20 transition-colors">
                         Reset
                     </button>
                 </td>
@@ -465,7 +465,7 @@
             </thead>
             <tbody class="divide-y divide-base">
             {% for packet in packets %}
-            <tr class="hover:bg-muted/5 transition-colors">
+            <tr class="bg-table rounded-lg transition-colors">
                 <td class="px-4 py-3 font-mono text-sm text-sat-l">
                     <a href="/packet/{{ packet.id }}" class="text-primary hover:underline">
                         {{ packet.id }}

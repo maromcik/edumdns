@@ -109,7 +109,7 @@ pub async fn get_probe(
         .collect();
 
     let matrix = group_repo
-        .read_many(&SelectManyGroups::new(None, None))
+        .read_many(&SelectManyGroups::new(None, None, None))
         .await?
         .into_iter()
         .map(|g| {

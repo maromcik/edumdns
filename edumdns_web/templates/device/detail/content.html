@@ -185,7 +185,7 @@
 
             <!-- Password -->
             <div class="flex flex-col">
-                <label for="interval" class="text-xs uppercase tracking-wide text-forms">ACL Password</label>
+                <label for="interval" class="text-xs uppercase tracking-wide text-forms">Password</label>
                 <input
                         id="acl_password"
                         name="acl_password"
@@ -193,12 +193,12 @@
                         class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
                         placeholder="Secret"
                 />
-                <p class="text-xs text-sat-m mt-1">ACL Password.</p>
+                <p class="text-xs text-sat-m mt-1">Password clients must provide to initiate packet transmission</p>
             </div>
 
             <!-- Src CIDS -->
             <div class="flex flex-col">
-                <label for="interval" class="text-xs uppercase tracking-wide text-forms">ACL SRC SUBNET</label>
+                <label for="interval" class="text-xs uppercase tracking-wide text-forms">SRC SUBNET</label>
                 <input
                         id="acl_src_cidr"
                         name="acl_src_cidr"
@@ -206,12 +206,12 @@
                         class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
                         placeholder="e.g., 192.168.1.0/24"
                 />
-                <p class="text-xs text-sat-m mt-1">ACL subnet.</p>
+                <p class="text-xs text-sat-m mt-1">Client source IP subnet</p>
             </div>
 
             <!-- AP hostname regex -->
             <div class="flex flex-col">
-                <label for="interval" class="text-xs uppercase tracking-wide text-forms">ACL AP Hostname REGEX</label>
+                <label for="interval" class="text-xs uppercase tracking-wide text-forms">AP Hostname REGEX</label>
                 <input
                         id="acl_ap_hostname_regex"
                         name="acl_ap_hostname_regex"
@@ -219,7 +219,7 @@
                         placeholder="Regex"
                         class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
                 />
-                <p class="text-xs text-sat-m mt-1">Regex over client AP hostname.</p>
+                <p class="text-xs text-sat-m mt-1">Regex over the hostname of an AP a client is connected to</p>
             </div>
             <div class="flex flex-col">
                 <label class="inline-flex items-center">

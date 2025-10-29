@@ -1,10 +1,10 @@
 use crate::error::DbError;
 use crate::models::{Group, User};
-use edumdns_core::app_packet::Id;
 use crate::repositories::common::{
-    DbCreate, DbDelete, DbResult, DbResultMultiple, DbResultSingle, DbUpdate, 
+    DbCreate, DbDelete, DbResult, DbResultMultiple, DbResultSingle, DbUpdate,
 };
 use crate::repositories::group::models::{CreateGroup, SelectManyGroups, UpdateGroup};
+use edumdns_core::app_packet::Id;
 
 use crate::repositories::utilities::validate_admin_conn;
 use crate::schema::{group, group_user, user};

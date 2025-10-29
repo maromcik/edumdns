@@ -115,6 +115,60 @@
         </form>
     </div>
 
+    <!-- Editable User Settings -->
+    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
+        <h3 class="text-2xl font-medium mb-4 text-sat-l">User Password</h3>
+        <form
+                method="post"
+                hx-post="/user/update-pwd"
+                hx-target="#content-area"
+                hx-target-error="#content-area"
+                class="grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
+            <input type="hidden" id="user_id_pwd" name="id" value="{{ target_user.user.id }}"/>
+
+            <!-- Name -->
+            <div class="flex flex-col">
+                <label for="new_password" class="text-xs uppercase tracking-wide text-sat-m">Password</label>
+                <input
+                        id="new_password"
+                        name="new_password"
+                        type="password"
+                        placeholder="Enter a new password"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                />
+            </div>
+
+            <!-- Surname -->
+            <div class="flex flex-col">
+                <label for="confirm_password" class="text-xs uppercase tracking-wide text-sat-m">Confirm Password</label>
+                <input
+                        id="confirm_password"
+                        name="confirm_password"
+                        type="password"
+                        placeholder="Enter the password again"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                />
+            </div>
+
+            <!-- Actions -->
+            <div class="md:col-span-2 flex items-center gap-2 pt-2">
+                <button
+                        type="submit"
+                        class="inline-flex items-center rounded-md border border-base bg-acc px-4 py-2 text-sm font-medium text-acc-cta hover:bg-acc-xl transition-colors"
+                >
+                    Save
+                </button>
+                <button
+                        type="reset"
+                        class="inline-flex items-center rounded-md border border-base bg-cards px-4 py-2 text-sm font-medium text-sat-l hover:bg-panes transition-colors"
+                >
+                    Reset
+                </button>
+            </div>
+        </form>
+    </div>
+
     <!-- Add Users to Group -->
     <div class="rounded-lg border border-base bg-cards p-6 mb-8">
         <h3 class="text-2xl font-semibold text-sat-l mb-4">Add this user to groups</h3>

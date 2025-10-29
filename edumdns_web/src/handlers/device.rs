@@ -1,4 +1,3 @@
-use edumdns_core::app_packet::{EntityType, Id};
 use crate::authorized;
 use crate::error::{WebError, WebErrorKind};
 use crate::forms::device::{
@@ -19,10 +18,11 @@ use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
 use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket};
+use edumdns_core::app_packet::{EntityType, Id};
+use edumdns_core::bincode_types::{IpNetwork, MacAddr};
 use edumdns_core::error::CoreError;
 use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE,
-    Pagination,
+    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE, Pagination,
 };
 use edumdns_db::repositories::device::models::{
     CreateDevice, DeviceDisplay, PacketTransmitRequestDisplay, SelectManyDevices,
@@ -33,7 +33,6 @@ use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use std::collections::HashMap;
 use uuid::Uuid;
-use edumdns_core::bincode_types::{IpNetwork, MacAddr};
 
 #[get("")]
 pub async fn get_devices(
@@ -184,7 +183,7 @@ pub async fn delete_device(
                 LocalCommandPacket::InvalidateCache(EntityType::Device {
                     probe_id: edumdns_core::bincode_types::Uuid(device.probe_id),
                     device_mac: MacAddr::from_octets(device.mac),
-                    device_ip: IpNetwork(device.ip)
+                    device_ip: IpNetwork(device.ip),
                 }),
             )))
             .await;

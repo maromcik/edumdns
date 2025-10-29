@@ -1,11 +1,10 @@
+use crate::error::BackendErrorKind::UserPasswordDoesNotMatch;
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::{Group, GroupProbePermission, GroupUser, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResult, DbResultMultiple, DbResultSingle,
     DbResultSinglePerm, DbUpdate,
 };
-use edumdns_core::app_packet::Id;
-use crate::error::BackendErrorKind::UserPasswordDoesNotMatch;
 use crate::repositories::user::models::{
     SelectManyUsers, UserCreate, UserDisplay, UserLogin, UserUpdate, UserUpdatePassword,
 };
@@ -23,6 +22,7 @@ use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
+use edumdns_core::app_packet::Id;
 
 #[derive(Clone)]
 pub struct PgUserRepository {
@@ -89,9 +89,14 @@ impl PgUserRepository {
         let user = conn
             .transaction::<_, DbError, _>(|c| {
                 async move {
-                    let u = user::table.find(&params.id).first::<User>(c).await?;
+                    if let Some(admin_id) = &params.admin_id {
+                        validate_admin_conn(c, admin_id).await?;
+                    }
 
-                    let u = PgUserRepository::verify_password(u, &params.old_password)?;
+                    let mut u = user::table.find(&params.id).first::<User>(c).await?;
+                    if let Some(old_password) = &params.old_password {
+                        u = PgUserRepository::verify_password(u, old_password)?;
+                    }
 
                     let salt = generate_salt();
                     let password_hash = hash_password(params.new_password.clone(), &salt)?;

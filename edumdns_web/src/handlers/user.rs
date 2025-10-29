@@ -1,6 +1,7 @@
 use crate::error::{WebError, WebErrorKind};
 use crate::forms::user::{
     UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm,
+    UserUpdatePasswordFormAdmin,
 };
 use crate::handlers::utilities::{get_template_name, parse_user_id};
 use crate::handlers::{BulkAddEntityForm, SearchEntityQuery};
@@ -158,6 +159,30 @@ pub async fn update_user(
         .finish())
 }
 
+#[post("update-pwd")]
+pub async fn update_user_password(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    user_repo: web::Data<PgUserRepository>,
+    form: web::Form<UserUpdatePasswordFormAdmin>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request);
+    let admin_id = parse_user_id(&i)?;
+    let target_user_id = form.0.id;
+    let params = form.into_inner();
+    user_repo
+        .update_password(&UserUpdatePassword::new_from_admin(
+            &target_user_id,
+            &admin_id,
+            &params.new_password,
+            &params.confirm_password,
+        )?)
+        .await?;
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/user/{}", target_user_id)))
+        .finish())
+}
+
 #[get("/manage")]
 pub async fn user_manage_form_page(
     request: HttpRequest,
@@ -180,7 +205,7 @@ pub async fn user_manage_form_page(
         user,
         message: String::new(),
         success: true,
-        oidc
+        oidc,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

@@ -7,11 +7,15 @@ use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use crate::utilities::rewrite_payloads;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::{AppPacket, EntityType, LocalAppPacket, LocalCommandPacket, LocalStatusPacket, NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, PacketTransmitRequestPacket, ProbePacket, ProbeResponse};
+use edumdns_core::app_packet::Id;
+use edumdns_core::app_packet::{
+    AppPacket, EntityType, LocalAppPacket, LocalCommandPacket, LocalStatusPacket, NetworkAppPacket,
+    NetworkCommandPacket, NetworkStatusPacket, PacketTransmitRequestPacket, ProbePacket,
+    ProbeResponse,
+};
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::error::CoreError;
-use edumdns_core::app_packet::Id;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::SelectManyPackets;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
@@ -178,13 +182,17 @@ impl PacketManager {
                         )
                         .await;
                     }
-                },
+                }
                 LocalCommandPacket::InvalidateCache(entity) => {
                     match entity {
                         EntityType::Probe { probe_id } => {
                             self.packets.remove(&probe_id);
                         }
-                        EntityType::Device { probe_id, device_mac, device_ip } => {
+                        EntityType::Device {
+                            probe_id,
+                            device_mac,
+                            device_ip,
+                        } => {
                             if let Some(probe_entry) = self.packets.get_mut(&probe_id) {
                                 probe_entry.remove(&(device_mac, device_ip));
                             }

@@ -1,5 +1,5 @@
-use edumdns_core::bincode_types::MacAddr;
 use edumdns_core::app_packet::Id;
+use edumdns_core::bincode_types::MacAddr;
 use edumdns_db::repositories::common::{Pagination, Permission};
 use edumdns_db::repositories::probe::models::{SelectManyProbes, UpdateProbe};
 use edumdns_db::repositories::utilities::empty_string_is_none;

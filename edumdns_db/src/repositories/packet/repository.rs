@@ -19,9 +19,9 @@ use diesel::{
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
+use edumdns_core::app_packet::Id;
 use itertools::Itertools;
 use schema::packet;
-use edumdns_core::app_packet::Id;
 #[derive(Clone)]
 pub struct PgPacketRepository {
     pg_pool: Pool<AsyncPgConnection>,

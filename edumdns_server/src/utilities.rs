@@ -1,6 +1,6 @@
 use crate::error::ServerError;
-use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
+use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestDevice,
     PacketTransmitRequestPacket,

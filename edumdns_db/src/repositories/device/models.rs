@@ -1,13 +1,13 @@
 use crate::models::{Device, PacketTransmitRequest};
-use crate::repositories::common::{Pagination};
+use crate::repositories::common::Pagination;
 use crate::repositories::utilities::format_time;
 use diesel::{AsChangeset, Identifiable, Insertable};
+use edumdns_core::app_packet::Id;
 use edumdns_core::bincode_types::MacAddr;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime, format_description};
 use uuid::Uuid;
-use edumdns_core::app_packet::Id;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyDevices {

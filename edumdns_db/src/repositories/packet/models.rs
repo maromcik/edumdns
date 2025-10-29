@@ -2,6 +2,7 @@ use crate::models::Packet;
 use crate::repositories::common::{Pagination, Permission};
 use crate::repositories::utilities::format_time;
 use diesel::{AsChangeset, Insertable};
+use edumdns_core::app_packet::Id;
 use edumdns_core::bincode_types::MacAddr;
 use edumdns_core::error::CoreError;
 use edumdns_core::network_packet::ApplicationPacket;
@@ -11,7 +12,6 @@ use ipnetwork::IpNetwork;
 use log::warn;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use edumdns_core::app_packet::Id;
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyPackets {

@@ -20,7 +20,7 @@ use crate::handlers::probe::{
 };
 use crate::handlers::user::{
     add_user_groups, create_user, delete_user, get_user, get_users, search_user_groups,
-    update_user, user_manage, user_manage_form_page, user_manage_password,
+    update_user, update_user_password, user_manage, user_manage_form_page, user_manage_password,
     user_manage_password_form,
 };
 use crate::utils::AppState;
@@ -71,7 +71,8 @@ pub fn configure_webapp(
         .service(get_user)
         .service(update_user)
         .service(add_user_groups)
-        .service(search_user_groups);
+        .service(search_user_groups)
+        .service(update_user_password);
 
     let probe_scope = web::scope("probe")
         .app_data(web::Data::new(probe_repo.clone()))

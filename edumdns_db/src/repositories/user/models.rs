@@ -1,4 +1,4 @@
-use crate::repositories::common::{Pagination};
+use crate::repositories::common::Pagination;
 use crate::repositories::utilities::{
     empty_string_is_none, generate_salt, hash_password, validate_password,
 };
@@ -6,8 +6,8 @@ use crate::repositories::utilities::{
 use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
 use crate::models::User;
 use diesel::{AsChangeset, Identifiable, Insertable};
-use serde::{Deserialize, Serialize};
 use edumdns_core::app_packet::Id;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct SelectManyUsers {
@@ -40,7 +40,8 @@ impl UserLogin {
 #[derive(Debug, Clone)]
 pub struct UserUpdatePassword {
     pub id: Id,
-    pub old_password: String,
+    pub admin_id: Option<Id>,
+    pub old_password: Option<String>,
     pub new_password: String,
 }
 
@@ -48,9 +49,42 @@ impl UserUpdatePassword {
     pub fn new(id: &Id, old_password: &str, new_password: &str) -> Self {
         Self {
             id: *id,
-            old_password: old_password.to_owned(),
+            admin_id: None,
+            old_password: Some(old_password.to_string()),
             new_password: new_password.to_owned(),
         }
+    }
+
+    pub fn new_from_admin(
+        id: &Id,
+        admin_id: &Id,
+        new_password: &str,
+        confirm_password: &str,
+    ) -> Result<Self, DbError> {
+        if new_password != confirm_password {
+            return Err(DbError::new(
+                DbErrorKind::BackendError(BackendError::new(
+                    BackendErrorKind::UserPasswordVerificationFailed,
+                    "Provided passwords do not match",
+                )),
+                "",
+            ));
+        }
+        if !validate_password(new_password) {
+            return Err(DbError::new(
+                DbErrorKind::BackendError(BackendError::new(
+                    BackendErrorKind::UserPasswordVerificationFailed,
+                    "Provided password is not strong enough",
+                )),
+                "",
+            ));
+        }
+        Ok(Self {
+            id: *id,
+            admin_id: Some(*admin_id),
+            old_password: None,
+            new_password: new_password.to_owned(),
+        })
     }
 }
 

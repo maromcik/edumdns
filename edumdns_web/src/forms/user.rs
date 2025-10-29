@@ -1,9 +1,9 @@
+use edumdns_core::app_packet::Id;
 use edumdns_db::repositories::common::Pagination;
 use edumdns_db::repositories::user::models::{SelectManyUsers, UserUpdate};
 use edumdns_db::repositories::utilities::empty_string_is_none;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::Display;
-use edumdns_core::app_packet::Id;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct UserQuery {
@@ -62,6 +62,13 @@ impl From<UserUpdateFormAdmin> for UserUpdate {
             disabled: Some(value.disabled),
         }
     }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct UserUpdatePasswordFormAdmin {
+    pub id: Id,
+    pub new_password: String,
+    pub confirm_password: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]

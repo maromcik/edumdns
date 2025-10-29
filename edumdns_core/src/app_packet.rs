@@ -45,7 +45,7 @@ pub enum LocalCommandPacket {
         respond_to: oneshot::Sender<Result<(), CoreError>>,
     },
     StopTransmitDevicePackets(i64),
-    InvalidateCache(EntityType)
+    InvalidateCache(EntityType),
 }
 
 #[derive(Debug)]
@@ -82,9 +82,15 @@ pub enum NetworkStatusPacket {
 
 #[derive(Debug)]
 pub enum EntityType {
-    Probe { probe_id: Uuid },
-    Device { probe_id: Uuid, device_mac: MacAddr, device_ip: IpNetwork },
-    Packet(Id)
+    Probe {
+        probe_id: Uuid,
+    },
+    Device {
+        probe_id: Uuid,
+        device_mac: MacAddr,
+        device_ip: IpNetwork,
+    },
+    Packet(Id),
 }
 
 #[derive(Encode, Decode, Debug, Clone, Eq, PartialEq)]

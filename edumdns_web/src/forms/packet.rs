@@ -1,4 +1,5 @@
 use crate::error::WebError;
+use edumdns_core::app_packet::Id;
 use edumdns_core::bincode_types::{IpNetwork as EdumdnsIpNetwork, MacAddr};
 use edumdns_db::repositories::common::Pagination;
 use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
@@ -7,7 +8,6 @@ use hickory_proto::serialize::binary::BinEncodable;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use edumdns_core::app_packet::Id;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PacketQuery {

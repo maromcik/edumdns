@@ -1,4 +1,3 @@
-use edumdns_core::app_packet::Id;
 use crate::error::DbError;
 use crate::models::GroupProbePermission;
 use diesel::backend::Backend;
@@ -6,6 +5,7 @@ use diesel::deserialize::FromSql;
 use diesel::serialize::{Output, ToSql};
 use diesel::sql_types::SmallInt;
 use diesel::{AsExpression, FromSqlRow, deserialize, serialize};
+use edumdns_core::app_packet::Id;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use strum_macros::EnumIter;

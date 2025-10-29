@@ -1,6 +1,5 @@
 use crate::error::DbError;
 use crate::models::{GroupProbePermission, Probe, ProbeConfig, User};
-use edumdns_core::app_packet::Id;
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
     DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Permission,
@@ -24,6 +23,7 @@ use diesel::{
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
+use edumdns_core::app_packet::Id;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

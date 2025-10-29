@@ -145,7 +145,7 @@
         <option value="PTR">PTR</option>
         <option value="SRV">SRV</option>
       </select>
-      <input type="text" placeholder="class (IN)" class="text-forms-input query-class w-20 rounded border px-2 py-1" value="IN" />
+      <input type="text" placeholder="class (IN)" class="text-forms-input query-class w-20 rounded border px-2 py-1 mt-2" value="IN" />
       <button type="button" data-action="delete" class="inline-flex items-center rounded-md px-3 py-1 text-sm text-red-400 hover:text-red-500 hover:bg-muted/20 transition-colors">
         <i class="fa-solid fa-trash"></i>
       </button>
@@ -157,41 +157,46 @@
     /* answer / additional row factory */
     function answerRowHtml(kind = 'answer') {
         return `
-  <div class="${kind}-row border-gray-500 dark:border-gray-300 border-2 dark:border rounded p-3">
-    <div class="grid grid-cols-6 gap-2 items-start">
-      <input type="text" placeholder="name_labels (example.com.)" class="${kind}-name col-span-2 rounded border px-2 py-1" />
-      <input type="text" placeholder="class (IN)" class="${kind}-class w-20 rounded border px-2 py-1" value="IN" />
-      <input type="number" placeholder="ttl" class="${kind}-ttl w-24 rounded border px-2 py-1" value="300" />
-      <select class="${kind}-type w-24 rounded bg-gray-50 border px-2 py-1">
-        <option value="A">A</option>
-        <option value="AAAA">AAAA</option>
-        <option value="CNAME">CNAME</option>
-        <option value="MX">MX</option>
-        <option value="TXT">TXT</option>
-        <option value="PTR">PTR</option>
-        <option value="SRV">SRV</option>
-      </select>
-      <div class="${kind}-rdata-wrap col-span-6 mt-2">
-        <input type="text" placeholder="rdata (e.g. 1.2.3.4, text, or PTR target)" class="${kind}-rdata w-full rounded border px-2 py-1" />
-      </div>
+ <div class="${kind}-row border-gray-500 dark:border-gray-300 border-2 rounded p-3">
+  <!-- Responsive grid: 1 column on mobile, 6 columns on medium+ screens -->
+  <div class="grid grid-cols-1 md:grid-cols-6 gap-2 items-start">
+    <input type="text" placeholder="name_labels (example.com.)" class="${kind}-name md:col-span-2 rounded border px-2 py-1 w-full" />
+    <input type="text" placeholder="class (IN)" class="${kind}-class w-full md:w-20 rounded border px-2 py-1" value="IN" />
+    <input type="number" placeholder="ttl" class="${kind}-ttl w-full md:w-24 rounded border px-2 py-1" value="300" />
+    <select class="${kind}-type w-full md:w-24 rounded bg-gray-50 border px-2 py-1">
+      <option value="A">A</option>
+      <option value="AAAA">AAAA</option>
+      <option value="CNAME">CNAME</option>
+      <option value="MX">MX</option>
+      <option value="TXT">TXT</option>
+      <option value="PTR">PTR</option>
+      <option value="SRV">SRV</option>
+    </select>
 
-      <!-- SRV subfields -->
-      <div class="${kind}-srv-wrap col-span-6 mt-2 hidden">
-        <div class="grid grid-cols-4 gap-2 items-center">
-          <input type="number" min="0" max="65535" placeholder="priority" class="${kind}-srv-priority rounded border px-2 py-1" />
-          <input type="number" min="0" max="65535" placeholder="weight" class="${kind}-srv-weight rounded border px-2 py-1" />
-          <input type="number" min="0" max="65535" placeholder="port" class="${kind}-srv-port rounded border px-2 py-1" />
-          <input type="text" placeholder="target (example.com.)" class="${kind}-srv-target rounded border px-2 py-1" />
-        </div>
-      </div>
+    <!-- rdata -->
+    <div class="${kind}-rdata-wrap col-span-1 md:col-span-6 mt-2">
+      <input type="text" placeholder="rdata (e.g. 1.2.3.4, text, or PTR target)" class="${kind}-rdata w-full rounded border px-2 py-1" />
+    </div>
 
-      <div class="col-span-6 mt-2 flex justify-end">
-        <button type="button" data-action="delete" class="inline-flex items-center rounded-md px-3 py-1 text-sm text-red-400 hover:text-red-500 hover:bg-muted/20 transition-colors">
-            <i class="fa-solid fa-trash"></i>
-        </button>
+    <!-- SRV subfields -->
+    <div class="${kind}-srv-wrap col-span-1 md:col-span-6 mt-2 hidden">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 items-center">
+        <input type="number" min="0" max="65535" placeholder="priority" class="${kind}-srv-priority rounded border px-2 py-1" />
+        <input type="number" min="0" max="65535" placeholder="weight" class="${kind}-srv-weight rounded border px-2 py-1" />
+        <input type="number" min="0" max="65535" placeholder="port" class="${kind}-srv-port rounded border px-2 py-1" />
+        <input type="text" placeholder="target (example.com.)" class="${kind}-srv-target rounded border px-2 py-1" />
+      </div>
     </div>
+
+    <!-- Delete button -->
+    <div class="col-span-1 md:col-span-6 mt-2 flex justify-end">
+      <button type="button" data-action="delete" class="inline-flex items-center rounded-md px-3 py-1 text-sm text-red-400 hover:text-red-500 hover:bg-muted/20 transition-colors">
+        <i class="fa-solid fa-trash"></i>
+      </button>
     </div>
-  </div>`;
+  </div>
+</div>
+`;
     }
 
     /* add answer */

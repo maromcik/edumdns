@@ -2,8 +2,8 @@
 <html lang="en">
 {% include "head.html" %}
 <body class="h-screen flex justify-center items-center bg-page">
-<div id="generic-error" class="rounded-2xl w-full h-full flex bg-forms p-6 justify-center items-center">
-    <div class="bg-cards shadow-2xl rounded-2xl p-10 flex flex-col items-center text-center space-y-6 max-w-lg w-full">
+<div id="generic-error" class="rounded-2xl w-full h-full flex bg-forms p-4 justify-center items-center">
+    <div class="bg-cards shadow-2xl rounded-2xl p-4 flex flex-col items-center text-center space-y-6 max-w-lg w-full">
 
         {% if code|int >= 500 %}
         <!-- Server Error -->
@@ -71,20 +71,30 @@
 
         <!-- Recovery -->
         <p class="text-sat-l text-sm">
-            Please try refreshing the page or return to the
+            Please try refreshing the page, go back or return to the
             <a href="/" class="text-acc font-semibold hover:underline">
                 homepage
             </a>.
         </p>
 
-        <!-- Optional refresh button -->
-        <button
-                onclick="window.location.reload()"
-                class="mt-2 inline-flex items-center gap-2 px-5 py-2 rounded-md bg-acc text-button hover:bg-acc-l bg-acc transition-all duration-150 shadow-sm"
-        >
-            <i class="fa-solid fa-rotate-right"></i>
-            Refresh
-        </button>
+        <!-- Action Buttons -->
+        <div class="flex gap-3 mt-2">
+            <button
+                    onclick="window.history.back()"
+                    class="inline-flex items-center gap-2 px-5 py-2 rounded-md bg-gray-400 dark:bg-gray-600 text-white hover:bg-gray-500 dark:hover:bg-gray-500 transition-all duration-150 shadow-sm"
+            >
+                <i class="fa-solid fa-arrow-left"></i>
+                Go Back
+            </button>
+
+            <button
+                    onclick="window.location.reload()"
+                    class="inline-flex items-center gap-2 px-5 py-2 rounded-md bg-acc text-button hover:bg-acc-l transition-all duration-150 shadow-sm"
+            >
+                <i class="fa-solid fa-rotate-right"></i>
+                Refresh
+            </button>
+        </div>
     </div>
 </div>
 </body>

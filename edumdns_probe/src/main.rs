@@ -12,7 +12,6 @@ use edumdns_core::connection::TcpConnectionMessage;
 use edumdns_core::metadata::ProbeMetadata;
 use log::{error, info, warn};
 use pnet::ipnetwork::IpNetwork;
-use std::env;
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::net::IpAddr;
@@ -27,27 +26,129 @@ pub mod connection;
 pub mod error;
 pub mod probe;
 
-#[derive(Parser)]
+#[derive(Debug, Parser, Default)]
+struct PreCli {
+    /// Optional `.env` file path for loading environment variables.
+    #[clap(short, long, value_name = "ENV_FILE")]
+    env_file: Option<String>,
+}
+
+#[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
     /// Optional `.env` file path for loading environment variables.
     #[clap(short, long, value_name = "ENV_FILE")]
     env_file: Option<String>,
 
-    /// Optional `.env` file path for loading environment variables.
-    #[clap(short, long, value_name = "UUID_FILE")]
+    /// Optional UUID file path used for persistent probe identity.
+    #[clap(short = 'u', long, value_name = "UUID", env = "EDUMDNS_PROBE_UUID")]
+    uuid: Option<uuid::Uuid>,
+
+    /// Optional UUID file path used for persistent probe identity.
+    #[clap(
+        short = 'f',
+        long,
+        value_name = "UUID_FILE",
+        env = "EDUMDNS_PROBE_UUID_FILE"
+    )]
     uuid_file: Option<String>,
+
+    /// Local IP to bind to.
+    #[clap(
+        short = 'b',
+        long = "bind_ip",
+        value_name = "BIND_IP",
+        env = "EDUMDNS_PROBE_BIND_IP"
+    )]
+    bind_ip: IpAddr,
+
+    /// Local port to bind to.
+    #[clap(
+        long = "bind_port",
+        value_name = "BIND_PORT",
+        env = "EDUMDNS_PROBE_BIND_PORT",
+        default_value = "0"
+    )]
+    bind_port: u16,
+
+    /// Server host or IP address to connect to.
+    #[clap(
+        short = 's',
+        long = "host",
+        value_name = "SERVER_HOST",
+        env = "EDUMDNS_PROBE_SERVER_HOST"
+    )]
+    server_host: String,
+
+    /// Optional domain name for TLS connections.
+    #[clap(
+        short = 'd',
+        long = "domain",
+        value_name = "SERVER_DOMAIN",
+        env = "EDUMDNS_PROBE_SERVER_DOMAIN"
+    )]
+    server_domain: Option<String>,
+
+    /// Server port to connect to.
+    #[clap(
+        short = 'p',
+        long = "server_port",
+        value_name = "SERVER_PORT",
+        env = "EDUMDNS_PROBE_SERVER_PORT"
+    )]
+    server_port: u16,
+
+    /// Retry interval in seconds before attempting reconnection.
+    #[clap(
+        long = "retry_interval",
+        value_name = "RETRY_INTERVAL",
+        env = "EDUMDNS_PROBE_RETRY_INTERVAL",
+        default_value = "1"
+    )]
+    retry_interval: u64,
+
+    /// Global timeout in seconds for probe execution.
+    #[clap(
+        long = "global_timeout",
+        value_name = "GLOBAL_TIMEOUT",
+        env = "EDUMDNS_PROBE_GLOBAL_TIMOUT",
+        default_value = "10"
+    )]
+    global_timeout: u64,
+
+    /// Maximum number of retries before failing.
+    #[clap(
+        long = "max_retries",
+        value_name = "MAX_RETRIES",
+        env = "EDUMDNS_PROBE_MAX_RETRIES",
+        default_value = "5"
+    )]
+    max_retries: usize,
+
+    /// Optional pre-shared key for authentication.
+    #[clap(
+        short = 'k',
+        long = "psk",
+        value_name = "PRE_SHARED_KEY",
+        env = "EDUMDNS_PROBE_PRE_SHARED_KEY"
+    )]
+    pre_shared_key: Option<String>,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), ProbeError> {
-    dotenvy::dotenv().ok();
-    let mut cli = Cli::parse();
-    if let Some(env_file) = cli.env_file {
+    let pre = PreCli::try_parse().unwrap_or_default();
+
+    // Load env from .env file if provided
+    if let Some(env_file) = pre.env_file {
         dotenvy::from_filename(env_file).expect("failed to load .env file");
-        cli = Cli::parse();
+    } else {
+        dotenvy::dotenv().ok(); // fallback to default .env if exists
     }
-    let env = EnvFilter::try_from_env("EDUMDNS_LOG_LEVEL").unwrap_or(EnvFilter::new("info"));
+
+    let cli = Cli::parse();
+
+    let env = EnvFilter::try_from_env("EDUMDNS_PROBE_LOG_LEVEL").unwrap_or(EnvFilter::new("info"));
     let timer = tracing_subscriber::fmt::time::LocalTime::rfc_3339();
     tracing_subscriber::fmt()
         .with_timer(timer)
@@ -57,47 +158,31 @@ async fn main() -> Result<(), ProbeError> {
     rustls::crypto::ring::default_provider()
         .install_default()
         .expect("Failed to install rustls crypto provider");
-    let bind_ip = env::var("EDUMDNS_PROBE_BIND_IP")?;
-    let bind_port = env::var("EDUMDNS_PROBE_BIND_PORT").unwrap_or("0".to_string());
-    let server_host = env::var("EDUMDNS_SERVER_HOST")?;
-    let server_domain = env::var("EDUMDNS_SERVER_DOMAIN").ok();
-    let server_port = env::var("EDUMDNS_SERVER_PORT")?;
-    let retry_interval = Duration::from_secs(
-        env::var("EDUMDNS_PROBE_RETRY_INTERVAL")
-            .unwrap_or("1".to_string())
-            .parse::<u64>()?,
-    );
-    let global_timeout = Duration::from_secs(
-        env::var("EDUMDNS_PROBE_GLOBAL_TIMOUT")
-            .unwrap_or("10".to_string())
-            .parse::<u64>()?,
-    );
-    let max_retries = env::var("EDUMDNS_PROBE_MAX_RETRIES")
-        .unwrap_or("5".to_string())
-        .parse::<usize>()?;
 
-    let pre_shared_key = env::var("EDUMDNS_PROBE_PRE_SHARED_KEY").ok();
+    let retry_interval = Duration::from_secs(cli.retry_interval);
+    let global_timeout = Duration::from_secs(cli.global_timeout);
+    let max_retries = cli.max_retries;
 
-    let uuid = generate_uuid(cli.uuid_file)?;
+    let uuid = Uuid(cli.uuid.unwrap_or(generate_uuid(cli.uuid_file)?));
 
     info!("Starting probe with id: {}", uuid);
-    info!("Binding to IP: {}:{}", bind_ip, bind_port);
+    info!("Binding to IP: {}:{}", cli.bind_ip, cli.bind_port);
     info!(
         "Connecting to server {:?}: {}:{}",
-        server_domain, server_host, server_port
+        cli.server_domain, cli.server_host, cli.server_port
     );
 
     let probe_metadata = ProbeMetadata {
         id: uuid,
-        ip: bind_ip.parse::<IpAddr>()?,
-        mac: determine_mac(&bind_ip)?,
+        ip: cli.bind_ip,
+        mac: determine_mac(&cli.bind_ip)?,
     };
 
     let connection_info = ConnectionInfo {
-        server_connection_string: format!("{}:{}", server_host, server_port),
-        bind_ip: format!("{}:{}", bind_ip, bind_port),
-        domain: server_domain,
-        pre_shared_key,
+        server_connection_string: format!("{}:{}", cli.server_host, cli.server_port),
+        bind_ip: format!("{}:{}", cli.bind_ip, cli.bind_port),
+        domain: cli.server_domain,
+        pre_shared_key: cli.pre_shared_key,
     };
 
     let connection_limits = ConnectionLimits {
@@ -131,8 +216,7 @@ async fn main() -> Result<(), ProbeError> {
         let capture_handles = probe_capture
             .start_captures(
                 &mut join_set,
-                bind_ip.as_ref(),
-                server_host.as_ref(),
+                cli.server_host.as_ref(),
                 cancellation_token.clone(),
             )
             .await?;
@@ -218,7 +302,7 @@ async fn main() -> Result<(), ProbeError> {
     }
 }
 
-fn generate_uuid(uuid_file: Option<String>) -> Result<Uuid, ProbeError> {
+fn generate_uuid(uuid_file: Option<String>) -> Result<uuid::Uuid, ProbeError> {
     let mut file = OpenOptions::new()
         .write(true)
         .read(true)
@@ -230,13 +314,13 @@ fn generate_uuid(uuid_file: Option<String>) -> Result<Uuid, ProbeError> {
     match uuid::Uuid::parse_str(uuid.trim()) {
         Ok(uuid) => {
             info!("UUID found");
-            Ok(Uuid(uuid))
+            Ok(uuid)
         }
         Err(e) => {
             warn!("UUID file is invalid: {}", e);
             info!("Generating new UUID");
             let ts = Timestamp::now(uuid::NoContext);
-            let uuid = Uuid(uuid::Uuid::new_v7(ts));
+            let uuid = uuid::Uuid::new_v7(ts);
             file.set_len(0)?;
             file.seek(SeekFrom::Start(0))?;
             file.write_all(uuid.to_string().as_bytes())?;
@@ -247,8 +331,8 @@ fn generate_uuid(uuid_file: Option<String>) -> Result<Uuid, ProbeError> {
     }
 }
 
-fn determine_mac(bind_ip: &str) -> Result<MacAddr, ProbeError> {
-    let probe_ip = bind_ip.parse::<IpNetwork>()?;
+fn determine_mac(bind_ip: &IpAddr) -> Result<MacAddr, ProbeError> {
+    let probe_ip = bind_ip.to_string().parse::<IpNetwork>()?;
     let interfaces = pnet::datalink::interfaces();
     let Some(interface) = interfaces
         .iter()

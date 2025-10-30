@@ -30,7 +30,6 @@ impl ProbeCapture {
     pub async fn start_captures(
         &self,
         join_set: &mut JoinSet<Result<(), ProbeError>>,
-        _bind_ip: &str,
         server_host: &str,
         cancellation_token: CancellationToken,
     ) -> Result<HashSet<Id>, ProbeError> {

@@ -7,7 +7,7 @@ edition = "2024"
 edumdns_core = { path = "../edumdns_core" }
 pcap = {  version = "2.3.0", features = ["tokio", "lending-iter", "futures"]}
 pnet = "0.35.0"
-clap = { version = "4.5.38", features = ["derive", "env"] }
+clap = { version = "4.5.51", features = ["derive", "env"] }
 thiserror = "2.0.16"
 tokio = { version = "1.47.1", features = ["net", "bytes", "time"] }
 bincode = "2.0.1"

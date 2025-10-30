@@ -94,7 +94,8 @@ struct Cli {
         short = 'p',
         long = "server_port",
         value_name = "SERVER_PORT",
-        env = "EDUMDNS_PROBE_SERVER_PORT"
+        env = "EDUMDNS_PROBE_SERVER_PORT",
+        default_value = "5000"
     )]
     server_port: u16,
 
@@ -133,22 +134,31 @@ struct Cli {
         env = "EDUMDNS_PROBE_PRE_SHARED_KEY"
     )]
     pre_shared_key: Option<String>,
+
+    /// Optional log level.
+    #[clap(
+        short = 'l',
+        long,
+        value_name = "LOG_LEVEL",
+        env = "EDUMDNS_PROBE_LOG_LEVEL",
+        default_value = "info"
+    )]
+    log_level: String,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), ProbeError> {
     let pre = PreCli::try_parse().unwrap_or_default();
 
-    // Load env from .env file if provided
     if let Some(env_file) = pre.env_file {
         dotenvy::from_filename(env_file).expect("failed to load .env file");
     } else {
-        dotenvy::dotenv().ok(); // fallback to default .env if exists
+        dotenvy::dotenv().ok();
     }
 
     let cli = Cli::parse();
 
-    let env = EnvFilter::try_from_env("EDUMDNS_PROBE_LOG_LEVEL").unwrap_or(EnvFilter::new("info"));
+    let env = EnvFilter::new(cli.log_level);
     let timer = tracing_subscriber::fmt::time::LocalTime::rfc_3339();
     tracing_subscriber::fmt()
         .with_timer(timer)

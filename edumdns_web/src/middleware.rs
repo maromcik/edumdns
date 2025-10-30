@@ -41,14 +41,12 @@ where
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        // Paths that should bypass the redirect to login
         let path = req.path().to_string();
         if path.starts_with("/static")
             || path.starts_with("/login")
             || path.starts_with("/auth_callback")
             || path.starts_with("/logout")
             || path.starts_with("/oidc")
-            || path.starts_with("/sracka")
         {
             let fut = self.service.call(req);
             return fut
@@ -56,21 +54,17 @@ where
                 .boxed_local();
         }
 
-        // Check the "auth" cookie presence (local or oidc) OR an OIDC cookie you use (e.g. id_token)
         let has_auth_cookie = req.cookie("auth").is_some();
         let has_id_cookie = req.cookie("id").is_some();
-        let has_id_token = req.cookie("id_token").is_some(); // if your OIDC crate writes id_token cookie
+        let has_id_token = req.cookie("id_token").is_some();
 
         if has_auth_cookie || has_id_token || has_id_cookie {
-            // user *may* be logged in — let other middleware decide
             let fut = self.service.call(req);
             return fut
                 .map(|res| res.map(|r| r.map_into_boxed_body()))
                 .boxed_local();
         }
 
-        // Not logged in — redirect to landing page
-        // Capture the requested path for ret param
         let ret = urlencoding::encode(&path);
         let redirect = HttpResponse::SeeOther()
             .insert_header((

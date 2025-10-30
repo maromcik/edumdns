@@ -284,10 +284,9 @@ impl UserBackend {
     async fn insert(conn: &mut AsyncPgConnection, data: &UserCreate) -> DbResultSingle<User> {
         diesel::insert_into(user::table)
             .values(data)
-            .on_conflict(user::id)
+            .on_conflict(user::email)
             .do_update()
             .set((
-                user::email.eq(&data.email),
                 user::name.eq(&data.name),
                 user::surname.eq(&data.surname),
             ))

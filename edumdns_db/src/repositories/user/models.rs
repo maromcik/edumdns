@@ -129,7 +129,6 @@ impl UserUpdate {
 #[derive(Serialize, Deserialize, AsChangeset, Insertable, Debug)]
 #[diesel(table_name = crate::schema::user)]
 pub struct UserCreate {
-    pub id: Option<Id>,
     pub email: String,
     pub name: String,
     pub surname: String,
@@ -139,9 +138,8 @@ pub struct UserCreate {
 }
 
 impl UserCreate {
-    pub fn new_from_oidc(id: Id, email: &str, name: &str, surname: &str, admin: bool) -> Self {
+    pub fn new_from_oidc(email: &str, name: &str, surname: &str, admin: bool) -> Self {
         Self {
-            id: Some(id),
             email: email.to_owned(),
             name: name.to_owned(),
             surname: surname.to_owned(),
@@ -180,7 +178,6 @@ impl UserCreate {
         let password_salt = generate_salt();
         let password_hash = hash_password(password.to_owned(), &password_salt)?;
         Ok(Self {
-            id: None,
             email: email.to_owned(),
             name: name.to_owned(),
             surname: surname.to_owned(),

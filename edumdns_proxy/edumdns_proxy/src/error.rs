@@ -13,8 +13,6 @@ pub enum ProxyErrorKind {
     ParseError,
     #[error("ebpf error")]
     EbpfError,
-    #[error("ebpf program error")]
-    EbpfProgramError,
     #[error("ebpf map error")]
     EbpfMapError,
     #[error("ebpf pin error")]
@@ -33,15 +31,13 @@ pub struct ProxyError {
 
 impl Display for ProxyError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-            write!(f, "ProxyError: {}: {}", self.error_kind, self.message)
+        write!(f, "ProxyError: {}: {}", self.error_kind, self.message)
     }
 }
 
 impl Debug for ProxyError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-
-         write!(f, "ProxyError: {}: {}", self.error_kind, self.message)
-
+        write!(f, "ProxyError: {}: {}", self.error_kind, self.message)
     }
 }
 
@@ -59,7 +55,6 @@ impl From<std::io::Error> for ProxyError {
         Self::new(ProxyErrorKind::IoError, value.to_string().as_str())
     }
 }
-
 
 impl From<std::net::AddrParseError> for ProxyError {
     fn from(value: std::net::AddrParseError) -> Self {
@@ -84,7 +79,6 @@ impl From<std::num::ParseIntError> for ProxyError {
         Self::new(ProxyErrorKind::ParseError, value.to_string().as_str())
     }
 }
-
 
 impl From<aya::EbpfError> for ProxyError {
     fn from(value: aya::EbpfError) -> Self {

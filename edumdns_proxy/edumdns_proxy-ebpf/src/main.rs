@@ -5,7 +5,6 @@ use crate::checksum::ChecksumUpdate;
 use aya_ebpf::macros::map;
 use aya_ebpf::maps::{Array, HashMap};
 use aya_ebpf::{bindings::xdp_action, macros::xdp, programs::XdpContext};
-use aya_log_ebpf::{debug, info};
 use core::mem;
 use network_types::eth::{EthHdr, EtherType};
 use network_types::ip::{IpProto, Ipv4Hdr, Ipv6Hdr};
@@ -60,7 +59,7 @@ fn try_edumdns_proxy(ctx: XdpContext) -> Result<u32, ()> {
 }
 
 fn handle_ipv4(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32, ()> {
-    let ipv4hdr: *mut Ipv4Hdr = unsafe { ptr_at(&ctx, EthHdr::LEN)? };
+    let ipv4hdr: *mut Ipv4Hdr = ptr_at(ctx, EthHdr::LEN)?;
     let source = u32::from_be_bytes(unsafe { (*ipv4hdr).src_addr });
 
     unsafe {
@@ -90,9 +89,9 @@ fn handle_ipv4(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32
                     .into_ip_checksum(),
             );
 
-            match unsafe { (*ipv4hdr).proto } {
+            match (*ipv4hdr).proto {
                 IpProto::Tcp => {
-                    let tcphdr: *mut TcpHdr = ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
+                    let tcphdr: *mut TcpHdr = ptr_at(ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
                     let old_checksum = u16::from_be_bytes((*tcphdr).check);
                     (*tcphdr).check = u16::to_be_bytes(
                         ChecksumUpdate::new(old_checksum)
@@ -104,7 +103,7 @@ fn handle_ipv4(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32
                     );
                 }
                 IpProto::Udp => {
-                    let udphdr: *mut UdpHdr = ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
+                    let udphdr: *mut UdpHdr = ptr_at(ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
                     let old_checksum = u16::from_be_bytes((*udphdr).check);
                     (*udphdr).check = u16::to_be_bytes(
                         ChecksumUpdate::new(old_checksum)
@@ -125,7 +124,7 @@ fn handle_ipv4(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32
 }
 
 fn handle_ipv6(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32, ()> {
-    let ipv6hdr: *mut Ipv6Hdr = unsafe { ptr_at(ctx, EthHdr::LEN)? };
+    let ipv6hdr: *mut Ipv6Hdr = ptr_at(ctx, EthHdr::LEN)?;
 
     let old_src = unsafe { (*ipv6hdr).src_addr };
     let old_dst = unsafe { (*ipv6hdr).dst_addr };

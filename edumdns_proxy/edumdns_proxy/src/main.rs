@@ -1,18 +1,17 @@
 mod error;
 use anyhow::Context as _;
-use bytemuck::{Zeroable};
+use aya::Pod;
+use aya::maps::Array;
 use aya::programs::Xdp;
+use bytemuck::Zeroable;
 use clap::Parser;
 use std::path::Path;
-use aya::Pod;
-use aya::maps::{Array, Map, MapData};
 #[rustfmt::skip]
-use log::{debug, warn};
+use log::{debug};
 use crate::error::{ProxyError, ProxyErrorKind};
 use log::info;
 use pnet::datalink::MacAddr;
-use tokio::signal;
-use tokio::signal::unix::{signal, SignalKind};
+use tokio::signal::unix::{SignalKind, signal};
 
 #[repr(C)]
 #[derive(Zeroable, Clone, Copy, Debug, Default)]
@@ -22,7 +21,7 @@ pub struct Config {
     /// as the `src_addr` field of `Ipv4Hdr`.
     pub proxy_ip: [u8; 4],
     pub proxy_ip6: [u8; 16],
-    
+
     /// MAC address that will become the new Ethernet source.
     pub src_mac: [u8; 6],
 
@@ -30,41 +29,77 @@ pub struct Config {
     pub dst_mac: [u8; 6],
 }
 
-unsafe impl Pod for Config {
+unsafe impl Pod for Config {}
 
+#[derive(Debug, Parser, Default)]
+struct PreCli {
+    /// Optional `.env` file path for loading environment variables.
+    #[clap(short, long, value_name = "ENV_FILE")]
+    env_file: Option<String>,
 }
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
+    /// Path to the .env file.
+    #[clap(short, long, value_name = "ENV_FILE")]
+    env_file: Option<String>,
+
     /// Interface to attach the eBPF program to.
-    #[clap(short, long, value_name = "INTERFACE")]
+    #[clap(short, long, value_name = "INTERFACE", env = "EDUMDNS_PROXY_INTERFACE")]
     interface: String,
 
     /// Path to the eBPF map pin directory, must be mounted as BPFFS.
-    #[clap(short, long, default_value = "/sys/fs/bpf/edumdns", value_name = "PIN_PATH")]
+    #[clap(
+        short,
+        long,
+        default_value = "/sys/fs/bpf/edumdns",
+        value_name = "PIN_PATH",
+        env = "EDUMDNS_PROXY_PIN_PATH"
+    )]
     pin_path: String,
 
-    /// New source IP that the program will use (e.g. 192.168.0.32)
-    #[clap(long, required = true, value_name="PROXY_IP")]
+    /// New source IPv4 that the program will use (e.g. 10.0.0.10)
+    #[clap(long = "ip", value_name = "PROXY_IP", env = "EDUMDNS_PROXY_IP")]
     proxy_ip: std::net::Ipv4Addr,
 
-    #[clap(long, required = true, value_name="PROXY_IP6")]
+    /// New source IPv6 that the program will use (e.g. ::10)
+    #[clap(long = "ip6", value_name = "PROXY_IP6", env = "EDUMDNS_PROXY_IP6")]
     proxy_ip6: std::net::Ipv6Addr,
 
     /// New Ethernet source MAC (e.g. e4:1d:82:72:43:c6)
-    #[clap(long, required = true, value_name="NEW_SRC_MAC")]
+    #[clap(long, value_name = "NEW_SRC_MAC", env = "EDUMDNS_PROXY_SRC_MAC")]
     src_mac: MacAddr,
 
     /// New Ethernet destination MAC (e.g. 18:7a:3b:5e:c6:4c)
-    #[clap(long, required = true, value_name="NEW_DST_MAC")]
+    #[clap(long, value_name = "NEW_DST_MAC", env = "EDUMDNS_PROXY_DST_MAC")]
     dst_mac: MacAddr,
+
+    /// Optional log level.
+    #[clap(
+        short = 'l',
+        long,
+        value_name = "LOG_LEVEL",
+        env = "EDUMDNS_PROXY_LOG_LEVEL",
+        default_value = "info"
+    )]
+    log_level: log::LevelFilter,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), ProxyError> {
+    let pre = PreCli::try_parse().unwrap_or_default();
+    if let Some(env_file) = pre.env_file {
+        dotenvy::from_filename(env_file).expect("failed to load .env file");
+    } else {
+        dotenvy::dotenv().ok();
+    }
+
     let cli = Cli::parse();
-    env_logger::init();
+
+    env_logger::Builder::new()
+        .filter(None, cli.log_level)
+        .init();
 
     let rlim = libc::rlimit {
         rlim_cur: libc::RLIM_INFINITY,
@@ -83,7 +118,7 @@ async fn main() -> Result<(), ProxyError> {
     match aya_log::EbpfLogger::init(&mut ebpf) {
         Err(e) => {
             // This can happen if you remove all log statements from your eBPF program.
-            warn!("failed to initialize eBPF logger: {e}");
+            info!("eBPF logger is not used in the eBPF program: {e}");
         }
         Ok(logger) => {
             let mut logger =
@@ -95,6 +130,7 @@ async fn main() -> Result<(), ProxyError> {
                     guard.clear_ready();
                 }
             });
+            info!("eBPF logger initialized");
         }
     }
     let program: &mut Xdp = ebpf.program_mut("edumdns_proxy").unwrap().try_into()?;
@@ -104,8 +140,6 @@ async fn main() -> Result<(), ProxyError> {
 
     if let Some(cfg_map) = ebpf.map_mut("CONFIG") {
         // `cfg_map` is a generic `Map` – we need to down‑cast to `Array<Config>`
-
-        // let cfg: Config = Config::try_from(cfg_map).unwrap()
 
         let mut cfg_array: Array<_, Config> = Array::try_from(cfg_map)?;
 
@@ -120,7 +154,10 @@ async fn main() -> Result<(), ProxyError> {
 
         info!("configuration written to CONFIG map: {:?}", cfg);
     } else {
-        return Err(ProxyError::new(ProxyErrorKind::MapMissing, "CONFIG map is missing"));
+        return Err(ProxyError::new(
+            ProxyErrorKind::MapMissing,
+            "CONFIG map is missing",
+        ));
     }
 
     let pin_dir = cli.pin_path.as_str();

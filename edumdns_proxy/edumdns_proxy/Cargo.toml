@@ -21,11 +21,12 @@ tokio = { workspace = true, features = [
     "net",
     "signal",
 ] }
-clap = { workspace = true, features = ["derive"] }
+clap = { version = "4.5.51", features = ["derive", "env"] }
 thiserror = "2.0.16"
 uuid = "1.18.1"
 pnet = "0.35.0"
 bytemuck = { version = "1", features = ["derive"] }
+dotenvy = "0.15.7"
 [build-dependencies]
 anyhow = { workspace = true }
 aya-build = { workspace = true }

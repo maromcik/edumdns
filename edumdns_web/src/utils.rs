@@ -31,6 +31,7 @@ pub struct AppState {
     pub jinja: Arc<AutoReloader>,
     pub command_channel: Sender<AppPacket>,
     pub device_acl_ap_database: DeviceAclApDatabase,
+    pub secure_cookie: bool,
 }
 
 impl AppState {
@@ -38,11 +39,13 @@ impl AppState {
         jinja: Arc<AutoReloader>,
         command_channel: Sender<AppPacket>,
         device_acl_ap_database: DeviceAclApDatabase,
+        secure_cookie: bool,
     ) -> Self {
         AppState {
             jinja,
             command_channel,
             device_acl_ap_database,
+            secure_cookie,
         }
     }
 }

@@ -66,6 +66,7 @@ pub async fn login_base(
     form: web::Form<UserLoginForm>,
     state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
+    let secure_cookie = state.secure_cookie;
     match user_repo
         .login(&UserLogin::new(&form.email, &form.password))
         .await
@@ -75,7 +76,7 @@ pub async fn login_base(
             let mut resp = HttpResponse::SeeOther();
             let c = actix_web::cookie::Cookie::build("auth", "local")
                 .path("/")
-                .secure(true)
+                .secure(secure_cookie)
                 .expires(OffsetDateTime::now_utc() + Duration::days(SESSION_EXPIRY))
                 .finish();
             resp.cookie(c);
@@ -107,6 +108,7 @@ pub async fn login_oidc(
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
     query: web::Query<UserLoginReturnURL>,
+    state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
     let return_url = query.ret.clone().unwrap_or(extract_referrer(&request));
     if identity.is_some() {
@@ -115,9 +117,10 @@ pub async fn login_oidc(
             .finish());
     }
 
+    let secure_cookie = state.secure_cookie;
     let mut resp = HttpResponse::SeeOther();
     let c = actix_web::cookie::Cookie::build("auth", "oidc")
-        .secure(true)
+        .secure(secure_cookie)
         .expires(OffsetDateTime::now_utc() + Duration::days(SESSION_EXPIRY))
         .path("/")
         .finish();

@@ -76,6 +76,7 @@ pub async fn web_init(
         jinja.clone(),
         command_channel.clone(),
         device_acl_ap_database,
+        use_secure_cookie,
     );
 
     match create_oidc().await {

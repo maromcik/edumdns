@@ -24,6 +24,10 @@
     <!-- Editable User Settings -->
     <div class="rounded-lg border border-base bg-cards p-6 mb-8">
         <h3 class="text-2xl font-medium mb-4 text-sat-l">User Settings</h3>
+        <div class="flex flex-col mb-4">
+            <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
+            <span class="font-mono text-code"><code>{{ user.user.id }}</code></span>
+        </div>
         <form
                 method="post"
                 hx-post="/user/update"

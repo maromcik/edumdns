@@ -20,7 +20,7 @@
         <form
                 id="device-search-form"
                 class="flex flex-col sm:flex-row gap-4 items-center justify-center"
-                onsubmit="return false;"
+                onsubmit="searchDevice(); return false;"
         >
             <input
                     id="device-id-input"
@@ -31,9 +31,8 @@
                     required
             >
             <button
-                    type="button"
+                    type="submit"
                     class="bg-acc hover:bg-acc-l text-button font-semibold px-6 py-3 rounded-lg shadow-md transition-colors"
-                    onclick="searchDevice()"
             >
                 Search
             </button>

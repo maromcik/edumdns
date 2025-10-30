@@ -6,6 +6,7 @@ use aya_ebpf::macros::map;
 use aya_ebpf::maps::{Array, HashMap};
 use aya_ebpf::{bindings::xdp_action, macros::xdp, programs::XdpContext};
 use core::mem;
+use aya_log_ebpf::info;
 use network_types::eth::{EthHdr, EtherType};
 use network_types::ip::{IpProto, Ipv4Hdr, Ipv6Hdr};
 use network_types::tcp::TcpHdr;
@@ -50,6 +51,7 @@ pub fn edumdns_proxy(ctx: XdpContext) -> u32 {
 
 fn try_edumdns_proxy(ctx: XdpContext) -> Result<u32, ()> {
     let cfg = get_cfg()?;
+
     let ethhdr: *mut EthHdr = ptr_at(&ctx, 0)?; //
     match unsafe { (*ethhdr).ether_type() } {
         Ok(EtherType::Ipv4) => handle_ipv4(&ctx, ethhdr, cfg),
@@ -73,6 +75,7 @@ fn handle_ipv4(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32
             let old_dst = (*ipv4hdr).dst_addr;
 
             let proxy_ip = u32::from_be_bytes(cfg.proxy_ip);
+            let old_dst_u32 = u32::from_be_bytes((*ipv4hdr).dst_addr);
 
             (*ipv4hdr).src_addr = proxy_ip.to_be_bytes();
             (*ipv4hdr).dst_addr = new_dst.to_be_bytes();
@@ -91,7 +94,17 @@ fn handle_ipv4(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32
 
             match (*ipv4hdr).proto {
                 IpProto::Tcp => {
-                    let tcphdr: *mut TcpHdr = ptr_at(ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
+                    let tcphdr: *mut TcpHdr = ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
+                    info!(
+                        &ctx,
+                        "Rewriting packet; old_src: {:i}; new_src {:i}; old_dst: {:i}; new_dst {:i}; src tcp: {}; dst tcp: {}",
+                        source,
+                        proxy_ip,
+                        old_dst_u32,
+                        *new_dst,
+                        u16::from_be_bytes((*tcphdr).source),
+                        u16::from_be_bytes((*tcphdr).dest)
+                    );
                     let old_checksum = u16::from_be_bytes((*tcphdr).check);
                     (*tcphdr).check = u16::to_be_bytes(
                         ChecksumUpdate::new(old_checksum)
@@ -103,7 +116,17 @@ fn handle_ipv4(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32
                     );
                 }
                 IpProto::Udp => {
-                    let udphdr: *mut UdpHdr = ptr_at(ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
+                    let udphdr: *mut UdpHdr = ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
+                    info!(
+                        &ctx,
+                        "Rewriting packet; old_src: {:i}; new_src {:i}; old_dst: {:i}; new_dst {:i}; src udp: {}; dst udp: {}",
+                        source,
+                        proxy_ip,
+                        old_dst_u32,
+                        *new_dst,
+                        u16::from_be_bytes((*udphdr).src),
+                        u16::from_be_bytes((*udphdr).dst)
+                    );
                     let old_checksum = u16::from_be_bytes((*udphdr).check);
                     (*udphdr).check = u16::to_be_bytes(
                         ChecksumUpdate::new(old_checksum)

@@ -1,4 +1,4 @@
-use crate::error::{WebError, WebErrorKind};
+use crate::error::{WebError};
 use crate::{DEFAULT_HOSTNAME, DEFAULT_PORT, SECS_IN_MONTH, SECS_IN_WEEK, SESSION_EXPIRY};
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
@@ -74,27 +74,23 @@ fn has_perm(perms_values: Vec<Value>, query: Value) -> Result<bool, minijinja::E
 
 pub async fn create_oidc() -> Result<ActixWebOpenId, WebError> {
     let client_id = env::var("EDUMDNS_OIDC_CLIENT_ID").map_err(|_| {
-        WebError::new(
-            WebErrorKind::EnvVarError,
-            "Environment variable `EDUMDNS_OIDC_CLIENT_ID` could not be loaded",
+        WebError::EnvVarError(
+            "Environment variable `EDUMDNS_OIDC_CLIENT_ID` could not be loaded".to_string(),
         )
     })?;
     let client_secret = env::var("EDUMDNS_OIDC_CLIENT_SECRET").map_err(|_| {
-        WebError::new(
-            WebErrorKind::EnvVarError,
-            "Environment variable `EDUMDNS_OIDC_CLIENT_SECRET` could not be loaded",
+        WebError::EnvVarError(
+            "Environment variable `EDUMDNS_OIDC_CLIENT_SECRET` could not be loaded".to_string(),
         )
     })?;
     let callback = env::var("EDUMDNS_OIDC_CALLBACK_URL").map_err(|_| {
-        WebError::new(
-            WebErrorKind::EnvVarError,
-            "Environment variable `EDUMDNS_OIDC_CALLBACK_URL` could not be loaded",
+        WebError::EnvVarError(
+            "Environment variable `EDUMDNS_OIDC_CALLBACK_URL` could not be loaded".to_string(),
         )
     })?;
     let issuer = env::var("EDUMDNS_OIDC_ISSUER").map_err(|_| {
-        WebError::new(
-            WebErrorKind::EnvVarError,
-            "Environment variable `EDUMDNS_OIDC_ISSUER` could not be loaded",
+        WebError::EnvVarError(
+            "Environment variable `EDUMDNS_OIDC_ISSUER` could not be loaded".to_string(),
         )
     })?;
 
@@ -132,7 +128,7 @@ pub async fn create_oidc() -> Result<ActixWebOpenId, WebError> {
         ])
         .build_and_init()
         .await
-        .map_err(|e| WebError::new(WebErrorKind::OidcError, e.to_string().as_str()))
+        .map_err(|e| WebError::OidcError(e.to_string()))
 }
 
 pub fn get_cors_middleware(host: &str) -> Cors {
@@ -178,21 +174,21 @@ pub fn parse_host() -> String {
 
 pub fn json_config() -> JsonConfig {
     JsonConfig::default().error_handler(|err, _req| {
-        let web_error = WebError::new(WebErrorKind::ParseError, &err.to_string());
+        let web_error = WebError::ParseError(err.to_string());
         actix_web::error::InternalError::from_response(err, web_error.error_response()).into()
     })
 }
 
 pub fn query_config() -> QueryConfig {
     QueryConfig::default().error_handler(|err, _req| {
-        let web_error = WebError::new(WebErrorKind::ParseError, &err.to_string());
+        let web_error = WebError::ParseError(err.to_string());
         actix_web::error::InternalError::from_response(err, web_error.error_response()).into()
     })
 }
 
 pub fn path_config() -> PathConfig {
     PathConfig::default().error_handler(|err, _req| {
-        let web_error = WebError::new(WebErrorKind::ParseError, &err.to_string());
+        let web_error = WebError::ParseError(err.to_string());
         actix_web::error::InternalError::from_response(err, web_error.error_response()).into()
     })
 }

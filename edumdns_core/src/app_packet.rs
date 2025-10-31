@@ -1,12 +1,10 @@
 use crate::bincode_types::Uuid;
 use crate::bincode_types::{IpNetwork, MacAddr};
-use crate::error::CoreError;
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};
 use crate::network_packet::{DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};
 use std::fmt::{Display, Formatter};
 use std::hash::{DefaultHasher, Hash, Hasher};
-use tokio::sync::{mpsc, oneshot};
 
 pub type Id = i64;
 
@@ -102,7 +100,7 @@ impl Display for ProbeConfigElement {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "<interface: {}; filter: {}>",
+            "[interface: {} | filter: {}]",
             self.interface_name,
             self.bpf_filter.as_ref().unwrap_or(&"None".to_string())
         )

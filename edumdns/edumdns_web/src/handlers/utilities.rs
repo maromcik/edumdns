@@ -4,7 +4,7 @@ use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::HttpRequest;
 use edumdns_core::app_packet::Id;
-use edumdns_db::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
+use edumdns_db::error::{BackendError, DbError};
 use edumdns_db::repositories::user::models::{UserCreate, UserDisplay};
 use log::error;
 use regex::Regex;
@@ -117,12 +117,5 @@ pub fn validate_has_groups(user: &UserDisplay) -> Result<(), WebError> {
     if user.has_groups || user.user.admin {
         return Ok(());
     }
-    Err(DbError::new(
-        DbErrorKind::BackendError(BackendError::new(
-            BackendErrorKind::PermissionDenied,
-            "User is not assigned to any group",
-        )),
-        "",
-    ))
-    .map_err(WebError::from)
+    Err(DbError::from(BackendError::PermissionDenied("User is not assigned to any group".to_string())).into())
 }

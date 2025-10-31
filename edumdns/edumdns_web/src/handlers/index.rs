@@ -1,4 +1,4 @@
-use crate::error::{WebError, WebErrorKind};
+use crate::error::{WebError};
 use crate::forms::user::{UserLoginForm, UserLoginReturnURL};
 use crate::handlers::utilities::{
     destroy_session, extract_referrer, get_template_name, parse_user_from_oidc, parse_user_id,
@@ -16,6 +16,7 @@ use edumdns_db::repositories::common::{DbCreate, DbReadOne};
 use edumdns_db::repositories::user::models::UserLogin;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use time::{Duration, OffsetDateTime};
+use edumdns_db::error::DbError;
 
 #[get("/")]
 pub async fn index(
@@ -85,7 +86,7 @@ pub async fn login_base(
                 .finish())
         }
         Err(db_error) => {
-            if let edumdns_db::error::DbErrorKind::BackendError(err) = db_error.error_kind {
+            if let DbError::BackendError(err) = db_error {
                 let template_name = "index/login.html";
                 let env = state.jinja.acquire_env()?;
                 let template = env.get_template(template_name)?;
@@ -126,10 +127,7 @@ pub async fn login_oidc(
         .finish();
     resp.cookie(c);
 
-    let user_create = parse_user_from_oidc(&request).ok_or(WebError::new(
-        WebErrorKind::CookieError,
-        "Cookie or some of its fields were not found or invalid",
-    ))?;
+    let user_create = parse_user_from_oidc(&request).ok_or(WebError::CookieError("Cookie or some of its fields were not found or invalid".to_string()))?;
     let user = user_repo.create(&user_create).await?;
     Identity::login(&request.extensions(), user.id.to_string())?;
     Ok(resp.insert_header((LOCATION, return_url)).finish())

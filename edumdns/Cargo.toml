@@ -39,6 +39,7 @@ futures-util = "0.3.31"
 
 [workspace]
 members = [
-    "edumdns_db", ".",
-    "edumdns_server", "edumdns_web"
+    "edumdns_db",
+    "edumdns_server",
+    "edumdns_web"
 ]

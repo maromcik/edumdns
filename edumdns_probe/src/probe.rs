@@ -1,7 +1,6 @@
-use crate::capture::capture_and_transmit;
+use crate::capture::{capture_and_transmit, PacketCaptureGeneric};
 use crate::error::ProbeError;
 use edumdns_core::app_packet::{NetworkAppPacket, ProbeConfigPacket};
-use edumdns_core::capture::PacketCaptureGeneric;
 use edumdns_core::metadata::ProbeMetadata;
 use pcap::Active;
 use std::collections::HashSet;

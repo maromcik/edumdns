@@ -1,5 +1,5 @@
 use crate::authorized;
-use crate::error::{WebError, WebErrorKind};
+use crate::error::{WebError};
 use crate::forms::device::{
     CreateDeviceForm, DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest, DeviceQuery,
     UpdateDeviceForm,
@@ -240,10 +240,7 @@ pub async fn get_device_for_transmit(
         .connection_info()
         .realip_remote_addr()
         .map(|a| a.to_string());
-    let target_ip = target_ip.ok_or(WebError::new(
-        WebErrorKind::InternalServerError,
-        "Could not determine target ip",
-    ))?;
+    let target_ip = target_ip.ok_or(WebError::InternalServerError("Could not determine target ip".to_string()))?;
 
     let in_progress = device_repo
         .read_packet_transmit_requests(&device.id)
@@ -295,33 +292,21 @@ pub async fn request_packet_transmit(
         .connection_info()
         .realip_remote_addr()
         .map(|a| a.to_string());
-    let target_ip = target_ip.ok_or(WebError::new(
-        WebErrorKind::InternalServerError,
-        "Could not determine target ip",
-    ))?;
+    let target_ip = target_ip.ok_or(WebError::InternalServerError("Could not determine target ip".to_string()))?;
 
     let target_ip = target_ip.parse::<ipnetwork::IpNetwork>()?;
     if let Some(acl_src_cidr) = device.acl_src_cidr
         && !acl_src_cidr.contains(target_ip.ip())
     {
-        return Err(WebError::new(
-                WebErrorKind::DeviceTransmitRequestDenied,
-                format!("Target IP is not allowed to request packets from this device. Allowed subnet is {acl_src_cidr}").as_str(),
-            ));
+        return Err(WebError::DeviceTransmitRequestDenied(format!("Target IP is not allowed to request packets from this device. Allowed subnet is {acl_src_cidr}")));
     }
 
     if let Some(acl_pwd_hash) = &device.acl_pwd_hash {
         let Some(pwd) = &form.acl_pwd else {
-            return Err(WebError::new(
-                WebErrorKind::Unauthorized,
-                "ACL password is required to request packets from this device",
-            ));
+            return Err(WebError::Unauthorized("ACL password is required to request packets from this device".to_string()));
         };
         if acl_pwd_hash != pwd {
-            return Err(WebError::new(
-                WebErrorKind::Unauthorized,
-                "ACL password is incorrect",
-            ));
+            return Err(WebError::Unauthorized("ACL password is incorrect".to_string()));
         }
     }
 
@@ -333,10 +318,7 @@ pub async fn request_packet_transmit(
         )
         .await?
     {
-        return Err(WebError::new(
-            WebErrorKind::DeviceTransmitRequestDenied,
-            "AP hostname that you are connected to does not match allowed APs",
-        ));
+        return Err(WebError::DeviceTransmitRequestDenied("AP hostname that you are connected to does not match allowed APs".to_string()));
     }
 
     let form = DeviceCustomPacketTransmitRequest::new(target_ip, device.port as u16, false);

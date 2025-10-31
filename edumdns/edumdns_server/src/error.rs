@@ -1,4 +1,4 @@
-use edumdns_core::error::{CoreError, CoreErrorKind};
+use edumdns_core::error::{CoreError};
 use edumdns_db::error::DbError;
 use std::fmt::{Debug, Display, Formatter};
 use std::net::AddrParseError;
@@ -6,25 +6,25 @@ use thiserror::Error;
 
 #[derive(Error, Debug, Clone)]
 pub enum ServerError {
-    #[error("ServerError -> {0}")]
+    #[error("CoreError -> {0}")]
     CoreError(CoreError),
-    #[error("ServerError -> {0}")]
+    #[error("DbError -> {0}")]
     DbError(DbError),
-    #[error("ServerError: I/O error from Tokio: {0}")]
+    #[error("I/O error: {0}")]
     IoError(String),
-    #[error("ServerError: invalid connection initiation: {0}")]
+    #[error("invalid connection initiation: {0}")]
     InvalidConnectionInitiation(String),
-    #[error("ServerError: probe not adopted; adopt it in the web interface first")]
+    #[error("probe not adopted; adopt it in the web interface first")]
     ProbeNotAdopted,
-    #[error("ServerError: probe not found; possibly not connected")]
+    #[error("probe not found; possibly not connected")]
     ProbeNotFound,
-    #[error("ServerError: parse error: {0}")]
+    #[error("parse error: {0}")]
     ParseError(String),
-    #[error("ServerError: eBPF map error: {0}")]
+    #[error("eBPF map error: {0}")]
     EbpfMapError(String),
-    #[error("ServerError: TLS error: {0}")]
+    #[error("TLS error: {0}")]
     TlsError(String),
-    #[error("ServerError: an error occurred while processing your request: {0}")]
+    #[error("an error occurred while processing your request: {0}")]
     PacketProcessingError(String),
 }
 

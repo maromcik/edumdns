@@ -1,129 +1,91 @@
 use edumdns_core::error::CoreError;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug};
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone)]
-pub enum ProbeErrorKind {
-    #[error("{0}")]
+pub enum ProbeError {
+    #[error("Core Error -> {0}")]
     CoreError(#[from] CoreError),
-    #[error("Invalid arguments")]
-    ArgumentError,
-    #[error("I/O error")]
-    IoError,
-    #[error("Encode/Decode error")]
-    EncodeDecodeError,
-    #[error("tokio task error")]
-    TaskError,
-    #[error("probe connection initiation error")]
-    InvalidConnectionInitiation,
-    #[error("Tokio oneshot channel error")]
-    TokioOneshotChannelError,
-    #[error("Tokio mpsc channel error")]
-    TokioMpscChannelError,
-    #[error("environment variable error")]
-    EnvError,
-    #[error("parse error")]
-    ParseError,
+    #[error("invalid arguments: {0}")]
+    ArgumentError(String),
+    #[error("I/O error: {0}")]
+    IoError(String),
+    #[error("Encode/Decode error: {0}")]
+    EncodeDecodeError(String),
+    #[error("Tokio task error: {0}")]
+    TaskError(String),
+    #[error("connection initiation error: {0}")]
+    InvalidConnectionInitiation(String),
+    #[error("Tokio oneshot channel error: {0}")]
+    TokioOneshotChannelError(String),
+    #[error("Tokio mpsc channel error: {0}")]
+    TokioMpscChannelError(String),
+    #[error("environment variable error: {0}")]
+    EnvError(String),
+    #[error("parse error: {0}")]
+    ParseError(String),
+    #[error("capture error: {0}")]
+    CaptureError(String),
+    #[error("{0}")]
+    CaptureFilterError(String),
 }
-
-#[derive(Error, Clone)]
-pub struct ProbeError {
-    pub error_kind: ProbeErrorKind,
-    pub message: String,
-}
-
-impl Display for ProbeError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match &self.error_kind {
-            ProbeErrorKind::CoreError(e) => write!(f, "ProbeError -> {}", e),
-            _ => write!(f, "ProbeError: {}: {}", self.error_kind, self.message),
-        }
+impl From<pcap::Error> for ProbeError {
+    fn from(value: pcap::Error) -> Self {
+        ProbeError::CaptureError(value.to_string())
     }
 }
 
-impl Debug for ProbeError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match &self.error_kind {
-            ProbeErrorKind::CoreError(e) => write!(f, "ProbeError -> {}", e),
-            _ => write!(f, "ProbeError: {}: {}", self.error_kind, self.message),
-        }
-    }
-}
-
-impl ProbeError {
-    pub fn new(error_kind: ProbeErrorKind, message: &str) -> Self {
-        Self {
-            error_kind,
-            message: message.to_owned(),
-        }
-    }
-}
-
-impl From<CoreError> for ProbeError {
-    fn from(value: CoreError) -> Self {
-        Self::new(ProbeErrorKind::CoreError(value), "")
-    }
-}
 
 impl From<std::io::Error> for ProbeError {
     fn from(value: std::io::Error) -> Self {
-        Self::new(ProbeErrorKind::IoError, value.to_string().as_str())
+        Self::IoError(value.to_string())
     }
 }
 
 impl From<bincode::error::EncodeError> for ProbeError {
     fn from(value: bincode::error::EncodeError) -> Self {
-        Self::new(
-            ProbeErrorKind::EncodeDecodeError,
-            value.to_string().as_str(),
-        )
+        Self::EncodeDecodeError(value.to_string())
     }
 }
 
 impl From<tokio::task::JoinError> for ProbeError {
     fn from(value: tokio::task::JoinError) -> Self {
-        Self::new(ProbeErrorKind::TaskError, value.to_string().as_str())
+        Self::TaskError(value.to_string())
     }
 }
 
 impl From<std::net::AddrParseError> for ProbeError {
     fn from(value: std::net::AddrParseError) -> Self {
-        Self::new(ProbeErrorKind::ArgumentError, value.to_string().as_str())
+        Self::ArgumentError(value.to_string())
     }
 }
 
 impl From<tokio::sync::oneshot::error::RecvError> for ProbeError {
     fn from(value: tokio::sync::oneshot::error::RecvError) -> Self {
-        Self::new(
-            ProbeErrorKind::TokioOneshotChannelError,
-            value.to_string().as_str(),
-        )
+        Self::TokioOneshotChannelError(value.to_string())
     }
 }
 
 impl<T> From<tokio::sync::mpsc::error::SendError<T>> for ProbeError {
     fn from(value: tokio::sync::mpsc::error::SendError<T>) -> Self {
-        Self::new(
-            ProbeErrorKind::TokioMpscChannelError,
-            value.to_string().as_str(),
-        )
+        Self::TokioMpscChannelError(value.to_string())
     }
 }
 
 impl From<uuid::Error> for ProbeError {
     fn from(value: uuid::Error) -> Self {
-        Self::new(ProbeErrorKind::ParseError, value.to_string().as_str())
+        Self::ParseError(value.to_string())
     }
 }
 
 impl From<std::num::ParseIntError> for ProbeError {
     fn from(value: std::num::ParseIntError) -> Self {
-        Self::new(ProbeErrorKind::ParseError, value.to_string().as_str())
+        Self::ParseError(value.to_string())
     }
 }
 
 impl From<pnet::ipnetwork::IpNetworkError> for ProbeError {
     fn from(value: pnet::ipnetwork::IpNetworkError) -> Self {
-        Self::new(ProbeErrorKind::ParseError, value.to_string().as_str())
+        Self::ParseError(value.to_string())
     }
 }

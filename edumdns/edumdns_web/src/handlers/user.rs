@@ -1,4 +1,4 @@
-use crate::error::{WebError, WebErrorKind};
+use crate::error::{WebError};
 use crate::forms::user::{
     UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm,
     UserUpdatePasswordFormAdmin,
@@ -15,7 +15,7 @@ use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
 use edumdns_core::app_packet::Id;
-use edumdns_db::error::{BackendError, BackendErrorKind, DbError};
+use edumdns_db::error::{BackendError, DbError};
 use edumdns_db::repositories::common::{
     DbCreate, DbDelete, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE,
 };
@@ -123,10 +123,7 @@ pub async fn delete_user(
     let i = authorized!(identity, request);
     let admin_id = parse_user_id(&i)?;
     if admin_id == path.0 {
-        return Err(WebError::new(
-            WebErrorKind::BadRequest,
-            "Cannot delete the currently logged-in user",
-        ));
+        return Err(WebError::BadRequest("Cannot delete the currently logged-in user".to_string()));
     }
 
     let return_url = query
@@ -255,10 +252,7 @@ pub async fn user_manage(
     );
     let user = user_repo.update(&user_update).await?;
     let Some(user_valid) = user.into_iter().next() else {
-        return Err(WebError::from(DbError::from(BackendError::new(
-            BackendErrorKind::UpdateParametersEmpty,
-            "",
-        ))));
+        return Err(WebError::from(DbError::from(BackendError::UpdateParametersEmpty)));
     };
     let template_name = get_template_name(&request, "user/manage/profile");
     let env = state.jinja.acquire_env()?;

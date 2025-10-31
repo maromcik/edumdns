@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-actix_web_openidconnect = { path = "../actix-oidc-connect" }
+actix_web_openidconnect = { path = "../actix_web_openidconnect" }
 
 actix-files = { version = "0.6.8" }
 actix-multipart = "0.7.2"

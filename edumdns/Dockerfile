@@ -10,7 +10,7 @@ FROM base AS planner
 
 WORKDIR /usr/src/edumdns
 
-COPY ./actix-oidc-connect ./actix-oidc-connect
+COPY actix_web_openidconnect ./actix-oidc-connect
 COPY ./edumdns_core ./edumdns_core
 COPY ./edumdns_core/Cargo.toml ./edumdns_core/Cargo.toml
 COPY ./edumdns_probe ./edumdns_probe
@@ -34,7 +34,7 @@ WORKDIR /usr/src/edumdns
 COPY --from=planner /usr/src/edumdns/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
-COPY ./actix-oidc-connect ./actix-oidc-connect
+COPY actix_web_openidconnect ./actix-oidc-connect
 COPY ./edumdns_core ./edumdns_core
 COPY ./edumdns_core/Cargo.toml ./edumdns_core/Cargo.toml
 COPY ./edumdns_probe ./edumdns_probe

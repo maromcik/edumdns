@@ -1,4 +1,4 @@
-use crate::error::{CoreError, CoreErrorKind};
+use crate::error::{CoreError};
 use pnet::datalink::Channel::Ethernet;
 use pnet::datalink::{DataLinkReceiver, DataLinkSender};
 use pnet::packet::ip::IpNextHeaderProtocols;
@@ -30,20 +30,11 @@ pub fn get_datalink_channel(
     let interface = interfaces
         .iter()
         .find(|i| i.name == capture.output_device)
-        .ok_or(CoreError::new(
-            CoreErrorKind::NetworkInterfaceError,
-            &format!("Output device {} not found", capture.output_device),
-        ))?;
+        .ok_or(CoreError::NetworkInterfaceError(format!("Output device {} not found", capture.output_device)))?;
     let (tx, rx) = match datalink::channel(interface, Default::default()) {
         Ok(Ethernet(tx, rx)) => Ok((tx, rx)),
-        Ok(_) => Err(CoreError::new(
-            CoreErrorKind::NetworkChannelError,
-            "Unknown channel type",
-        )),
-        Err(e) => Err(CoreError::new(
-            CoreErrorKind::NetworkChannelError,
-            &e.to_string(),
-        )),
+        Ok(_) => Err(CoreError::NetworkChannelError("Unknown channel type".to_string())),
+        Err(e) => Err(CoreError::NetworkChannelError(e.to_string())),
     }?;
 
     Ok(NetworkChannel { rx, tx })
@@ -54,10 +45,7 @@ pub fn get_transport_channel()
     let (tx, rx) =
         match transport::transport_channel(4096, Layer4(Ipv4(IpNextHeaderProtocols::Tcp))) {
             Ok((tx, rx)) => Ok((tx, rx)),
-            Err(e) => Err(CoreError::new(
-                CoreErrorKind::NetworkChannelError,
-                &e.to_string(),
-            )),
+            Err(e) => Err(CoreError::NetworkChannelError(e.to_string())),
         }?;
 
     Ok(NetworkChannel {

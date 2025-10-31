@@ -1,6 +1,6 @@
 use crate::BUFFER_CAPACITY;
 use crate::app_packet::NetworkAppPacket;
-use crate::error::{CoreError, CoreErrorKind};
+use crate::error::{CoreError};
 use bincode::{Decode, Encode};
 use bytes::{Bytes, BytesMut};
 use futures::stream::{SplitSink, SplitStream};
@@ -111,10 +111,7 @@ where
                 respond_to
                     .send(actor.receive_next(timeout).await)
                     .map_err(|e| {
-                        CoreError::new(
-                            CoreErrorKind::TokioOneshotChannelError,
-                            format!("Could not receive value {e:?}").as_str(),
-                        )
+                        CoreError::TokioOneshotChannelError(format!("Could not receive value {e:?}"))
                     })?;
             }
             TcpConnectionMessage::Close => {
@@ -140,10 +137,7 @@ where
                 respond_to
                     .send(actor.send_packet(&packet, immediate).await)
                     .map_err(|e| {
-                        CoreError::new(
-                            CoreErrorKind::TokioOneshotChannelError,
-                            format!("Could not send value {e:?}").as_str(),
-                        )
+                        CoreError::TokioOneshotChannelError(format!("Could not send value {e:?}"))
                     })?;
             }
             TcpConnectionMessage::Close => {
@@ -397,7 +391,7 @@ where
             .await
         };
         res.map_err(|_| {
-            CoreError::new(CoreErrorKind::TimeoutError, "Sending a packet timed out")
+            CoreError::TimeoutError("Sending a packet timed out".to_string())
         })??;
         Ok(())
     }
@@ -432,7 +426,7 @@ where
             Some(t) => tokio::time::timeout(t, self.framed_stream.next())
                 .await
                 .map_err(|_| {
-                    CoreError::new(CoreErrorKind::TimeoutError, "Receiving a packet timed out")
+                    CoreError::TimeoutError("Receiving a packet timed out".to_string())
                 })?,
         };
 
@@ -524,7 +518,7 @@ impl TcpConnection {
         let tls_stream = timeout(global_timeout, connector.connect(dnsname, stream))
             .await
             .map_err(|_| {
-                CoreError::new(CoreErrorKind::TimeoutError, "TLS handshake timed out")
+                CoreError::TimeoutError("TLS handshake timed out".to_string())
             })??;
 
         Self::stream_to_framed_generic(
@@ -552,7 +546,7 @@ impl TcpConnection {
         let tls_stream = timeout(global_timeout, connector.accept(stream))
             .await
             .map_err(|_| {
-                CoreError::new(CoreErrorKind::TimeoutError, "TLS handshake timed out")
+                CoreError::TimeoutError("TLS handshake timed out".to_string())
             })??;
 
         Self::stream_to_framed_generic(
@@ -586,10 +580,7 @@ impl TcpConnection {
         let stream = tokio::time::timeout(global_timeout, socket.connect(addr))
             .await
             .map_err(|_| {
-                CoreError::new(
-                    CoreErrorKind::TimeoutError,
-                    format!("Connection to {addr} timed out").as_str(),
-                )
+                CoreError::TimeoutError(format!("Connection to {addr} timed out"))
             })??;
         Self::stream_to_framed_plain(
             message_channel_sender,
@@ -623,10 +614,7 @@ impl TcpConnection {
         let stream = tokio::time::timeout(global_timeout, socket.connect(addr))
             .await
             .map_err(|_| {
-                CoreError::new(
-                    CoreErrorKind::TimeoutError,
-                    format!("Connection to {addr} timed out").as_str(),
-                )
+                CoreError::TimeoutError(format!("Connection to {addr} timed out"))
             })??;
 
         // perform TLS handshake and create framed
@@ -662,10 +650,7 @@ impl UdpConnection {
         timeout(self.global_timeout, self.socket.send_to(buf, target))
             .await
             .map_err(|_| {
-                CoreError::new(
-                    CoreErrorKind::TimeoutError,
-                    format!("Sending UDP packets to {target} timed out").as_str(),
-                )
+                CoreError::TimeoutError(format!("Sending UDP packets to {target} timed out"))
             })??;
         Ok(())
     }

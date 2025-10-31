@@ -18,5 +18,5 @@ uuid = { version = "1.18.1", features = ["v7", "std", "serde"]}
 dotenvy = "0.15.7"
 tracing = { version = "0.1.41", features = ["async-await"]}
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "local-time", "time"] }
-rustls = "0.23.32"
+rustls = "0.23.34"
 webpki-roots = "1.0.2"

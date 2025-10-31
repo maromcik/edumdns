@@ -1,12 +1,10 @@
-
 use crate::error::ProbeError;
 use edumdns_core::app_packet::{NetworkAppPacket, ProbeConfigElement, ProbePacket};
-use edumdns_core::capture::PacketCapture;
-use edumdns_core::error::{CoreError, CoreErrorKind};
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_core::network_packet::DataLinkPacket;
 use log::{debug, info, warn};
 use pcap::{Activated, Error, State};
+use pcap::{Active, Capture, Device, Offline};
 use std::thread::sleep;
 use tokio::sync::mpsc::Sender;
 use tokio_util::sync::CancellationToken;
@@ -21,17 +19,9 @@ pub fn capture_and_transmit<T>(
 where
     T: State + Activated,
 {
-    capture.apply_filter().map_err(|e| {
-        CoreError::new(
-            CoreErrorKind::CaptureError,
-            format!(
-                "Capture on {} failed: {}",
-                config_element,
-                e.message.as_str()
-            )
-            .as_str(),
-        )
-    })?;
+    capture
+        .apply_filter()
+        .map_err(|e| ProbeError::CaptureError(format!("{config_element} failed; {e}")))?;
     let mut cap = capture.get_capture();
     info!("Capture ready!");
 
@@ -49,7 +39,7 @@ where
                 }
                 Error::NoMorePackets => return Ok(()),
                 e => {
-                    return Err(ProbeError::from(CoreError::from(e)));
+                    return Err(ProbeError::from(e));
                 }
             },
         };
@@ -67,5 +57,82 @@ where
             warn!("Failed to send packet: {e}");
             return Ok(());
         };
+    }
+}
+
+pub trait PacketCapture<T>
+where
+    T: State + Activated,
+{
+    fn get_capture(self) -> Capture<T>;
+    fn apply_filter(&mut self) -> Result<(), ProbeError>;
+}
+
+pub struct PacketCaptureGeneric<T>
+where
+    T: State + Activated,
+{
+    pub capture: Capture<T>,
+    pub filter: Option<String>,
+}
+
+impl<T> PacketCaptureGeneric<T>
+where
+    T: State + Activated,
+{
+    pub fn open_device_capture(
+        device_name: &str,
+        filter: Option<&str>,
+    ) -> Result<PacketCaptureGeneric<Active>, ProbeError> {
+        let devices = Device::list()?;
+        let target =
+            devices
+                .into_iter()
+                .find(|d| d.name == device_name)
+                .ok_or(ProbeError::CaptureError(format!(
+                    "Capture device {} not found",
+                    device_name
+                )))?;
+        let target_name = target.name.clone();
+        let capture = Capture::from_device(target)?
+            .promisc(true)
+            .timeout(10000)
+            .immediate_mode(true)
+            .open()?;
+        let capture = capture.setnonblock()?;
+        info!("Listening on: {:?}", target_name);
+
+        Ok(PacketCaptureGeneric {
+            capture,
+            filter: filter.map(|s| s.to_string()),
+        })
+    }
+
+    pub fn open_file_capture(
+        file_path: &str,
+        filter: Option<String>,
+    ) -> Result<PacketCaptureGeneric<Offline>, ProbeError> {
+        Ok(PacketCaptureGeneric {
+            capture: Capture::from_file(file_path)?,
+            filter,
+        })
+    }
+}
+
+impl<T> PacketCapture<T> for PacketCaptureGeneric<T>
+where
+    T: State + Activated,
+{
+    fn get_capture(self) -> Capture<T> {
+        self.capture
+    }
+    fn apply_filter(&mut self) -> Result<(), ProbeError> {
+        if let Some(filter) = &self.filter {
+            self.capture
+                .filter(filter, true)
+                .map_err(|e| ProbeError::CaptureFilterError(e.to_string()))?;
+            info!("Filter applied: {filter}");
+        }
+        Ok(())
     }
 }

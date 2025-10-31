@@ -19,7 +19,6 @@ use edumdns_server::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, 
 use edumdns_core::app_packet::{EntityType, Id};
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
-use edumdns_db::error::{DbError, DbErrorKind};
 use edumdns_db::models::Group;
 use edumdns_db::repositories::common::{
     DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE, Permission,

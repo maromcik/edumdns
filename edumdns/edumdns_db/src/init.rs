@@ -1,4 +1,4 @@
-use crate::error::{DbError, DbErrorKind};
+use crate::error::{DbError};
 use diesel::Connection;
 use diesel::PgConnection;
 use diesel_async::AsyncPgConnection;
@@ -23,7 +23,7 @@ pub fn run_migrations() -> Result<(), DbError> {
 
     connection
         .run_pending_migrations(MIGRATIONS)
-        .map_err(|e| DbError::new(DbErrorKind::MigrationError, e.to_string().as_str()))?;
+        .map_err(|e| DbError::MigrationError(e.to_string()))?;
     info!("Migrations ran successfully.");
     Ok(())
 }

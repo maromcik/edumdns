@@ -1,4 +1,4 @@
-use crate::error::{WebError, WebErrorKind};
+use crate::error::{WebError};
 use crate::forms::device::DeviceCustomPacketTransmitRequest;
 use actix_session::Session;
 use actix_web::web;
@@ -31,10 +31,7 @@ pub async fn request_packet_transmit_helper(
     let request = match device_repo.create_packet_transmit_request(&request_db).await {
         Ok(p) => p,
         Err(_) => {
-            return Err(WebError::new(
-                WebErrorKind::DeviceTransmitRequestDenied,
-                "Transmission already in progress to another client, please try again later.",
-            ));
+            return Err(WebError::DeviceTransmitRequestDenied("Transmission already in progress to another client, please try again later.".to_string()));
         }
     };
     let request_id = request.id;

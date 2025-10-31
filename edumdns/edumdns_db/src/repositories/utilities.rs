@@ -1,4 +1,4 @@
-use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
+use crate::error::{BackendError, DbError};
 use crate::models::{GroupProbePermission, Probe, User};
 use crate::repositories::MIN_PASS_LEN;
 use crate::repositories::common::{DbResult, Permission};
@@ -22,17 +22,11 @@ pub const WEAK_PASSWORD_MESSAGE: &str = "Weak Password! Must contain at least on
 
 pub fn validate_user(user: &User) -> Result<(), DbError> {
     if user.disabled {
-        return Err(DbError::from(BackendError::new(
-            BackendErrorKind::PermissionDenied,
-            "User is disabled",
-        )));
+        return Err(DbError::from(BackendError::PermissionDenied("User is disabled".to_string())));
     }
 
     if user.deleted_at.is_some() {
-        return Err(DbError::from(BackendError::new(
-            BackendErrorKind::PermissionDenied,
-            "User has been deleted",
-        )));
+        return Err(DbError::from(BackendError::PermissionDenied("User has been deleted".to_string())));
     }
     Ok(())
 }
@@ -89,17 +83,7 @@ pub async fn validate_permissions(
 }
 
 pub fn no_permission_error(email: &str, permission: Permission) -> DbError {
-    DbError::new(
-        DbErrorKind::BackendError(BackendError::new(
-            BackendErrorKind::PermissionDenied,
-            format!(
-                "User `{}` does not have `{}` permissions for this entity",
-                email, permission
-            )
-            .as_str(),
-        )),
-        "",
-    )
+    DbError::from(BackendError::PermissionDenied(format!("User `{}` does not have `{}` permissions for this entity", email, permission)))
 }
 
 pub async fn validate_admin_conn(conn: &mut AsyncPgConnection, user_id: &Id) -> DbResult<()> {
@@ -109,23 +93,9 @@ pub async fn validate_admin_conn(conn: &mut AsyncPgConnection, user_id: &Id) -> 
         .first(conn)
         .await?;
     if !user_entry.admin {
-        return Err(DbError::from(BackendError::new(
-            BackendErrorKind::PermissionDenied,
-            "User is not admin",
-        )));
+        return Err(DbError::from(BackendError::PermissionDenied("User is not admin".to_string())));
     }
-    if user_entry.disabled {
-        return Err(DbError::from(BackendError::new(
-            BackendErrorKind::PermissionDenied,
-            "User is disabled",
-        )));
-    }
-    if user_entry.deleted_at.is_some() {
-        return Err(DbError::from(BackendError::new(
-            BackendErrorKind::PermissionDenied,
-            "User has been deleted",
-        )));
-    }
+    validate_user(&user_entry)?;
     Ok(())
 }
 

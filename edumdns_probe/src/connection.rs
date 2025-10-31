@@ -1,4 +1,4 @@
-use crate::error::{ProbeError, ProbeErrorKind};
+use crate::error::{ProbeError};
 use edumdns_core::app_packet::{
     NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeConfigPacket,
 };
@@ -94,10 +94,7 @@ impl ConnectionManager {
     }
 
     pub async fn connection_init_probe(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
-        let error = Err(ProbeError::new(
-            ProbeErrorKind::InvalidConnectionInitiation,
-            "Invalid connection initiation",
-        ));
+        let error = Err(ProbeError::InvalidConnectionInitiation("Invalid connection initiation".to_string()));
         let hello_packet = NetworkAppPacket::Status(NetworkStatusPacket::ProbeHello(
             self.probe_metadata.clone(),
             self.conn_info.pre_shared_key.clone(),
@@ -157,10 +154,7 @@ impl ConnectionManager {
             })
             .await??;
         let Some(app_packet) = packet else {
-            return Err(ProbeError::new(
-                ProbeErrorKind::InvalidConnectionInitiation,
-                "Invalid connection initiation",
-            ));
+            return Err(ProbeError::InvalidConnectionInitiation("Invalid connection initiation".to_string()));
         };
         Ok(app_packet)
     }

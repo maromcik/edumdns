@@ -1,5 +1,4 @@
-use crate::error::BackendErrorKind::UserPasswordDoesNotMatch;
-use crate::error::{BackendError, BackendErrorKind, DbError, DbErrorKind};
+use crate::error::{BackendError, DbError};
 use crate::models::{Group, GroupProbePermission, GroupUser, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResult, DbResultMultiple, DbResultSingle,
@@ -41,13 +40,7 @@ impl PgUserRepository {
             .first::<User>(&mut conn)
             .await?;
         if u.deleted_at.is_some() {
-            return Err(DbError::new(
-                DbErrorKind::BackendError(BackendError::new(
-                    BackendErrorKind::Deleted,
-                    "User has been deleted",
-                )),
-                "",
-            ));
+            return Err(DbError::BackendError(BackendError::Deleted));
         }
         PgUserRepository::verify_password(u, &params.password)
     }
@@ -64,20 +57,14 @@ impl PgUserRepository {
 
     pub fn verify_password(u: User, given_password: &str) -> DbResultSingle<User> {
         let Some(hash) = &u.password_hash else {
-            return Err(DbError::from(BackendError::new(
-                UserPasswordDoesNotMatch,
-                "",
-            )));
+            return Err(DbError::BackendError(BackendError::UserPasswordDoesNotMatch));
         };
         match verify_password_hash(hash, given_password) {
             Ok(ret) => {
                 if ret {
                     return Ok(u);
                 }
-                Err(DbError::from(BackendError::new(
-                    UserPasswordDoesNotMatch,
-                    "",
-                )))
+                return Err(DbError::BackendError(BackendError::UserPasswordDoesNotMatch));
             }
             Err(e) => Err(e),
         }

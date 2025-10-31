@@ -26,6 +26,10 @@ pub enum ServerErrorKind {
     EbpfMapError,
     #[error("tls error")]
     TlsError,
+    #[error("an error occurred while processing your request: {0}")]
+    PacketProcessingError(String),
+    #[error("fatal packet transmitter error: {0}")]
+    PacketTransmitterError(String),
 }
 
 #[derive(Error, Debug, Clone)]

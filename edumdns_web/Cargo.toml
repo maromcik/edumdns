@@ -7,6 +7,7 @@ edition = "2024"
 actix_web_openidconnect = { path = "../actix-oidc-connect" }
 edumdns_core = { path = "../edumdns_core" }
 edumdns_db = { path = "../edumdns_db" }
+edumdns_server = { path = "../edumdns_server" }
 actix-files = { version = "0.6.7" }
 actix-web = { version = "4.11.0" }
 dotenvy = "0.15.7"

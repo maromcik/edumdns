@@ -6,12 +6,12 @@ use edumdns_core::error::{CoreError, CoreErrorKind};
 use edumdns_db::error::{BackendErrorKind, DbError, DbErrorKind};
 use minijinja::{Environment, path_loader};
 use std::env;
-use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::num::ParseIntError;
 use std::str::ParseBoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
+use edumdns_server::error::{ServerError, ServerErrorKind};
 
 /// User facing error type
 #[derive(Error, Debug, Clone)]
@@ -20,6 +20,8 @@ pub enum WebErrorKind {
     CoreError(CoreError),
     #[error("{0}")]
     DbError(DbError),
+    #[error("{0}")]
+    ServerError(ServerError),
     #[error("internal server error")]
     InternalServerError,
     #[error("not found")]
@@ -88,6 +90,7 @@ impl Display for WebError {
         match &self.error_kind {
             WebErrorKind::CoreError(e) => write!(f, "WebError -> {}", e),
             WebErrorKind::DbError(e) => write!(f, "WebError -> {}", e),
+            WebErrorKind::ServerError(e) => write!(f, "WebError -> {}", e),
             _ => write!(f, "WebError: {}: {}", self.error_kind, self.message),
         }
     }
@@ -102,6 +105,12 @@ impl From<CoreError> for WebError {
 impl From<DbError> for WebError {
     fn from(value: DbError) -> Self {
         Self::new(WebErrorKind::DbError(value), "")
+    }
+}
+
+impl From<ServerError> for WebError {
+    fn from(value: ServerError) -> Self {
+        Self::new(WebErrorKind::ServerError(value), "")
     }
 }
 
@@ -234,6 +243,10 @@ impl ResponseError for WebError {
                 | DbErrorKind::NotNullError => StatusCode::BAD_REQUEST,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             },
+            WebErrorKind::ServerError(ref srv_e) => match &srv_e.error_kind {
+                ServerErrorKind::PacketProcessingError(_) => StatusCode::BAD_REQUEST,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }
             WebErrorKind::TemplatingError
             | WebErrorKind::InternalServerError
             | WebErrorKind::IdentityError

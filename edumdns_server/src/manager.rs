@@ -8,14 +8,12 @@ use crate::utilities::rewrite_payloads;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::Id;
-use edumdns_core::app_packet::{
-    AppPacket, EntityType, LocalAppPacket, LocalCommandPacket, LocalStatusPacket, NetworkAppPacket,
-    NetworkCommandPacket, NetworkStatusPacket, PacketTransmitRequestPacket, ProbePacket,
+use edumdns_core::app_packet::{EntityType, NetworkAppPacket,
+    NetworkCommandPacket, NetworkStatusPacket, ProbePacket,
     ProbeResponse,
 };
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
-use edumdns_core::error::CoreError;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::SelectManyPackets;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
@@ -28,6 +26,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
+use crate::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket, PacketTransmitRequestPacket};
 
 #[derive(Clone)]
 pub struct Proxy {
@@ -368,7 +367,7 @@ impl PacketManager {
     pub async fn transmit_device_packets(
         &mut self,
         request: PacketTransmitRequestPacket,
-        respond_to: tokio::sync::oneshot::Sender<Result<(), CoreError>>,
+        respond_to: tokio::sync::oneshot::Sender<Result<(), ServerError>>,
     ) {
         let packet_repo = self.pg_packet_repository.clone();
         let proxy = self.proxy.clone();
@@ -376,6 +375,14 @@ impl PacketManager {
         let global_timeout = self.global_timeout;
         let command_transmitter_local = self.command_transmitter.clone();
         tokio::task::spawn(async move {
+
+            if proxy.is_none() && request.device.proxy {
+                let err = "eBPF is not configured properly; contact your administrator";
+                error!("{err} for target: {request}");
+                let _ = respond_to.send(Err(ServerError::new(ServerErrorKind::EbpfMapError, err)));
+                return;
+            }
+
             let packets = match packet_repo
                 .read_many(&SelectManyPackets::new(
                     None,
@@ -394,7 +401,7 @@ impl PacketManager {
                 Ok(p) => p,
                 Err(e) => {
                     warn!("No packets found for target: {request}: {e}");
-                    let _ = respond_to.send(Err(CoreError::from_any(e.to_string())));
+                    let _ = respond_to.send(Err(ServerError::new(ServerErrorKind::PacketProcessingError("pica".to_string()), e.to_string().as_str())));
                     return;
                 }
             };
@@ -411,7 +418,7 @@ impl PacketManager {
             if payloads.is_empty() {
                 let warning = "No packets left after processing";
                 warn!("{warning} for target: {request}");
-                let _ = respond_to.send(Err(CoreError::from_any(warning)));
+                let _ = respond_to.send(Err(ServerError::new(ServerErrorKind::PacketProcessingError("pica".to_string()), warning)));
                 return;
             }
 
@@ -427,21 +434,22 @@ impl PacketManager {
                     Ok(_) => {}
                     Err(e) => {
                         error!("Could not add IP to an ebpf map: {e}");
-                        let _ = respond_to.send(Err(CoreError::from_any(e.to_string())));
+                        let _ = respond_to.send(Err(e));
                         return;
                     }
                 }
             }
 
-            let transmitter =
-                PacketTransmitter::new(payloads, request.clone(), global_timeout).await;
-
-            let Ok(transmitter) = transmitter else {
-                let err = "Could not create a packet transmitter";
-                error!("{err} for target: {request}");
-                let _ = respond_to.send(Err(CoreError::from_any(err)));
-                return;
+            let transmitter = match PacketTransmitter::new(payloads, request.clone(), global_timeout).await {
+                Ok(t) => t,
+                Err(e) => {
+                    error!("{e}");
+                    let _ = respond_to.send(Err(e));
+                    return;
+                }
             };
+
+
             let task =
                 PacketTransmitterTask::new(transmitter, command_transmitter_local, request.id);
             info!("Transmitter task created for target: {}", request);

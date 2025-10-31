@@ -3,10 +3,6 @@ use crate::forms::device::DeviceCustomPacketTransmitRequest;
 use actix_session::Session;
 use actix_web::web;
 use edumdns_core::app_packet::Id;
-use edumdns_core::app_packet::{
-    AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestDevice,
-    PacketTransmitRequestPacket,
-};
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
 use edumdns_db::models::Device;
@@ -14,6 +10,7 @@ use edumdns_db::repositories::device::models::CreatePacketTransmitRequest;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use time::OffsetDateTime;
 use tokio::sync::mpsc::Sender;
+use edumdns_server::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestDevice, PacketTransmitRequestPacket};
 
 pub async fn request_packet_transmit_helper(
     device_repo: web::Data<PgDeviceRepository>,
@@ -59,20 +56,13 @@ pub async fn request_packet_transmit_helper(
         .await
         .map_err(CoreError::from)?;
 
-    if let Err(e) = channel.1.await.map_err(CoreError::from)? {
+    let res = channel.1.await.map_err(CoreError::from)?;
+    if res.is_err() {
         device_repo
             .delete_packet_transmit_request(&packet_transmit_request.id)
             .await?;
-        return Err(WebError::new(
-            WebErrorKind::BadRequest,
-            format!(
-                "An error occurred while processing your request: {}",
-                e.message
-            )
-            .as_str(),
-        ));
     }
-
+    res?;
     Ok(())
 }
 

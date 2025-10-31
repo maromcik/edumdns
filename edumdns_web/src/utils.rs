@@ -10,7 +10,6 @@ use actix_web::dev::ServiceRequest;
 use actix_web::http::header;
 use actix_web::web::{JsonConfig, PathConfig, QueryConfig};
 use actix_web_openidconnect::ActixWebOpenId;
-use edumdns_core::app_packet::AppPacket;
 use edumdns_db::models::GroupProbePermission;
 use edumdns_db::repositories::common::Permission;
 use minijinja::{Environment, Value, path_loader};
@@ -19,6 +18,7 @@ use serde::Deserialize;
 use std::env;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
+use edumdns_server::app_packet::AppPacket;
 
 #[derive(Clone)]
 pub struct DeviceAclApDatabase {

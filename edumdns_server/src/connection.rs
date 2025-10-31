@@ -4,7 +4,7 @@ use crate::probe_tracker::{ProbeStat, SharedProbeTracker};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::{
-    AppPacket, NetworkAppPacket, NetworkStatusPacket, ProbeConfigElement, ProbeConfigPacket,
+    NetworkAppPacket, NetworkStatusPacket, ProbeConfigElement, ProbeConfigPacket,
 };
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
@@ -22,6 +22,7 @@ use std::time::Duration;
 use tokio::io::AsyncReadExt;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
+use crate::app_packet::AppPacket;
 
 pub struct ConnectionManager {
     handle: TcpConnectionHandle,

@@ -1,13 +1,9 @@
 use crate::connection::ConnectionManager;
-use crate::database::DatabaseManager;
 use crate::error::{ServerError, ServerErrorKind};
-use crate::manager::PacketManager;
-use crate::ordered_map::OrderedMap;
-use crate::probe_tracker::{SharedProbeTracker, watchdog};
-use crate::{BUFFER_SIZE, ServerTlsConfig, parse_host};
+use crate::probe_tracker::{SharedProbeTracker};
+use crate::{ServerTlsConfig, parse_host};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::AppPacket;
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::TcpConnectionHandle;
 use log::{debug, info, warn};
@@ -20,6 +16,7 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tokio::sync::mpsc::Sender;
+use crate::app_packet::AppPacket;
 
 pub type ProbeHandles = Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>;
 

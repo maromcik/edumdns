@@ -18,7 +18,7 @@ use actix_web::{App, HttpServer, cookie::Key};
 use actix_web_openidconnect::ActixWebOpenId;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::AppPacket;
+use edumdns_server::app_packet::AppPacket;
 use log::{error, info, warn};
 use std::env;
 use std::sync::Arc;

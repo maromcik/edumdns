@@ -17,7 +17,6 @@ use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
-use edumdns_core::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket};
 use edumdns_core::app_packet::{EntityType, Id};
 use edumdns_core::bincode_types::{IpNetwork, MacAddr};
 use edumdns_core::error::CoreError;
@@ -33,6 +32,7 @@ use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use std::collections::HashMap;
 use uuid::Uuid;
+use edumdns_server::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket};
 
 #[get("")]
 pub async fn get_devices(

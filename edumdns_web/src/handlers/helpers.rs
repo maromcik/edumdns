@@ -10,7 +10,7 @@ use edumdns_db::repositories::device::models::CreatePacketTransmitRequest;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use time::OffsetDateTime;
 use tokio::sync::mpsc::Sender;
-use edumdns_server::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestDevice, PacketTransmitRequestPacket};
+use edumdns_server::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket};
 
 pub async fn request_packet_transmit_helper(
     device_repo: web::Data<PgDeviceRepository>,
@@ -19,7 +19,7 @@ pub async fn request_packet_transmit_helper(
     command_channel: Sender<AppPacket>,
     form: &DeviceCustomPacketTransmitRequest,
 ) -> Result<(), WebError> {
-    let request = CreatePacketTransmitRequest {
+    let request_db = CreatePacketTransmitRequest {
         device_id: device.id,
         user_id: *user_id,
         target_ip: form.target_ip,
@@ -28,7 +28,7 @@ pub async fn request_packet_transmit_helper(
         created_at: (!form.permanent).then_some(OffsetDateTime::now_utc()),
     };
 
-    let packet_transmit_request = match device_repo.create_packet_transmit_request(&request).await {
+    let request = match device_repo.create_packet_transmit_request(&request_db).await {
         Ok(p) => p,
         Err(_) => {
             return Err(WebError::new(
@@ -37,12 +37,10 @@ pub async fn request_packet_transmit_helper(
             ));
         }
     };
-
+    let request_id = request.id;
     let request = PacketTransmitRequestPacket::new(
-        packet_transmit_request.id,
-        PacketTransmitRequestDevice::from(device),
-        form.target_ip,
-        form.target_port,
+        device,
+        request,
     );
 
     let channel = tokio::sync::oneshot::channel();
@@ -59,7 +57,7 @@ pub async fn request_packet_transmit_helper(
     let res = channel.1.await.map_err(CoreError::from)?;
     if res.is_err() {
         device_repo
-            .delete_packet_transmit_request(&packet_transmit_request.id)
+            .delete_packet_transmit_request(&request_id)
             .await?;
     }
     res?;

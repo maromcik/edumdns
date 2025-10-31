@@ -36,7 +36,7 @@ pub struct Proxy {
 }
 
 pub struct PacketTransmitJob {
-    pub request: PacketTransmitRequestPacket,
+    pub packet: PacketTransmitRequestPacket,
     pub task: PacketTransmitterTask,
 }
 
@@ -366,7 +366,7 @@ impl PacketManager {
 
     pub async fn transmit_device_packets(
         &mut self,
-        request: PacketTransmitRequestPacket,
+        request_packet: PacketTransmitRequestPacket,
         respond_to: tokio::sync::oneshot::Sender<Result<(), ServerError>>,
     ) {
         let packet_repo = self.pg_packet_repository.clone();
@@ -376,9 +376,9 @@ impl PacketManager {
         let command_transmitter_local = self.command_transmitter.clone();
         tokio::task::spawn(async move {
 
-            if proxy.is_none() && request.device.proxy {
+            if proxy.is_none() && request_packet.device.proxy {
                 let err = "eBPF is not configured properly; contact your administrator";
-                error!("{err} for target: {request}");
+                error!("{err} for target: {request_packet}");
                 let _ = respond_to.send(Err(ServerError::new(ServerErrorKind::EbpfMapError, err)));
                 return;
             }
@@ -386,10 +386,10 @@ impl PacketManager {
             let packets = match packet_repo
                 .read_many(&SelectManyPackets::new(
                     None,
-                    Some(request.device.probe_id),
-                    Some(request.device.mac),
+                    Some(request_packet.device.probe_id),
+                    Some(request_packet.device.mac),
                     None,
-                    Some(request.device.ip),
+                    Some(request_packet.device.ip),
                     None,
                     None,
                     None,
@@ -400,15 +400,15 @@ impl PacketManager {
             {
                 Ok(p) => p,
                 Err(e) => {
-                    warn!("No packets found for target: {request}: {e}");
+                    warn!("No packets found for target: {request_packet}: {e}");
                     let _ = respond_to.send(Err(ServerError::new(ServerErrorKind::PacketProcessingError("pica".to_string()), e.to_string().as_str())));
                     return;
                 }
             };
 
-            info!("Packets found for target: {}", request);
+            info!("Packets found for target: {}", request_packet);
             let payloads = if let Some(p) = &proxy
-                && request.device.proxy
+                && request_packet.device.proxy
             {
                 rewrite_payloads(packets, p.proxy_ipv4, p.proxy_ipv6)
             } else {
@@ -416,20 +416,20 @@ impl PacketManager {
             };
 
             if payloads.is_empty() {
-                let warning = "No packets left after processing";
-                warn!("{warning} for target: {request}");
-                let _ = respond_to.send(Err(ServerError::new(ServerErrorKind::PacketProcessingError("pica".to_string()), warning)));
+                let warning = "no packets left after processing";
+                warn!("{warning} for target: {request_packet}");
+                let _ = respond_to.send(Err(ServerError::new(ServerErrorKind::PacketProcessingError(warning.to_string()), "")));
                 return;
             }
 
             if let Some(p) = proxy
-                && request.device.proxy
+                && request_packet.device.proxy
             {
                 match p
                     .ebpf_updater
                     .lock()
                     .await
-                    .add_ip(request.device.ip, request.target_ip)
+                    .add_ip(request_packet.device.ip, request_packet.request.target_ip)
                 {
                     Ok(_) => {}
                     Err(e) => {
@@ -440,7 +440,7 @@ impl PacketManager {
                 }
             }
 
-            let transmitter = match PacketTransmitter::new(payloads, request.clone(), global_timeout).await {
+            let transmitter = match PacketTransmitter::new(payloads, request_packet.clone(), global_timeout).await {
                 Ok(t) => t,
                 Err(e) => {
                     error!("{e}");
@@ -451,13 +451,13 @@ impl PacketManager {
 
 
             let task =
-                PacketTransmitterTask::new(transmitter, command_transmitter_local, request.id);
-            info!("Transmitter task created for target: {}", request);
-            let job = PacketTransmitJob { request, task };
+                PacketTransmitterTask::new(transmitter, command_transmitter_local, request_packet.request.id);
+            info!("Transmitter task created for target: {}", request_packet);
+            let job = PacketTransmitJob { packet: request_packet, task };
             transmitter_tasks
                 .lock()
                 .await
-                .entry(job.request.id)
+                .entry(job.packet.request.id)
                 .or_insert(job);
             let _ = respond_to.send(Ok(()));
         });
@@ -481,12 +481,12 @@ impl PacketManager {
             job.task.transmitter_task.abort();
 
             if let Some(proxy) = &proxy
-                && job.request.device.proxy
+                && job.packet.device.proxy
                 && let Err(e) = proxy
                     .ebpf_updater
                     .lock()
                     .await
-                    .remove_ip(job.request.device.ip, job.request.target_ip)
+                    .remove_ip(job.packet.device.ip, job.packet.request.target_ip)
             {
                 error!("{e}");
             };

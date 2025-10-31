@@ -177,7 +177,7 @@ pub struct Packet {
 }
 
 #[derive(
-    Serialize, Deserialize, Queryable, Selectable, Associations, AsChangeset, Insertable, Debug,
+    Serialize, Deserialize, Queryable, Selectable, Associations, AsChangeset, Insertable, Debug, Hash, Eq, PartialEq, Clone
 )]
 #[diesel(table_name = crate::schema::packet_transmit_request)]
 #[diesel(check_for_backend(diesel::pg::Pg))]

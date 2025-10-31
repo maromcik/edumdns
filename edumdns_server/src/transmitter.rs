@@ -64,12 +64,12 @@ impl PacketTransmitter {
     pub async fn transmit(&self) {
         let host = format!(
             "{}:{}",
-            self.transmit_request.target_ip.ip(),
-            self.transmit_request.target_port
+            self.transmit_request.request.target_ip.ip(),
+            self.transmit_request.request.target_port
         );
         info!("Initiating packet transmission to: {}", host);
-        let interval = Duration::from_millis(self.transmit_request.device.interval);
-        let duration = Duration::from_secs(self.transmit_request.device.duration);
+        let interval = Duration::from_millis(self.transmit_request.device.interval as u64);
+        let duration = Duration::from_secs(self.transmit_request.device.duration as u64);
         let sleep_interval = interval * DEFAULT_INTERVAL_MULTIPLICATOR;
         let total_time = Instant::now();
         loop {
@@ -87,7 +87,7 @@ impl PacketTransmitter {
                 }
                 debug!(
                     "Packet sent from device: {} to client: {}",
-                    self.transmit_request.device.ip, self.transmit_request.target_ip
+                    self.transmit_request.device.ip, self.transmit_request.request.target_ip
                 );
                 if total_time.elapsed() > duration {
                     break;

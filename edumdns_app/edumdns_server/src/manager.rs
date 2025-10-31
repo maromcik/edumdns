@@ -1,7 +1,7 @@
 use crate::BUFFER_SIZE;
 use crate::database::DbCommand;
 use crate::ebpf::EbpfUpdater;
-use crate::error::{ServerError, ServerErrorKind};
+use crate::error::{ServerError};
 use crate::listen::ProbeHandles;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use crate::utilities::rewrite_payloads;
@@ -324,10 +324,7 @@ impl PacketManager {
             handle.close().await?;
         } else {
             warn!("Probe not found: {}", id);
-            return Err(ServerError::new(
-                ServerErrorKind::ProbeNotFound,
-                "not connected",
-            ));
+            return Err(ServerError::ProbeNotFound);
         }
         Ok(())
     }
@@ -379,7 +376,7 @@ impl PacketManager {
             if proxy.is_none() && request_packet.device.proxy {
                 let err = "eBPF is not configured properly; contact your administrator";
                 error!("{err} for target: {request_packet}");
-                let _ = respond_to.send(Err(ServerError::new(ServerErrorKind::EbpfMapError, err)));
+                let _ = respond_to.send(Err(ServerError::EbpfMapError(err.to_string())));
                 return;
             }
 
@@ -401,7 +398,7 @@ impl PacketManager {
                 Ok(p) => p,
                 Err(e) => {
                     warn!("No packets found for target: {request_packet}: {e}");
-                    let _ = respond_to.send(Err(ServerError::new(ServerErrorKind::PacketProcessingError("pica".to_string()), e.to_string().as_str())));
+                    let _ = respond_to.send(Err(ServerError::PacketProcessingError(e.to_string())));
                     return;
                 }
             };
@@ -418,7 +415,7 @@ impl PacketManager {
             if payloads.is_empty() {
                 let warning = "no packets left after processing";
                 warn!("{warning} for target: {request_packet}");
-                let _ = respond_to.send(Err(ServerError::new(ServerErrorKind::PacketProcessingError(warning.to_string()), "")));
+                let _ = respond_to.send(Err(ServerError::PacketProcessingError(warning.to_string())));
                 return;
             }
 
@@ -433,7 +430,6 @@ impl PacketManager {
                 {
                     Ok(_) => {}
                     Err(e) => {
-                        error!("Could not add IP to an ebpf map: {e}");
                         let _ = respond_to.send(Err(e));
                         return;
                     }

@@ -11,7 +11,7 @@ use std::num::ParseIntError;
 use std::str::ParseBoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
-use edumdns_server::error::{ServerError, ServerErrorKind};
+use edumdns_server::error::{ServerError};
 
 /// User facing error type
 #[derive(Error, Debug, Clone)]
@@ -36,8 +36,6 @@ pub enum WebErrorKind {
     SessionError,
     #[error("cookie error")]
     CookieError,
-    #[error("conflict")]
-    Conflict,
     #[error("file error")]
     FileError,
     #[error("unauthorized")]
@@ -226,7 +224,6 @@ impl ResponseError for WebError {
             | WebErrorKind::ParseError => StatusCode::BAD_REQUEST,
             WebErrorKind::DeviceTransmitRequestDenied => StatusCode::FORBIDDEN,
             WebErrorKind::NotFound => StatusCode::NOT_FOUND,
-            WebErrorKind::Conflict => StatusCode::CONFLICT,
             WebErrorKind::Unauthorized  => StatusCode::UNAUTHORIZED,
             WebErrorKind::CoreError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             WebErrorKind::DbError(ref db_e) => match &db_e.error_kind {
@@ -243,8 +240,8 @@ impl ResponseError for WebError {
                 | DbErrorKind::NotNullError => StatusCode::BAD_REQUEST,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             },
-            WebErrorKind::ServerError(ref srv_e) => match &srv_e.error_kind {
-                ServerErrorKind::PacketProcessingError(_) => StatusCode::BAD_REQUEST,
+            WebErrorKind::ServerError(ref srv_e) => match &srv_e {
+                ServerError::PacketProcessingError(_) => StatusCode::BAD_REQUEST,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             }
             WebErrorKind::TemplatingError

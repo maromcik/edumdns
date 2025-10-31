@@ -1,5 +1,5 @@
 use crate::connection::ConnectionManager;
-use crate::error::{ServerError, ServerErrorKind};
+use crate::error::{ServerError};
 use crate::probe_tracker::{SharedProbeTracker};
 use crate::{ServerTlsConfig, parse_host};
 use diesel_async::AsyncPgConnection;
@@ -85,7 +85,7 @@ pub async fn listen(
                     debug!("Probe {uuid} removed from the map");
                 }
                 Err(err) => {
-                    if let ServerErrorKind::ProbeNotAdopted = err.error_kind {
+                    if let ServerError::ProbeNotAdopted = err {
                         info!("Client {addr} tried to connect, but probe is not adopted");
                     } else {
                         warn!("{err}");

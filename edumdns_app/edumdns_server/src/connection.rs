@@ -1,4 +1,4 @@
-use crate::error::{ServerError, ServerErrorKind};
+use crate::error::{ServerError};
 use crate::listen::ProbeHandles;
 use crate::probe_tracker::{ProbeStat, SharedProbeTracker};
 use diesel_async::AsyncPgConnection;
@@ -11,15 +11,14 @@ use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::error::CoreError;
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_db::models::Probe;
-use edumdns_db::repositories::common::{DbCreate, DbReadOne, DbResultSingle};
+use edumdns_db::repositories::common::{DbCreate, DbReadOne};
 use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use ipnetwork::IpNetwork;
-use log::{trace, warn};
+use log::{trace};
 use rustls::ServerConfig;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::io::AsyncReadExt;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
 use crate::app_packet::AppPacket;
@@ -69,10 +68,7 @@ impl ConnectionManager {
 
     pub async fn connection_init_server(&mut self) -> Result<Uuid, ServerError> {
         let error = |uuid, msg| {
-            Err(ServerError::new(
-                ServerErrorKind::InvalidConnectionInitiation,
-                format!("Probe: {:?}; {}", uuid, msg).as_str(),
-            ))
+            Err(ServerError::InvalidConnectionInitiation(format!("Probe: {:?}; {}", uuid, msg)))
         };
         let packet = self.receive_init_packet().await?;
 
@@ -144,10 +140,7 @@ impl ConnectionManager {
                     )
                 })
                 .await??;
-            return Err(ServerError::new(
-                ServerErrorKind::ProbeNotAdopted,
-                "adopt it in the web interface first",
-            ));
+            return Err(ServerError::ProbeNotAdopted);
         }
 
         let packet = self.receive_init_packet().await?;
@@ -192,10 +185,7 @@ impl ConnectionManager {
             })
             .await??;
         let Some(app_packet) = packet else {
-            return Err(ServerError::new(
-                ServerErrorKind::InvalidConnectionInitiation,
-                "could not receive a valid connection initiation packet",
-            ));
+            return Err(ServerError::InvalidConnectionInitiation("could not receive a valid connection initiation packet".to_string()));
         };
         Ok(app_packet)
     }

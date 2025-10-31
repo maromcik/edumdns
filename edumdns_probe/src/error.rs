@@ -12,10 +12,6 @@ pub enum ProbeErrorKind {
     IoError,
     #[error("Encode/Decode error")]
     EncodeDecodeError,
-    #[error("Tokio connection error")]
-    ConnectionError,
-    #[error("interface error")]
-    InterfaceError,
     #[error("tokio task error")]
     TaskError,
     #[error("probe connection initiation error")]
@@ -111,12 +107,6 @@ impl<T> From<tokio::sync::mpsc::error::SendError<T>> for ProbeError {
             ProbeErrorKind::TokioMpscChannelError,
             value.to_string().as_str(),
         )
-    }
-}
-
-impl From<std::env::VarError> for ProbeError {
-    fn from(value: std::env::VarError) -> Self {
-        Self::new(ProbeErrorKind::EnvError, value.to_string().as_str())
     }
 }
 

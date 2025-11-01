@@ -112,18 +112,3 @@ pub struct UserLoginForm {
     pub password: String,
     pub return_url: String,
 }
-
-// #[derive(Serialize, Deserialize)]
-// pub struct UserQuery {
-//     pub email: Option<String>,
-//     pub name: Option<String>,
-//     pub surname: Option<String>,
-//     pub admin: Option<bool>,
-//     pub deleted: Option<bool>,
-//     pub page: Option<i64>,
-// }
-
-#[derive(serde::Deserialize)]
-pub struct SearchGroupsQuery {
-    pub q: String,
-}

@@ -9,17 +9,17 @@ pub enum ProxyErrorKind {
     IoError,
     #[error("Encode/Decode error")]
     EnvError,
-    #[error("parse error")]
+    #[error("Parse error")]
     ParseError,
-    #[error("ebpf error")]
+    #[error("eBPF error")]
     EbpfError,
-    #[error("ebpf map error")]
+    #[error("eBPF map error")]
     EbpfMapError,
-    #[error("ebpf pin error")]
+    #[error("eBPF pin error")]
     EbpfPinError,
-    #[error("anyhow any error")]
+    #[error("Anyhow any error")]
     AnyError,
-    #[error("ebpf config missing")]
+    #[error("eBPF config missing")]
     MapMissing,
 }
 

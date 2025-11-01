@@ -8,6 +8,7 @@ use pnet::transport::{TransportReceiver, TransportSender};
 use pnet::{datalink, transport};
 use std::time::Duration;
 
+/// Alternative approach, use low-level pnet to capture packets, currently not used
 pub struct NetworkConfig {
     pub output_device: String,
     pub interval: Option<Duration>,

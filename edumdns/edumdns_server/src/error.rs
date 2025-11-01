@@ -12,19 +12,19 @@ pub enum ServerError {
     DbError(DbError),
     #[error("I/O error: {0}")]
     IoError(String),
-    #[error("invalid connection initiation: {0}")]
+    #[error("Invalid connection initiation: {0}")]
     InvalidConnectionInitiation(String),
-    #[error("probe not adopted; adopt it in the web interface first")]
+    #[error("Probe not adopted; adopt it in the web interface first")]
     ProbeNotAdopted,
-    #[error("probe not found; possibly not connected")]
+    #[error("Probe not found; possibly not connected")]
     ProbeNotFound,
-    #[error("parse error: {0}")]
+    #[error("Parse error: {0}")]
     ParseError(String),
     #[error("eBPF map error: {0}")]
     EbpfMapError(String),
     #[error("TLS error: {0}")]
     TlsError(String),
-    #[error("an error occurred while processing your request: {0}")]
+    #[error("An error occurred while processing your request: {0}")]
     PacketProcessingError(String),
 }
 

@@ -6,7 +6,7 @@ use thiserror::Error;
 pub enum ProbeError {
     #[error("Core Error -> {0}")]
     CoreError(#[from] CoreError),
-    #[error("invalid arguments: {0}")]
+    #[error("Invalid arguments: {0}")]
     ArgumentError(String),
     #[error("I/O error: {0}")]
     IoError(String),
@@ -14,17 +14,17 @@ pub enum ProbeError {
     EncodeDecodeError(String),
     #[error("Tokio task error: {0}")]
     TaskError(String),
-    #[error("connection initiation error: {0}")]
+    #[error("Connection initiation error: {0}")]
     InvalidConnectionInitiation(String),
     #[error("Tokio oneshot channel error: {0}")]
     TokioOneshotChannelError(String),
     #[error("Tokio mpsc channel error: {0}")]
     TokioMpscChannelError(String),
-    #[error("environment variable error: {0}")]
+    #[error("Environment variable error: {0}")]
     EnvError(String),
-    #[error("parse error: {0}")]
+    #[error("Parse error: {0}")]
     ParseError(String),
-    #[error("capture error: {0}")]
+    #[error("Capture error: {0}")]
     CaptureError(String),
     #[error("{0}")]
     CaptureFilterError(String),

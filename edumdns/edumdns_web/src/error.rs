@@ -22,35 +22,35 @@ pub enum WebError {
     DbError(DbError),
     #[error("ServerError -> {0}")]
     ServerError(ServerError),
-    #[error("internal server error: {0}")]
+    #[error("Internal server error: {0}")]
     InternalServerError(String),
-    #[error("not found: {0}")]
+    #[error("Not found: {0}")]
     NotFound(String),
-    #[error("bad request: {0}")]
+    #[error("Bad request: {0}")]
     BadRequest(String),
-    #[error("templating error: {0}")]
+    #[error("Templating error: {0}")]
     TemplatingError(String),
-    #[error("identity error: {0}")]
+    #[error("Identity error: {0}")]
     IdentityError(String),
-    #[error("session error: {0}")]
+    #[error("Session error: {0}")]
     SessionError(String),
-    #[error("cookie error: {0}")]
+    #[error("Cookie error: {0}")]
     CookieError(String),
-    #[error("file error: {0}")]
+    #[error("File error: {0}")]
     FileError(String),
-    #[error("unauthorized: {0}")]
+    #[error("Unauthorized: {0}")]
     Unauthorized(String),
-    #[error("parse error: {0}")]
+    #[error("Parse error: {0}")]
     ParseError(String),
-    #[error("device discovery request denied: {0}")]
+    #[error("Device discovery request denied: {0}")]
     DeviceTransmitRequestDenied(String),
     #[error("AP database error: {0}")]
     ApDatabaseError(String),
-    #[error("oidc error: {0}")]
+    #[error("OIDC error: {0}")]
     OidcError(String),
-    #[error("dns packet manipulation error: {0}")]
+    #[error("DNS packet manipulation error: {0}")]
     DnsPacketManipulationError(String),
-    #[error("could not load the env var: {0}")]
+    #[error("Could not load the env var: {0}")]
     EnvVarError(String),
 }
 

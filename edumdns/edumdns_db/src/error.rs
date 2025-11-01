@@ -6,19 +6,19 @@ use thiserror::Error;
 pub enum DbError {
     #[error("Backend error -> {0}")]
     BackendError(#[from] BackendError),
-    #[error("database error: {0}")]
+    #[error("Database error: {0}")]
     DatabaseError(String),
-    #[error("migration error: {0}")]
+    #[error("Migration error: {0}")]
     MigrationError(String),
-    #[error("unique constraint error: {0}")]
+    #[error("Unique constraint error: {0}")]
     UniqueConstraintError(String),
-    #[error("not null error: {0}")]
+    #[error("Not null error: {0}")]
     NotNullError(String),
-    #[error("foreign key error: {0}")]
+    #[error("Foreign key error: {0}")]
     ForeignKeyError(String),
-    #[error("database connection error: {0}")]
+    #[error("Database connection error: {0}")]
     ConnectionError(String),
-    #[error("database pool (build) error: {0}")]
+    #[error("Database pool (build) error: {0}")]
     DbPoolError(String),
 }
 
@@ -80,16 +80,16 @@ impl From<pbkdf2::password_hash::Error> for DbError {
 #[derive(Debug, Clone, Error)]
 pub enum BackendError {
     // User errors
-    #[error("entity does not exist: {0}")]
+    #[error("Entity does not exist: {0}")]
     DoesNotExist(String),
-    #[error("entity has been deleted")]
+    #[error("Entity has been deleted")]
     Deleted,
-    #[error("update parameters are empty")]
+    #[error("Update parameters are empty")]
     UpdateParametersEmpty,
-    #[error("the provided email and password combination is incorrect.")]
+    #[error("The provided email and password combination is incorrect.")]
     UserPasswordDoesNotMatch,
-    #[error("password verification failed: {0}")]
+    #[error("Password verification failed: {0}")]
     UserPasswordVerificationFailed(String),
-    #[error("permission denied: {0}")]
+    #[error("Permission denied: {0}")]
     PermissionDenied(String),
 }

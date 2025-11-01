@@ -1,10 +1,11 @@
+use std::fmt::Debug;
 use pnet::datalink::ParseMacAddrErr;
 use std::net::AddrParseError;
 use std::num::ParseIntError;
 use std::sync::mpsc;
 use thiserror::Error;
 
-#[derive(Debug, Clone, Error, Eq, PartialEq)]
+#[derive(Clone, Error, Eq, PartialEq)]
 pub enum CoreError {
     #[error("network interface error: {0}")]
     NetworkInterfaceError(String),
@@ -36,6 +37,11 @@ pub enum CoreError {
     DnsError(String),
 }
 
+impl Debug for CoreError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{0}", self)
+    }
+}
 
 impl<T> From<mpsc::SendError<T>> for CoreError {
     fn from(value: mpsc::SendError<T>) -> Self {

@@ -2,7 +2,7 @@ use edumdns_core::error::CoreError;
 use std::fmt::Debug;
 use thiserror::Error;
 
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Clone)]
 pub enum ProbeError {
     #[error("Core Error -> {0}")]
     CoreError(#[from] CoreError),
@@ -29,6 +29,13 @@ pub enum ProbeError {
     #[error("{0}")]
     CaptureFilterError(String),
 }
+
+impl Debug for ProbeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{0}", self)
+    }
+}
+
 impl From<pcap::Error> for ProbeError {
     fn from(value: pcap::Error) -> Self {
         ProbeError::CaptureError(value.to_string())

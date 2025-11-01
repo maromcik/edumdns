@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use std::net::AddrParseError;
 use thiserror::Error;
 
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Clone)]
 pub enum ServerError {
     #[error("CoreError -> {0}")]
     CoreError(CoreError),
@@ -28,28 +28,11 @@ pub enum ServerError {
     PacketProcessingError(String),
 }
 
-// #[derive(Error, Debug, Clone)]
-// pub struct ServerError {
-//     pub error_kind: ServerErrorKind,
-// }
-
-// impl Display for ServerError {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         match &self {
-//             ServerError::CoreError(e) => write!(f, "ServerError -> {}", e),
-//             ServerError::DbError(e) => write!(f, "ServerError -> {}", e),
-//             _ => write!(f, "ServerError: {}", self),
-//         }
-//     }
-// }
-
-// impl ServerError {
-//     pub fn new(error_kind: ServerErrorKind) -> Self {
-//         Self {
-//             error_kind,
-//         }
-//     }
-// }
+impl Debug for ServerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{0}", self)
+    }
+}
 
 impl From<CoreError> for ServerError {
     fn from(value: CoreError) -> Self {

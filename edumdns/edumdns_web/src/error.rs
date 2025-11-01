@@ -14,7 +14,7 @@ use thiserror::Error;
 use tokio::task::JoinError;
 
 /// User facing error type
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Clone)]
 pub enum WebError {
     #[error("CoreError -> {0}")]
     CoreError(CoreError),
@@ -52,6 +52,12 @@ pub enum WebError {
     DnsPacketManipulationError(String),
     #[error("Could not load the env var: {0}")]
     EnvVarError(String),
+}
+
+impl Debug for WebError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{0}", self)
+    }
 }
 
 impl From<CoreError> for WebError {

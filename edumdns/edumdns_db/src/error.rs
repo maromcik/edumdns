@@ -2,7 +2,7 @@ use diesel::result::DatabaseErrorKind;
 use std::fmt::Debug;
 use thiserror::Error;
 
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Clone)]
 pub enum DbError {
     #[error("Backend error -> {0}")]
     BackendError(#[from] BackendError),
@@ -20,6 +20,12 @@ pub enum DbError {
     ConnectionError(String),
     #[error("Database pool (build) error: {0}")]
     DbPoolError(String),
+}
+
+impl Debug for DbError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{0}", self)
+    }
 }
 
 impl From<diesel::result::Error> for DbError {
@@ -77,7 +83,7 @@ impl From<pbkdf2::password_hash::Error> for DbError {
     }
 }
 
-#[derive(Debug, Clone, Error)]
+#[derive(Clone, Error)]
 pub enum BackendError {
     // User errors
     #[error("Entity does not exist: {0}")]
@@ -92,4 +98,10 @@ pub enum BackendError {
     UserPasswordVerificationFailed(String),
     #[error("Permission denied: {0}")]
     PermissionDenied(String),
+}
+
+impl Debug for BackendError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{0}", self)
+    }
 }

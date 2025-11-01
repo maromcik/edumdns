@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 resolver = "3"
 
+[[bin]]
+name = "edumdns"
+
 [dependencies]
 tracing = { version = "0.1.41", features = ["async-await"] }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "local-time", "time"] }

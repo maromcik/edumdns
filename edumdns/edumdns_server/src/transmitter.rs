@@ -1,5 +1,7 @@
+use crate::app_packet::{
+    AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
+};
 use crate::error::ServerError;
-use crate::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket};
 use edumdns_core::connection::UdpConnection;
 
 use log::{debug, error, info};

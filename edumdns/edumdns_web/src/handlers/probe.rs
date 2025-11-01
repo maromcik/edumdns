@@ -15,7 +15,6 @@ use actix_session::Session;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, rt, web};
 use actix_ws::AggregatedMessage;
-use edumdns_server::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket};
 use edumdns_core::app_packet::{EntityType, Id};
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
@@ -33,6 +32,9 @@ use edumdns_db::repositories::probe::models::{
 };
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
+use edumdns_server::app_packet::{
+    AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket,
+};
 use log::{info, warn};
 use std::collections::{HashMap, HashSet};
 use strum::IntoEnumIterator;

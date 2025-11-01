@@ -62,10 +62,18 @@ impl UserUpdatePassword {
         confirm_password: &str,
     ) -> Result<Self, DbError> {
         if new_password != confirm_password {
-            return Err(DbError::BackendError(BackendError::UserPasswordVerificationFailed("Provided passwords do not match".to_string())));
+            return Err(DbError::BackendError(
+                BackendError::UserPasswordVerificationFailed(
+                    "Provided passwords do not match".to_string(),
+                ),
+            ));
         }
         if !validate_password(new_password) {
-            return Err(DbError::BackendError(BackendError::UserPasswordVerificationFailed("Provided password is not strong enough".to_string())));
+            return Err(DbError::BackendError(
+                BackendError::UserPasswordVerificationFailed(
+                    "Provided password is not strong enough".to_string(),
+                ),
+            ));
         }
         Ok(Self {
             id: *id,
@@ -146,10 +154,18 @@ impl UserCreate {
         confirm_password: &str,
     ) -> Result<Self, DbError> {
         if password != confirm_password {
-            return Err(DbError::BackendError(BackendError::UserPasswordVerificationFailed("Provided passwords do not match".to_string())));
+            return Err(DbError::BackendError(
+                BackendError::UserPasswordVerificationFailed(
+                    "Provided passwords do not match".to_string(),
+                ),
+            ));
         }
         if !validate_password(password) {
-            return Err(DbError::BackendError(BackendError::UserPasswordVerificationFailed("Provided password is not strong enough".to_string())));
+            return Err(DbError::BackendError(
+                BackendError::UserPasswordVerificationFailed(
+                    "Provided password is not strong enough".to_string(),
+                ),
+            ));
         }
         let password_salt = generate_salt();
         let password_hash = hash_password(password.to_owned(), &password_salt)?;

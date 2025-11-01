@@ -22,11 +22,15 @@ pub const WEAK_PASSWORD_MESSAGE: &str = "Weak Password! Must contain at least on
 
 pub fn validate_user(user: &User) -> Result<(), DbError> {
     if user.disabled {
-        return Err(DbError::from(BackendError::PermissionDenied("User is disabled".to_string())));
+        return Err(DbError::from(BackendError::PermissionDenied(
+            "User is disabled".to_string(),
+        )));
     }
 
     if user.deleted_at.is_some() {
-        return Err(DbError::from(BackendError::PermissionDenied("User has been deleted".to_string())));
+        return Err(DbError::from(BackendError::PermissionDenied(
+            "User has been deleted".to_string(),
+        )));
     }
     Ok(())
 }
@@ -83,7 +87,10 @@ pub async fn validate_permissions(
 }
 
 pub fn no_permission_error(email: &str, permission: Permission) -> DbError {
-    DbError::from(BackendError::PermissionDenied(format!("User `{}` does not have `{}` permissions for this entity", email, permission)))
+    DbError::from(BackendError::PermissionDenied(format!(
+        "User `{}` does not have `{}` permissions for this entity",
+        email, permission
+    )))
 }
 
 pub async fn validate_admin_conn(conn: &mut AsyncPgConnection, user_id: &Id) -> DbResult<()> {
@@ -93,7 +100,9 @@ pub async fn validate_admin_conn(conn: &mut AsyncPgConnection, user_id: &Id) -> 
         .first(conn)
         .await?;
     if !user_entry.admin {
-        return Err(DbError::from(BackendError::PermissionDenied("User is not admin".to_string())));
+        return Err(DbError::from(BackendError::PermissionDenied(
+            "User is not admin".to_string(),
+        )));
     }
     validate_user(&user_entry)?;
     Ok(())

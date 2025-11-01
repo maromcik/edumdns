@@ -1,5 +1,5 @@
 use diesel::result::DatabaseErrorKind;
-use std::fmt::{Debug};
+use std::fmt::Debug;
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone)]
@@ -25,14 +25,22 @@ pub enum DbError {
 impl From<diesel::result::Error> for DbError {
     fn from(error: diesel::result::Error) -> Self {
         match error {
-            diesel::result::Error::NotFound => DbError::BackendError(BackendError::DoesNotExist(error.to_string())),
+            diesel::result::Error::NotFound => {
+                DbError::BackendError(BackendError::DoesNotExist(error.to_string()))
+            }
             diesel::result::Error::DatabaseError(err, err_info) => match err {
-                DatabaseErrorKind::UniqueViolation => DbError::UniqueConstraintError(err_info.message().to_string()),
-                DatabaseErrorKind::ForeignKeyViolation => DbError::ForeignKeyError(err_info.message().to_string()),
-                DatabaseErrorKind::NotNullViolation => DbError::NotNullError(err_info.message().to_string()),
+                DatabaseErrorKind::UniqueViolation => {
+                    DbError::UniqueConstraintError(err_info.message().to_string())
+                }
+                DatabaseErrorKind::ForeignKeyViolation => {
+                    DbError::ForeignKeyError(err_info.message().to_string())
+                }
+                DatabaseErrorKind::NotNullViolation => {
+                    DbError::NotNullError(err_info.message().to_string())
+                }
                 _ => DbError::DatabaseError(err_info.message().to_string()),
             },
-            err => DbError::DatabaseError(err.to_string())
+            err => DbError::DatabaseError(err.to_string()),
         }
     }
 }
@@ -63,7 +71,9 @@ impl From<diesel_async::pooled_connection::deadpool::PoolError> for DbError {
 
 impl From<pbkdf2::password_hash::Error> for DbError {
     fn from(value: pbkdf2::password_hash::Error) -> Self {
-        Self::BackendError(BackendError::UserPasswordVerificationFailed(value.to_string()))
+        Self::BackendError(BackendError::UserPasswordVerificationFailed(
+            value.to_string(),
+        ))
     }
 }
 

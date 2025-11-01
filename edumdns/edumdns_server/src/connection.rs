@@ -1,4 +1,5 @@
-use crate::error::{ServerError};
+use crate::app_packet::AppPacket;
+use crate::error::ServerError;
 use crate::listen::ProbeHandles;
 use crate::probe_tracker::{ProbeStat, SharedProbeTracker};
 use diesel_async::AsyncPgConnection;
@@ -15,13 +16,12 @@ use edumdns_db::repositories::common::{DbCreate, DbReadOne};
 use edumdns_db::repositories::probe::models::CreateProbe;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use ipnetwork::IpNetwork;
-use log::{trace};
+use log::trace;
 use rustls::ServerConfig;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::Sender;
-use crate::app_packet::AppPacket;
 
 pub struct ConnectionManager {
     handle: TcpConnectionHandle,
@@ -68,7 +68,10 @@ impl ConnectionManager {
 
     pub async fn connection_init_server(&mut self) -> Result<Uuid, ServerError> {
         let error = |uuid, msg| {
-            Err(ServerError::InvalidConnectionInitiation(format!("Probe: {:?}; {}", uuid, msg)))
+            Err(ServerError::InvalidConnectionInitiation(format!(
+                "Probe: {:?}; {}",
+                uuid, msg
+            )))
         };
         let packet = self.receive_init_packet().await?;
 
@@ -185,7 +188,9 @@ impl ConnectionManager {
             })
             .await??;
         let Some(app_packet) = packet else {
-            return Err(ServerError::InvalidConnectionInitiation("could not receive a valid connection initiation packet".to_string()));
+            return Err(ServerError::InvalidConnectionInitiation(
+                "could not receive a valid connection initiation packet".to_string(),
+            ));
         };
         Ok(app_packet)
     }

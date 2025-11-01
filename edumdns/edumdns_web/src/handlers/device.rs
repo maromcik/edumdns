@@ -1,5 +1,5 @@
 use crate::authorized;
-use crate::error::{WebError};
+use crate::error::WebError;
 use crate::forms::device::{
     CreateDeviceForm, DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest, DeviceQuery,
     UpdateDeviceForm,
@@ -30,9 +30,9 @@ use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
+use edumdns_server::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket};
 use std::collections::HashMap;
 use uuid::Uuid;
-use edumdns_server::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket};
 
 #[get("")]
 pub async fn get_devices(
@@ -240,7 +240,9 @@ pub async fn get_device_for_transmit(
         .connection_info()
         .realip_remote_addr()
         .map(|a| a.to_string());
-    let target_ip = target_ip.ok_or(WebError::InternalServerError("Could not determine target ip".to_string()))?;
+    let target_ip = target_ip.ok_or(WebError::InternalServerError(
+        "Could not determine target ip".to_string(),
+    ))?;
 
     let in_progress = device_repo
         .read_packet_transmit_requests(&device.id)
@@ -292,21 +294,29 @@ pub async fn request_packet_transmit(
         .connection_info()
         .realip_remote_addr()
         .map(|a| a.to_string());
-    let target_ip = target_ip.ok_or(WebError::InternalServerError("Could not determine target ip".to_string()))?;
+    let target_ip = target_ip.ok_or(WebError::InternalServerError(
+        "Could not determine target ip".to_string(),
+    ))?;
 
     let target_ip = target_ip.parse::<ipnetwork::IpNetwork>()?;
     if let Some(acl_src_cidr) = device.acl_src_cidr
         && !acl_src_cidr.contains(target_ip.ip())
     {
-        return Err(WebError::DeviceTransmitRequestDenied(format!("Target IP is not allowed to request packets from this device. Allowed subnet is {acl_src_cidr}")));
+        return Err(WebError::DeviceTransmitRequestDenied(format!(
+            "Target IP is not allowed to request packets from this device. Allowed subnet is {acl_src_cidr}"
+        )));
     }
 
     if let Some(acl_pwd_hash) = &device.acl_pwd_hash {
         let Some(pwd) = &form.acl_pwd else {
-            return Err(WebError::Unauthorized("ACL password is required to request packets from this device".to_string()));
+            return Err(WebError::Unauthorized(
+                "ACL password is required to request packets from this device".to_string(),
+            ));
         };
         if acl_pwd_hash != pwd {
-            return Err(WebError::Unauthorized("ACL password is incorrect".to_string()));
+            return Err(WebError::Unauthorized(
+                "ACL password is incorrect".to_string(),
+            ));
         }
     }
 
@@ -318,7 +328,9 @@ pub async fn request_packet_transmit(
         )
         .await?
     {
-        return Err(WebError::DeviceTransmitRequestDenied("AP hostname that you are connected to does not match allowed APs".to_string()));
+        return Err(WebError::DeviceTransmitRequestDenied(
+            "AP hostname that you are connected to does not match allowed APs".to_string(),
+        ));
     }
 
     let form = DeviceCustomPacketTransmitRequest::new(target_ip, device.port as u16, false);

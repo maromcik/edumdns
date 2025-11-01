@@ -1,6 +1,7 @@
+use crate::app_packet::AppPacket;
 use crate::connection::ConnectionManager;
-use crate::error::{ServerError};
-use crate::probe_tracker::{SharedProbeTracker};
+use crate::error::ServerError;
+use crate::probe_tracker::SharedProbeTracker;
 use crate::{ServerTlsConfig, parse_host};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -16,7 +17,6 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tokio::sync::mpsc::Sender;
-use crate::app_packet::AppPacket;
 
 pub type ProbeHandles = Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>;
 

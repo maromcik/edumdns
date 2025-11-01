@@ -1,4 +1,4 @@
-use crate::error::{WebError};
+use crate::error::WebError;
 use crate::forms::user::{UserLoginForm, UserLoginReturnURL};
 use crate::handlers::utilities::{
     destroy_session, extract_referrer, get_template_name, parse_user_from_oidc, parse_user_id,
@@ -12,11 +12,11 @@ use actix_web::http::StatusCode;
 use actix_web::http::header::LOCATION;
 use actix_web::web::Redirect;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, get, post, web};
+use edumdns_db::error::DbError;
 use edumdns_db::repositories::common::{DbCreate, DbReadOne};
 use edumdns_db::repositories::user::models::UserLogin;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use time::{Duration, OffsetDateTime};
-use edumdns_db::error::DbError;
 
 #[get("/")]
 pub async fn index(
@@ -127,7 +127,9 @@ pub async fn login_oidc(
         .finish();
     resp.cookie(c);
 
-    let user_create = parse_user_from_oidc(&request).ok_or(WebError::CookieError("Cookie or some of its fields were not found or invalid".to_string()))?;
+    let user_create = parse_user_from_oidc(&request).ok_or(WebError::CookieError(
+        "Cookie or some of its fields were not found or invalid".to_string(),
+    ))?;
     let user = user_repo.create(&user_create).await?;
     Identity::login(&request.extensions(), user.id.to_string())?;
     Ok(resp.insert_header((LOCATION, return_url)).finish())

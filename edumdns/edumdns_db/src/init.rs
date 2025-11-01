@@ -1,4 +1,4 @@
-use crate::error::{DbError};
+use crate::error::DbError;
 use diesel::Connection;
 use diesel::PgConnection;
 use diesel_async::AsyncPgConnection;

@@ -1,4 +1,4 @@
-use crate::error::{WebError};
+use crate::error::WebError;
 use crate::{DEFAULT_HOSTNAME, DEFAULT_PORT, SECS_IN_MONTH, SECS_IN_WEEK, SESSION_EXPIRY};
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
@@ -12,13 +12,13 @@ use actix_web::web::{JsonConfig, PathConfig, QueryConfig};
 use actix_web_openidconnect::ActixWebOpenId;
 use edumdns_db::models::GroupProbePermission;
 use edumdns_db::repositories::common::Permission;
+use edumdns_server::app_packet::AppPacket;
 use minijinja::{Environment, Value, path_loader};
 use minijinja_autoreload::AutoReloader;
 use serde::Deserialize;
 use std::env;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
-use edumdns_server::app_packet::AppPacket;
 
 #[derive(Clone)]
 pub struct DeviceAclApDatabase {

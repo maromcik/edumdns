@@ -1,4 +1,4 @@
-use crate::error::{WebError};
+use crate::error::WebError;
 use crate::forms::user::{
     UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm,
     UserUpdatePasswordFormAdmin,
@@ -123,7 +123,9 @@ pub async fn delete_user(
     let i = authorized!(identity, request);
     let admin_id = parse_user_id(&i)?;
     if admin_id == path.0 {
-        return Err(WebError::BadRequest("Cannot delete the currently logged-in user".to_string()));
+        return Err(WebError::BadRequest(
+            "Cannot delete the currently logged-in user".to_string(),
+        ));
     }
 
     let return_url = query
@@ -252,7 +254,9 @@ pub async fn user_manage(
     );
     let user = user_repo.update(&user_update).await?;
     let Some(user_valid) = user.into_iter().next() else {
-        return Err(WebError::from(DbError::from(BackendError::UpdateParametersEmpty)));
+        return Err(WebError::from(DbError::from(
+            BackendError::UpdateParametersEmpty,
+        )));
     };
     let template_name = get_template_name(&request, "user/manage/profile");
     let env = state.jinja.acquire_env()?;

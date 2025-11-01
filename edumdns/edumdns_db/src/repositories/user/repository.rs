@@ -57,14 +57,18 @@ impl PgUserRepository {
 
     pub fn verify_password(u: User, given_password: &str) -> DbResultSingle<User> {
         let Some(hash) = &u.password_hash else {
-            return Err(DbError::BackendError(BackendError::UserPasswordDoesNotMatch));
+            return Err(DbError::BackendError(
+                BackendError::UserPasswordDoesNotMatch,
+            ));
         };
         match verify_password_hash(hash, given_password) {
             Ok(ret) => {
                 if ret {
                     return Ok(u);
                 }
-                return Err(DbError::BackendError(BackendError::UserPasswordDoesNotMatch));
+                return Err(DbError::BackendError(
+                    BackendError::UserPasswordDoesNotMatch,
+                ));
             }
             Err(e) => Err(e),
         }
@@ -273,10 +277,7 @@ impl UserBackend {
             .values(data)
             .on_conflict(user::email)
             .do_update()
-            .set((
-                user::name.eq(&data.name),
-                user::surname.eq(&data.surname),
-            ))
+            .set((user::name.eq(&data.name), user::surname.eq(&data.surname)))
             .returning(User::as_returning())
             .get_result(conn)
             .await

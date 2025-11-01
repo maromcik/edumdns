@@ -1,4 +1,4 @@
-use crate::error::{ServerError};
+use crate::error::ServerError;
 use aya::maps::{HashMap, Map, MapData};
 use ipnetwork::IpNetwork;
 use log::{error, info, warn};
@@ -36,7 +36,9 @@ impl EbpfUpdater {
 
     pub fn add_ip(&mut self, a: IpNetwork, b: IpNetwork) -> Result<(), ServerError> {
         let err = |ip_a, ip_b, e| {
-            ServerError::EbpfMapError(format!("Could not add IP pair <{ip_a}, {ip_b}> to the eBPF map: {e}"))
+            ServerError::EbpfMapError(format!(
+                "Could not add IP pair <{ip_a}, {ip_b}> to the eBPF map: {e}"
+            ))
         };
         match (a.ip(), b.ip()) {
             (IpAddr::V4(a_ipv4), IpAddr::V4(b_ipv4)) => {
@@ -60,7 +62,9 @@ impl EbpfUpdater {
                     .map_err(|e| err(b, a, e))?;
             }
             _ => {
-                let e = ServerError::EbpfMapError(format!("Could not add IP pair <{a}, {b}> to the eBPF map - both IPs must be of the same type"));
+                let e = ServerError::EbpfMapError(format!(
+                    "Could not add IP pair <{a}, {b}> to the eBPF map - both IPs must be of the same type"
+                ));
                 error!("{e}");
                 return Err(e);
             }
@@ -71,8 +75,7 @@ impl EbpfUpdater {
 
     pub fn remove_ip(&mut self, a: IpNetwork, b: IpNetwork) -> Result<(), ServerError> {
         let err = |ip, e| {
-            ServerError::EbpfMapError(
-                format!("Could not remove IP {ip} from the eBPF map: {e}"))
+            ServerError::EbpfMapError(format!("Could not remove IP {ip} from the eBPF map: {e}"))
         };
         match (a.ip(), b.ip()) {
             (IpAddr::V4(a_ipv4), IpAddr::V4(b_ipv4)) => {

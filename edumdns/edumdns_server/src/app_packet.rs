@@ -1,9 +1,9 @@
-use std::fmt::{Display, Formatter};
-use tokio::sync::{mpsc, oneshot};
+use crate::error::ServerError;
 use edumdns_core::app_packet::{EntityType, Id, NetworkAppPacket, ProbeResponse};
 use edumdns_core::bincode_types::{MacAddr, Uuid};
 use edumdns_db::models::{Device, PacketTransmitRequest};
-use crate::error::ServerError;
+use std::fmt::{Display, Formatter};
+use tokio::sync::{mpsc, oneshot};
 
 #[derive(Debug)]
 pub enum AppPacket {
@@ -57,14 +57,8 @@ pub struct PacketTransmitRequestPacket {
 }
 
 impl PacketTransmitRequestPacket {
-    pub fn new(
-        device: Device,
-        request: PacketTransmitRequest,
-    ) -> Self {
-        Self {
-            device,
-            request
-        }
+    pub fn new(device: Device, request: PacketTransmitRequest) -> Self {
+        Self { device, request }
     }
 }
 

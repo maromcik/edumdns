@@ -1,7 +1,9 @@
+use crate::app_packet::{
+    AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
+};
 use crate::error::ServerError;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use crate::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket};
 use edumdns_core::error::CoreError;
 use edumdns_db::models::Packet;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
@@ -49,10 +51,7 @@ pub async fn load_all_packet_transmit_requests(
     let device_repo = PgDeviceRepository::new(pool);
     let requests = device_repo.get_all_packet_transmit_requests().await?;
     for (device, request) in requests {
-        let packet_transmit_request = PacketTransmitRequestPacket::new(
-            device,
-            request
-        );
+        let packet_transmit_request = PacketTransmitRequestPacket::new(device, request);
         let channel = tokio::sync::oneshot::channel();
         tx.send(AppPacket::Local(LocalAppPacket::Command(
             LocalCommandPacket::TransmitDevicePackets {

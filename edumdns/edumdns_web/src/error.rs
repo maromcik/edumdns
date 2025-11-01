@@ -2,8 +2,9 @@ use crate::templates::error::GenericError;
 use actix_web::http::StatusCode;
 use actix_web::http::header::ContentType;
 use actix_web::{HttpResponse, ResponseError};
-use edumdns_core::error::{CoreError};
+use edumdns_core::error::CoreError;
 use edumdns_db::error::{BackendError, DbError};
+use edumdns_server::error::ServerError;
 use minijinja::{Environment, path_loader};
 use std::env;
 use std::fmt::{Debug, Display, Formatter};
@@ -11,7 +12,6 @@ use std::num::ParseIntError;
 use std::str::ParseBoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
-use edumdns_server::error::{ServerError};
 
 /// User facing error type
 #[derive(Error, Debug, Clone)]
@@ -170,8 +170,7 @@ impl From<hickory_proto::ProtoError> for WebError {
 impl ResponseError for WebError {
     fn status_code(&self) -> StatusCode {
         match self {
-            WebError::BadRequest(_)
-            | WebError::ParseError(_) => StatusCode::BAD_REQUEST,
+            WebError::BadRequest(_) | WebError::ParseError(_) => StatusCode::BAD_REQUEST,
             WebError::DeviceTransmitRequestDenied(_) => StatusCode::FORBIDDEN,
             WebError::CoreError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             WebError::DbError(db_e) => match &db_e {
@@ -191,7 +190,7 @@ impl ResponseError for WebError {
             WebError::ServerError(srv_e) => match srv_e {
                 ServerError::PacketProcessingError(_) => StatusCode::BAD_REQUEST,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
-            }
+            },
             WebError::TemplatingError(_)
             | WebError::InternalServerError(_)
             | WebError::IdentityError(_)
@@ -203,7 +202,7 @@ impl ResponseError for WebError {
             | WebError::EnvVarError(_)
             | WebError::OidcError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             WebError::NotFound(_) => StatusCode::NOT_FOUND,
-            WebError::Unauthorized(_) => StatusCode::UNAUTHORIZED
+            WebError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
         }
     }
 

@@ -1,15 +1,18 @@
 use crate::BUFFER_SIZE;
+use crate::app_packet::{
+    AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket, PacketTransmitRequestPacket,
+};
 use crate::database::DbCommand;
 use crate::ebpf::EbpfUpdater;
-use crate::error::{ServerError};
+use crate::error::ServerError;
 use crate::listen::ProbeHandles;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use crate::utilities::rewrite_payloads;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::Id;
-use edumdns_core::app_packet::{EntityType, NetworkAppPacket,
-    NetworkCommandPacket, NetworkStatusPacket, ProbePacket,
+use edumdns_core::app_packet::{
+    EntityType, NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbePacket,
     ProbeResponse,
 };
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
@@ -26,7 +29,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
-use crate::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket, PacketTransmitRequestPacket};
 
 #[derive(Clone)]
 pub struct Proxy {
@@ -372,7 +374,6 @@ impl PacketManager {
         let global_timeout = self.global_timeout;
         let command_transmitter_local = self.command_transmitter.clone();
         tokio::task::spawn(async move {
-
             if proxy.is_none() && request_packet.device.proxy {
                 let err = "eBPF is not configured properly; contact your administrator";
                 error!("{err} for target: {request_packet}");
@@ -415,7 +416,8 @@ impl PacketManager {
             if payloads.is_empty() {
                 let warning = "no packets left after processing";
                 warn!("{warning} for target: {request_packet}");
-                let _ = respond_to.send(Err(ServerError::PacketProcessingError(warning.to_string())));
+                let _ =
+                    respond_to.send(Err(ServerError::PacketProcessingError(warning.to_string())));
                 return;
             }
 
@@ -436,7 +438,13 @@ impl PacketManager {
                 }
             }
 
-            let transmitter = match PacketTransmitter::new(payloads, request_packet.clone(), global_timeout).await {
+            let transmitter = match PacketTransmitter::new(
+                payloads,
+                request_packet.clone(),
+                global_timeout,
+            )
+            .await
+            {
                 Ok(t) => t,
                 Err(e) => {
                     error!("{e}");
@@ -445,11 +453,16 @@ impl PacketManager {
                 }
             };
 
-
-            let task =
-                PacketTransmitterTask::new(transmitter, command_transmitter_local, request_packet.request.id);
+            let task = PacketTransmitterTask::new(
+                transmitter,
+                command_transmitter_local,
+                request_packet.request.id,
+            );
             info!("Transmitter task created for target: {}", request_packet);
-            let job = PacketTransmitJob { packet: request_packet, task };
+            let job = PacketTransmitJob {
+                packet: request_packet,
+                task,
+            };
             transmitter_tasks
                 .lock()
                 .await

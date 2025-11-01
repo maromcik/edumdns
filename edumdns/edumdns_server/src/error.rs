@@ -1,4 +1,4 @@
-use edumdns_core::error::{CoreError};
+use edumdns_core::error::CoreError;
 use edumdns_db::error::DbError;
 use std::fmt::{Debug, Display, Formatter};
 use std::net::AddrParseError;
@@ -27,7 +27,6 @@ pub enum ServerError {
     #[error("an error occurred while processing your request: {0}")]
     PacketProcessingError(String),
 }
-
 
 // #[derive(Error, Debug, Clone)]
 // pub struct ServerError {
@@ -64,13 +63,11 @@ impl From<DbError> for ServerError {
     }
 }
 
-
 impl From<std::io::Error> for ServerError {
     fn from(value: std::io::Error) -> Self {
         Self::IoError(value.to_string())
     }
 }
-
 
 impl From<std::num::ParseIntError> for ServerError {
     fn from(value: std::num::ParseIntError) -> Self {

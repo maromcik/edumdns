@@ -1,4 +1,4 @@
-use crate::error::{WebError};
+use crate::error::WebError;
 use crate::forms::device::DeviceCustomPacketTransmitRequest;
 use actix_session::Session;
 use actix_web::web;
@@ -8,9 +8,11 @@ use edumdns_core::error::CoreError;
 use edumdns_db::models::Device;
 use edumdns_db::repositories::device::models::CreatePacketTransmitRequest;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
+use edumdns_server::app_packet::{
+    AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
+};
 use time::OffsetDateTime;
 use tokio::sync::mpsc::Sender;
-use edumdns_server::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket};
 
 pub async fn request_packet_transmit_helper(
     device_repo: web::Data<PgDeviceRepository>,
@@ -28,17 +30,20 @@ pub async fn request_packet_transmit_helper(
         created_at: (!form.permanent).then_some(OffsetDateTime::now_utc()),
     };
 
-    let request = match device_repo.create_packet_transmit_request(&request_db).await {
+    let request = match device_repo
+        .create_packet_transmit_request(&request_db)
+        .await
+    {
         Ok(p) => p,
         Err(_) => {
-            return Err(WebError::DeviceTransmitRequestDenied("Transmission already in progress to another client, please try again later.".to_string()));
+            return Err(WebError::DeviceTransmitRequestDenied(
+                "Transmission already in progress to another client, please try again later."
+                    .to_string(),
+            ));
         }
     };
     let request_id = request.id;
-    let request = PacketTransmitRequestPacket::new(
-        device,
-        request,
-    );
+    let request = PacketTransmitRequestPacket::new(device, request);
 
     let channel = tokio::sync::oneshot::channel();
     command_channel

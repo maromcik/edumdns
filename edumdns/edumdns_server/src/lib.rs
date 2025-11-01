@@ -1,3 +1,4 @@
+use crate::app_packet::AppPacket;
 use crate::database::DatabaseManager;
 use crate::error::ServerError;
 use crate::listen::{ProbeHandles, listen};
@@ -14,8 +15,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 use tokio::sync::mpsc::{Receiver, Sender};
-use crate::app_packet::AppPacket;
 
+pub mod app_packet;
 mod connection;
 mod database;
 mod ebpf;
@@ -26,7 +27,6 @@ mod ordered_map;
 mod probe_tracker;
 mod transmitter;
 mod utilities;
-pub mod app_packet;
 
 const DEFAULT_HOSTNAME: &str = "localhost";
 const DEFAULT_PORT: &str = "5000";

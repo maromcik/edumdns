@@ -117,5 +117,8 @@ pub fn validate_has_groups(user: &UserDisplay) -> Result<(), WebError> {
     if user.has_groups || user.user.admin {
         return Ok(());
     }
-    Err(DbError::from(BackendError::PermissionDenied("User is not assigned to any group".to_string())).into())
+    Err(DbError::from(BackendError::PermissionDenied(
+        "User is not assigned to any group".to_string(),
+    ))
+    .into())
 }

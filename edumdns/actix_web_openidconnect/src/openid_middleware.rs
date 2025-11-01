@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use actix_web::body::BoxBody;
 use actix_web::cookie::{Cookie, SameSite};
-use actix_web::dev::{forward_ready, ResourcePath};
+use actix_web::dev::forward_ready;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::error::ErrorUnauthorized;
 use actix_web::http::header::HeaderValue;

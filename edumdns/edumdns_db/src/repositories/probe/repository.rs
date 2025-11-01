@@ -285,7 +285,7 @@ impl DbCreate<CreateProbe, Probe> for PgProbeRepository {
             .await
             .map_err(DbError::from)
     }
-    async fn create_auth(&self, data: &CreateProbe, user_id: &Id) -> DbResultSingle<Probe> {
+    async fn create_auth(&self, data: &CreateProbe, _user_id: &Id) -> DbResultSingle<Probe> {
         let mut conn = self.pg_pool.get().await?;
         diesel::insert_into(probe::table)
             .values((

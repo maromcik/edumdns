@@ -1,7 +1,7 @@
 use crate::forms::device::DeviceQuery;
 use crate::forms::probe::ProbeQuery;
 use crate::templates::PageInfo;
-use edumdns_db::models::{Group, Location, ProbeConfig};
+use edumdns_db::models::{Group, ProbeConfig};
 use edumdns_db::repositories::common::{Permission, Permissions};
 use edumdns_db::repositories::device::models::DeviceDisplay;
 use edumdns_db::repositories::probe::models::ProbeDisplay;

@@ -1,7 +1,7 @@
 use crate::error::ServerError;
 use aya::maps::{HashMap, Map, MapData};
 use ipnetwork::IpNetwork;
-use log::{error, info, warn};
+use log::{error, info};
 use std::env;
 use std::net::IpAddr;
 use std::path::Path;

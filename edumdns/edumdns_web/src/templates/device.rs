@@ -1,7 +1,7 @@
 use crate::forms::device::DeviceQuery;
 use crate::forms::packet::PacketQuery;
 use crate::templates::PageInfo;
-use edumdns_db::models::{PacketTransmitRequest, Probe, User};
+use edumdns_db::models::Probe;
 use edumdns_db::repositories::common::Permissions;
 use edumdns_db::repositories::device::models::{DeviceDisplay, PacketTransmitRequestDisplay};
 use edumdns_db::repositories::packet::models::PacketDisplay;

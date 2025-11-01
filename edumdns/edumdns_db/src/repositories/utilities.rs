@@ -150,7 +150,7 @@ where
         Some(s) if s.trim().is_empty() => Ok(Some(false)),
         Some(s) if s.eq_ignore_ascii_case("true") => Ok(Some(true)),
         Some(s) if s.eq_ignore_ascii_case("false") => Ok(Some(false)),
-        Some(s) => Err(serde::de::Error::custom("invalid bool")),
+        Some(_) => Err(serde::de::Error::custom("invalid bool")),
         None => Ok(Some(false)), // now it works!
     }
 }

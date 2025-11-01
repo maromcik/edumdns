@@ -33,7 +33,7 @@ impl DbReadOne<Id, Location> for PgLocationRepository {
         Ok(l)
     }
 
-    async fn read_one_auth(&self, params: &Id, user_id: &Id) -> DbResultSinglePerm<Location> {
+    async fn read_one_auth(&self, params: &Id, _user_id: &Id) -> DbResultSinglePerm<Location> {
         let l = self.read_one(params).await?;
         Ok(DbDataPerm::new(l, (false, vec![])))
     }
@@ -60,7 +60,7 @@ impl DbReadMany<SelectManyFilter, Location> for PgLocationRepository {
     async fn read_many_auth(
         &self,
         params: &SelectManyFilter,
-        user_id: &Id,
+        _user_id: &Id,
     ) -> DbResultMultiplePerm<Location> {
         let locations = self.read_many(params).await?;
         Ok(DbDataPerm::new(locations, (false, vec![])))
@@ -78,7 +78,7 @@ impl DbCreate<CreateLocation, Location> for PgLocationRepository {
             .await
             .map_err(DbError::from)
     }
-    async fn create_auth(&self, data: &CreateLocation, user_id: &Id) -> DbResultSingle<Location> {
+    async fn create_auth(&self, data: &CreateLocation, _user_id: &Id) -> DbResultSingle<Location> {
         self.create(data).await
     }
 }
@@ -92,7 +92,7 @@ impl DbDelete<Id, Location> for PgLocationRepository {
             .map_err(DbError::from)
     }
 
-    async fn delete_auth(&self, params: &Id, user_id: &Id) -> DbResultMultiple<Location> {
+    async fn delete_auth(&self, params: &Id, _user_id: &Id) -> DbResultMultiple<Location> {
         self.delete(params).await
     }
 }

@@ -2,7 +2,7 @@ use edumdns_core::app_packet::Id;
 use edumdns_db::repositories::common::Pagination;
 use edumdns_db::repositories::user::models::{SelectManyUsers, UserUpdate};
 use edumdns_db::repositories::utilities::empty_string_is_none;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
 #[derive(Serialize, Deserialize, Clone)]

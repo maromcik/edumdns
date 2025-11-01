@@ -1,6 +1,6 @@
 use edumdns_core::error::CoreError;
 use edumdns_db::error::DbError;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 use std::net::AddrParseError;
 use thiserror::Error;
 

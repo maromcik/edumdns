@@ -7,7 +7,7 @@ use edumdns_db::error::{BackendError, DbError};
 use edumdns_server::error::ServerError;
 use minijinja::{Environment, path_loader};
 use std::env;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 use std::num::ParseIntError;
 use std::str::ParseBoolError;
 use thiserror::Error;

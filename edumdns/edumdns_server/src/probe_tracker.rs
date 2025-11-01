@@ -1,7 +1,7 @@
 use crate::listen::ProbeHandles;
 use crate::ordered_map::OrderedMap;
 use edumdns_core::bincode_types::Uuid;
-use log::{debug, error, info, trace, warn};
+use log::{info, trace};
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use std::time::Duration;

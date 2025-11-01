@@ -1,5 +1,5 @@
 use edumdns_db::repositories::utilities::empty_string_is_none;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct GroupQuery {

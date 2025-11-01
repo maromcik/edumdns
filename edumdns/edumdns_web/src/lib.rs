@@ -5,21 +5,15 @@ use crate::utils::{
     get_identity_middleware, get_session_middleware, json_config, parse_host, path_config,
     query_config,
 };
-use actix_cors::Cors;
-use actix_identity::IdentityMiddleware;
 use actix_multipart::form::MultipartFormConfig;
-use actix_session::config::PersistentSession;
-use actix_session::{SessionMiddleware, storage::CookieSessionStore};
-use actix_web::dev::{ResourcePath, ServiceRequest};
 use actix_web::http::header;
-use actix_web::middleware::{Condition, Logger, NormalizePath, TrailingSlash};
+use actix_web::middleware::{Logger, NormalizePath, TrailingSlash};
 use actix_web::web::{FormConfig, PayloadConfig};
 use actix_web::{App, HttpServer, cookie::Key};
-use actix_web_openidconnect::ActixWebOpenId;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_server::app_packet::AppPacket;
-use log::{error, info, warn};
+use log::{info, warn};
 use std::env;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;

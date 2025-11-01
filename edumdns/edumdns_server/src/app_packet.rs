@@ -1,5 +1,5 @@
 use crate::error::ServerError;
-use edumdns_core::app_packet::{EntityType, Id, NetworkAppPacket, ProbeResponse};
+use edumdns_core::app_packet::{EntityType, NetworkAppPacket, ProbeResponse};
 use edumdns_core::bincode_types::{MacAddr, Uuid};
 use edumdns_db::models::{Device, PacketTransmitRequest};
 use std::fmt::{Display, Formatter};

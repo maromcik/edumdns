@@ -1,7 +1,7 @@
 use crate::connection::{
     ConnectionInfo, ConnectionLimits, ConnectionManager, ReceivePacketTargets,
 };
-use crate::error::{ProbeError};
+use crate::error::ProbeError;
 use crate::probe::ProbeCapture;
 use clap::Parser;
 use edumdns_core::app_packet::{
@@ -348,8 +348,10 @@ fn determine_mac(bind_ip: &IpAddr) -> Result<MacAddr, ProbeError> {
         .iter()
         .find(|i| i.is_up() && i.ips.iter().any(|ip| ip.ip() == probe_ip.ip()))
     else {
-        return Err(ProbeError::ArgumentError(
-            format!("No interface found for IP: {} or interface is not up", bind_ip)));
+        return Err(ProbeError::ArgumentError(format!(
+            "No interface found for IP: {} or interface is not up",
+            bind_ip
+        )));
     };
 
     Ok(MacAddr(interface.mac.unwrap_or_default()))

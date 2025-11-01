@@ -1,5 +1,5 @@
 use edumdns_core::error::CoreError;
-use std::fmt::{Debug};
+use std::fmt::Debug;
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone)]
@@ -34,7 +34,6 @@ impl From<pcap::Error> for ProbeError {
         ProbeError::CaptureError(value.to_string())
     }
 }
-
 
 impl From<std::io::Error> for ProbeError {
     fn from(value: std::io::Error) -> Self {

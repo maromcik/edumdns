@@ -1,4 +1,4 @@
-use crate::capture::{capture_and_transmit, PacketCaptureGeneric};
+use crate::capture::{PacketCaptureGeneric, capture_and_transmit};
 use crate::error::ProbeError;
 use edumdns_core::app_packet::{NetworkAppPacket, ProbeConfigPacket};
 use edumdns_core::metadata::ProbeMetadata;

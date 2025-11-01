@@ -1,6 +1,5 @@
 pub mod app_packet;
 pub mod bincode_types;
-pub mod capture;
 pub mod connection;
 pub mod error;
 pub mod interface;

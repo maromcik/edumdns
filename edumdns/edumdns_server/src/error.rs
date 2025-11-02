@@ -25,7 +25,7 @@ pub enum ServerError {
     #[error("TLS error: {0}")]
     TlsError(String),
     #[error("An error occurred while processing your request: {0}")]
-    PacketProcessingError(String),
+    DiscoveryRequestProcessingError(String),
 }
 
 impl Debug for ServerError {

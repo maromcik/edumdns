@@ -194,7 +194,7 @@ impl ResponseError for WebError {
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             },
             WebError::ServerError(srv_e) => match srv_e {
-                ServerError::PacketProcessingError(_) => StatusCode::BAD_REQUEST,
+                ServerError::DiscoveryRequestProcessingError(_) => StatusCode::BAD_REQUEST,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             },
             WebError::TemplatingError(_)

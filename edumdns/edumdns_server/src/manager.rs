@@ -399,7 +399,7 @@ impl PacketManager {
                 Ok(p) => p,
                 Err(e) => {
                     warn!("No packets found for target: {request_packet}: {e}");
-                    let _ = respond_to.send(Err(ServerError::PacketProcessingError(e.to_string())));
+                    let _ = respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(e.to_string())));
                     return;
                 }
             };
@@ -417,7 +417,7 @@ impl PacketManager {
                 let warning = "no packets left after processing";
                 warn!("{warning} for target: {request_packet}");
                 let _ =
-                    respond_to.send(Err(ServerError::PacketProcessingError(warning.to_string())));
+                    respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(warning.to_string())));
                 return;
             }
 

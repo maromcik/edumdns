@@ -7,6 +7,7 @@ use edumdns_db::error::{BackendError, DbError};
 use edumdns_server::error::ServerError;
 use minijinja::{Environment, path_loader};
 use std::env;
+use std::error::Error;
 use std::fmt::Debug;
 use std::num::ParseIntError;
 use std::str::ParseBoolError;
@@ -104,7 +105,12 @@ impl From<actix_session::SessionInsertError> for WebError {
 
 impl From<minijinja::Error> for WebError {
     fn from(value: minijinja::Error) -> Self {
-        Self::TemplatingError(value.to_string())
+        let mut res =  String::new();
+        res.push_str(&value.to_string());
+        while let Some(cause) = value.source() {
+            res.push_str(&format!("\nCaused by: {}", cause));
+        }
+        Self::TemplatingError(res)
     }
 }
 impl From<std::io::Error> for WebError {

@@ -9,7 +9,6 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
-use edumdns_core::error::CoreError;
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_db::models::Probe;
 use edumdns_db::repositories::common::{DbCreate, DbReadOne};
@@ -207,14 +206,12 @@ impl ConnectionManager {
                     NetworkAppPacket::Command(_) => {
                         self.command_transmitter
                             .send(AppPacket::Network(app_packet))
-                            .await
-                            .map_err(CoreError::from)?;
+                            .await?;
                     }
                     NetworkAppPacket::Data(_) => {
                         self.data_transmitter
                             .send(AppPacket::Network(app_packet))
-                            .await
-                            .map_err(CoreError::from)?;
+                            .await?;
                     }
                     NetworkAppPacket::Status(status) => match status {
                         NetworkStatusPacket::PingRequest(uuid) => {
@@ -236,8 +233,7 @@ impl ConnectionManager {
                         NetworkStatusPacket::ProbeResponse(_, _, _) => {
                             self.command_transmitter
                                 .send(AppPacket::Network(app_packet))
-                                .await
-                                .map_err(CoreError::from)?;
+                                .await?;
                         }
                         _ => {}
                     },

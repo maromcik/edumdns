@@ -2,9 +2,8 @@ use crate::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
 use crate::error::ServerError;
-use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::error::CoreError;
+use diesel_async::AsyncPgConnection;
 use edumdns_db::models::Packet;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use hickory_proto::op::Message;
@@ -59,8 +58,7 @@ pub async fn load_all_packet_transmit_requests(
                 respond_to: channel.0,
             },
         )))
-        .await
-        .map_err(CoreError::from)?;
+        .await?;
     }
     Ok(())
 }

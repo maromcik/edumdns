@@ -10,6 +10,10 @@ pub enum ServerError {
     CoreError(CoreError),
     #[error("DbError -> {0}")]
     DbError(DbError),
+    #[error("tokio oneshot channel error: {0}")]
+    TokioOneshotChannelError(String),
+    #[error("tokio mpsc channel error: {0}")]
+    TokioMpscChannelError(String),
     #[error("I/O error: {0}")]
     IoError(String),
     #[error("Invalid connection initiation: {0}")]
@@ -55,6 +59,18 @@ impl From<std::io::Error> for ServerError {
 impl From<std::num::ParseIntError> for ServerError {
     fn from(value: std::num::ParseIntError) -> Self {
         Self::ParseError(value.to_string())
+    }
+}
+
+impl From<tokio::sync::oneshot::error::RecvError> for ServerError {
+    fn from(value: tokio::sync::oneshot::error::RecvError) -> Self {
+        ServerError::TokioOneshotChannelError(value.to_string())
+    }
+}
+
+impl<T> From<tokio::sync::mpsc::error::SendError<T>> for ServerError {
+    fn from(value: tokio::sync::mpsc::error::SendError<T>) -> Self {
+        ServerError::TokioMpscChannelError(value.to_string())
     }
 }
 

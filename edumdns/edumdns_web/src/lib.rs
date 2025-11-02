@@ -92,10 +92,8 @@ pub async fn web_init(
                     .wrap(get_identity_middleware())
                     .wrap(get_session_middleware(key.clone(), use_secure_cookie))
                     .wrap(get_cors_middleware(host.as_str()))
-                    // .wrap(o.get_middleware())
                     .wrap(middleware::RedirectToLogin)
                     .wrap(Logger::default())
-                    // .configure(openid.configure_open_id())
                     .configure(configure_webapp(
                         &pool,
                         app_state.clone(),

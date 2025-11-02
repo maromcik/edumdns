@@ -35,7 +35,7 @@ impl PacketTransmitterTask {
                 .await
                 .map_err(CoreError::from)
             {
-                error!("Error sending stop transmit command for reqeust {request_id}: {e}");
+                error!("Error sending stop transmit command for request {request_id}: {e}");
             }
         });
         Self { transmitter_task }

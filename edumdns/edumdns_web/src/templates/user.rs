@@ -1,3 +1,4 @@
+use actix_csrf::extractor::CsrfToken;
 use crate::forms::user::UserQuery;
 use crate::templates::PageInfo;
 use edumdns_db::models::{Group, User};
@@ -23,6 +24,7 @@ pub struct UserDetailTemplate {
 
 #[derive(Serialize)]
 pub struct LoginTemplate {
+    pub token: String,
     pub message: String,
     pub return_url: String,
 }

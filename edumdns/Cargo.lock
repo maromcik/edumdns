@@ -35,6 +35,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-csrf"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d6604913d54205a3a5c0e43869a8e7501a2af7d7913b6653fd73f04ba292111"
+dependencies = [
+ "actix-web",
+ "base64 0.21.7",
+ "cookie",
+ "rand 0.8.5",
+ "serde",
+ "tracing",
+]
+
+[[package]]
 name = "actix-files"
 version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -87,7 +101,7 @@ dependencies = [
  "mime",
  "percent-encoding",
  "pin-project-lite",
- "rand 0.9.1",
+ "rand 0.9.2",
  "sha1",
  "smallvec",
  "tokio",
@@ -223,7 +237,7 @@ dependencies = [
  "actix-web",
  "anyhow",
  "derive_more 2.0.1",
- "rand 0.9.1",
+ "rand 0.9.2",
  "serde",
  "serde_json",
  "tracing",
@@ -1573,6 +1587,7 @@ name = "edumdns_web"
 version = "0.1.0"
 dependencies = [
  "actix-cors",
+ "actix-csrf",
  "actix-files",
  "actix-identity",
  "actix-multipart",
@@ -1591,6 +1606,7 @@ dependencies = [
  "log",
  "minijinja",
  "minijinja-autoreload",
+ "rand 0.8.5",
  "regex",
  "serde",
  "serde_json",
@@ -2120,7 +2136,7 @@ dependencies = [
  "idna",
  "ipnet",
  "once_cell",
- "rand 0.9.1",
+ "rand 0.9.2",
  "ring",
  "serde",
  "thiserror 2.0.16",
@@ -3500,7 +3516,7 @@ dependencies = [
  "hmac",
  "md-5",
  "memchr",
- "rand 0.9.1",
+ "rand 0.9.2",
  "sha2",
  "stringprep",
 ]
@@ -3613,7 +3629,7 @@ dependencies = [
  "bytes",
  "getrandom 0.3.3",
  "lru-slab",
- "rand 0.9.1",
+ "rand 0.9.2",
  "ring",
  "rustc-hash",
  "rustls",
@@ -3678,9 +3694,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.9.1"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fbfd9d094a40bf3ae768db9361049ace4c0e04a4fd6b359518bd7b73a73dd97"
+checksum = "6db2770f06117d490610c7488547d543617b21bfa07796d7a12f6f1bd53850d1"
 dependencies = [
  "rand_chacha 0.9.0",
  "rand_core 0.9.3",
@@ -4583,7 +4599,7 @@ dependencies = [
  "pin-project-lite",
  "postgres-protocol",
  "postgres-types",
- "rand 0.9.1",
+ "rand 0.9.2",
  "socket2 0.6.0",
  "tokio",
  "tokio-util",

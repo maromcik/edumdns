@@ -25,6 +25,7 @@ use edumdns_db::repositories::user::models::{
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_db::repositories::utilities::validate_password;
 use std::collections::HashMap;
+use actix_csrf::extractor::Csrf;
 
 #[get("")]
 pub async fn get_users(
@@ -90,7 +91,7 @@ pub async fn create_user(
     request: HttpRequest,
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
-    form: web::Form<UserCreateForm>,
+    form: Csrf<web::Form<UserCreateForm>>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
@@ -145,13 +146,13 @@ pub async fn update_user(
     request: HttpRequest,
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
-    form: web::Form<UserUpdateFormAdmin>,
+    form: Csrf<web::Form<UserUpdateFormAdmin>>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let target_user_id = form.0.id;
     let params = form.into_inner();
     user_repo
-        .update_auth(&UserUpdate::from(params), &parse_user_id(&i)?)
+        .update_auth(&UserUpdate::from(params.0), &parse_user_id(&i)?)
         .await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/user/{}", target_user_id)))
@@ -163,7 +164,7 @@ pub async fn update_user_password(
     request: HttpRequest,
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
-    form: web::Form<UserUpdatePasswordFormAdmin>,
+    form: Csrf<web::Form<UserUpdatePasswordFormAdmin>>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let admin_id = parse_user_id(&i)?;
@@ -234,7 +235,7 @@ pub async fn user_manage(
     request: HttpRequest,
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
-    form: web::Form<UserUpdateForm>,
+    form: Csrf<web::Form<UserUpdateForm>>,
     state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
     let u = authorized!(identity, request);
@@ -276,7 +277,7 @@ pub async fn user_manage_password(
     request: HttpRequest,
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
-    form: web::Form<UserUpdatePasswordForm>,
+    form: Csrf<web::Form<UserUpdatePasswordForm>>,
     state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
     let u = authorized!(identity, request);

@@ -6,7 +6,7 @@ use crate::utils::{
     query_config,
 };
 use actix_multipart::form::MultipartFormConfig;
-use actix_web::http::header;
+use actix_web::http::{header, Method};
 use actix_web::middleware::{Logger, NormalizePath, TrailingSlash};
 use actix_web::web::{FormConfig, PayloadConfig};
 use actix_web::{App, HttpServer, cookie::Key};
@@ -16,6 +16,9 @@ use edumdns_server::app_packet::AppPacket;
 use log::{info, warn};
 use std::env;
 use std::sync::Arc;
+use actix_csrf::CsrfMiddleware;
+use rand::CryptoRng;
+use rand::prelude::StdRng;
 use tokio::sync::mpsc::Sender;
 
 pub mod error;
@@ -73,6 +76,7 @@ pub async fn web_init(
         use_secure_cookie,
     );
 
+
     match create_oidc().await {
         Err(e) => {
             info!("starting server on {host} without OIDC support. Reason: {e}");
@@ -90,6 +94,7 @@ pub async fn web_init(
                     .app_data(path_config()) // <-- attach custom handler// <- important
                     .wrap(NormalizePath::new(TrailingSlash::Trim))
                     .wrap(get_identity_middleware())
+                    .wrap(CsrfMiddleware::<StdRng>::new().set_cookie(Method::GET, "/login"))
                     .wrap(get_session_middleware(key.clone(), use_secure_cookie))
                     .wrap(get_cors_middleware(host.as_str()))
                     // .wrap(o.get_middleware())
@@ -122,6 +127,7 @@ pub async fn web_init(
                     .app_data(path_config())
                     .wrap(NormalizePath::new(TrailingSlash::Trim))
                     .wrap(get_identity_middleware())
+                    .wrap(CsrfMiddleware::<StdRng>::new().set_cookie(Method::GET, "/login"))
                     .wrap(get_session_middleware(key.clone(), use_secure_cookie))
                     .wrap(get_cors_middleware(host.as_str()))
                     .wrap(oidc.get_middleware())

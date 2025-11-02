@@ -1,3 +1,4 @@
+use actix_csrf::extractor::{Csrf, CsrfToken};
 use crate::error::WebError;
 use crate::forms::user::{UserLoginForm, UserLoginReturnURL};
 use crate::handlers::utilities::{
@@ -41,6 +42,7 @@ pub async fn login(
     request: HttpRequest,
     identity: Option<Identity>,
     query: web::Query<UserLoginReturnURL>,
+    token: CsrfToken,
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
     let return_url = query.ret.clone().unwrap_or(extract_referrer(&request));
@@ -54,6 +56,7 @@ pub async fn login(
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(template_name)?;
     let body = template.render(LoginTemplate {
+        token: token.get().to_string(),
         message: String::new(),
         return_url,
     })?;
@@ -64,7 +67,7 @@ pub async fn login(
 pub async fn login_base(
     request: HttpRequest,
     user_repo: web::Data<PgUserRepository>,
-    form: web::Form<UserLoginForm>,
+    form: Csrf<web::Form<UserLoginForm>>,
     state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
     let secure_cookie = state.secure_cookie;
@@ -91,6 +94,7 @@ pub async fn login_base(
                 let env = state.jinja.acquire_env()?;
                 let template = env.get_template(template_name)?;
                 let body = template.render(LoginTemplate {
+                    token: form.csrf_token.get().to_string(),
                     message: err.to_string(),
                     return_url: form.return_url.clone(),
                 })?;

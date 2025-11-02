@@ -1,3 +1,4 @@
+use actix_csrf::extractor::{Csrf, CsrfGuarded, CsrfToken};
 use edumdns_core::app_packet::Id;
 use edumdns_db::repositories::common::Pagination;
 use edumdns_db::repositories::user::models::{SelectManyUsers, UserUpdate};
@@ -36,8 +37,9 @@ impl From<UserQuery> for SelectManyUsers {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UserUpdateFormAdmin {
+    pub csrf_token: CsrfToken,
     pub id: Id,
     #[serde(default, deserialize_with = "empty_string_is_none")]
     pub email: Option<String>,
@@ -64,15 +66,29 @@ impl From<UserUpdateFormAdmin> for UserUpdate {
     }
 }
 
+impl CsrfGuarded for UserUpdateFormAdmin {
+    fn csrf_token(&self) -> &CsrfToken {
+        &self.csrf_token
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct UserUpdatePasswordFormAdmin {
+    pub csrf_token: CsrfToken,
     pub id: Id,
     pub new_password: String,
     pub confirm_password: String,
 }
 
+impl CsrfGuarded for UserUpdatePasswordFormAdmin {
+    fn csrf_token(&self) -> &CsrfToken {
+        &self.csrf_token
+    }
+}
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct UserCreateForm {
+    pub csrf_token: CsrfToken,
     pub email: String,
     pub name: String,
     pub surname: String,
@@ -82,17 +98,38 @@ pub struct UserCreateForm {
     pub confirm_password: String,
 }
 
+impl CsrfGuarded for UserCreateForm {
+    fn csrf_token(&self) -> &CsrfToken {
+        &self.csrf_token
+    }
+}
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct UserUpdateForm {
+    pub csrf_token: CsrfToken,
     pub email: String,
     pub name: String,
     pub surname: String,
 }
+
+impl CsrfGuarded for UserUpdateForm {
+    fn csrf_token(&self) -> &CsrfToken {
+        &self.csrf_token
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct UserUpdatePasswordForm {
+    pub csrf_token: CsrfToken,
     pub old_password: String,
     pub new_password: String,
     pub confirm_password: String,
+}
+
+impl CsrfGuarded for UserUpdatePasswordForm {
+    fn csrf_token(&self) -> &CsrfToken {
+        &self.csrf_token
+    }
 }
 
 #[derive(Deserialize)]
@@ -108,7 +145,14 @@ impl Display for UserLoginReturnURL {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct UserLoginForm {
+    pub csrf_token: CsrfToken,
     pub email: String,
     pub password: String,
     pub return_url: String,
+}
+
+impl CsrfGuarded for UserLoginForm {
+    fn csrf_token(&self) -> &CsrfToken {
+        &self.csrf_token
+    }
 }

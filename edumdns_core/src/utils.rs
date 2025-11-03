@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! retry {
     ($f:expr, $count:expr, $interval:expr) => {{
-        let mut retries = 0;
+        let mut retries = 1;
         let result = loop {
             let result = $f;
             if result.is_ok() {

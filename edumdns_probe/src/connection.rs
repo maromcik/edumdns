@@ -165,11 +165,8 @@ impl ConnectionManager {
 
     pub async fn reconnect(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
         self.handle.close().await?;
-        match retry!(
-            Self::connect(&self.conn_info, &self.conn_limits).await,
-            self.conn_limits.max_retries,
-            self.conn_limits.retry_interval
-        ) {
+        match Self::connect(&self.conn_info, &self.conn_limits).await
+        {
             Ok(connection) => {
                 self.handle = connection;
                 self.connection_init_probe().await

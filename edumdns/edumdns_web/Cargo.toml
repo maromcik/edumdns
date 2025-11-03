@@ -35,3 +35,4 @@ time = {workspace = true}
 futures-util = {workspace = true}
 hickory-proto = { workspace = true }
 strum = { workspace = true }
+askama = "0.14.0"

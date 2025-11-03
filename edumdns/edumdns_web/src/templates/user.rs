@@ -22,12 +22,6 @@ pub struct UserDetailTemplate {
 }
 
 #[derive(Serialize)]
-pub struct LoginTemplate {
-    pub message: String,
-    pub return_url: String,
-}
-
-#[derive(Serialize)]
 pub struct UserManagePasswordTemplate {
     pub message: String,
     pub success: bool,

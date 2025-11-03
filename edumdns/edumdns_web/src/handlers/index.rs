@@ -3,8 +3,7 @@ use crate::forms::user::{UserLoginForm, UserLoginReturnURL};
 use crate::handlers::utilities::{
     destroy_session, extract_referrer, get_template_name, parse_user_from_oidc, parse_user_id,
 };
-use crate::templates::index::IndexTemplate;
-use crate::templates::user::LoginTemplate;
+use crate::templates::index::{IndexTemplate, LoginTemplate};
 use crate::{AppState, SESSION_EXPIRY, authorized};
 use actix_identity::Identity;
 use actix_session::Session;
@@ -12,6 +11,7 @@ use actix_web::http::StatusCode;
 use actix_web::http::header::LOCATION;
 use actix_web::web::Redirect;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, get, post, web};
+use askama::Template;
 use edumdns_db::error::DbError;
 use edumdns_db::repositories::common::{DbCreate, DbReadOne};
 use edumdns_db::repositories::user::models::UserLogin;
@@ -41,7 +41,6 @@ pub async fn login(
     request: HttpRequest,
     identity: Option<Identity>,
     query: web::Query<UserLoginReturnURL>,
-    state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
     let return_url = query.ret.clone().unwrap_or(extract_referrer(&request));
     if identity.is_some() {
@@ -49,14 +48,11 @@ pub async fn login(
             .insert_header((LOCATION, return_url))
             .finish());
     }
-
-    let template_name = "index/login.html";
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(template_name)?;
-    let body = template.render(LoginTemplate {
+    let template = LoginTemplate {
         message: String::new(),
         return_url,
-    })?;
+    };
+    let body = template.render()?;
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 

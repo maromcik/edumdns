@@ -91,6 +91,12 @@ impl From<actix_identity::error::LoginError> for WebError {
     }
 }
 
+impl From<askama::Error> for WebError {
+    fn from(error: askama::Error) -> Self {
+        Self::TemplatingError(error.to_string())
+    }
+}
+
 impl From<actix_identity::error::GetIdentityError> for WebError {
     fn from(value: actix_identity::error::GetIdentityError) -> Self {
         Self::IdentityError(value.to_string())

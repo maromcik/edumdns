@@ -111,7 +111,7 @@ impl From<actix_session::SessionInsertError> for WebError {
 
 impl From<minijinja::Error> for WebError {
     fn from(value: minijinja::Error) -> Self {
-        let mut res =  String::new();
+        let mut res = String::new();
         res.push_str(&value.to_string());
         while let Some(cause) = value.source() {
             res.push_str(&format!("\nCaused by: {}", cause));

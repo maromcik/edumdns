@@ -17,6 +17,7 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
+use edumdns_core::network_packet::ApplicationPacket;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::SelectManyPackets;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
@@ -27,7 +28,6 @@ use std::env;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 use std::time::Duration;
-use edumdns_core::network_packet::ApplicationPacket;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
 
@@ -400,7 +400,9 @@ impl PacketManager {
                 Ok(p) => p,
                 Err(e) => {
                     warn!("No packets found for target: {request_packet}: {e}");
-                    let _ = respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(e.to_string())));
+                    let _ = respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(
+                        e.to_string(),
+                    )));
                     return;
                 }
             };
@@ -411,19 +413,23 @@ impl PacketManager {
             {
                 rewrite_payloads(packets, p.proxy_ipv4, p.proxy_ipv6)
             } else {
-                packets.into_iter().filter_map(|p| {
-                    match ApplicationPacket::from_bytes(&p.payload, p.src_port, p.dst_port) {
-                        Ok(_) => Some(p.payload),
-                        Err(_) => None
-                    }
-                }).collect()
+                packets
+                    .into_iter()
+                    .filter_map(|p| {
+                        match ApplicationPacket::from_bytes(&p.payload, p.src_port, p.dst_port) {
+                            Ok(_) => Some(p.payload),
+                            Err(_) => None,
+                        }
+                    })
+                    .collect()
             };
 
             if payloads.is_empty() {
                 let warning = "no packets left after processing";
                 warn!("{warning} for target: {request_packet}");
-                let _ =
-                    respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(warning.to_string())));
+                let _ = respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(
+                    warning.to_string(),
+                )));
                 return;
             }
 

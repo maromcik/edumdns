@@ -1,7 +1,7 @@
 use crate::bincode_types::Uuid;
 use crate::bincode_types::{IpNetwork, MacAddr};
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};
-use crate::network_packet::{DataLinkPacket, NetworkPacket};
+use crate::network_packet::{ApplicationPacket, DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};
 use std::fmt::{Display, Formatter};
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -134,6 +134,7 @@ impl ProbePacket {
         let transport_metadata = transport_packet.get_transport_metadata()?;
         let payload = transport_packet.get_payload();
         let payload_hash = calculate_hash(payload);
+        ApplicationPacket::from_bytes(&payload, transport_metadata.src_port as i32, transport_metadata.dst_port as i32).ok()?;
         Some(Self {
             probe_metadata: probe_metadata.clone(),
             packet_metadata: PacketMetadata::new(

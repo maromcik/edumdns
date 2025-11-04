@@ -2,8 +2,8 @@ use crate::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
 use crate::error::ServerError;
-use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::AsyncPgConnection;
+use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_db::models::Packet;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use hickory_proto::op::Message;

@@ -27,6 +27,7 @@ use std::env;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 use std::time::Duration;
+use edumdns_core::network_packet::ApplicationPacket;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
 
@@ -410,7 +411,12 @@ impl PacketManager {
             {
                 rewrite_payloads(packets, p.proxy_ipv4, p.proxy_ipv6)
             } else {
-                packets.into_iter().map(|p| p.payload).collect()
+                packets.into_iter().filter_map(|p| {
+                    match ApplicationPacket::from_bytes(&p.payload, p.src_port, p.dst_port) {
+                        Ok(_) => Some(p.payload),
+                        Err(_) => None
+                    }
+                }).collect()
             };
 
             if payloads.is_empty() {

@@ -79,7 +79,7 @@ pub fn parse_user_from_oidc(request: &HttpRequest) -> Option<UserCreate> {
     let cookie = request.cookie("user_info")?.value().to_string();
     let parsed_cookie: HashMap<String, Value> = serde_json::from_str(cookie.as_str()).ok()?;
     // let id = parsed_cookie.get("preferred_username")?.as_str()?;
-    let email = parsed_cookie.get("email")?.as_str()?;
+    let email = parsed_cookie.get("sub")?.as_str()?;
     let name = parsed_cookie.get("given_name")?.as_str()?;
     let surname = parsed_cookie.get("family_name")?.as_str()?;
     Some(UserCreate::new_from_oidc(email, name, surname, true))

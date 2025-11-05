@@ -82,7 +82,7 @@ pub fn parse_user_from_oidc(request: &HttpRequest) -> Option<UserCreate> {
     let email = parsed_cookie.get("email")?.as_str()?;
     let name = parsed_cookie.get("given_name")?.as_str()?;
     let surname = parsed_cookie.get("family_name")?.as_str()?;
-    Some(UserCreate::new_from_oidc(email, name, surname, false))
+    Some(UserCreate::new_from_oidc(email, name, surname, true))
 }
 
 pub fn get_template_name(request: &HttpRequest, path: &str) -> String {

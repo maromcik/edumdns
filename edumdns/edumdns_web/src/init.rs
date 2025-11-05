@@ -8,7 +8,7 @@ use crate::handlers::group::{
     search_group_users, update_group,
 };
 use crate::handlers::index::{
-    index, login, login_base, login_oidc, login_oidc_redirect, logout, logout_cleanup,
+    index, login, login_base, login_oidc, login_oidc_redirect, logout_cleanup,
 };
 use crate::handlers::packet::{
     create_packet, create_packet_form, delete_packet, get_packet, get_packets,
@@ -127,7 +127,6 @@ pub fn configure_webapp(
             .service(login_base)
             .service(login_oidc_redirect)
             .service(logout_cleanup)
-            .service(logout)
             .service(user_scope)
             .service(probe_scope)
             .service(device_scope)

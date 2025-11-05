@@ -140,26 +140,26 @@ pub async fn login_oidc_redirect(
         .finish())
 }
 
-#[get("/logout")]
-pub async fn logout(
-    request: HttpRequest,
-    session: Session,
-    identity: Option<Identity>,
-) -> Result<impl Responder, WebError> {
-    destroy_session(session, identity);
-    let path = if let Some(cookie) = request.cookie("auth") {
-        if cookie.value() == "oidc" {
-            "/logout/oidc"
-        } else {
-            "/login"
-        }
-    } else {
-        "/login"
-    };
-    Ok(Redirect::to(path).using_status_code(StatusCode::FOUND))
-}
+// #[get("/logout")]
+// pub async fn logout(
+//     request: HttpRequest,
+//     session: Session,
+//     identity: Option<Identity>,
+// ) -> Result<impl Responder, WebError> {
+//     destroy_session(session, identity);
+//     let path = if let Some(cookie) = request.cookie("auth") {
+//         if cookie.value() == "oidc" {
+//             "/logout/oidc"
+//         } else {
+//             "/login"
+//         }
+//     } else {
+//         "/login"
+//     };
+//     Ok(Redirect::to(path).using_status_code(StatusCode::FOUND))
+// }
 
-#[get("/logout/cleanup")]
+#[get("/logout")]
 pub async fn logout_cleanup(
     session: Session,
     identity: Option<Identity>,

@@ -277,7 +277,7 @@ impl UserBackend {
             .values(data)
             .on_conflict(user::email)
             .do_update()
-            .set((user::name.eq(&data.name), user::surname.eq(&data.surname)))
+            .set((user::name.eq(&data.name), user::surname.eq(&data.surname), user::admin.eq(&data.admin)))
             .returning(User::as_returning())
             .get_result(conn)
             .await

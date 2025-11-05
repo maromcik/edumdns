@@ -21,8 +21,7 @@ FROM ((SELECT packet.id
       UNION
       (SELECT packet.id
        FROM packet
-                INNER JOIN probe
-                           ON packet.probe_id = probe.id
+                INNER JOIN probe ON packet.probe_id = probe.id
        WHERE probe.owner_id = $1
          AND ($2::BIGINT IS NULL OR packet.id = $2)
          AND ($3::UUID IS NULL OR packet.probe_id = $3)

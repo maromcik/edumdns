@@ -30,6 +30,5 @@ UNION
    AND ($7::TEXT IS NULL OR device.name ILIKE CONCAT('%', $7, '%'))
    AND ($8::BOOL IS NULL OR device.published = $8)
    AND ($9::BOOL IS NULL OR device.proxy = $9))
-    ORDER BY id
-    LIMIT $10
-    OFFSET $11;
+ORDER BY id
+LIMIT $10 OFFSET $11;

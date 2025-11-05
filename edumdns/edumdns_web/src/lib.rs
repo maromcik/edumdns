@@ -58,6 +58,11 @@ pub async fn web_init(
     let use_secure_cookie = env::var("EDUMDNS_USE_SECURE_COOKIE")
         .unwrap_or("false".to_string())
         .parse::<bool>()?;
+
+    let oidc_users_admin = env::var("EDUMDNS_OIDC_NEW_USERS_ADMIN")
+        .unwrap_or("false".to_string())
+        .parse::<bool>()?;
+    
     info!("EDUMDNS_USE_SECURE_COOKIE: {}", use_secure_cookie);
 
     let jinja = Arc::new(create_reloader(format!("{files_dir}/templates")));
@@ -71,6 +76,7 @@ pub async fn web_init(
         command_channel.clone(),
         device_acl_ap_database,
         use_secure_cookie,
+        oidc_users_admin,
     );
 
     match create_oidc().await {

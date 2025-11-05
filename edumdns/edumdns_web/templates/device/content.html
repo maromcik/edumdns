@@ -63,30 +63,27 @@
             <tbody class="divide-y divide-base">
             {% for device in devices %}
             <tr class="bg-table rounded-lg transition-colors">
-                <!-- device[1] is Device -->
+                <!-- device is Device -->
                 <td class="px-4 py-3 font-mono text-sm text-sat-l">
-                    <a href="/device/{{ device[1].id }}" class="text-primary hover:underline">
-                        {{ device[1].id }}
+                    <a href="/device/{{ device.id }}" class="text-primary hover:underline">
+                        {{ device.id }}
                     </a>
                 </td>
 
                 <!-- device[0] is Option<Probe> -->
                 <td class="px-4 py-3 text-sm">
-                    {% if device[0] %}
-                    <a href="/probe/{{ device[0].id }}" class="text-primary hover:underline">
-                        {{ device[0].id }}
+                    <a href="/probe/{{ device.probe_id }}" class="text-primary hover:underline">
+                        {{ device.probe_id }}
                     </a>
-                    {% else %}
-                    <span class="text-muted-foreground">—</span>
-                    {% endif %}
+
                 </td>
-                <td class="px-4 py-3 text-sm text-sat-l">{% if device[1].name is not none %}{{ device[1].name }} {% else
+                <td class="px-4 py-3 text-sm text-sat-l">{% if device.name is not none %}{{ device.name }} {% else
                     %} <span class="text-muted-foreground">—</span>{% endif %}
                 </td>
-                <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].mac }}</td>
-                <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].ip }}</td>
-                <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].port }}</td>
-                <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].discovered_at }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device.mac }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device.ip }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device.port }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device.discovered_at }}</td>
                 <td class="px-4 py-2"></td>
             </tr>
             {% endfor %}

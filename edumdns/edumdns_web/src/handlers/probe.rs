@@ -20,7 +20,7 @@ use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
 use edumdns_db::models::Group;
 use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE, Permission,
+    DbCreate, DbDelete, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE, Permission,
 };
 use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
@@ -58,13 +58,9 @@ pub async fn get_probes(
     let params = SelectManyProbes::from(query.clone());
     let probes = probe_repo.read_many_auth(&params, &user_id).await?;
 
-    let probes_parsed = probes
-        .data
-        .into_iter()
-        .map(|p| ProbeDisplay::from(p))
-        .collect();
+    let probes_parsed = probes.into_iter().map(ProbeDisplay::from).collect();
 
-    let probe_count = probe_repo.get_probe_count(params).await?;
+    let probe_count = probe_repo.get_probe_count(params, &user_id).await?;
     let total_pages = (probe_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
 
     let template_name = get_template_name(&request, "probe");
@@ -73,7 +69,6 @@ pub async fn get_probes(
     let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(ProbeTemplate {
         user,
-        permissions: probes.permissions,
         probes: probes_parsed,
         page_info: PageInfo::new(page, total_pages),
         filters: query,
@@ -129,7 +124,7 @@ pub async fn get_probe(
     let mut params = SelectManyDevices::from(query.clone());
     params.probe_id = Some(probe_id);
     let devices = device_repo.read_many(&params).await?;
-    let device_count = device_repo.get_device_count(params).await?;
+    let device_count = device_repo.get_device_count(params, &user_id).await?;
     let total_pages = (device_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
 
     let template_name = get_template_name(&request, "probe/detail");
@@ -141,10 +136,7 @@ pub async fn get_probe(
         permissions: probe.permissions,
         permission_matrix: matrix,
         probe: ProbeDisplay::from(probe.data.0),
-        devices: devices
-            .into_iter()
-            .map(|d| DeviceDisplay::from(d.1))
-            .collect(),
+        devices: devices.into_iter().map(DeviceDisplay::from).collect(),
         configs: probe.data.1,
         page_info: PageInfo::new(page, total_pages),
         filters: query,

@@ -1,8 +1,8 @@
 use crate::error::DbError;
-use crate::models::{Device, GroupProbePermission, PacketTransmitRequest, Probe, User};
+use crate::models::{Device, PacketTransmitRequest, User};
 use crate::repositories::common::{
-    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
-    DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Permission,
+    CountResult, DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResult, DbResultMultiple,
+    DbResultSingle, DbResultSinglePerm, DbUpdate, Permission,
 };
 use crate::repositories::device::models::{
     CreateDevice, CreatePacketTransmitRequest, DeviceUpdatePassword, SelectManyDevices,
@@ -12,23 +12,18 @@ use crate::repositories::utilities::{
     generate_salt, hash_password, validate_permissions, validate_user,
 };
 use crate::schema::device::BoxedQuery;
-use crate::schema::{
-    device, group_probe_permission, group_user, packet, packet_transmit_request, probe, user,
-};
-use diesel::BoolExpressionMethods;
+use crate::schema::{device, packet, packet_transmit_request, user};
 use diesel::pg::Pg;
+use diesel::sql_query;
+use diesel::sql_types::{BigInt, Bool, Cidr, Int4, Macaddr, Nullable, Text, Uuid as DieselUuid};
 use diesel::{
-    ExpressionMethods, JoinOnDsl, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl,
-    SelectableHelper,
+    ExpressionMethods, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl, SelectableHelper,
 };
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection};
 use edumdns_core::app_packet::Id;
-use itertools;
-use itertools::Itertools;
-use std::collections::HashSet;
 use std::ops::DerefMut;
 use time::OffsetDateTime;
 
@@ -103,14 +98,42 @@ impl PgDeviceRepository {
             .map_err(DbError::from)
     }
 
-    pub async fn get_device_count(&self, mut params: SelectManyDevices) -> DbResultSingle<i64> {
+    pub async fn get_device_count(
+        &self,
+        mut params: SelectManyDevices,
+        user_id: &Id,
+    ) -> DbResultSingle<i64> {
         let mut conn = self.pg_pool.get().await?;
+        let user_entry = user::table
+            .find(user_id)
+            .select(User::as_select())
+            .first(&mut conn)
+            .await?;
+
+        validate_user(&user_entry)?;
         params.pagination = None;
-        build_select_many_query(&params)
-            .count()
-            .get_result(&mut conn)
-            .await
-            .map_err(DbError::from)
+
+        if user_entry.admin {
+            return build_select_many_query(&params)
+                .count()
+                .get_result(&mut conn)
+                .await
+                .map_err(DbError::from);
+        }
+
+        let query = sql_query(include_str!("queries/count.sql"))
+        .bind::<BigInt, _>(user_id)
+        .bind::<Nullable<BigInt>, _>(params.id)
+        .bind::<Nullable<DieselUuid>, _>(params.probe_id)
+        .bind::<Nullable<Macaddr>, _>(params.mac)
+        .bind::<Nullable<Cidr>, _>(params.ip)
+        .bind::<Nullable<Int4>, _>(params.port)
+        .bind::<Nullable<Text>, _>(params.name.as_ref())
+        .bind::<Nullable<Bool>, _>(params.published)
+        .bind::<Nullable<Bool>, _>(params.proxy);
+
+        let result = query.get_result::<CountResult>(&mut conn).await?;
+        Ok(result.count)
     }
 
     pub async fn update_password(&self, params: &DeviceUpdatePassword) -> DbResultSingle<Device> {
@@ -171,6 +194,50 @@ impl PgDeviceRepository {
             .await
             .map_err(DbError::from)
     }
+
+    pub async fn read_many(&self, params: &SelectManyDevices) -> DbResultMultiple<Device> {
+        let mut conn = self.pg_pool.get().await?;
+        let devices = DeviceBackend::select_many(&mut conn, params).await?;
+        Ok(devices)
+    }
+
+    pub async fn read_many_auth(
+        &self,
+        params: &SelectManyDevices,
+        user_id: &Id,
+    ) -> DbResultMultiple<Device> {
+        let mut conn = self.pg_pool.get().await?;
+        let user_entry = user::table
+            .find(user_id)
+            .select(User::as_select())
+            .first(&mut conn)
+            .await?;
+
+        validate_user(&user_entry)?;
+
+        if user_entry.admin {
+            let devices = DeviceBackend::select_many(&mut conn, params).await?;
+            return Ok(devices);
+        }
+
+        let pagination = params.pagination.unwrap_or_default();
+
+        let query = sql_query(include_str!("queries/read_many.sql"))
+        .bind::<BigInt, _>(user_id)
+        .bind::<Nullable<BigInt>, _>(params.id)
+        .bind::<Nullable<DieselUuid>, _>(params.probe_id)
+        .bind::<Nullable<Macaddr>, _>(params.mac)
+        .bind::<Nullable<Cidr>, _>(params.ip)
+        .bind::<Nullable<Int4>, _>(params.port)
+        .bind::<Nullable<Text>, _>(params.name.as_ref())
+        .bind::<Nullable<Bool>, _>(params.published)
+        .bind::<Nullable<Bool>, _>(params.proxy)
+        .bind::<BigInt, _>(pagination.limit.unwrap_or(i64::MAX))
+        .bind::<BigInt, _>(pagination.offset.unwrap_or(0));
+
+        let devices = query.load::<Device>(&mut conn).await?;
+        Ok(devices)
+    }
 }
 
 impl DbReadOne<Id, Device> for PgDeviceRepository {
@@ -206,75 +273,6 @@ impl DbReadOne<SelectSingleDevice, Device> for PgDeviceRepository {
             validate_permissions(&mut conn, user_id, &params.probe_id, Permission::Read).await?;
         let d = DeviceBackend::select_one_param(&mut conn, params).await?;
         Ok(DbDataPerm::new(d, permissions))
-    }
-}
-
-impl DbReadMany<SelectManyDevices, (Probe, Device)> for PgDeviceRepository {
-    async fn read_many(&self, params: &SelectManyDevices) -> DbResultMultiple<(Probe, Device)> {
-        let mut conn = self.pg_pool.get().await?;
-        let devices = DeviceBackend::select_many(&mut conn, params).await?;
-        Ok(devices)
-    }
-
-    async fn read_many_auth(
-        &self,
-        params: &SelectManyDevices,
-        user_id: &Id,
-    ) -> DbResultMultiplePerm<(Probe, Device)> {
-        let mut conn = self.pg_pool.get().await?;
-        let user_entry = user::table
-            .find(user_id)
-            .select(User::as_select())
-            .first(&mut conn)
-            .await?;
-
-        validate_user(&user_entry)?;
-
-        if user_entry.admin {
-            let devices = DeviceBackend::select_many(&mut conn, params).await?;
-            return Ok(DbDataPerm::new(
-                devices,
-                (true, vec![GroupProbePermission::full()]),
-            ));
-        }
-
-        let query = build_select_many_query(params);
-        let devices = query
-            .inner_join(probe::table)
-            .inner_join(
-                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
-            )
-            .filter(
-                group_probe_permission::permission
-                    .eq(Permission::Read)
-                    .or(group_probe_permission::permission.eq(Permission::Full)),
-            )
-            .inner_join(
-                group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
-            )
-            .filter(group_user::user_id.eq(user_id))
-            .order_by(device::id.asc())
-            .select((Probe::as_select(), Device::as_select()))
-            .load::<(Probe, Device)>(&mut conn)
-            .await?;
-
-        let query = build_select_many_query(params);
-        let owned_devices = query
-            .inner_join(probe::table)
-            .filter(probe::owner_id.eq(user_id))
-            .select((Probe::as_select(), Device::as_select()))
-            .load::<(Probe, Device)>(&mut conn)
-            .await?;
-
-        let mut devices: HashSet<(Probe, Device)> = HashSet::from_iter(devices);
-        devices.extend(owned_devices);
-
-        let devices = devices
-            .into_iter()
-            .sorted_by_key(|(_, d)| d.id)
-            .collect::<Vec<_>>();
-
-        Ok(DbDataPerm::new(devices, (false, vec![])))
     }
 }
 
@@ -367,13 +365,12 @@ impl DeviceBackend {
     async fn select_many(
         conn: &mut AsyncPgConnection,
         params: &SelectManyDevices,
-    ) -> DbResultMultiple<(Probe, Device)> {
+    ) -> DbResultMultiple<Device> {
         let query = build_select_many_query(params);
         let devices = query
-            .inner_join(probe::table)
             .order_by(device::id.asc())
-            .select((Probe::as_select(), Device::as_select()))
-            .load::<(Probe, Device)>(conn)
+            .select(Device::as_select())
+            .load::<Device>(conn)
             .await?;
 
         Ok(devices)

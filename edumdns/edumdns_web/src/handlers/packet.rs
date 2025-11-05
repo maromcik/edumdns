@@ -36,7 +36,7 @@ pub async fn get_packets(
     let query = query.into_inner();
     let params = SelectManyPackets::from(query.clone());
     let packets = packet_repo.read_many_auth(&params, &user_id).await?;
-    let packet_count = packet_repo.get_packet_count(params).await?;
+    let packet_count = packet_repo.get_packet_count(params, &user_id).await?;
     let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
     let packets_parsed = packets
         .into_iter()

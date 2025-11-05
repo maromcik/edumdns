@@ -48,7 +48,7 @@ impl AppState {
             command_channel,
             device_acl_ap_database,
             secure_cookie,
-            oidc_users_admin
+            oidc_users_admin,
         }
     }
 }

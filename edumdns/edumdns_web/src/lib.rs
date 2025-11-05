@@ -62,7 +62,7 @@ pub async fn web_init(
     let oidc_users_admin = env::var("EDUMDNS_OIDC_NEW_USERS_ADMIN")
         .unwrap_or("false".to_string())
         .parse::<bool>()?;
-    
+
     info!("EDUMDNS_USE_SECURE_COOKIE: {}", use_secure_cookie);
 
     let jinja = Arc::new(create_reloader(format!("{files_dir}/templates")));

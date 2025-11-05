@@ -21,7 +21,7 @@ use edumdns_core::app_packet::{EntityType, Id};
 use edumdns_core::bincode_types::{IpNetwork, MacAddr};
 use edumdns_core::error::CoreError;
 use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadMany, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE, Pagination,
+    DbCreate, DbDelete, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE, Pagination,
 };
 use edumdns_db::repositories::device::models::{
     CreateDevice, DeviceDisplay, PacketTransmitRequestDisplay, SelectManyDevices,
@@ -52,12 +52,11 @@ pub async fn get_devices(
     let params = SelectManyDevices::from(query.clone());
     let devices = device_repo.read_many_auth(&params, &user_id).await?;
     let devices_parsed = devices
-        .data
         .into_iter()
-        .map(|(p, d)| (p, DeviceDisplay::from(d)))
+        .map(|d| DeviceDisplay::from(d))
         .collect();
 
-    let device_count = device_repo.get_device_count(params).await?;
+    let device_count = device_repo.get_device_count(params, &user_id).await?;
     let total_pages = (device_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
 
     let template_name = get_template_name(&request, "device");
@@ -65,7 +64,6 @@ pub async fn get_devices(
     let template = env.get_template(&template_name)?;
     let query_string = request.uri().query().unwrap_or("").to_string();
     let body = template.render(DeviceTemplate {
-        permissions: devices.permissions,
         devices: devices_parsed,
         user,
         page_info: PageInfo::new(page, total_pages),
@@ -119,7 +117,7 @@ pub async fn get_device(
         .map(|r| PacketTransmitRequestDisplay::from(r, device.data.duration))
         .collect();
 
-    let packet_count = packet_repo.get_packet_count(params).await?;
+    let packet_count = packet_repo.get_packet_count(params, &user_id).await?;
     let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
     let query_string = request.uri().query().unwrap_or("").to_string();
     let template_name = get_template_name(&request, "device/detail");

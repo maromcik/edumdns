@@ -1,7 +1,6 @@
 use crate::forms::device::DeviceQuery;
 use crate::forms::packet::PacketQuery;
 use crate::templates::PageInfo;
-use edumdns_db::models::Probe;
 use edumdns_db::repositories::common::Permissions;
 use edumdns_db::repositories::device::models::{DeviceDisplay, PacketTransmitRequestDisplay};
 use edumdns_db::repositories::packet::models::PacketDisplay;
@@ -12,8 +11,7 @@ use uuid::Uuid;
 #[derive(Serialize)]
 pub struct DeviceTemplate {
     pub user: UserDisplay,
-    pub permissions: Permissions,
-    pub devices: Vec<(Probe, DeviceDisplay)>,
+    pub devices: Vec<DeviceDisplay>,
     pub page_info: PageInfo,
     pub filters: DeviceQuery,
     pub query_string: String,

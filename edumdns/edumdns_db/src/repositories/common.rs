@@ -3,8 +3,9 @@ use crate::models::GroupProbePermission;
 use diesel::backend::Backend;
 use diesel::deserialize::FromSql;
 use diesel::serialize::{Output, ToSql};
+use diesel::sql_types::BigInt;
 use diesel::sql_types::SmallInt;
-use diesel::{AsExpression, FromSqlRow, deserialize, serialize};
+use diesel::{AsExpression, FromSqlRow, QueryableByName, deserialize, serialize};
 use edumdns_core::app_packet::Id;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -151,7 +152,7 @@ pub trait DbDelete<Delete, Data> {
     ) -> impl Future<Output = DbResultMultiple<Data>> + Send;
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default)]
 pub struct Pagination {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
@@ -265,4 +266,10 @@ where
             Permission::Create => 8_i16.to_sql(out),
         }
     }
+}
+
+#[derive(QueryableByName)]
+pub struct CountResult {
+    #[diesel(sql_type = BigInt)]
+    pub count: i64,
 }

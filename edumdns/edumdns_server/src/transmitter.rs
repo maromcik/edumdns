@@ -8,7 +8,7 @@ use edumdns_core::connection::UdpConnection;
 use log::{debug, error, info};
 use std::collections::HashSet;
 use std::time::Duration;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 
@@ -18,7 +18,7 @@ pub struct PacketTransmitterTask {
 
 impl PacketTransmitterTask {
     pub fn new(
-        transmitter: PacketTransmitter,
+        mut transmitter: PacketTransmitter,
         command_transmitter: Sender<AppPacket>,
         request_id: Id,
     ) -> Self {
@@ -40,38 +40,48 @@ impl PacketTransmitterTask {
 }
 
 pub struct PacketTransmitter {
-    pub payloads: HashSet<Vec<u8>>,
+    pub payloads: Vec<Vec<u8>>,
     pub transmit_request: PacketTransmitRequestPacket,
     pub udp_connection: UdpConnection,
     pub global_timeout: Duration,
+    pub live_updater: Option<Receiver<Vec<u8>>>,
 }
 
 impl PacketTransmitter {
     pub async fn new(
-        payloads: HashSet<Vec<u8>>,
+        payloads: Vec<Vec<u8>>,
         target: PacketTransmitRequestPacket,
         global_timeout: Duration,
+        live_updater: Option<Receiver<Vec<u8>>>,
     ) -> Result<Self, ServerError> {
         Ok(Self {
             payloads,
             transmit_request: target.clone(),
             udp_connection: UdpConnection::new(global_timeout).await?,
             global_timeout,
+            live_updater,
         })
     }
 
-    pub async fn transmit(&self) {
+    pub async fn transmit(&mut self) {
         let host = format!(
             "{}:{}",
             self.transmit_request.request.target_ip.ip(),
             self.transmit_request.request.target_port
         );
+        println!("LEN: {}", self.payloads.len());
         info!("Initiating packet transmission to: {}", host);
         let interval = Duration::from_millis(self.transmit_request.device.interval as u64);
         let duration = Duration::from_secs(self.transmit_request.device.duration as u64);
         let sleep_interval = interval * DEFAULT_INTERVAL_MULTIPLICATOR;
         let total_time = Instant::now();
         loop {
+            if let Some(live_updater) = &mut self.live_updater {
+                if let Ok(p) = live_updater.try_recv() {
+                    self.payloads.push(p);
+                    info!("Received new payload from live updater");
+                }
+            }
             for payload in self.payloads.iter() {
                 match self
                     .udp_connection
@@ -84,7 +94,7 @@ impl PacketTransmitter {
                         return;
                     }
                 }
-                debug!(
+                info!(
                     "Packet sent from device: {} to client: {}",
                     self.transmit_request.device.ip, self.transmit_request.request.target_ip
                 );
@@ -96,9 +106,9 @@ impl PacketTransmitter {
             if total_time.elapsed() > duration {
                 return;
             }
-            debug!("All packets sent; waiting for: {:?}", sleep_interval);
+            info!("All packets sent; waiting for: {:?}", sleep_interval);
             tokio::time::sleep(sleep_interval).await;
-            debug!("Repeating packet transmission...");
+            info!("Repeating packet transmission...");
         }
     }
 }

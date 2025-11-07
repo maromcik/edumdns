@@ -24,8 +24,8 @@ pub fn rewrite_records(record: &mut Record, ipv4: Ipv4Addr, ipv6: Ipv6Addr) {
     }
 }
 
-pub fn rewrite_payloads(packets: Vec<Packet>, ipv4: Ipv4Addr, ipv6: Ipv6Addr) -> HashSet<Vec<u8>> {
-    let mut payloads = HashSet::new();
+pub fn rewrite_payloads(packets: Vec<Packet>, ipv4: Ipv4Addr, ipv6: Ipv6Addr) -> Vec<Vec<u8>> {
+    let mut payloads = Vec::new();
     for packet in packets {
         let Ok(mut message) = Message::from_bytes(packet.payload.as_slice()) else {
             continue;
@@ -37,7 +37,7 @@ pub fn rewrite_payloads(packets: Vec<Packet>, ipv4: Ipv4Addr, ipv6: Ipv6Addr) ->
             rewrite_records(add, ipv4, ipv6);
         }
         if let Ok(bytes) = message.to_vec() {
-            payloads.insert(bytes);
+            payloads.push(bytes);
         }
     }
     payloads

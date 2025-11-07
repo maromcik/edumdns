@@ -25,11 +25,13 @@ use log::{debug, error, info, warn};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::env;
+use std::hash::Hash;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
+use edumdns_db::models::Device;
 
 #[derive(Clone)]
 pub struct Proxy {
@@ -43,8 +45,15 @@ pub struct PacketTransmitJob {
     pub task: PacketTransmitterTask,
 }
 
+#[derive(Default)]
+pub struct PacketsData {
+    pub packets: HashSet<ProbePacket>,
+    pub transmit_job_channel: Option<Sender<Vec<u8>>>,
+}
+
+
 pub struct PacketManager {
-    pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), HashSet<ProbePacket>>>,
+    pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), PacketsData>>,
     pub command_transmitter: Sender<AppPacket>,
     pub command_receiver: Receiver<AppPacket>,
     pub data_receiver: Receiver<AppPacket>,
@@ -257,24 +266,34 @@ impl PacketManager {
                     Entry::Occupied(mut probe_entry) => {
                         match probe_entry.get_mut().entry((src_mac, src_ip)) {
                             Entry::Occupied(mut device_entry) => {
-                                if device_entry.get().len() > BUFFER_SIZE {
-                                    device_entry.get_mut().clear();
+                                if device_entry.get().packets.len() > BUFFER_SIZE {
+                                    device_entry.get_mut().packets.clear();
                                     info!(
                                         "Device buffer for <{src_mac}; {src_ip}> exceeded {BUFFER_SIZE} elements; cleared"
                                     );
                                 }
-                                if !device_entry.get().contains(&probe_packet) {
-                                    device_entry.get_mut().insert(probe_packet.clone());
-                                    self.send_db_packet(DbCommand::StorePacket(probe_packet))
+                                if let Some(chan) = &device_entry.get().transmit_job_channel {
+                                    if let Err(e) = chan.send(probe_packet.payload.clone()).await {
+                                        warn!("Could not send packet to transmitter: {e}");
+                                    }
+                                    warn!("Packet <MAC: {src_mac}, IP: {src_ip}> sent to transmitter");
+                                }
+                                else {
+                                    warn!("No transmitter channel for device <{src_mac}; {src_ip}>");
+                                }
+                                if !device_entry.get().packets.contains(&probe_packet) {
+                                    device_entry.get_mut().packets.insert(probe_packet.clone());
+                                    self.send_db_packet(DbCommand::StorePacket(probe_packet.clone()))
                                         .await;
                                     debug!("Probe and device found; stored packet in database");
                                 } else {
                                     debug!("Probe, device and packet found; no action");
                                 }
+
                             }
                             Entry::Vacant(device_entry) => {
-                                let device_entry = device_entry.insert(HashSet::default());
-                                device_entry.insert(probe_packet.clone());
+                                let device_entry = device_entry.insert(PacketsData::default());
+                                device_entry.packets.insert(probe_packet.clone());
                                 self.send_db_packet(DbCommand::StoreDevice(probe_packet.clone()))
                                     .await;
                                 self.send_db_packet(DbCommand::StorePacket(probe_packet))
@@ -288,6 +307,7 @@ impl PacketManager {
                         probe_entry
                             .entry((src_mac, src_ip))
                             .or_default()
+                            .packets
                             .insert(probe_packet.clone());
                         self.send_db_packet(DbCommand::StoreDevice(probe_packet.clone()))
                             .await;
@@ -374,6 +394,17 @@ impl PacketManager {
         let transmitter_tasks = self.transmitter_tasks.clone();
         let global_timeout = self.global_timeout;
         let command_transmitter_local = self.command_transmitter.clone();
+        let live_updater = if let Some(device) = self.packets.get_mut(&Uuid(request_packet.device.probe_id)) {
+            if let Some(packet_data) = device.get_mut(&(MacAddr::from_octets(request_packet.device.mac), IpNetwork(request_packet.device.ip))) {
+                let chan = tokio::sync::mpsc::channel(1);
+                packet_data.transmit_job_channel = Some(chan.0);
+                Some(chan.1)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
         tokio::task::spawn(async move {
             if proxy.is_none() && request_packet.device.proxy {
                 let err = "eBPF is not configured properly; contact your administrator";
@@ -454,6 +485,7 @@ impl PacketManager {
                 payloads,
                 request_packet.clone(),
                 global_timeout,
+                live_updater,
             )
             .await
             {

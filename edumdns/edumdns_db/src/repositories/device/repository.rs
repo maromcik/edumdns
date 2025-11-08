@@ -383,12 +383,11 @@ impl DeviceBackend {
         conn.transaction::<_, DbError, _>(|c| {
             async move {
                 let device = DeviceBackend::select_one(c, &params.id).await?;
-                let devices = diesel::update(device::table.find(&params.id))
+                let updated_devices = diesel::update(device::table.find(&params.id))
                     .set(params)
                     .get_results::<Device>(c)
                     .await?;
-                let updated_device = devices.iter().next();
-                if let Some(d) = updated_device {
+                if let Some(d) = updated_devices.iter().next() {
                     diesel::update(
                         packet::table
                             .filter(packet::probe_id.eq(device.probe_id))
@@ -398,12 +397,11 @@ impl DeviceBackend {
                     .set((
                         packet::src_addr.eq(&d.ip),
                         packet::src_mac.eq(&d.mac),
-                        packet::dst_port.eq(&d.port),
                     ))
                     .execute(c)
                     .await?;
                 }
-                Ok::<Vec<Device>, DbError>(devices)
+                Ok::<Vec<Device>, DbError>(updated_devices)
             }
             .scope_boxed()
         })

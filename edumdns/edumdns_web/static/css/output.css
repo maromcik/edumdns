@@ -620,12 +620,12 @@ a:hover {
 @media (prefers-color-scheme: dark) {
   a {
     --tw-text-opacity: 1;
-    color: rgb(245 158 11 / var(--tw-text-opacity, 1));
+    color: rgb(251 191 36 / var(--tw-text-opacity, 1));
   }
 
   a:hover {
     --tw-text-opacity: 1;
-    color: rgb(217 119 6 / var(--tw-text-opacity, 1));
+    color: rgb(245 158 11 / var(--tw-text-opacity, 1));
   }
 }
 
@@ -1630,6 +1630,11 @@ pre code {
   color: rgb(59 130 246 / var(--tw-text-opacity, 1));
 }
 
+.text-gray-50 {
+  --tw-text-opacity: 1;
+  color: rgb(249 250 251 / var(--tw-text-opacity, 1));
+}
+
 .text-gray-500 {
   --tw-text-opacity: 1;
   color: rgb(107 114 128 / var(--tw-text-opacity, 1));
@@ -1703,20 +1708,6 @@ pre code {
 .text-yellow-800 {
   --tw-text-opacity: 1;
   color: rgb(133 77 14 / var(--tw-text-opacity, 1));
-}
-
-.text-gray-200 {
-  --tw-text-opacity: 1;
-  color: rgb(229 231 235 / var(--tw-text-opacity, 1));
-}
-
-.text-gray-50 {
-  --tw-text-opacity: 1;
-  color: rgb(249 250 251 / var(--tw-text-opacity, 1));
-}
-
-.underline {
-  text-decoration-line: underline;
 }
 
 .shadow {
@@ -2089,7 +2080,7 @@ pre code {
 
 .text-navbar-buttons:hover {
   --tw-text-opacity: 1;
-  color: rgb(146 64 14 / var(--tw-text-opacity, 1));
+  color: rgb(180 83 9 / var(--tw-text-opacity, 1));
 }
 
 @media (prefers-color-scheme: dark) {
@@ -2545,6 +2536,11 @@ pre code {
     color: rgb(251 191 36 / var(--tw-text-opacity, 1));
   }
 
+  .dark\:text-gray-900 {
+    --tw-text-opacity: 1;
+    color: rgb(17 24 39 / var(--tw-text-opacity, 1));
+  }
+
   .dark\:text-orange-400 {
     --tw-text-opacity: 1;
     color: rgb(251 146 60 / var(--tw-text-opacity, 1));
@@ -2558,11 +2554,6 @@ pre code {
   .dark\:text-yellow-400 {
     --tw-text-opacity: 1;
     color: rgb(250 204 21 / var(--tw-text-opacity, 1));
-  }
-
-  .dark\:text-gray-900 {
-    --tw-text-opacity: 1;
-    color: rgb(17 24 39 / var(--tw-text-opacity, 1));
   }
 
   .dark\:hover\:bg-gray-500:hover {

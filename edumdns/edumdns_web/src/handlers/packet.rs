@@ -78,7 +78,9 @@ pub async fn get_packet(
         packet.data.src_mac,
         packet.data.src_addr,
     );
-    let device = device_repo.read_one_auth(&params, &user_id).await?;
+    
+    let device_id = device_repo.read_one(&params).await.ok().map(|d|d.id);
+    
     let template_name = get_template_name(&request, "packet/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
@@ -86,7 +88,7 @@ pub async fn get_packet(
         user,
         permissions: packet.permissions,
         packet: &PacketDisplay::from(packet.data)?,
-        device_id: device.data.id,
+        device_id,
     })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))

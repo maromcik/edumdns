@@ -394,10 +394,7 @@ impl DeviceBackend {
                             .filter(packet::src_mac.eq(device.mac))
                             .filter(packet::src_addr.eq(device.ip)),
                     )
-                    .set((
-                        packet::src_addr.eq(&d.ip),
-                        packet::src_mac.eq(&d.mac),
-                    ))
+                    .set((packet::src_addr.eq(&d.ip), packet::src_mac.eq(&d.mac)))
                     .execute(c)
                     .await?;
                 }

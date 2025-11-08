@@ -1,6 +1,8 @@
 use crate::authorized;
 use crate::error::WebError;
-use crate::forms::packet::{CreatePacketForm, PacketDeviceDataForm, PacketQuery, ReassignPacketForm, UpdatePacketForm};
+use crate::forms::packet::{
+    CreatePacketForm, PacketDeviceDataForm, PacketQuery, ReassignPacketForm, UpdatePacketForm,
+};
 use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
 use crate::header::LOCATION;
 use crate::templates::PageInfo;
@@ -79,7 +81,7 @@ pub async fn get_packet(
         packet.data.src_addr,
     );
 
-    let device_id = device_repo.read_one(&params).await.ok().map(|d|d.id);
+    let device_id = device_repo.read_one(&params).await.ok().map(|d| d.id);
 
     let template_name = get_template_name(&request, "packet/detail");
     let env = state.jinja.acquire_env()?;
@@ -138,7 +140,7 @@ pub async fn update_packet(
     request: HttpRequest,
     identity: Option<Identity>,
     packet_repo: web::Data<PgPacketRepository>,
-    form: web::Form<UpdatePacketForm>
+    form: web::Form<UpdatePacketForm>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let params = form.into_inner().to_db_params();
@@ -163,7 +165,9 @@ pub async fn reassign_packet(
 
     let device = device_repo.read_one(&form.device_id).await?;
 
-    let params = form.into_inner().to_db_params(device.probe_id, device.mac, device.ip);
+    let params = form
+        .into_inner()
+        .to_db_params(device.probe_id, device.mac, device.ip);
     packet_repo
         .update_auth(&params, &parse_user_id(&i)?)
         .await?;

@@ -98,12 +98,12 @@ pub struct UpdatePacketForm {
 }
 
 impl UpdatePacketForm {
-    pub fn to_db_params(self) -> UpdatePacket{
+    pub fn to_db_params(self) -> UpdatePacket {
         UpdatePacket {
             id: self.id,
             probe_id: self.probe_id,
-            src_mac: self.src_mac.map(|m|m.to_octets()),
-            dst_mac: self.dst_mac.map(|m|m.to_octets()),
+            src_mac: self.src_mac.map(|m| m.to_octets()),
+            dst_mac: self.dst_mac.map(|m| m.to_octets()),
             src_addr: self.src_addr,
             dst_addr: self.dst_addr,
             src_port: self.src_port,
@@ -119,7 +119,12 @@ pub struct ReassignPacketForm {
 }
 
 impl ReassignPacketForm {
-    pub fn to_db_params(self, probe_id: Uuid, src_mac: [u8; 6], src_addr: IpNetwork) -> UpdatePacket {
+    pub fn to_db_params(
+        self,
+        probe_id: Uuid,
+        src_mac: [u8; 6],
+        src_addr: IpNetwork,
+    ) -> UpdatePacket {
         UpdatePacket {
             id: self.packet_id,
             probe_id: Some(probe_id),

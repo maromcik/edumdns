@@ -10,7 +10,10 @@ use crate::handlers::group::{
 use crate::handlers::index::{
     index, login, login_base, login_oidc, login_oidc_redirect, logout_cleanup,
 };
-use crate::handlers::packet::{create_packet, create_packet_form, delete_packet, get_packet, get_packets, reassign_packet, update_packet};
+use crate::handlers::packet::{
+    create_packet, create_packet_form, delete_packet, get_packet, get_packets, reassign_packet,
+    update_packet,
+};
 use crate::handlers::probe::{
     adopt, change_probe_permission, create_config, create_probe, delete_config, delete_probe,
     forget, get_probe, get_probe_ws, get_probes, reconnect, save_config, update_probe,

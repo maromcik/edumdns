@@ -174,7 +174,6 @@ impl PacketDisplayPermissions {
     }
 }
 
-
 #[derive(Serialize, Deserialize, AsChangeset, Identifiable, Debug)]
 #[diesel(table_name = crate::schema::packet)]
 pub struct UpdatePacket {

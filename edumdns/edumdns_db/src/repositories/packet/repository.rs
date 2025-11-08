@@ -4,7 +4,7 @@ use crate::repositories::common::{
     CountResult, DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResultMultiple, DbResultSingle,
     DbResultSinglePerm, Permission,
 };
-use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSinglePacket};
+use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSinglePacket, UpdatePacket};
 
 use crate::repositories::utilities::{validate_permissions, validate_user};
 use crate::schema;
@@ -114,6 +114,16 @@ impl PgPacketRepository {
 
         let packets = query.load::<Packet>(&mut conn).await?;
         Ok(packets)
+    }
+
+    pub async fn update_auth(&self, params: &UpdatePacket, user_id: &Id) -> DbResultMultiple<Packet> {
+        let mut conn = self.pg_pool.get().await?;
+        let old_probe_id = PacketBackend::select_one(&mut conn, &params.id).await?.probe_id;
+        validate_permissions(&mut conn, user_id, &old_probe_id, Permission::Update).await?;
+        if let Some(new_probe_id) = &params.probe_id {
+            validate_permissions(&mut conn, user_id, new_probe_id, Permission::Create).await?;
+        }
+        PacketBackend::update(&mut conn, params).await
     }
 }
 
@@ -242,6 +252,14 @@ impl PacketBackend {
     async fn drop(conn: &mut AsyncPgConnection, params: &Id) -> DbResultMultiple<Packet> {
         diesel::delete(packet::table.find(params))
             .get_results(conn)
+            .await
+            .map_err(DbError::from)
+    }
+
+    async fn update(conn: &mut AsyncPgConnection, params: &UpdatePacket) -> DbResultMultiple<Packet> {
+        diesel::update(packet::table.find(params.id))
+            .set(params)
+            .get_results::<Packet>(conn)
             .await
             .map_err(DbError::from)
     }

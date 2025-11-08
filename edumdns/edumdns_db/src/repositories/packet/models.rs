@@ -1,7 +1,7 @@
 use crate::models::Packet;
 use crate::repositories::common::{Pagination, Permission};
 use crate::repositories::utilities::format_time;
-use diesel::{AsChangeset, Insertable};
+use diesel::{AsChangeset, Identifiable, Insertable};
 use edumdns_core::app_packet::Id;
 use edumdns_core::bincode_types::MacAddr;
 use edumdns_core::error::CoreError;
@@ -172,4 +172,18 @@ impl PacketDisplayPermissions {
             permissions,
         })
     }
+}
+
+
+#[derive(Serialize, Deserialize, AsChangeset, Identifiable, Debug)]
+#[diesel(table_name = crate::schema::packet)]
+pub struct UpdatePacket {
+    pub id: Id,
+    pub probe_id: Option<Uuid>,
+    pub src_mac: Option<[u8; 6]>,
+    pub dst_mac: Option<[u8; 6]>,
+    pub src_addr: Option<IpNetwork>,
+    pub dst_addr: Option<IpNetwork>,
+    pub src_port: Option<i32>,
+    pub dst_port: Option<i32>,
 }

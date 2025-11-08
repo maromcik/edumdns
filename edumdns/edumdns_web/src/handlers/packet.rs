@@ -1,6 +1,6 @@
 use crate::authorized;
 use crate::error::WebError;
-use crate::forms::packet::{CreatePacketForm, PacketDeviceDataForm, PacketQuery};
+use crate::forms::packet::{CreatePacketForm, PacketDeviceDataForm, PacketQuery, ReassignPacketForm, UpdatePacketForm};
 use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
 use crate::header::LOCATION;
 use crate::templates::PageInfo;
@@ -78,9 +78,9 @@ pub async fn get_packet(
         packet.data.src_mac,
         packet.data.src_addr,
     );
-    
+
     let device_id = device_repo.read_one(&params).await.ok().map(|d|d.id);
-    
+
     let template_name = get_template_name(&request, "packet/detail");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
@@ -130,6 +130,46 @@ pub async fn create_packet(
         .await?;
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, format!("/packet/{}", packet.id)))
+        .finish())
+}
+
+#[post("update")]
+pub async fn update_packet(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    packet_repo: web::Data<PgPacketRepository>,
+    form: web::Form<UpdatePacketForm>
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request);
+    let params = form.into_inner().to_db_params();
+    packet_repo
+        .update_auth(&params, &parse_user_id(&i)?)
+        .await?;
+
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/packet/{}", params.id)))
+        .finish())
+}
+
+#[post("reassign")]
+pub async fn reassign_packet(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    packet_repo: web::Data<PgPacketRepository>,
+    device_repo: web::Data<PgDeviceRepository>,
+    form: web::Form<ReassignPacketForm>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request);
+
+    let device = device_repo.read_one(&form.device_id).await?;
+
+    let params = form.into_inner().to_db_params(device.probe_id, device.mac, device.ip);
+    packet_repo
+        .update_auth(&params, &parse_user_id(&i)?)
+        .await?;
+
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/packet/{}", params.id)))
         .finish())
 }
 

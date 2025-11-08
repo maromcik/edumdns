@@ -5,7 +5,7 @@ use crate::app_packet::{
 use crate::error::ServerError;
 use edumdns_core::app_packet::Id;
 use edumdns_core::connection::UdpConnection;
-use log::{error, info};
+use log::{debug, error, info, trace};
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
@@ -76,9 +76,8 @@ impl PacketTransmitter {
         loop {
             while let Ok(p) = self.live_updates_receiver.try_recv() {
                 self.payloads.push(p);
-                info!("Received new payload from live updater");
                 if total_time.elapsed() > duration {
-                    info!("Duration exceeded; stopping transmission in live updater");
+                    debug!("Duration exceeded; stopping transmission in live updater");
                     return;
                 }
             }
@@ -94,23 +93,23 @@ impl PacketTransmitter {
                         return;
                     }
                 }
-                info!(
+                trace!(
                     "Packet sent from device: {} to client: {}",
                     self.transmit_request.device.ip, self.transmit_request.request.target_ip
                 );
                 if total_time.elapsed() > duration {
-                    info!("Duration exceeded; stopping transmission during packet transmission");
+                    debug!("Duration exceeded; stopping transmission during packet transmission");
                     return;
                 }
                 tokio::time::sleep(interval).await;
             }
             if total_time.elapsed() > duration {
-                info!("Duration exceeded; stopping transmission before repeating");
+                debug!("Duration exceeded; stopping transmission before repeating");
                 return;
             }
-            info!("All packets sent; waiting for: {:?}", sleep_interval);
+            debug!("All packets sent; waiting for: {:?}", sleep_interval);
             tokio::time::sleep(sleep_interval).await;
-            info!("Repeating packet transmission...");
+            debug!("Repeating packet transmission...");
         }
     }
 }

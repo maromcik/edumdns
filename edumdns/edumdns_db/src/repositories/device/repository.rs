@@ -380,11 +380,34 @@ impl DeviceBackend {
         conn: &mut AsyncPgConnection,
         params: &UpdateDevice,
     ) -> DbResultMultiple<Device> {
-        let devices = diesel::update(device::table.find(&params.id))
-            .set(params)
-            .get_results(conn)
-            .await?;
-        Ok(devices)
+        conn.transaction::<_, DbError, _>(|c| {
+            async move {
+                let device = DeviceBackend::select_one(c, &params.id).await?;
+                let devices = diesel::update(device::table.find(&params.id))
+                    .set(params)
+                    .get_results::<Device>(c)
+                    .await?;
+                let updated_device = devices.iter().next();
+                if let Some(d) = updated_device {
+                    diesel::update(
+                        packet::table
+                            .filter(packet::probe_id.eq(device.probe_id))
+                            .filter(packet::src_mac.eq(device.mac))
+                            .filter(packet::src_addr.eq(device.ip)),
+                    )
+                    .set((
+                        packet::src_addr.eq(&d.ip),
+                        packet::src_mac.eq(&d.mac),
+                        packet::dst_port.eq(&d.port),
+                    ))
+                    .execute(c)
+                    .await?;
+                }
+                Ok::<Vec<Device>, DbError>(devices)
+            }
+            .scope_boxed()
+        })
+        .await
     }
 
     async fn drop(conn: &mut AsyncPgConnection, params: &Id) -> DbResultMultiple<Device> {

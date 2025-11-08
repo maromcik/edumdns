@@ -63,14 +63,14 @@ impl PgProbeRepository {
         }
 
         let query = sql_query(include_str!("queries/count.sql"))
-        .bind::<BigInt, _>(user_id)
-        .bind::<Nullable<DieselUuid>, _>(params.id)
-        .bind::<Nullable<Bool>, _>(params.adopted)
-        .bind::<Nullable<MacAddr>, _>(params.mac)
-        .bind::<Nullable<Cidr>, _>(params.ip)
-        .bind::<Nullable<BigInt>, _>(params.owner_id)
-        .bind::<Nullable<BigInt>, _>(params.location_id)
-        .bind::<Nullable<Text>, _>(params.name.as_ref());
+            .bind::<BigInt, _>(user_id)
+            .bind::<Nullable<DieselUuid>, _>(params.id)
+            .bind::<Nullable<Bool>, _>(params.adopted)
+            .bind::<Nullable<MacAddr>, _>(params.mac)
+            .bind::<Nullable<Cidr>, _>(params.ip)
+            .bind::<Nullable<BigInt>, _>(params.owner_id)
+            .bind::<Nullable<BigInt>, _>(params.location_id)
+            .bind::<Nullable<Text>, _>(params.name.as_ref());
 
         let count = query.get_result::<CountResult>(&mut conn).await?;
 
@@ -234,16 +234,16 @@ impl PgProbeRepository {
         let pagination = params.pagination.unwrap_or_default();
 
         let query = sql_query(include_str!("queries/read_many.sql"))
-        .bind::<BigInt, _>(user_id)
-        .bind::<Nullable<DieselUuid>, _>(params.id)
-        .bind::<Nullable<Bool>, _>(params.adopted)
-        .bind::<Nullable<MacAddr>, _>(params.mac)
-        .bind::<Nullable<Cidr>, _>(params.ip)
-        .bind::<Nullable<BigInt>, _>(params.owner_id)
-        .bind::<Nullable<BigInt>, _>(params.location_id)
-        .bind::<Nullable<Text>, _>(params.name.as_ref())
-        .bind::<BigInt, _>(pagination.limit.unwrap_or(i64::MAX))
-        .bind::<BigInt, _>(pagination.offset.unwrap_or(0));
+            .bind::<BigInt, _>(user_id)
+            .bind::<Nullable<DieselUuid>, _>(params.id)
+            .bind::<Nullable<Bool>, _>(params.adopted)
+            .bind::<Nullable<MacAddr>, _>(params.mac)
+            .bind::<Nullable<Cidr>, _>(params.ip)
+            .bind::<Nullable<BigInt>, _>(params.owner_id)
+            .bind::<Nullable<BigInt>, _>(params.location_id)
+            .bind::<Nullable<Text>, _>(params.name.as_ref())
+            .bind::<BigInt, _>(pagination.limit.unwrap_or(i64::MAX))
+            .bind::<BigInt, _>(pagination.offset.unwrap_or(0));
 
         let probes = query.load::<Probe>(&mut conn).await?;
 

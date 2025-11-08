@@ -5,8 +5,7 @@ use crate::app_packet::{
 use crate::error::ServerError;
 use edumdns_core::app_packet::Id;
 use edumdns_core::connection::UdpConnection;
-use log::{debug, error, info};
-use std::collections::HashSet;
+use log::{error, info};
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
@@ -44,7 +43,7 @@ pub struct PacketTransmitter {
     pub transmit_request: PacketTransmitRequestPacket,
     pub udp_connection: UdpConnection,
     pub global_timeout: Duration,
-    pub live_updater: Option<Receiver<Vec<u8>>>,
+    pub live_updates_receiver: Receiver<Vec<u8>>,
 }
 
 impl PacketTransmitter {
@@ -52,14 +51,14 @@ impl PacketTransmitter {
         payloads: Vec<Vec<u8>>,
         target: PacketTransmitRequestPacket,
         global_timeout: Duration,
-        live_updater: Option<Receiver<Vec<u8>>>,
+        live_updater: Receiver<Vec<u8>>,
     ) -> Result<Self, ServerError> {
         Ok(Self {
             payloads,
             transmit_request: target.clone(),
             udp_connection: UdpConnection::new(global_timeout).await?,
             global_timeout,
-            live_updater,
+            live_updates_receiver: live_updater,
         })
     }
 
@@ -69,17 +68,18 @@ impl PacketTransmitter {
             self.transmit_request.request.target_ip.ip(),
             self.transmit_request.request.target_port
         );
-        println!("LEN: {}", self.payloads.len());
         info!("Initiating packet transmission to: {}", host);
         let interval = Duration::from_millis(self.transmit_request.device.interval as u64);
         let duration = Duration::from_secs(self.transmit_request.device.duration as u64);
         let sleep_interval = interval * DEFAULT_INTERVAL_MULTIPLICATOR;
         let total_time = Instant::now();
         loop {
-            if let Some(live_updater) = &mut self.live_updater {
-                if let Ok(p) = live_updater.try_recv() {
-                    self.payloads.push(p);
-                    info!("Received new payload from live updater");
+            while let Ok(p) = self.live_updates_receiver.try_recv() {
+                self.payloads.push(p);
+                info!("Received new payload from live updater");
+                if total_time.elapsed() > duration {
+                    info!("Duration exceeded; stopping transmission in live updater");
+                    return;
                 }
             }
             for payload in self.payloads.iter() {
@@ -99,11 +99,13 @@ impl PacketTransmitter {
                     self.transmit_request.device.ip, self.transmit_request.request.target_ip
                 );
                 if total_time.elapsed() > duration {
-                    break;
+                    info!("Duration exceeded; stopping transmission during packet transmission");
+                    return;
                 }
                 tokio::time::sleep(interval).await;
             }
             if total_time.elapsed() > duration {
+                info!("Duration exceeded; stopping transmission before repeating");
                 return;
             }
             info!("All packets sent; waiting for: {:?}", sleep_interval);

@@ -66,9 +66,9 @@ impl PgUserRepository {
                 if ret {
                     return Ok(u);
                 }
-                return Err(DbError::BackendError(
+                Err(DbError::BackendError(
                     BackendError::UserPasswordDoesNotMatch,
-                ));
+                ))
             }
             Err(e) => Err(e),
         }

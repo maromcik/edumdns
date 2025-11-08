@@ -9,7 +9,6 @@ use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use hickory_proto::op::Message;
 use hickory_proto::rr::{RData, Record};
 use hickory_proto::serialize::binary::BinDecodable;
-use std::collections::HashSet;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use tokio::sync::mpsc::Sender;
 

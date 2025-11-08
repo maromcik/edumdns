@@ -75,7 +75,7 @@ impl PgDeviceRepository {
             .map_err(DbError::from)
     }
 
-    pub async fn read_packet_transmit_requests(
+    pub async fn read_packet_transmit_requests_by_device(
         &self,
         device_id: &Id,
     ) -> DbResultMultiple<PacketTransmitRequest> {
@@ -122,15 +122,15 @@ impl PgDeviceRepository {
         }
 
         let query = sql_query(include_str!("queries/count.sql"))
-        .bind::<BigInt, _>(user_id)
-        .bind::<Nullable<BigInt>, _>(params.id)
-        .bind::<Nullable<DieselUuid>, _>(params.probe_id)
-        .bind::<Nullable<Macaddr>, _>(params.mac)
-        .bind::<Nullable<Cidr>, _>(params.ip)
-        .bind::<Nullable<Int4>, _>(params.port)
-        .bind::<Nullable<Text>, _>(params.name.as_ref())
-        .bind::<Nullable<Bool>, _>(params.published)
-        .bind::<Nullable<Bool>, _>(params.proxy);
+            .bind::<BigInt, _>(user_id)
+            .bind::<Nullable<BigInt>, _>(params.id)
+            .bind::<Nullable<DieselUuid>, _>(params.probe_id)
+            .bind::<Nullable<Macaddr>, _>(params.mac)
+            .bind::<Nullable<Cidr>, _>(params.ip)
+            .bind::<Nullable<Int4>, _>(params.port)
+            .bind::<Nullable<Text>, _>(params.name.as_ref())
+            .bind::<Nullable<Bool>, _>(params.published)
+            .bind::<Nullable<Bool>, _>(params.proxy);
 
         let result = query.get_result::<CountResult>(&mut conn).await?;
         Ok(result.count)
@@ -223,17 +223,17 @@ impl PgDeviceRepository {
         let pagination = params.pagination.unwrap_or_default();
 
         let query = sql_query(include_str!("queries/read_many.sql"))
-        .bind::<BigInt, _>(user_id)
-        .bind::<Nullable<BigInt>, _>(params.id)
-        .bind::<Nullable<DieselUuid>, _>(params.probe_id)
-        .bind::<Nullable<Macaddr>, _>(params.mac)
-        .bind::<Nullable<Cidr>, _>(params.ip)
-        .bind::<Nullable<Int4>, _>(params.port)
-        .bind::<Nullable<Text>, _>(params.name.as_ref())
-        .bind::<Nullable<Bool>, _>(params.published)
-        .bind::<Nullable<Bool>, _>(params.proxy)
-        .bind::<BigInt, _>(pagination.limit.unwrap_or(i64::MAX))
-        .bind::<BigInt, _>(pagination.offset.unwrap_or(0));
+            .bind::<BigInt, _>(user_id)
+            .bind::<Nullable<BigInt>, _>(params.id)
+            .bind::<Nullable<DieselUuid>, _>(params.probe_id)
+            .bind::<Nullable<Macaddr>, _>(params.mac)
+            .bind::<Nullable<Cidr>, _>(params.ip)
+            .bind::<Nullable<Int4>, _>(params.port)
+            .bind::<Nullable<Text>, _>(params.name.as_ref())
+            .bind::<Nullable<Bool>, _>(params.published)
+            .bind::<Nullable<Bool>, _>(params.proxy)
+            .bind::<BigInt, _>(pagination.limit.unwrap_or(i64::MAX))
+            .bind::<BigInt, _>(pagination.offset.unwrap_or(0));
 
         let devices = query.load::<Device>(&mut conn).await?;
         Ok(devices)

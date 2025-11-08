@@ -111,7 +111,7 @@ pub async fn get_device(
         .collect();
 
     let packet_transmit_requests = device_repo
-        .read_packet_transmit_requests(&device.data.id)
+        .read_packet_transmit_requests_by_device(&device.data.id)
         .await?
         .into_iter()
         .map(|r| PacketTransmitRequestDisplay::from(r, device.data.duration))
@@ -164,14 +164,24 @@ pub async fn delete_device(
     query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
-
+    let device_id = path.0;
     let return_url = query
         .get("return_url")
         .map(String::as_str)
         .unwrap_or("/device");
-
+    let requests = device_repo
+        .read_packet_transmit_requests_by_device(&device_id)
+        .await?;
+    for request in requests {
+        let _ = state
+            .command_channel
+            .send(AppPacket::Local(LocalAppPacket::Command(
+                LocalCommandPacket::StopTransmitDevicePackets(request.id),
+            )))
+            .await;
+    }
     let devices = device_repo
-        .delete_auth(&path.0, &parse_user_id(&i)?)
+        .delete_auth(&device_id, &parse_user_id(&i)?)
         .await?;
 
     for device in devices {
@@ -243,7 +253,7 @@ pub async fn get_device_for_transmit(
     ))?;
 
     let in_progress = device_repo
-        .read_packet_transmit_requests(&device.id)
+        .read_packet_transmit_requests_by_device(&device.id)
         .await?
         .into_iter()
         .map(|r| PacketTransmitRequestDisplay::from(r, device.duration))

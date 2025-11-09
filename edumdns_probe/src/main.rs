@@ -76,7 +76,7 @@ struct Cli {
         short = 'n',
         long = "no-tls",
         value_name = "SECURE",
-        env = "EDUMDNS_PROBE_SECURE",
+        env = "EDUMDNS_PROBE_NO_TLS",
         action = clap::ArgAction::SetTrue,
     )]
     no_tls: bool,

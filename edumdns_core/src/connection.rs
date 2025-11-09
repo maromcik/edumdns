@@ -1,6 +1,6 @@
 use crate::BUFFER_CAPACITY;
 use crate::app_packet::NetworkAppPacket;
-use crate::error::{CoreError};
+use crate::error::CoreError;
 use bincode::{Decode, Encode};
 use bytes::{Bytes, BytesMut};
 use futures::stream::{SplitSink, SplitStream};
@@ -8,13 +8,12 @@ use futures::{SinkExt, StreamExt};
 use log::warn;
 use rustls::{ClientConfig, ServerConfig};
 use rustls_pki_types::ServerName;
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::BufStream;
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::net::UdpSocket;
 use tokio::net::{TcpSocket, TcpStream};
+use tokio::net::{UdpSocket, lookup_host};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 use tokio_rustls::{TlsAcceptor, TlsConnector};
@@ -111,7 +110,9 @@ where
                 respond_to
                     .send(actor.receive_next(timeout).await)
                     .map_err(|e| {
-                        CoreError::TokioOneshotChannelError(format!("Could not receive value {e:?}"))
+                        CoreError::TokioOneshotChannelError(format!(
+                            "Could not receive value {e:?}"
+                        ))
                     })?;
             }
             TcpConnectionMessage::Close => {
@@ -227,15 +228,15 @@ impl TcpConnectionHandle {
 
     /// Unchanged public API: connect (plain TCP)
     pub async fn connect(
-        addr: &str,
-        bind_ip: &str,
+        conn_socket_addr: &str,
+        bind_socket_addr: &str,
         global_timeout: Duration,
     ) -> Result<Self, CoreError> {
         let channels = TcpConnectionActorChannels::new(BUFFER_CAPACITY);
 
         let actors = TcpConnection::connect_plain(
-            addr,
-            bind_ip,
+            conn_socket_addr,
+            bind_socket_addr,
             channels.send_channel.1,
             channels.recv_channel.1,
             global_timeout,
@@ -316,8 +317,8 @@ impl TcpConnectionHandle {
 
     /// New optional helper: connect and then upgrade the stream with rustls.
     pub async fn connect_tls(
-        addr: &str,
-        bind_ip: &str,
+        conn_socket_addr: &str,
+        bind_socket_addr: &str,
         domain: &str,
         client_config: Arc<ClientConfig>,
         global_timeout: Duration,
@@ -325,8 +326,8 @@ impl TcpConnectionHandle {
         let channels = TcpConnectionActorChannels::new(BUFFER_CAPACITY);
 
         let actors = TcpConnection::connect_tls(
-            addr,
-            bind_ip,
+            conn_socket_addr,
+            bind_socket_addr,
             domain,
             client_config,
             channels.send_channel.1,
@@ -390,9 +391,7 @@ where
             )
             .await
         };
-        res.map_err(|_| {
-            CoreError::TimeoutError("Sending a packet timed out".to_string())
-        })??;
+        res.map_err(|_| CoreError::TimeoutError("Sending a packet timed out".to_string()))??;
         Ok(())
     }
 
@@ -425,9 +424,7 @@ where
             None => self.framed_stream.next().await,
             Some(t) => tokio::time::timeout(t, self.framed_stream.next())
                 .await
-                .map_err(|_| {
-                    CoreError::TimeoutError("Receiving a packet timed out".to_string())
-                })?,
+                .map_err(|_| CoreError::TimeoutError("Receiving a packet timed out".to_string()))?,
         };
 
         match packet {
@@ -454,7 +451,37 @@ where
 pub struct TcpConnection {}
 
 impl TcpConnection {
-    pub fn stream_to_framed_generic<S>(
+    async fn resolve_and_connect(
+        addr: &str,
+        bind: &str,
+        global_timeout: Duration,
+    ) -> Result<TcpStream, CoreError> {
+        let addrs = lookup_host(addr).await?;
+        let mut last_err = None;
+        for addr in addrs {
+            let socket = TcpSocket::new_v4()?;
+            let bind_ip = bind.parse()?;
+            socket.bind(bind_ip)?;
+            socket.set_keepalive(true)?;
+            match tokio::time::timeout(global_timeout, socket.connect(addr)).await {
+                Ok(Ok(stream)) => return Ok(stream),
+                Ok(Err(e)) => {
+                    warn!("Connection to {addr} failed: {e}");
+                    last_err = Some(CoreError::from(e));
+                }
+                Err(_) => {
+                    let e = CoreError::TimeoutError(format!("Connection to {addr} timed out"));
+                    warn!("{e}");
+                    last_err = Some(e);
+                }
+            };
+        }
+        Err(last_err.unwrap_or(CoreError::ConnectionError(
+            "Could not resolve any address".to_string(),
+        )))
+    }
+
+    fn stream_to_framed_generic<S>(
         message_channel_sender: mpsc::Receiver<TcpConnectionMessage>,
         message_channel_receiver: mpsc::Receiver<TcpConnectionMessage>,
         stream: S,
@@ -517,9 +544,7 @@ impl TcpConnection {
         let dnsname = ServerName::try_from(domain)?.to_owned();
         let tls_stream = timeout(global_timeout, connector.connect(dnsname, stream))
             .await
-            .map_err(|_| {
-                CoreError::TimeoutError("TLS handshake timed out".to_string())
-            })??;
+            .map_err(|_| CoreError::TimeoutError("TLS handshake timed out".to_string()))??;
 
         Self::stream_to_framed_generic(
             message_channel_sender,
@@ -545,9 +570,7 @@ impl TcpConnection {
         let connector = TlsAcceptor::from(server_config);
         let tls_stream = timeout(global_timeout, connector.accept(stream))
             .await
-            .map_err(|_| {
-                CoreError::TimeoutError("TLS handshake timed out".to_string())
-            })??;
+            .map_err(|_| CoreError::TimeoutError("TLS handshake timed out".to_string()))??;
 
         Self::stream_to_framed_generic(
             message_channel_sender,
@@ -560,7 +583,7 @@ impl TcpConnection {
     /// Plain connect (unchanged public behavior)
     pub async fn connect_plain(
         addr: &str,
-        bind_ip: &str,
+        bind: &str,
         message_channel_sender: mpsc::Receiver<TcpConnectionMessage>,
         message_channel_receiver: mpsc::Receiver<TcpConnectionMessage>,
         global_timeout: Duration,
@@ -571,17 +594,7 @@ impl TcpConnection {
         ),
         CoreError,
     > {
-        let socket = TcpSocket::new_v4()?;
-        let bind_ip = bind_ip.parse()?;
-        socket.bind(bind_ip)?;
-        socket.set_keepalive(true)?;
-        // parse addr into SocketAddr
-        let addr: SocketAddr = addr.parse()?;
-        let stream = tokio::time::timeout(global_timeout, socket.connect(addr))
-            .await
-            .map_err(|_| {
-                CoreError::TimeoutError(format!("Connection to {addr} timed out"))
-            })??;
+        let stream = Self::resolve_and_connect(addr, bind, global_timeout).await?;
         Self::stream_to_framed_plain(
             message_channel_sender,
             message_channel_receiver,
@@ -593,7 +606,7 @@ impl TcpConnection {
     /// Connect + TLS handshake (new optional helper)
     pub async fn connect_tls(
         addr: &str,
-        bind_ip: &str,
+        bind: &str,
         domain: &str,
         client_config: Arc<ClientConfig>,
         message_channel_sender: mpsc::Receiver<TcpConnectionMessage>,
@@ -606,18 +619,8 @@ impl TcpConnection {
         ),
         CoreError,
     > {
-        let socket = TcpSocket::new_v4()?;
-        let bind_ip = bind_ip.parse()?;
-        socket.bind(bind_ip)?;
-        socket.set_keepalive(true)?;
-        let addr: SocketAddr = addr.parse()?;
-        let stream = tokio::time::timeout(global_timeout, socket.connect(addr))
-            .await
-            .map_err(|_| {
-                CoreError::TimeoutError(format!("Connection to {addr} timed out"))
-            })??;
+        let stream = Self::resolve_and_connect(addr, bind, global_timeout).await?;
 
-        // perform TLS handshake and create framed
         Self::stream_to_framed_tls(
             message_channel_sender,
             message_channel_receiver,

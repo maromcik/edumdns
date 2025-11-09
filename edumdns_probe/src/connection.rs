@@ -23,10 +23,11 @@ pub(crate) struct ConnectionLimits {
 
 #[derive(Clone, Debug)]
 pub(crate) struct ConnectionInfo {
-    pub(crate) server_connection_string: String,
-    pub(crate) bind_ip: String,
-    pub(crate) domain: Option<String>,
+    pub(crate) host: String,
+    pub(crate) server_conn_socket_addr: String,
+    pub(crate) bind_socket_addr: String,
     pub(crate) pre_shared_key: Option<String>,
+    pub(crate) no_tls: bool,
 }
 
 pub struct ReceivePacketTargets {
@@ -45,36 +46,35 @@ impl ConnectionManager {
         connection_info: &ConnectionInfo,
         connection_limits: &ConnectionLimits,
     ) -> Result<TcpConnectionHandle, ProbeError> {
-        let handle = match connection_info.domain.as_ref() {
-            None => retry!(
+        let handle = if connection_info.no_tls {
+            retry!(
                 TcpConnectionHandle::connect(
-                    connection_info.server_connection_string.as_ref(),
-                    connection_info.bind_ip.as_ref(),
+                    connection_info.server_conn_socket_addr.as_ref(),
+                    connection_info.bind_socket_addr.as_ref(),
                     connection_limits.global_timeout
                 )
                 .await,
                 connection_limits.max_retries,
                 connection_limits.retry_interval
-            )?,
-            Some(d) => {
-                let mut root_cert_store = rustls::RootCertStore::empty();
-                root_cert_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-                let config = rustls::ClientConfig::builder()
-                    .with_root_certificates(root_cert_store)
-                    .with_no_client_auth();
-                retry!(
-                    TcpConnectionHandle::connect_tls(
-                        connection_info.server_connection_string.as_ref(),
-                        connection_info.bind_ip.as_ref(),
-                        d,
-                        Arc::new(config.clone()),
-                        connection_limits.global_timeout
-                    )
-                    .await,
-                    connection_limits.max_retries,
-                    connection_limits.retry_interval
-                )?
-            }
+            )?
+        } else {
+            let mut root_cert_store = rustls::RootCertStore::empty();
+            root_cert_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+            let config = rustls::ClientConfig::builder()
+                .with_root_certificates(root_cert_store)
+                .with_no_client_auth();
+            retry!(
+                TcpConnectionHandle::connect_tls(
+                    connection_info.server_conn_socket_addr.as_ref(),
+                    connection_info.bind_socket_addr.as_ref(),
+                    connection_info.host.as_ref(),
+                    Arc::new(config.clone()),
+                    connection_limits.global_timeout
+                )
+                .await,
+                connection_limits.max_retries,
+                connection_limits.retry_interval
+            )?
         };
         Ok(handle)
     }
@@ -142,7 +142,7 @@ impl ConnectionManager {
         };
         info!(
             "Connected to the server {}",
-            self.conn_info.server_connection_string
+            self.conn_info.server_conn_socket_addr
         );
         debug!("Obtained config <{config:?}>");
         Ok(config)
@@ -165,8 +165,7 @@ impl ConnectionManager {
 
     pub async fn reconnect(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
         self.handle.close().await?;
-        match Self::connect(&self.conn_info, &self.conn_limits).await
-        {
+        match Self::connect(&self.conn_info, &self.conn_limits).await {
             Ok(connection) => {
                 self.handle = connection;
                 self.connection_init_probe().await

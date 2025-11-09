@@ -1,5 +1,5 @@
 use crate::bincode_types::{IpNetwork, MacAddr};
-use crate::error::{CoreError};
+use crate::error::CoreError;
 use crate::metadata::{IpMetadata, MacMetadata, PortMetadata, VlanMetadata};
 use crate::rewrite::{
     DataLinkRewrite, IpRewrite, PortRewrite, rewrite_ipv4, rewrite_ipv6, rewrite_mac, rewrite_tcp,
@@ -172,8 +172,9 @@ fn get_ip_packet(ether_type: EtherType, payload: &'_ mut [u8]) -> Option<IpPacke
 
 impl<'a> DataLinkPacket<'a> {
     pub fn from_slice(slice: &'a mut [u8]) -> Result<DataLinkPacket<'a>, CoreError> {
-        let new_packet = MutableEthernetPacket::new(slice).ok_or(CoreError::PacketConstructionError(
-            "Could not construct an EthernetPacket".to_string()))?;
+        let new_packet = MutableEthernetPacket::new(slice).ok_or(
+            CoreError::PacketConstructionError("Could not construct an EthernetPacket".to_string()),
+        )?;
         Ok(DataLinkPacket::EthPacket(new_packet))
     }
 
@@ -181,7 +182,9 @@ impl<'a> DataLinkPacket<'a> {
         value: &'a mut [u8],
         packet: &EthernetPacket,
     ) -> Result<DataLinkPacket<'a>, CoreError> {
-        let mut new_packet = MutableEthernetPacket::new(&mut value[..]).ok_or(CoreError::PacketConstructionError("Could not construct an EthernetPacket".to_string()))?;
+        let mut new_packet = MutableEthernetPacket::new(&mut value[..]).ok_or(
+            CoreError::PacketConstructionError("Could not construct an EthernetPacket".to_string()),
+        )?;
         new_packet.clone_from(packet);
         Ok(DataLinkPacket::EthPacket(new_packet))
     }

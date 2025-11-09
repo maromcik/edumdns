@@ -1,5 +1,5 @@
-use std::fmt::Debug;
 use pnet::datalink::ParseMacAddrErr;
+use std::fmt::Debug;
 use std::net::AddrParseError;
 use std::num::ParseIntError;
 use std::sync::mpsc;
@@ -35,6 +35,8 @@ pub enum CoreError {
     DnsPacketManipulationError(String),
     #[error("DNS error: {0}")]
     DnsError(String),
+    #[error("Connection failed: {0}")]
+    ConnectionError(String),
 }
 
 impl Debug for CoreError {

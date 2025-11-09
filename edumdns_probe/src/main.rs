@@ -71,23 +71,24 @@ struct Cli {
     )]
     bind_port: u16,
 
-    /// Server host or IP address to connect to.
+    /// Do not use TLS connection
     #[clap(
-        short = 's',
+        short = 'n',
+        long = "no-tls",
+        value_name = "SECURE",
+        env = "EDUMDNS_PROBE_SECURE",
+        action = clap::ArgAction::SetTrue,
+    )]
+    no_tls: bool,
+
+    /// Optional domain name for TLS connections.
+    #[clap(
+        short = 'h',
         long = "host",
         value_name = "SERVER_HOST",
         env = "EDUMDNS_PROBE_SERVER_HOST"
     )]
     server_host: String,
-
-    /// Optional domain name for TLS connections.
-    #[clap(
-        short = 'd',
-        long = "domain",
-        value_name = "SERVER_DOMAIN",
-        env = "EDUMDNS_PROBE_SERVER_DOMAIN"
-    )]
-    server_domain: Option<String>,
 
     /// Server port to connect to.
     #[clap(
@@ -178,8 +179,8 @@ async fn main() -> Result<(), ProbeError> {
     info!("Starting probe with id: {}", uuid);
     info!("Binding to IP: {}:{}", cli.bind_ip, cli.bind_port);
     info!(
-        "Connecting to server {:?}: {}:{}",
-        cli.server_domain, cli.server_host, cli.server_port
+        "Connecting to server {}:{}",
+        cli.server_host, cli.server_port
     );
 
     let probe_metadata = ProbeMetadata {
@@ -189,10 +190,11 @@ async fn main() -> Result<(), ProbeError> {
     };
 
     let connection_info = ConnectionInfo {
-        server_connection_string: format!("{}:{}", cli.server_host, cli.server_port),
-        bind_ip: format!("{}:{}", cli.bind_ip, cli.bind_port),
-        domain: cli.server_domain,
+        server_conn_socket_addr: format!("{}:{}", cli.server_host, cli.server_port),
+        host: cli.server_host.clone(),
+        bind_socket_addr: format!("{}:{}", cli.bind_ip, cli.bind_port),
         pre_shared_key: cli.pre_shared_key,
+        no_tls: cli.no_tls,
     };
 
     let connection_limits = ConnectionLimits {

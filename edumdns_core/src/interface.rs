@@ -1,4 +1,4 @@
-use crate::error::{CoreError};
+use crate::error::CoreError;
 use pnet::datalink::Channel::Ethernet;
 use pnet::datalink::{DataLinkReceiver, DataLinkSender};
 use pnet::packet::ip::IpNextHeaderProtocols;
@@ -31,10 +31,15 @@ pub fn get_datalink_channel(
     let interface = interfaces
         .iter()
         .find(|i| i.name == capture.output_device)
-        .ok_or(CoreError::NetworkInterfaceError(format!("Output device {} not found", capture.output_device)))?;
+        .ok_or(CoreError::NetworkInterfaceError(format!(
+            "Output device {} not found",
+            capture.output_device
+        )))?;
     let (tx, rx) = match datalink::channel(interface, Default::default()) {
         Ok(Ethernet(tx, rx)) => Ok((tx, rx)),
-        Ok(_) => Err(CoreError::NetworkChannelError("Unknown channel type".to_string())),
+        Ok(_) => Err(CoreError::NetworkChannelError(
+            "Unknown channel type".to_string(),
+        )),
         Err(e) => Err(CoreError::NetworkChannelError(e.to_string())),
     }?;
 

@@ -19,6 +19,89 @@ use tokio::time::timeout;
 use tokio_rustls::{TlsAcceptor, TlsConnector};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
+pub struct TcpConnectionSender<S> {
+    pub receiver: mpsc::Receiver<TcpConnectionMessage>,
+    pub framed_sink: SplitSink<Framed<BufStream<S>, LengthDelimitedCodec>, Bytes>,
+    pub global_timeout: Duration,
+}
+
+impl<S> TcpConnectionSender<S>
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    pub async fn send_packet<T>(&mut self, packet: T, immediate: bool) -> Result<(), CoreError>
+    where
+        T: Encode,
+    {
+        let encoded = Self::encode_frame(packet)?;
+        let res = if immediate {
+            timeout(
+                self.global_timeout,
+                self.framed_sink.send(Bytes::from(encoded)),
+            )
+                .await
+        } else {
+            timeout(
+                self.global_timeout,
+                self.framed_sink.feed(Bytes::from(encoded)),
+            )
+                .await
+        };
+        res.map_err(|_| CoreError::TimeoutError("Sending a packet timed out".to_string()))??;
+        Ok(())
+    }
+
+    pub fn encode_frame<T>(packet: T) -> Result<Vec<u8>, CoreError>
+    where
+        T: Encode,
+    {
+        bincode::encode_to_vec(packet, bincode::config::standard()).map_err(CoreError::from)
+    }
+}
+
+pub struct TcpConnectionReceiver<S> {
+    pub receiver: mpsc::Receiver<TcpConnectionMessage>,
+    pub framed_stream: SplitStream<Framed<BufStream<S>, LengthDelimitedCodec>>,
+    pub global_timeout: Duration,
+}
+
+impl<S> TcpConnectionReceiver<S>
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    pub async fn receive_next<T>(
+        &mut self,
+        timeout: Option<Duration>,
+    ) -> Result<Option<T>, CoreError>
+    where
+        T: Decode<()>,
+    {
+        let packet = match timeout {
+            None => self.framed_stream.next().await,
+            Some(t) => tokio::time::timeout(t, self.framed_stream.next())
+                .await
+                .map_err(|_| CoreError::TimeoutError("Receiving a packet timed out".to_string()))?,
+        };
+
+        match packet {
+            None => Ok(None),
+            Some(frame) => {
+                let decoded = Self::decode_frame(frame?)?;
+                Ok(Some(decoded))
+            }
+        }
+    }
+
+    pub fn decode_frame<T>(frame: BytesMut) -> Result<T, CoreError>
+    where
+        T: Decode<()>,
+    {
+        let (packet, _) = bincode::decode_from_slice(frame.as_ref(), bincode::config::standard())
+            .map_err(CoreError::from)?;
+        Ok(packet)
+    }
+}
+
 pub enum TcpConnectionMessage {
     ReceivePacket {
         respond_to: oneshot::Sender<Result<Option<NetworkAppPacket>, CoreError>>,
@@ -200,7 +283,8 @@ impl TcpConnectionHandle {
             }
         });
     }
-    /// Unchanged public API: create connection handle from a plain TcpStream
+
+
     pub fn stream_to_framed(
         stream: TcpStream,
         global_timeout: Duration,
@@ -226,7 +310,7 @@ impl TcpConnectionHandle {
         })
     }
 
-    /// Unchanged public API: connect (plain TCP)
+
     pub async fn connect(
         conn_socket_addr: &str,
         bind_socket_addr: &str,
@@ -255,8 +339,6 @@ impl TcpConnectionHandle {
         })
     }
 
-    /// New optional helper: create a connection handle from an already-established TcpStream,
-    /// performing a rustls client handshake to produce a TLS-wrapped stream.
     pub async fn stream_to_framed_tls(
         stream: TcpStream,
         domain: &str,
@@ -315,7 +397,7 @@ impl TcpConnectionHandle {
         })
     }
 
-    /// New optional helper: connect and then upgrade the stream with rustls.
+
     pub async fn connect_tls(
         conn_socket_addr: &str,
         bind_socket_addr: &str,
@@ -363,90 +445,6 @@ impl TcpConnectionHandle {
     }
 }
 
-pub struct TcpConnectionSender<S> {
-    pub receiver: mpsc::Receiver<TcpConnectionMessage>,
-    pub framed_sink: SplitSink<Framed<BufStream<S>, LengthDelimitedCodec>, Bytes>,
-    pub global_timeout: Duration,
-}
-
-impl<S> TcpConnectionSender<S>
-where
-    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
-{
-    pub async fn send_packet<T>(&mut self, packet: T, immediate: bool) -> Result<(), CoreError>
-    where
-        T: Encode,
-    {
-        let encoded = Self::encode_frame(packet)?;
-        let res = if immediate {
-            timeout(
-                self.global_timeout,
-                self.framed_sink.send(Bytes::from(encoded)),
-            )
-            .await
-        } else {
-            timeout(
-                self.global_timeout,
-                self.framed_sink.feed(Bytes::from(encoded)),
-            )
-            .await
-        };
-        res.map_err(|_| CoreError::TimeoutError("Sending a packet timed out".to_string()))??;
-        Ok(())
-    }
-
-    pub fn encode_frame<T>(packet: T) -> Result<Vec<u8>, CoreError>
-    where
-        T: Encode,
-    {
-        bincode::encode_to_vec(packet, bincode::config::standard()).map_err(CoreError::from)
-    }
-}
-
-pub struct TcpConnectionReceiver<S> {
-    pub receiver: mpsc::Receiver<TcpConnectionMessage>,
-    pub framed_stream: SplitStream<Framed<BufStream<S>, LengthDelimitedCodec>>,
-    pub global_timeout: Duration,
-}
-
-impl<S> TcpConnectionReceiver<S>
-where
-    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
-{
-    pub async fn receive_next<T>(
-        &mut self,
-        timeout: Option<Duration>,
-    ) -> Result<Option<T>, CoreError>
-    where
-        T: Decode<()>,
-    {
-        let packet = match timeout {
-            None => self.framed_stream.next().await,
-            Some(t) => tokio::time::timeout(t, self.framed_stream.next())
-                .await
-                .map_err(|_| CoreError::TimeoutError("Receiving a packet timed out".to_string()))?,
-        };
-
-        match packet {
-            None => Ok(None),
-            Some(frame) => {
-                let decoded = Self::decode_frame(frame?)?;
-                Ok(Some(decoded))
-            }
-        }
-    }
-
-    pub fn decode_frame<T>(frame: BytesMut) -> Result<T, CoreError>
-    where
-        T: Decode<()>,
-    {
-        let (packet, _) = bincode::decode_from_slice(frame.as_ref(), bincode::config::standard())
-            .map_err(CoreError::from)?;
-        Ok(packet)
-    }
-}
-
-// ---------- TcpConnection helpers (plain & TLS) ----------
 
 pub struct TcpConnection {}
 
@@ -580,7 +578,6 @@ impl TcpConnection {
         )
     }
 
-    /// Plain connect (unchanged public behavior)
     pub async fn connect_plain(
         addr: &str,
         bind: &str,
@@ -603,7 +600,6 @@ impl TcpConnection {
         )
     }
 
-    /// Connect + TLS handshake (new optional helper)
     pub async fn connect_tls(
         addr: &str,
         bind: &str,
@@ -633,7 +629,6 @@ impl TcpConnection {
     }
 }
 
-// ---------- UDP helpers (unchanged) ----------
 
 pub struct UdpConnection {
     pub socket: UdpSocket,

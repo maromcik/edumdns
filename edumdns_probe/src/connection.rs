@@ -4,6 +4,7 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
+use edumdns_core::error::CoreError;
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_core::retry;
 use log::{debug, error, info, trace, warn};
@@ -154,13 +155,13 @@ impl ConnectionManager {
             .send_message_with_response(|tx| {
                 TcpConnectionMessage::receive_packet(tx, Some(self.conn_limits.global_timeout))
             })
-            .await??;
-        let Some(app_packet) = packet else {
-            return Err(ProbeError::InvalidConnectionInitiation(
-                "Invalid connection initiation".to_string(),
-            ));
-        };
-        Ok(app_packet)
+            .await?;
+        match packet {
+            Ok(Some(app_packet)) => Ok(app_packet),
+                Ok(None) => Err(ProbeError::InvalidConnectionInitiation(
+                    "Invalid connection initiation".to_string())),
+            Err(e) => Err(CoreError::ConnectionError(format!("{e}. Server probably uses TLS, and the probe does not. Try to remove the '-n' option.")).into())
+        }
     }
 
     pub async fn reconnect(&mut self) -> Result<ProbeConfigPacket, ProbeError> {

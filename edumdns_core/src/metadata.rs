@@ -30,6 +30,12 @@ pub struct ProbeMetadata {
     pub ip: IpAddr,
 }
 
+impl ProbeMetadata {
+    pub fn new(id: Uuid, mac: MacAddr, ip: IpAddr) -> Self {
+        Self { id, mac, ip }
+    }
+}
+
 #[derive(Encode, Decode, Debug, Clone)]
 pub struct IpMetadata {
     pub src_ip: IpNetwork,

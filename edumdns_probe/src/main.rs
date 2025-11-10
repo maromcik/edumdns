@@ -7,14 +7,11 @@ use clap::Parser;
 use edumdns_core::app_packet::{
     NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeResponse,
 };
-use edumdns_core::bincode_types::{MacAddr, Uuid};
+use edumdns_core::bincode_types::{Uuid};
 use edumdns_core::connection::TcpConnectionMessage;
-use edumdns_core::metadata::ProbeMetadata;
 use log::{error, info, warn};
-use pnet::ipnetwork::IpNetwork;
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::net::IpAddr;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -52,15 +49,6 @@ struct Cli {
         env = "EDUMDNS_PROBE_UUID_FILE"
     )]
     uuid_file: Option<String>,
-
-    /// Local IP to bind to.
-    #[clap(
-        short = 'b',
-        long = "bind_ip",
-        value_name = "BIND_IP",
-        env = "EDUMDNS_PROBE_BIND_IP"
-    )]
-    bind_ip: IpAddr,
 
     /// Local port to bind to.
     #[clap(
@@ -177,22 +165,14 @@ async fn main() -> Result<(), ProbeError> {
     let uuid = Uuid(cli.uuid.unwrap_or(generate_uuid(cli.uuid_file)?));
 
     info!("Starting probe with id: {}", uuid);
-    info!("Binding to IP: {}:{}", cli.bind_ip, cli.bind_port);
     info!(
         "Connecting to server {}:{}",
         cli.server_host, cli.server_port
     );
 
-    let probe_metadata = ProbeMetadata {
-        id: uuid,
-        ip: cli.bind_ip,
-        mac: determine_mac(&cli.bind_ip)?,
-    };
-
     let connection_info = ConnectionInfo {
         server_conn_socket_addr: format!("{}:{}", cli.server_host, cli.server_port),
         host: cli.server_host.clone(),
-        bind_socket_addr: format!("{}:{}", cli.bind_ip, cli.bind_port),
         pre_shared_key: cli.pre_shared_key,
         no_tls: cli.no_tls,
     };
@@ -204,7 +184,7 @@ async fn main() -> Result<(), ProbeError> {
     };
 
     let mut connection_manager =
-        ConnectionManager::new(probe_metadata.clone(), connection_info, connection_limits).await?;
+        ConnectionManager::new(uuid, connection_info, connection_limits).await?;
 
     let mut config = connection_manager.connection_init_probe().await?;
     let mut session_id = Some(Uuid(uuid::Uuid::nil()));
@@ -219,7 +199,7 @@ async fn main() -> Result<(), ProbeError> {
         let (pinger_receive_transmitter, pinger_receive_receiver) = mpsc::channel(1000);
 
         let probe_capture =
-            ProbeCapture::new(send_transmitter, probe_metadata.clone(), config.clone());
+            ProbeCapture::new(send_transmitter, connection_manager.probe_metadata.clone(), config.clone());
 
         let targets = ReceivePacketTargets {
             pinger: pinger_receive_transmitter,
@@ -343,18 +323,3 @@ fn generate_uuid(uuid_file: Option<String>) -> Result<uuid::Uuid, ProbeError> {
     }
 }
 
-fn determine_mac(bind_ip: &IpAddr) -> Result<MacAddr, ProbeError> {
-    let probe_ip = bind_ip.to_string().parse::<IpNetwork>()?;
-    let interfaces = pnet::datalink::interfaces();
-    let Some(interface) = interfaces
-        .iter()
-        .find(|i| i.is_up() && i.ips.iter().any(|ip| ip.ip() == probe_ip.ip()))
-    else {
-        return Err(ProbeError::ArgumentError(format!(
-            "No interface found for IP: {} or interface is not up",
-            bind_ip
-        )));
-    };
-
-    Ok(MacAddr(interface.mac.unwrap_or_default()))
-}

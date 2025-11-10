@@ -1,8 +1,9 @@
+use std::net::IpAddr;
 use crate::error::ProbeError;
 use edumdns_core::app_packet::{
     NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeConfigPacket,
 };
-use edumdns_core::bincode_types::Uuid;
+use edumdns_core::bincode_types::{MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_core::error::CoreError;
 use edumdns_core::metadata::ProbeMetadata;
@@ -10,6 +11,7 @@ use edumdns_core::retry;
 use log::{debug, error, info, trace, warn};
 use std::sync::Arc;
 use std::time::Duration;
+use pnet::ipnetwork;
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio::time::sleep;
@@ -26,7 +28,6 @@ pub(crate) struct ConnectionLimits {
 pub(crate) struct ConnectionInfo {
     pub(crate) host: String,
     pub(crate) server_conn_socket_addr: String,
-    pub(crate) bind_socket_addr: String,
     pub(crate) pre_shared_key: Option<String>,
     pub(crate) no_tls: bool,
 }
@@ -37,9 +38,9 @@ pub struct ReceivePacketTargets {
 
 pub(crate) struct ConnectionManager {
     pub(crate) handle: TcpConnectionHandle,
-    probe_metadata: ProbeMetadata,
-    conn_info: ConnectionInfo,
-    conn_limits: ConnectionLimits,
+    pub(crate) probe_metadata: ProbeMetadata,
+    pub(crate) conn_info: ConnectionInfo,
+    pub(crate) conn_limits: ConnectionLimits,
 }
 
 impl ConnectionManager {
@@ -51,7 +52,6 @@ impl ConnectionManager {
             retry!(
                 TcpConnectionHandle::connect(
                     connection_info.server_conn_socket_addr.as_ref(),
-                    connection_info.bind_socket_addr.as_ref(),
                     connection_limits.global_timeout
                 )
                 .await,
@@ -67,7 +67,6 @@ impl ConnectionManager {
             retry!(
                 TcpConnectionHandle::connect_tls(
                     connection_info.server_conn_socket_addr.as_ref(),
-                    connection_info.bind_socket_addr.as_ref(),
                     connection_info.host.as_ref(),
                     Arc::new(config.clone()),
                     connection_limits.global_timeout
@@ -81,11 +80,17 @@ impl ConnectionManager {
     }
 
     pub async fn new(
-        probe_metadata: ProbeMetadata,
+        uuid: Uuid,
         connection_info: ConnectionInfo,
         connection_limits: ConnectionLimits,
     ) -> Result<Self, ProbeError> {
         let handle = Self::connect(&connection_info, &connection_limits).await?;
+        let local_addr = handle.connection_info.local_addr.ip();
+        let probe_metadata = ProbeMetadata::new(
+            uuid,
+            determine_mac(&local_addr)?,
+            local_addr,
+        );
         Ok(Self {
             handle,
             probe_metadata,
@@ -168,6 +173,12 @@ impl ConnectionManager {
         self.handle.close().await?;
         match Self::connect(&self.conn_info, &self.conn_limits).await {
             Ok(connection) => {
+                let local_addr = connection.connection_info.local_addr.ip();
+                self.probe_metadata = ProbeMetadata::new(
+                    self.probe_metadata.id,
+                    determine_mac(&local_addr)?,
+                    local_addr,
+                );
                 self.handle = connection;
                 self.connection_init_probe().await
             }
@@ -379,4 +390,20 @@ impl ConnectionManager {
             sleep(interval).await;
         }
     }
+}
+
+pub(crate) fn determine_mac(bind_ip: &IpAddr) -> Result<MacAddr, ProbeError> {
+    let probe_ip = bind_ip.to_string().parse::<ipnetwork::IpNetwork>()?;
+    let interfaces = pnet::datalink::interfaces();
+    let Some(interface) = interfaces
+        .iter()
+        .find(|i| i.is_up() && i.ips.iter().any(|ip| ip.ip() == probe_ip.ip()))
+    else {
+        return Err(ProbeError::ArgumentError(format!(
+            "No interface found for IP: {} or interface is not up",
+            bind_ip
+        )));
+    };
+
+    Ok(MacAddr(interface.mac.unwrap_or_default()))
 }

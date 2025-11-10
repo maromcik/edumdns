@@ -169,12 +169,6 @@ pub fn get_identity_middleware() -> IdentityMiddleware {
         .build()
 }
 
-pub fn parse_host() -> String {
-    let hostname = env::var("EDUMDNS_WEB_HOSTNAME").unwrap_or(DEFAULT_HOSTNAME.to_string());
-    let port = env::var("EDUMDNS_WEB_PORT").unwrap_or(DEFAULT_PORT.to_string());
-    format!("{hostname}:{port}")
-}
-
 pub fn json_config() -> JsonConfig {
     JsonConfig::default().error_handler(|err, _req| {
         let web_error = WebError::ParseError(err.to_string());

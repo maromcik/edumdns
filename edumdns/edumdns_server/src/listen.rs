@@ -6,6 +6,8 @@ use crate::{DEFAULT_HOSTNAME, DEFAULT_PORT, ProbeHandles};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::bincode_types::Uuid;
+use edumdns_core::error::CoreError;
+use edumdns_core::utils::parse_host;
 use log::{debug, error, info, warn};
 use rustls::ServerConfig;
 use rustls_pki_types::pem::PemObject;
@@ -36,18 +38,18 @@ pub struct ListenerSpawner {
     probe_handles: ProbeHandles,
     tracker: SharedProbeTracker,
     tls_config: Option<ServerTlsConfig>,
-    hostname: String,
+    addrs: Vec<SocketAddr>,
     global_timeout: Duration,
 }
 impl ListenerSpawner {
-    pub fn new(
+    pub async fn new(
         pool: Pool<AsyncPgConnection>,
         command_transmitter: Sender<AppPacket>,
         data_transmitter: Sender<AppPacket>,
         probe_handles: ProbeHandles,
         tracker: SharedProbeTracker,
         global_timeout: Duration,
-    ) -> Self {
+    ) -> Result<Self, ServerError> {
         let cert = env::var("EDUMDNS_SERVER_CERT").ok();
         let key = env::var("EDUMDNS_SERVER_KEY").ok();
         let config = match (cert, key) {
@@ -58,24 +60,29 @@ impl ListenerSpawner {
             (_, _) => {
                 warn!("TLS is not enabled, this is not recommended for production use");
                 None
-            },
+            }
         };
 
-        Self {
+        Ok(Self {
             pool,
             command_transmitter,
             data_transmitter,
             probe_handles,
             tracker,
             tls_config: config,
-            hostname: parse_host(),
+            addrs: parse_host(
+                "EDUMDNS_SERVER_HOSTNAME",
+                "EDUMDNS_SERVER_PORT",
+                DEFAULT_HOSTNAME,
+                DEFAULT_PORT,
+            )
+            .await?,
             global_timeout,
-        }
+        })
     }
 
-    pub async fn start_listeners(&self) -> Result<(), ServerError> {
-        let addrs = lookup_host(&self.hostname).await?;
-        for addr in addrs {
+    pub async fn start_listeners(self) -> Result<(), ServerError> {
+        for addr in self.addrs.into_iter() {
             let pool_local = self.pool.clone();
             let command_transmitter_local = self.command_transmitter.clone();
             let data_channel_local = self.data_transmitter.clone();
@@ -171,10 +178,4 @@ impl ListenerSpawner {
             });
         }
     }
-}
-
-fn parse_host() -> String {
-    let hostname = env::var("EDUMDNS_SERVER_HOSTNAME").unwrap_or(DEFAULT_HOSTNAME.to_string());
-    let port = env::var("EDUMDNS_SERVER_PORT").unwrap_or(DEFAULT_PORT.to_string());
-    format!("{hostname}:{port}")
 }

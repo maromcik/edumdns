@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use crate::handlers::device::{
     create_device, create_device_form, delete_device, delete_request_packet_transmit, get_device,
     get_device_for_transmit, get_devices, hide_device, publish_device,
@@ -24,18 +25,23 @@ use crate::handlers::user::{
     update_user, update_user_password, user_manage, user_manage_form_page, user_manage_password,
     user_manage_password_form,
 };
-use crate::utils::AppState;
+use crate::utils::{create_oidc, get_cors_middleware, get_identity_middleware, get_session_middleware, json_config, path_config, query_config, AppState};
 use actix_files::Files;
-use actix_web::web;
-use actix_web::web::ServiceConfig;
+use actix_multipart::form::MultipartFormConfig;
+use actix_web::{web, App, HttpServer};
+use actix_web::middleware::{Logger, NormalizePath, TrailingSlash};
+use actix_web::web::{FormConfig, PayloadConfig, ServiceConfig};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
+use log::info;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::location::repository::PgLocationRepository;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
+use crate::error::WebError;
+use crate::{middleware, FORM_LIMIT, PAYLOAD_LIMIT};
 
 pub fn configure_webapp(
     pool: &Pool<AsyncPgConnection>,
@@ -137,4 +143,89 @@ pub fn configure_webapp(
             .service(group_scope)
             .service(Files::new("/static", format!("{files_dir}/static")).prefer_utf8(true));
     })
+}
+
+
+pub(crate) async fn run_web(
+    pool: Pool<AsyncPgConnection>,
+    hostnames: Vec<SocketAddr>,
+    app_state: AppState,
+    files_dir: String,
+    key: actix_web::cookie::Key,
+    site_url: String,
+    use_secure_cookie: bool
+) -> Result<(), WebError> {
+    for addr in hostnames {
+        let app_state_local = app_state.clone();
+        let files_dir_local = files_dir.clone();
+        let key_local = key.clone();
+        let site_url_local = site_url.clone();
+        let pool = pool.clone();
+
+        match create_oidc().await {
+            Err(e) => {
+                info!("Starting the web server without OIDC support. Reason: {e}");
+                HttpServer::new(move || {
+                    App::new()
+                        .app_data(
+                            MultipartFormConfig::default()
+                                .total_limit(PAYLOAD_LIMIT)
+                                .memory_limit(PAYLOAD_LIMIT),
+                        )
+                        .app_data(FormConfig::default().limit(FORM_LIMIT))
+                        .app_data(PayloadConfig::new(PAYLOAD_LIMIT))
+                        .app_data(json_config())
+                        .app_data(query_config()) // <-- attach custom handler// <- important
+                        .app_data(path_config()) // <-- attach custom handler// <- important
+                        .wrap(NormalizePath::new(TrailingSlash::Trim))
+                        .wrap(get_identity_middleware())
+                        .wrap(get_session_middleware(key_local.clone(), use_secure_cookie))
+                        .wrap(get_cors_middleware(site_url_local.as_str()))
+                        .wrap(middleware::RedirectToLogin)
+                        .wrap(Logger::default())
+                        .configure(configure_webapp(
+                            &pool,
+                            app_state_local.clone(),
+                            files_dir_local.clone(),
+                        ))
+                })
+                    .bind(addr)?
+                    .run()
+                    .await?;
+            }
+            Ok(oidc) => {
+                info!("Starting the web server with OIDC support");
+                HttpServer::new(move || {
+                    App::new()
+                        .app_data(
+                            MultipartFormConfig::default()
+                                .total_limit(PAYLOAD_LIMIT)
+                                .memory_limit(PAYLOAD_LIMIT),
+                        )
+                        .app_data(FormConfig::default().limit(FORM_LIMIT))
+                        .app_data(PayloadConfig::new(PAYLOAD_LIMIT))
+                        .app_data(json_config())
+                        .app_data(query_config()) // <-- attach custom handler// <- important
+                        .app_data(path_config())
+                        .wrap(NormalizePath::new(TrailingSlash::Trim))
+                        .wrap(get_identity_middleware())
+                        .wrap(get_session_middleware(key_local.clone(), use_secure_cookie))
+                        .wrap(get_cors_middleware(site_url_local.as_str()))
+                        .wrap(oidc.get_middleware())
+                        .wrap(middleware::RedirectToLogin)
+                        .wrap(Logger::default())
+                        .configure(oidc.configure_open_id())
+                        .configure(configure_webapp(
+                            &pool,
+                            app_state_local.clone(),
+                            files_dir_local.clone(),
+                        ))
+                })
+                    .bind(addr)?
+                    .run()
+                    .await?;
+            }
+        }
+    }
+    Ok(())
 }

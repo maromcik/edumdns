@@ -1,8 +1,8 @@
 use crate::error::WebError;
-use crate::init::configure_webapp;
+use crate::init::{configure_webapp, run_web};
 use crate::utils::{
     AppState, DeviceAclApDatabase, create_oidc, create_reloader, get_cors_middleware,
-    get_identity_middleware, get_session_middleware, json_config, parse_host, path_config,
+    get_identity_middleware, get_session_middleware, json_config, path_config,
     query_config,
 };
 use actix_multipart::form::MultipartFormConfig;
@@ -17,6 +17,7 @@ use log::{info, warn};
 use std::env;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
+use edumdns_core::utils::parse_host;
 
 pub mod error;
 
@@ -46,8 +47,15 @@ pub async fn web_init(
         warn!("failed loading .env file: {e}");
     };
 
-    let host = parse_host();
-    let host2 = host.clone();
+    let hostnames = parse_host(
+        "EDUMDNS_WEB_HOSTNAME",
+        "EDUMDNS_WEB_PORT",
+        DEFAULT_HOSTNAME,
+        DEFAULT_PORT,
+    ).await?;
+
+
+    let site_url = env::var("EDUMDNS_SITE_URL").unwrap_or(DEFAULT_HOSTNAME.to_string());
     let files_dir = env::var("EDUMDNS_FILES_DIR").unwrap_or("edumdns_web".to_string());
     let key = Key::from(
         &env::var("EDUMDNS_COOKIE_SESSION_KEY")
@@ -79,69 +87,7 @@ pub async fn web_init(
         oidc_users_admin,
     );
 
-    match create_oidc().await {
-        Err(e) => {
-            info!("Starting the web server on {host} without OIDC support. Reason: {e}");
-            HttpServer::new(move || {
-                App::new()
-                    .app_data(
-                        MultipartFormConfig::default()
-                            .total_limit(PAYLOAD_LIMIT)
-                            .memory_limit(PAYLOAD_LIMIT),
-                    )
-                    .app_data(FormConfig::default().limit(FORM_LIMIT))
-                    .app_data(PayloadConfig::new(PAYLOAD_LIMIT))
-                    .app_data(json_config())
-                    .app_data(query_config()) // <-- attach custom handler// <- important
-                    .app_data(path_config()) // <-- attach custom handler// <- important
-                    .wrap(NormalizePath::new(TrailingSlash::Trim))
-                    .wrap(get_identity_middleware())
-                    .wrap(get_session_middleware(key.clone(), use_secure_cookie))
-                    .wrap(get_cors_middleware(host.as_str()))
-                    .wrap(middleware::RedirectToLogin)
-                    .wrap(Logger::default())
-                    .configure(configure_webapp(
-                        &pool,
-                        app_state.clone(),
-                        files_dir.clone(),
-                    ))
-            })
-            .bind(host2)?
-            .run()
-            .await?;
-        }
-        Ok(oidc) => {
-            info!("Starting the server on {host} with OIDC support");
-            HttpServer::new(move || {
-                App::new()
-                    .app_data(
-                        MultipartFormConfig::default()
-                            .total_limit(PAYLOAD_LIMIT)
-                            .memory_limit(PAYLOAD_LIMIT),
-                    )
-                    .app_data(FormConfig::default().limit(FORM_LIMIT))
-                    .app_data(PayloadConfig::new(PAYLOAD_LIMIT))
-                    .app_data(json_config())
-                    .app_data(query_config()) // <-- attach custom handler// <- important
-                    .app_data(path_config())
-                    .wrap(NormalizePath::new(TrailingSlash::Trim))
-                    .wrap(get_identity_middleware())
-                    .wrap(get_session_middleware(key.clone(), use_secure_cookie))
-                    .wrap(get_cors_middleware(host.as_str()))
-                    .wrap(oidc.get_middleware())
-                    .wrap(middleware::RedirectToLogin)
-                    .wrap(Logger::default())
-                    .configure(oidc.configure_open_id())
-                    .configure(configure_webapp(
-                        &pool,
-                        app_state.clone(),
-                        files_dir.clone(),
-                    ))
-            })
-            .bind(host2)?
-            .run()
-            .await?;
-        }
-    }
+    run_web(pool, hostnames, app_state, files_dir, key, site_url, use_secure_cookie).await?;
+
     Ok(())
 }

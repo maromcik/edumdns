@@ -112,8 +112,9 @@ pub async fn spawn_server_tasks(
         tracker,
         global_timeout,
     )
-    .start_listeners()
-    .await?;
+        .await?
+        .start_listeners()
+        .await?;
 
     Ok(())
 }

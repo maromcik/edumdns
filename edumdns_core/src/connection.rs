@@ -1,4 +1,3 @@
-use std::net::SocketAddr;
 use crate::BUFFER_CAPACITY;
 use crate::app_packet::NetworkAppPacket;
 use crate::error::CoreError;
@@ -9,6 +8,7 @@ use futures::{SinkExt, StreamExt};
 use log::warn;
 use rustls::{ClientConfig, ServerConfig};
 use rustls_pki_types::ServerName;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::BufStream;
@@ -254,8 +254,6 @@ async fn run_message_multiplexer(
     Ok(())
 }
 
-
-
 #[derive(Clone)]
 pub struct TcpConnectionHandle {
     pub sender: mpsc::Sender<TcpConnectionMessage>,
@@ -315,7 +313,7 @@ impl TcpConnectionHandle {
 
         Ok(Self {
             sender: channels.command_channel.0,
-            connection_info
+            connection_info,
         })
     }
 
@@ -342,7 +340,7 @@ impl TcpConnectionHandle {
 
         Ok(Self {
             sender: channels.command_channel.0,
-            connection_info
+            connection_info,
         })
     }
 
@@ -373,7 +371,7 @@ impl TcpConnectionHandle {
 
         Ok(Self {
             sender: channels.command_channel.0,
-            connection_info
+            connection_info,
         })
     }
 
@@ -401,7 +399,7 @@ impl TcpConnectionHandle {
         );
         Ok(Self {
             sender: channels.command_channel.0,
-            connection_info
+            connection_info,
         })
     }
 
@@ -432,7 +430,7 @@ impl TcpConnectionHandle {
 
         Ok(Self {
             sender: channels.command_channel.0,
-            connection_info
+            connection_info,
         })
     }
 
@@ -463,7 +461,7 @@ where
 {
     sender: TcpConnectionSender<S>,
     receiver: TcpConnectionReceiver<S>,
-    connection_info: ConnectionInfo
+    connection_info: ConnectionInfo,
 }
 
 impl<S> TcpConnection<S>
@@ -497,7 +495,7 @@ where
             connection_info: ConnectionInfo {
                 local_addr,
                 peer_addr,
-            }
+            },
         })
     }
 
@@ -508,7 +506,12 @@ where
         let addrs = lookup_host(addr).await?;
         let mut last_err = None;
         for addr in addrs {
-            let socket = TcpSocket::new_v4()?;
+            let socket = if addr.is_ipv4() {
+                TcpSocket::new_v4()?
+            } else {
+                TcpSocket::new_v6()?
+            };
+
             socket.set_keepalive(true)?;
             match tokio::time::timeout(global_timeout, socket.connect(addr)).await {
                 Ok(Ok(stream)) => return Ok(stream),

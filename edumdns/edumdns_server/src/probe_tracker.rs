@@ -1,4 +1,4 @@
-use crate::listen::ProbeHandles;
+use crate::ProbeHandles;
 use crate::ordered_map::OrderedMap;
 use edumdns_core::bincode_types::Uuid;
 use log::{info, trace};

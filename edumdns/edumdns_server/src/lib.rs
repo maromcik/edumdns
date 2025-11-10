@@ -1,13 +1,15 @@
 use crate::app_packet::AppPacket;
 use crate::database::DatabaseManager;
 use crate::error::ServerError;
-use crate::listen::{ProbeHandles, listen};
+use crate::listen::ListenerSpawner;
 use crate::manager::PacketManager;
 use crate::ordered_map::OrderedMap;
 use crate::probe_tracker::{SharedProbeTracker, watchdog};
 use crate::utilities::load_all_packet_transmit_requests;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
+use edumdns_core::bincode_types::Uuid;
+use edumdns_core::connection::TcpConnectionHandle;
 use log::{error, info};
 use std::collections::HashMap;
 use std::env;
@@ -35,10 +37,7 @@ const DEFAULT_INTERVAL_MULTIPLICATOR: u32 = 5;
 
 pub const BUFFER_SIZE: usize = 1000;
 
-pub struct ServerTlsConfig {
-    pub cert_path: String,
-    pub key_path: String,
-}
+pub type ProbeHandles = Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>;
 
 pub async fn server_init(
     pool: Pool<AsyncPgConnection>,
@@ -49,26 +48,21 @@ pub async fn server_init(
             .unwrap_or("10".to_string())
             .parse::<u64>()?,
     );
-    let cert = env::var("EDUMDNS_SERVER_CERT").ok();
-    let key = env::var("EDUMDNS_SERVER_KEY").ok();
-    let config = match (cert, key) {
-        (Some(c), Some(k)) => Some(ServerTlsConfig {
-            cert_path: c,
-            key_path: k,
-        }),
-        (_, _) => None,
-    };
+
     load_all_packet_transmit_requests(pool.clone(), tx.clone()).await?;
-    spawn_server_tasks(pool.clone(), (tx.clone(), rx), config, global_timeout).await?;
+    spawn_server_tasks(pool.clone(), (tx.clone(), rx), global_timeout).await?;
     Ok(())
 }
 
 pub async fn spawn_server_tasks(
     pool: Pool<AsyncPgConnection>,
     (command_transmitter, command_receiver): (Sender<AppPacket>, Receiver<AppPacket>),
-    config: Option<ServerTlsConfig>,
     global_timeout: Duration,
 ) -> Result<(), ServerError> {
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
     let probe_handles: ProbeHandles = Arc::new(RwLock::new(HashMap::new()));
     let tracker: SharedProbeTracker = Arc::new(RwLock::new(OrderedMap::new()));
     let data_channel = tokio::sync::mpsc::channel(BUFFER_SIZE);
@@ -110,21 +104,16 @@ pub async fn spawn_server_tasks(
         watchdog(tracker_local, probe_handles_local, global_timeout).await;
     });
 
-    listen(
+    ListenerSpawner::new(
         pool,
         command_transmitter,
         data_channel.0,
         probe_handles,
         tracker,
-        config,
         global_timeout,
     )
+    .start_listeners()
     .await?;
-    Ok(())
-}
 
-pub fn parse_host() -> String {
-    let hostname = env::var("EDUMDNS_SERVER_HOSTNAME").unwrap_or(DEFAULT_HOSTNAME.to_string());
-    let port = env::var("EDUMDNS_SERVER_PORT").unwrap_or(DEFAULT_PORT.to_string());
-    format!("{hostname}:{port}")
+    Ok(())
 }

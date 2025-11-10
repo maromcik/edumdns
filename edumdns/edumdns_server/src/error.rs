@@ -2,6 +2,7 @@ use edumdns_core::error::CoreError;
 use edumdns_db::error::DbError;
 use std::fmt::Debug;
 use std::net::AddrParseError;
+use std::str::ParseBoolError;
 use thiserror::Error;
 
 #[derive(Error, Clone)]
@@ -82,6 +83,12 @@ impl From<aya::maps::MapError> for ServerError {
 
 impl From<AddrParseError> for ServerError {
     fn from(value: AddrParseError) -> Self {
+        ServerError::ParseError(value.to_string())
+    }
+}
+
+impl From<ParseBoolError> for ServerError {
+    fn from(value: ParseBoolError) -> Self {
         ServerError::ParseError(value.to_string())
     }
 }

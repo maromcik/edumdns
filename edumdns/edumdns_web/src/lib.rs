@@ -81,7 +81,7 @@ pub async fn web_init(
 
     match create_oidc().await {
         Err(e) => {
-            info!("starting server on {host} without OIDC support. Reason: {e}");
+            info!("Starting the web server on {host} without OIDC support. Reason: {e}");
             HttpServer::new(move || {
                 App::new()
                     .app_data(
@@ -111,7 +111,7 @@ pub async fn web_init(
             .await?;
         }
         Ok(oidc) => {
-            info!("starting server on {host} with OIDC support");
+            info!("Starting the server on {host} with OIDC support");
             HttpServer::new(move || {
                 App::new()
                     .app_data(

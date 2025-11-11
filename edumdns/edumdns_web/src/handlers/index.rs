@@ -4,7 +4,8 @@ use crate::handlers::utilities::{
     destroy_session, extract_referrer, get_template_name, parse_user_from_oidc, parse_user_id,
 };
 use crate::templates::index::{IndexTemplate, LoginTemplate};
-use crate::{AppState, SESSION_EXPIRY, authorized};
+use crate::utils::AppState;
+use crate::{SESSION_EXPIRY, authorized};
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;

@@ -1,5 +1,5 @@
 use crate::error::WebError;
-use crate::{DEFAULT_HOSTNAME, DEFAULT_PORT, SECS_IN_MONTH, SECS_IN_WEEK, SESSION_EXPIRY};
+use crate::{SECS_IN_MONTH, SECS_IN_WEEK, SESSION_EXPIRY};
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_session::SessionMiddleware;

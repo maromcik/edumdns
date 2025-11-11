@@ -6,7 +6,6 @@ use crate::{DEFAULT_HOSTNAME, DEFAULT_PORT, ProbeHandles};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::bincode_types::Uuid;
-use edumdns_core::error::CoreError;
 use edumdns_core::utils::parse_host;
 use log::{debug, error, info, warn};
 use rustls::ServerConfig;
@@ -15,7 +14,7 @@ use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use std::env;
 use std::net::SocketAddr;
 use std::time::Duration;
-use tokio::net::{TcpListener, lookup_host};
+use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
 
 #[derive(Debug, Clone)]

@@ -1,3 +1,4 @@
+use crate::authorized;
 use crate::error::WebError;
 use crate::forms::user::{
     UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm,
@@ -10,7 +11,7 @@ use crate::templates::user::{
     UserDetailGroupsTemplate, UserDetailTemplate, UserManagePasswordTemplate,
     UserManageProfileTemplate, UserTemplate,
 };
-use crate::{AppState, authorized};
+use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};

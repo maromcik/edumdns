@@ -1035,6 +1035,10 @@ pre code {
   width: 1.5rem;
 }
 
+.w-8 {
+  width: 2rem;
+}
+
 .w-96 {
   width: 24rem;
 }
@@ -2357,6 +2361,11 @@ pre code {
     font-size: 1.5rem;
     line-height: 2rem;
   }
+
+  .sm\:text-xl {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
 }
 
 @media (min-width: 768px) {
@@ -2394,6 +2403,10 @@ pre code {
 
   .md\:w-96 {
     width: 24rem;
+  }
+
+  .md\:w-10 {
+    width: 2.5rem;
   }
 
   .md\:grid-cols-2 {
@@ -2458,6 +2471,10 @@ pre code {
     width: 80%;
   }
 
+  .lg\:w-12 {
+    width: 3rem;
+  }
+
   .lg\:max-w-\[90\%\] {
     max-width: 90%;
   }
@@ -2484,6 +2501,11 @@ pre code {
   .lg\:pt-10 {
     padding-top: 2.5rem;
   }
+
+  .lg\:text-2xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
 }
 
 @media (min-width: 1280px) {
@@ -2504,6 +2526,11 @@ pre code {
   .xl\:text-xl {
     font-size: 1.25rem;
     line-height: 1.75rem;
+  }
+
+  .xl\:text-2xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
   }
 }
 

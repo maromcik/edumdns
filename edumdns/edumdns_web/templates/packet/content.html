@@ -78,7 +78,7 @@
             </thead>
             <tbody class="divide-y">
             {% for packet in packets %}
-            <tr class="bg-table transition-colors">
+            <tr class="cursor-pointer rounded-lg bg-table transition-colors" data-href="/packet/{{ packet.id }}">
                 <td class="px-4 py-3 font-mono text-sm">
                     <a href="/packet/{{ packet.id }}" class="text-primary hover:underline">
                         {{ packet.id }}
@@ -196,6 +196,17 @@
 </div>
 
 <script>
+    document.querySelectorAll("tr[data-href]").forEach(row => {
+        row.addEventListener("click", e => {
+            if (
+                e.target.closest("a, button, input, textarea") ||
+                window.getSelection().toString().length > 0
+            ) {
+                return;
+            }
+            window.location = row.dataset.href;
+        });
+    });
     function runSearch() {
         const params = new URLSearchParams();
 

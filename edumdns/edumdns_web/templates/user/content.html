@@ -151,7 +151,7 @@
 
             <tbody class="divide-y divide-base">
             {% for user in users %}
-            <tr class="bg-table rounded-lg transition-colors">
+            <tr class="cursor-pointer rounded-lg bg-table transition-colors" data-href="/user/{{ user.id }}">
                 <td class="px-4 py-3 font-mono text-sm text-sat-l">
                     <a href="/user/{{ user.id }}" class="text-primary hover:underline">
                         {{ user.id }}
@@ -273,6 +273,18 @@
 </div>
 
 <script>
+    document.querySelectorAll("tr[data-href]").forEach(row => {
+        row.addEventListener("click", e => {
+            if (
+                e.target.closest("a, button, input, textarea") ||
+                window.getSelection().toString().length > 0
+            ) {
+                return;
+            }
+            window.location = row.dataset.href;
+        });
+    });
+
     function runSearch() {
         const params = new URLSearchParams();
 

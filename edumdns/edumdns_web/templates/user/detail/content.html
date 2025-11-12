@@ -246,7 +246,7 @@
                 </thead>
                 <tbody class="divide-y divide-base">
                 {% for g in groups %}
-                <tr class="bg-table rounded-lg transition-colors">
+                <tr class="cursor-pointer rounded-lg bg-table transition-colors" data-href="/user/{{ user.id }}">
                     <td class="px-4 py-3 font-mono text-sm text-sat-l"><a href="/group/{{ g.id }}">{{ g.id }}</a></td>
                     <td class="px-4 py-3 text-sm text-sat-l">{{ g.name }}</td>
                     <td class="px-4 py-3 text-sm text-sat-l">{{ g.description[:13] }}</td>
@@ -275,3 +275,17 @@
     </div>
 
 </div>
+
+<script>
+    document.querySelectorAll("tr[data-href]").forEach(row => {
+        row.addEventListener("click", e => {
+            if (
+                e.target.closest("a, button, input, textarea") ||
+                window.getSelection().toString().length > 0
+            ) {
+                return;
+            }
+            window.location = row.dataset.href;
+        });
+    });
+</script>

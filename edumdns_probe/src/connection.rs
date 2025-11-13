@@ -1,4 +1,3 @@
-use std::net::IpAddr;
 use crate::error::ProbeError;
 use edumdns_core::app_packet::{
     NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeConfigPacket,
@@ -9,9 +8,10 @@ use edumdns_core::error::CoreError;
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_core::retry;
 use log::{debug, error, info, trace, warn};
+use pnet::ipnetwork;
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
-use pnet::ipnetwork;
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio::time::sleep;
@@ -86,11 +86,7 @@ impl ConnectionManager {
     ) -> Result<Self, ProbeError> {
         let handle = Self::connect(&connection_info, &connection_limits).await?;
         let local_addr = handle.connection_info.local_addr.ip();
-        let probe_metadata = ProbeMetadata::new(
-            uuid,
-            determine_mac(&local_addr)?,
-            local_addr,
-        );
+        let probe_metadata = ProbeMetadata::new(uuid, determine_mac(&local_addr)?, local_addr);
         Ok(Self {
             handle,
             probe_metadata,
@@ -147,9 +143,12 @@ impl ConnectionManager {
             return error;
         };
         info!(
-            "Connected to the server {}",
-            self.conn_info.server_conn_socket_addr
+            "Successfully connected to {} ({}) from local address {}",
+            self.conn_info.host,
+            self.handle.connection_info.peer_addr,
+            self.handle.connection_info.local_addr
         );
+
         debug!("Obtained config <{config:?}>");
         Ok(config)
     }

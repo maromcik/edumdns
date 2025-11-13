@@ -1,5 +1,5 @@
 use crate::error::WebError;
-use crate::{SECS_IN_MONTH, SECS_IN_WEEK, SESSION_EXPIRY};
+use crate::{DEFAULT_HOSTNAME, DEFAULT_PORT, SECS_IN_MONTH, SECS_IN_WEEK, SESSION_EXPIRY};
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_session::SessionMiddleware;
@@ -188,4 +188,10 @@ pub fn path_config() -> PathConfig {
         let web_error = WebError::ParseError(err.to_string());
         actix_web::error::InternalError::from_response(err, web_error.error_response()).into()
     })
+}
+
+pub fn parse_host() -> String {
+    let hostname = env::var("EDUMDNS_WEB_HOSTNAME").unwrap_or(DEFAULT_HOSTNAME.to_string());
+    let port = env::var("EDUMDNS_WEB_PORT").unwrap_or(DEFAULT_PORT.to_string());
+    format!("{hostname}:{port}")
 }

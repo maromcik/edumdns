@@ -25,11 +25,8 @@ use crate::handlers::user::{
     update_user, update_user_password, user_manage, user_manage_form_page, user_manage_password,
     user_manage_password_form,
 };
-use crate::utils::{
-    AppState, DeviceAclApDatabase, create_oidc, create_reloader, get_cors_middleware,
-    get_identity_middleware, get_session_middleware, json_config, path_config, query_config,
-};
-use crate::{DEFAULT_HOSTNAME, DEFAULT_PORT, FORM_LIMIT, PAYLOAD_LIMIT, middleware};
+use crate::utils::{AppState, DeviceAclApDatabase, create_oidc, create_reloader, get_cors_middleware, get_identity_middleware, get_session_middleware, json_config, path_config, query_config, parse_host};
+use crate::{DEFAULT_HOSTNAME, FORM_LIMIT, PAYLOAD_LIMIT, middleware};
 use actix_files::Files;
 use actix_multipart::form::MultipartFormConfig;
 use actix_web::cookie::Key;
@@ -38,7 +35,6 @@ use actix_web::web::{FormConfig, PayloadConfig, ServiceConfig};
 use actix_web::{App, HttpServer, web};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::utils::parse_host;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
@@ -47,14 +43,13 @@ use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_server::app_packet::AppPacket;
 use log::info;
 use std::env;
-use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
 pub struct WebSpawner {
     pool: Pool<AsyncPgConnection>,
     app_state: AppState,
-    hostnames: Vec<SocketAddr>,
+    hostname: String,
     files_dir: String,
     key: Key,
     site_url: String,
@@ -66,14 +61,6 @@ impl WebSpawner {
         pool: Pool<AsyncPgConnection>,
         command_channel: Sender<AppPacket>,
     ) -> Result<Self, WebError> {
-        let hostnames = parse_host(
-            "EDUMDNS_WEB_HOSTNAME",
-            "EDUMDNS_WEB_PORT",
-            DEFAULT_HOSTNAME,
-            DEFAULT_PORT,
-        )
-        .await?;
-
         let site_url = env::var("EDUMDNS_SITE_URL").unwrap_or(DEFAULT_HOSTNAME.to_string());
         let files_dir = env::var("EDUMDNS_FILES_DIR").unwrap_or("edumdns_web".to_string());
         let key = Key::from(
@@ -106,7 +93,7 @@ impl WebSpawner {
         Ok(Self {
             pool,
             app_state,
-            hostnames,
+            hostname: parse_host(),
             files_dir,
             key,
             site_url,
@@ -216,19 +203,13 @@ impl WebSpawner {
     }
 
     pub(crate) async fn run_web(&self) -> Result<(), WebError> {
-        for addr in &self.hostnames {
-            self.spawn_thread(addr.clone()).await?;
-        }
-        Ok(())
-    }
-
-    pub(crate) async fn spawn_thread(&self, addr: SocketAddr) -> Result<(), WebError> {
         let app_state_local = self.app_state.clone();
         let files_dir_local = self.files_dir.clone();
         let key_local = self.key.clone();
         let site_url_local = self.site_url.clone();
         let pool_local = self.pool.clone();
         let user_secure_cookie_local = self.use_secure_cookie;
+        let host_local = self.hostname.clone();
         match create_oidc().await {
             Err(e) => {
                 info!("Starting the web server without OIDC support. Reason: {e}");
@@ -259,7 +240,7 @@ impl WebSpawner {
                             files_dir_local.clone(),
                         ))
                 })
-                .bind(addr)?
+                .bind(&host_local)?
                 .run()
                 .await?;
             }
@@ -294,7 +275,7 @@ impl WebSpawner {
                             files_dir_local.clone(),
                         ))
                 })
-                .bind(addr)?
+                .bind(&host_local)?
                 .run()
                 .await?;
             }

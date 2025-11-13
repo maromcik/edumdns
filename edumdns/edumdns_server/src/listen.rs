@@ -6,7 +6,7 @@ use crate::{DEFAULT_HOSTNAME, DEFAULT_PORT, ProbeHandles};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::bincode_types::Uuid;
-use edumdns_core::utils::parse_host;
+use edumdns_core::utils::parse_and_lookup_host;
 use log::{debug, error, info, warn};
 use rustls::ServerConfig;
 use rustls_pki_types::pem::PemObject;
@@ -69,7 +69,7 @@ impl ListenerSpawner {
             probe_handles,
             tracker,
             tls_config: config,
-            addrs: parse_host(
+            addrs: parse_and_lookup_host(
                 "EDUMDNS_SERVER_HOSTNAME",
                 "EDUMDNS_SERVER_PORT",
                 DEFAULT_HOSTNAME,

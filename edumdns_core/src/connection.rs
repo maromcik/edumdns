@@ -641,7 +641,7 @@ pub struct UdpConnection {
 
 impl UdpConnection {
     pub async fn new(global_timeout: Duration) -> Result<Self, CoreError> {
-        let socket = UdpSocket::bind("0.0.0.0:0").await?;
+        let socket = UdpSocket::bind("[::]:0").await?;
         Ok(Self {
             socket,
             global_timeout,

@@ -96,7 +96,7 @@
                         <!-- Extend Discovery Form -->
                         <form
                                 method="post"
-                                hx-post="/device/{{ device.id }}/transmit/{{ packet_transmit_request.id }}/extend?return_url=/device/{{ device.id }}/transmit"
+                                hx-post="/device/{{ device.id }}/transmit/{{ packet_transmit_request.id }}/extend"
                                 hx-target="#content-area"
                                 hx-target-error="#transmit-result"
                                 class="flex flex-col items-center gap-5 w-full max-w-sm bg-base/10 p-6 rounded-xl border border-base/20 shadow-sm"

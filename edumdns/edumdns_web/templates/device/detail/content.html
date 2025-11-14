@@ -337,9 +337,9 @@
                     </th>
                     <th class="px-4 py-2 text-left text-xs font-medium text-sat-m uppercase tracking-wide">Permanent
                     </th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-sat-m uppercase tracking-wide">Valid Until
-                    </th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-sat-m uppercase tracking-wide">Valid Until</th>
                     <th class="px-4 py-2 text-right text-xs font-medium text-sat-m uppercase tracking-wide">Actions</th>
+                    <th class="px-4 py-2 text-right text-xs font-medium text-sat-m uppercase tracking-wide"></th>
                 </tr>
                 </thead>
                 <tbody class="divide-y divide-base">
@@ -356,9 +356,22 @@
                             <button
                                     type="button"
                                     class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm  transition-colors"
+                                    title="Extend Discovery"
+                                    hx-post="/device/{{ device.id }}/transmit-custom/{{ r.id }}/extend"
+                                    hx-target="#content-area"
+                                    hx-target-error="#content-area"
+                            >
+                                <i class="fa-solid fa-arrows-rotate text-blue-400 hover:text-blue-500"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="px-4 py-2">
+                        <div class="flex justify-end">
+                            <button
+                                    type="button"
+                                    class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm  transition-colors"
                                     title="Delete"
                                     hx-delete="/device/{{ device.id }}/transmit/{{ r.id }}"
-                                    hx-vals='{"target_ip":"{{ r.target_ip }}","target_port":"{{ r.target_port }}"}'
                                     hx-target="#content-area"
                                     hx-target-error="#content-area"
                             >

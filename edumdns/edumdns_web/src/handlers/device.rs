@@ -1,14 +1,12 @@
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::device::{
-    CreateDeviceForm, DeviceCustomPacketTransmitRequest,
-    DevicePacketTransmitRequest, DeviceQuery, UpdateDeviceForm,
+    CreateDeviceForm, DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest, DeviceQuery,
+    UpdateDeviceForm,
 };
 use crate::forms::packet::PacketQuery;
 use crate::handlers::helpers::{authorize_packet_transmit_request, request_packet_transmit_helper};
-use crate::handlers::utilities::{
-    get_template_name, parse_user_id, validate_has_groups,
-};
+use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
 use crate::templates::PageInfo;
 use crate::templates::device::{
     DeviceCreateTemplate, DeviceDetailTemplate, DeviceTemplate, DeviceTransmitTemplate,
@@ -366,7 +364,6 @@ pub async fn extend_request_packet_transmit(
     state: web::Data<AppState>,
     form: web::Form<DevicePacketTransmitRequest>,
     path: web::Path<(Id, Id)>,
-    mut query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, WebError> {
     let form = form.into_inner();
     let device_id = path.0;
@@ -383,15 +380,12 @@ pub async fn extend_request_packet_transmit(
         Some(_) => device_repo.read_one(&device_id).await?,
     };
 
-    authorize_packet_transmit_request(
-        &request,
-        &device,
-        &form,
-        &state.device_acl_ap_database,
-    )
-    .await?;
+    authorize_packet_transmit_request(&request, &device, &form, &state.device_acl_ap_database)
+        .await?;
 
-    device_repo.extend_packet_transmit_request(&request_id).await?;
+    device_repo
+        .extend_packet_transmit_request(&request_id)
+        .await?;
 
     state
         .command_channel
@@ -401,14 +395,38 @@ pub async fn extend_request_packet_transmit(
         .await
         .map_err(CoreError::from)?;
 
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/device/{}/transmit", device_id)))
+        .finish())
+}
 
-    let return_url = query
-        .remove("return_url")
-        .unwrap_or(format!("/device/{}", device_id));
-    
+#[post("{device_id}/transmit-custom/{request_id}/extend")]
+pub async fn extend_custom_request_packet_transmit(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    device_repo: web::Data<PgDeviceRepository>,
+    state: web::Data<AppState>,
+    path: web::Path<(Id, Id)>,
+) -> Result<HttpResponse, WebError> {
+    let device_id = path.0;
+    let request_id = path.1;
+    let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
+    let _ = device_repo.read_one_auth(&device_id, &user_id).await?;
+    device_repo
+        .extend_packet_transmit_request(&request_id)
+        .await?;
+
+    state
+        .command_channel
+        .send(AppPacket::Local(LocalAppPacket::Command(
+            LocalCommandPacket::ExtendPacketTransmitRequest(request_id),
+        )))
+        .await
+        .map_err(CoreError::from)?;
 
     Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, return_url))
+        .insert_header((LOCATION, format!("/device/{}", device_id)))
         .finish())
 }
 

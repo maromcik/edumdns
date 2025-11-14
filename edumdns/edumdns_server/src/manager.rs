@@ -1,11 +1,13 @@
 use crate::app_packet::{
-    AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket, PacketTransmitRequestPacket,
+    AppPacket, LocalAppPacket, LocalCommandPacket, LocalDataPacket, LocalStatusPacket,
+    PacketTransmitRequestPacket,
 };
 use crate::database::DbCommand;
 use crate::ebpf::EbpfUpdater;
 use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
-use crate::{BUFFER_SIZE, ProbeHandles};
+use crate::utilities::process_packets;
+use crate::{BUFFER_SIZE, MAX_TRANSMIT_SUBNET_SIZE, ProbeHandles};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::Id;
@@ -18,6 +20,7 @@ use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::SelectManyPackets;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
+use ipnetwork::NetworkSize;
 use log::{debug, error, info, warn};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
@@ -27,7 +30,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
-use crate::utilities::process_packets;
 
 #[derive(Clone)]
 pub struct Proxy {
@@ -44,12 +46,13 @@ pub struct ProxyIp {
 pub struct PacketTransmitJob {
     pub packet: PacketTransmitRequestPacket,
     pub task: PacketTransmitterTask,
+    pub channel: Sender<LocalAppPacket>,
 }
 
 #[derive(Default)]
 pub struct PacketItems {
     pub packets: HashSet<ProbePacket>,
-    pub live_updates_transmitter: Option<Sender<Vec<u8>>>,
+    pub live_updates_transmitter: Option<Sender<LocalAppPacket>>,
 }
 
 pub struct PacketManager {
@@ -211,6 +214,16 @@ impl PacketManager {
                     }
                     info!("Cache invalidated for entity: {:?}", entity);
                 }
+                LocalCommandPacket::ExtendPacketTransmitRequest(request_id) => {
+                    if let Some(job) = self.transmitter_tasks.lock().await.get(&request_id) {
+                        let _ = job
+                            .channel
+                            .send(LocalAppPacket::Command(
+                                LocalCommandPacket::ExtendPacketTransmitRequest(request_id),
+                            ))
+                            .await;
+                    }
+                }
             },
             LocalAppPacket::Status(status) => match status {
                 LocalStatusPacket::GetLiveProbes => {}
@@ -241,6 +254,7 @@ impl PacketManager {
                     .await
                 }
             },
+            LocalAppPacket::Data(_) => {}
         }
     }
 
@@ -275,7 +289,11 @@ impl PacketManager {
                                     device_entry.get_mut().packets.insert(probe_packet.clone());
                                     if let Some(chan) = &device_entry.get().live_updates_transmitter
                                     {
-                                        let _ = chan.try_send(probe_packet.payload.clone());
+                                        let _ = chan.try_send(LocalAppPacket::Data(
+                                            LocalDataPacket::TransmitterLiveUpdateData(
+                                                probe_packet.payload.clone(),
+                                            ),
+                                        ));
                                     }
                                     self.send_db_packet(DbCommand::StorePacket(probe_packet))
                                         .await;
@@ -399,13 +417,24 @@ impl PacketManager {
                 IpNetwork(request_packet.device.ip),
             ))
             .or_default();
-        packet_data.live_updates_transmitter = Some(live_updater_channel.0);
+        packet_data.live_updates_transmitter = Some(live_updater_channel.0.clone());
         let live_updates_receiver = live_updater_channel.1;
+        let live_updates_sender = live_updater_channel.0.clone();
         tokio::task::spawn(async move {
             if proxy.is_none() && request_packet.device.proxy {
                 let err = "eBPF is not configured properly; contact your administrator";
                 error!("{err} for target: {request_packet}");
                 let _ = respond_to.send(Err(ServerError::EbpfMapError(err.to_string())));
+                return;
+            }
+
+            if request_packet.request.target_ip.size() > NetworkSize::V4(MAX_TRANSMIT_SUBNET_SIZE) {
+                let warning = format!(
+                    "target subnet size ({}) is greater than the maximum allowed ({MAX_TRANSMIT_SUBNET_SIZE})",
+                    request_packet.request.target_ip.size()
+                );
+                warn!("{warning} for target: {request_packet}");
+                let _ = respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(warning)));
                 return;
             }
 
@@ -490,6 +519,7 @@ impl PacketManager {
             let job = PacketTransmitJob {
                 packet: request_packet,
                 task,
+                channel: live_updates_sender,
             };
             transmitter_tasks
                 .lock()

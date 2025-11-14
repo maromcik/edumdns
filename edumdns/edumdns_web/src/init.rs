@@ -1,9 +1,5 @@
 use crate::error::WebError;
-use crate::handlers::device::{
-    create_device, create_device_form, delete_device, delete_request_packet_transmit, get_device,
-    get_device_for_transmit, get_devices, hide_device, publish_device,
-    request_custom_packet_transmit, request_packet_transmit, update_device,
-};
+use crate::handlers::device::{create_device, create_device_form, delete_device, delete_request_packet_transmit, extend_request_packet_transmit, get_device, get_device_for_transmit, get_devices, hide_device, publish_device, request_custom_packet_transmit, request_packet_transmit, update_device};
 use crate::handlers::group::{
     add_group_users, create_group, delete_group, delete_group_user, get_group, get_groups,
     search_group_users, update_group,
@@ -171,7 +167,8 @@ impl WebSpawner {
             .service(publish_device)
             .service(hide_device)
             .service(create_device)
-            .service(create_device_form);
+            .service(create_device_form)
+            .service(extend_request_packet_transmit);
 
         let packet_scope = web::scope("packet")
             .app_data(web::Data::new(packet_repo))

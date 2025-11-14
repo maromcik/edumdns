@@ -1,13 +1,13 @@
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::device::{
-    CreateDeviceForm, DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest, DeviceQuery,
-    UpdateDeviceForm,
+    CreateDeviceForm, DeviceCustomPacketTransmitRequest,
+    DevicePacketTransmitRequest, DeviceQuery, UpdateDeviceForm,
 };
 use crate::forms::packet::PacketQuery;
-use crate::handlers::helpers::request_packet_transmit_helper;
+use crate::handlers::helpers::{authorize_packet_transmit_request, request_packet_transmit_helper};
 use crate::handlers::utilities::{
-    get_template_name, parse_user_id, validate_has_groups, verify_transmit_request_client_ap,
+    get_template_name, parse_user_id, validate_has_groups,
 };
 use crate::templates::PageInfo;
 use crate::templates::device::{
@@ -298,48 +298,10 @@ pub async fn request_packet_transmit(
         device_repo.read_one_auth(&path.0, &user_id).await?;
     }
     let device_id = device.id;
-    let target_ip = request
-        .connection_info()
-        .realip_remote_addr()
-        .map(|a| a.to_string());
-    let target_ip = target_ip.ok_or(WebError::InternalServerError(
-        "Could not determine target ip".to_string(),
-    ))?;
 
-    let target_ip = target_ip.parse::<ipnetwork::IpNetwork>()?;
-    if let Some(acl_src_cidr) = device.acl_src_cidr
-        && !acl_src_cidr.contains(target_ip.ip())
-    {
-        return Err(WebError::DeviceTransmitRequestDenied(format!(
-            "Target IP is not allowed to request packets from this device. Allowed subnet is {acl_src_cidr}"
-        )));
-    }
-
-    if let Some(acl_pwd_hash) = &device.acl_pwd_hash {
-        let Some(pwd) = &form.acl_pwd else {
-            return Err(WebError::Unauthorized(
-                "ACL password is required to request packets from this device".to_string(),
-            ));
-        };
-        if acl_pwd_hash != pwd {
-            return Err(WebError::Unauthorized(
-                "ACL password is incorrect".to_string(),
-            ));
-        }
-    }
-
-    if let Some(acl_ap_hostname_regex) = &device.acl_ap_hostname_regex
-        && !verify_transmit_request_client_ap(
-            &state.device_acl_ap_database,
-            acl_ap_hostname_regex,
-            target_ip.ip().to_string().as_str(),
-        )
-        .await?
-    {
-        return Err(WebError::DeviceTransmitRequestDenied(
-            "AP hostname that you are connected to does not match allowed APs".to_string(),
-        ));
-    }
+    let target_ip =
+        authorize_packet_transmit_request(&request, &device, &form, &state.device_acl_ap_database)
+            .await?;
 
     let form = DeviceCustomPacketTransmitRequest::new(target_ip, device.port as u16, false);
     request_packet_transmit_helper(
@@ -390,6 +352,60 @@ pub async fn delete_request_packet_transmit(
     let return_url = query
         .remove("return_url")
         .unwrap_or(format!("/device/{}", device_id));
+
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, return_url))
+        .finish())
+}
+
+#[post("{device_id}/transmit/{request_id}/extend")]
+pub async fn extend_request_packet_transmit(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    device_repo: web::Data<PgDeviceRepository>,
+    state: web::Data<AppState>,
+    form: web::Form<DevicePacketTransmitRequest>,
+    path: web::Path<(Id, Id)>,
+    mut query: web::Query<HashMap<String, String>>,
+) -> Result<HttpResponse, WebError> {
+    let form = form.into_inner();
+    let device_id = path.0;
+    let request_id = path.1;
+    let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
+
+    let packet_transmit_request = device_repo
+        .read_packet_transmit_request_by_user(&device_id, &user_id)
+        .await?;
+
+    let device = match packet_transmit_request.first() {
+        None => device_repo.read_one_auth(&device_id, &user_id).await?.data,
+        Some(_) => device_repo.read_one(&device_id).await?,
+    };
+
+    authorize_packet_transmit_request(
+        &request,
+        &device,
+        &form,
+        &state.device_acl_ap_database,
+    )
+    .await?;
+
+    device_repo.extend_packet_transmit_request(&request_id).await?;
+
+    state
+        .command_channel
+        .send(AppPacket::Local(LocalAppPacket::Command(
+            LocalCommandPacket::ExtendPacketTransmitRequest(request_id),
+        )))
+        .await
+        .map_err(CoreError::from)?;
+
+
+    let return_url = query
+        .remove("return_url")
+        .unwrap_or(format!("/device/{}", device_id));
+    
 
     Ok(HttpResponse::SeeOther()
         .insert_header((LOCATION, return_url))

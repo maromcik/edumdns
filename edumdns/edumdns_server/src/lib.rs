@@ -36,6 +36,7 @@ const DEFAULT_PORT: &str = "5000";
 const DEFAULT_INTERVAL_MULTIPLICATOR: u32 = 5;
 
 pub const BUFFER_SIZE: usize = 1000;
+pub const MAX_TRANSMIT_SUBNET_SIZE: u32 = 512;
 
 pub type ProbeHandles = Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>;
 

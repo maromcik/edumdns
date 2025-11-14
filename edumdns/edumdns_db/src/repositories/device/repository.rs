@@ -98,6 +98,18 @@ impl PgDeviceRepository {
             .map_err(DbError::from)
     }
 
+    pub async fn extend_packet_transmit_request(
+        &self,
+        params: &Id,
+    ) -> DbResult<()> {
+        let mut conn = self.pg_pool.get().await?;
+        diesel::update(packet_transmit_request::table.find(&params))
+            .set(packet_transmit_request::created_at.eq(OffsetDateTime::now_utc()))
+            .execute(&mut conn)
+            .await?;
+        Ok(())
+    }
+
     pub async fn get_device_count(
         &self,
         mut params: SelectManyDevices,

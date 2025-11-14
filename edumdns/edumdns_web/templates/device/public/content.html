@@ -98,6 +98,42 @@
                         Stop Discovery
                     </button>
 
+                    <!-- Extend Button -->
+                    <form
+                            method="post"
+                            hx-post="/device/{{ device.id }}/transmit/{{ packet_transmit_request.id }}/extend?return_url=/device/{{ device.id }}/transmit"
+                            hx-target="#content-area"
+                            hx-target-error="#transmit-result"
+                            class="flex flex-col items-center space-y-5 w-full max-w-sm"
+                    >
+                        {% if device.acl_pwd_hash is not none %}
+                        <div class="w-full text-left">
+                            <label for="acl_pwd_extend" class="text-xs uppercase tracking-wide text-sat-l mb-1 block">
+                                Password
+                            </label>
+                            <input
+                                    id="acl_pwd_extend"
+                                    name="acl_pwd"
+                                    type="password"
+                                    class="w-full rounded-md border border-base bg-bg px-3 py-2 bg-panes text-sat-l focus:outline-none focus:ring-2 focus:ring-acc placeholder-sat-m"
+                                    placeholder="Enter password"
+                            >
+                        </div>
+                        {% endif %}
+
+                        <button
+                                type="submit"
+                                class="inline-flex items-center justify-center gap-2 rounded-md border border-green-600 bg-green-500 text-white px-6 py-3 text-lg font-medium hover:bg-green-600 focus:ring-2 focus:ring-green-400 transition-colors duration-150"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                 stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M5 13l4 4L19 7"/>
+                            </svg>
+                            Extend Discovery
+                        </button>
+                    </form>
+
                     {% else %}
                     <!-- Transmit Form -->
                     <form

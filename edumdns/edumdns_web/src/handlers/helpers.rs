@@ -1,7 +1,8 @@
 use crate::error::WebError;
-use crate::forms::device::DeviceCustomPacketTransmitRequest;
+use crate::forms::device::{DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest};
 use actix_session::Session;
-use actix_web::web;
+use actix_web::{web, HttpRequest};
+use ipnetwork::IpNetwork;
 use edumdns_core::app_packet::Id;
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
@@ -13,6 +14,8 @@ use edumdns_server::app_packet::{
 };
 use time::OffsetDateTime;
 use tokio::sync::mpsc::Sender;
+use crate::handlers::utilities::verify_transmit_request_client_ap;
+use crate::utils::DeviceAclApDatabase;
 
 pub async fn request_packet_transmit_helper(
     device_repo: web::Data<PgDeviceRepository>,
@@ -79,4 +82,56 @@ pub async fn reconnect_probe(
         .await
         .map_err(CoreError::from)?;
     Ok(())
+}
+
+pub async fn authorize_packet_transmit_request(
+    request: &HttpRequest,
+    device: &Device,
+    form: &DevicePacketTransmitRequest,
+    device_acl_ap_database: &DeviceAclApDatabase,
+) -> Result<IpNetwork, WebError> {
+    let target_ip = request
+        .connection_info()
+        .realip_remote_addr()
+        .map(|a| a.to_string());
+    let target_ip = target_ip.ok_or(WebError::InternalServerError(
+        "Could not determine target ip".to_string(),
+    ))?;
+
+    let target_ip = target_ip.parse::<IpNetwork>()?;
+    
+    if let Some(acl_src_cidr) = device.acl_src_cidr
+        && !acl_src_cidr.contains(target_ip.ip())
+    {
+        return Err(WebError::DeviceTransmitRequestDenied(format!(
+            "Target IP is not allowed to request packets from this device. Allowed subnet is {acl_src_cidr}"
+        )));
+    }
+
+    if let Some(acl_pwd_hash) = &device.acl_pwd_hash {
+        let Some(pwd) = &form.acl_pwd else {
+            return Err(WebError::Unauthorized(
+                "ACL password is required to request packets from this device".to_string(),
+            ));
+        };
+        if acl_pwd_hash != pwd {
+            return Err(WebError::Unauthorized(
+                "ACL password is incorrect".to_string(),
+            ));
+        }
+    }
+
+    if let Some(acl_ap_hostname_regex) = &device.acl_ap_hostname_regex
+        && !verify_transmit_request_client_ap(
+        device_acl_ap_database,
+        acl_ap_hostname_regex,
+        target_ip.ip().to_string().as_str(),
+    )
+        .await?
+    {
+        return Err(WebError::DeviceTransmitRequestDenied(
+            "AP hostname that you are connected to does not match allowed APs".to_string(),
+        ));
+    }
+    Ok(target_ip)
 }

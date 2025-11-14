@@ -10,7 +10,6 @@ use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, get, post, web};
-use askama::Template;
 use edumdns_db::error::DbError;
 use edumdns_db::repositories::common::{DbCreate, DbReadOne};
 use edumdns_db::repositories::user::models::UserLogin;
@@ -40,6 +39,7 @@ pub async fn login(
     request: HttpRequest,
     identity: Option<Identity>,
     query: web::Query<UserLoginReturnURL>,
+    state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
     let return_url = query.ret.clone().unwrap_or(extract_referrer(&request));
     if identity.is_some() {
@@ -47,11 +47,11 @@ pub async fn login(
             .insert_header((LOCATION, return_url))
             .finish());
     }
-    let template = LoginTemplate {
-        message: String::new(),
-        return_url,
-    };
-    let body = template.render()?;
+
+    let env = state.jinja.acquire_env()?;
+    let template = env.get_template("index/login.html")?;
+    let body = template.render(LoginTemplate { message: String::new(), return_url })?;
+
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 

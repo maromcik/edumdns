@@ -10,7 +10,18 @@ WORKDIR /usr/src/app/
 FROM base AS planner
 
 COPY ./edumdns_core ./edumdns_core
-COPY ./edumdns/ ./edumdns
+
+COPY ./edumdns/edumdns_db/ ./edumdns/edumdns_db
+COPY ./edumdns/edumdns_server/ ./edumdns/edumdns_server
+
+COPY ./edumdns/actix_web_openidconnect ./edumdns/actix_web_openidconnect
+
+COPY ./edumdns/edumdns_web/src ./edumdns/edumdns_web/src
+COPY ./edumdns/edumdns_web/Cargo.toml ./edumdns/edumdns_web/Cargo.toml
+
+COPY ./edumdns/src ./edumdns/src
+COPY ./edumdns/Cargo.toml ./edumdns/Cargo.toml
+COPY ./edumdns/Cargo.lock ./edumdns/Cargo.lock
 
 RUN cd edumdns && cargo chef prepare --recipe-path recipe.json
 
@@ -22,7 +33,17 @@ COPY --from=planner /usr/src/app/edumdns/recipe.json edumdns/recipe.json
 COPY ./edumdns_core ./edumdns_core
 RUN cd edumdns && cargo chef cook --release --recipe-path recipe.json
 
-COPY ./edumdns/ ./edumdns
+COPY ./edumdns/edumdns_db/ ./edumdns/edumdns_db
+COPY ./edumdns/edumdns_server/ ./edumdns/edumdns_server
+
+COPY ./edumdns/actix_web_openidconnect ./edumdns/actix_web_openidconnect
+
+COPY ./edumdns/edumdns_web/src ./edumdns/edumdns_web/src
+COPY ./edumdns/edumdns_web/Cargo.toml ./edumdns/edumdns_web/Cargo.toml
+
+COPY ./edumdns/src ./edumdns/src
+COPY ./edumdns/Cargo.toml ./edumdns/Cargo.toml
+COPY ./edumdns/Cargo.lock ./edumdns/Cargo.lock
 
 RUN cd edumdns && cargo build --release --bin edumdns
 

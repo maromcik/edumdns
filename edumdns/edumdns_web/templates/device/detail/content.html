@@ -15,7 +15,8 @@
                     hx-target="#content-area"
                     hx-push-url="/device/{{ device.id }}/transmit"
                     hx-target-error="#content-area"
-                    class="flex items-center justify-center w-10 h-10 bg-blue-400 hover:bg-blue-500 rounded-md text-button shadow-md">
+                    class="flex items-center justify-center w-10 h-10 bg-blue-400 hover:bg-blue-500 rounded-md text-button shadow-md"
+                    title="Open device transmit/discovery page">
                 <i class="fa-solid fa-rss"></i>
             </button>
             {% if permissions|has_perm("Update") %}
@@ -24,7 +25,8 @@
             <button hx-get="/device/{{ device.id }}/hide"
                     hx-target="#content-area"
                     hx-target-error="#content-area"
-                    class="flex items-center justify-center w-10 h-10 bg-fuchsia-400 hover:bg-fuchsia-500 rounded-md text-button shadow-md">
+                    class="flex items-center justify-center w-10 h-10 bg-fuchsia-400 hover:bg-fuchsia-500 rounded-md text-button shadow-md"
+                    title="Unpublish (hide) device">
                 <i class="fa-solid fa-eye-slash"></i>
             </button>
             {% else %}
@@ -32,7 +34,8 @@
             <button hx-get="/device/{{ device.id }}/publish"
                     hx-target="#content-area"
                     hx-target-error="#content-area"
-                    class="flex items-center justify-center w-10 h-10 bg-lime-500 hover:bg-lime-600 rounded-md text-button shadow-md">
+                    class="flex items-center justify-center w-10 h-10 bg-lime-500 hover:bg-lime-600 rounded-md text-button shadow-md"
+                    title="Publish device (available for public users)">
                 <i class="fa-solid fa-eye"></i>
             </button>
             {% endif %}
@@ -45,7 +48,8 @@
                     hx-target="#content-area"
                     hx-target-error="#content-area"
                     hx-push-url="/device"
-                    class="flex items-center justify-center w-10 h-10 bg-red-600 hover:bg-red-700 rounded-md text-button shadow-md">
+                    class="flex items-center justify-center w-10 h-10 bg-red-600 hover:bg-red-700 rounded-md text-button shadow-md"
+                    title="Delete device">
                 <i class="fa-solid fa-trash"></i>
             </button>
             {% endif %}
@@ -54,7 +58,8 @@
                         hx-target="#content-area"
                         hx-push-url="/packet/create?probe_id={{ device.probe_id }}&mac={{ device.mac }}&ip={{ device.ip }}&port={{ device.port }}"
                         hx-target-error="#content-area"
-                        class="flex items-center justify-center w-10 h-10 bg-acc hover:bg-acc-l rounded-md text-button shadow-md">
+                        class="flex items-center justify-center w-10 h-10 bg-acc hover:bg-acc-l rounded-md text-button shadow-md"
+                        title="Craft a new packet">
                     <i class="fa-solid fa-plus"></i>
                 </button>
             {% endif %}

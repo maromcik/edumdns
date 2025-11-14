@@ -139,4 +139,19 @@
             menu.classList.remove('hidden');
         }
     }
+
+    document.addEventListener('click', function (event) {
+        const menu = document.getElementById('phone-menu');
+        const hamburger = document.getElementById('hamburger');
+
+        const clickInsideMenu = menu.contains(event.target);
+        const clickOnHamburger = hamburger.contains(event.target);
+
+        if (!menu.classList.contains('hidden') &&
+            !clickInsideMenu &&
+            !clickOnHamburger) {
+
+            menu.classList.add('hidden');
+        }
+    });
 </script>

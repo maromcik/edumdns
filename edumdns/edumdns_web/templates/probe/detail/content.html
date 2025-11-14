@@ -263,7 +263,7 @@
                 {% for permissions, group in permission_matrix %}
                 <tr class="bg-table rounded-lg transition-colors">
                     <td class="px-4 py-3 text-sm text-sat-l">
-                        {{ group.name }}
+                        <a href="/group/{{ group.id }}">{{ group.name }}</a>
                     </td>
                     {% for perm, checked in permissions %}
                     <td class="px-4 py-3 text-sm text-sat-l text-center">

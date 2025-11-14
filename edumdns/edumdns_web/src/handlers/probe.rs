@@ -19,9 +19,7 @@ use edumdns_core::app_packet::{EntityType, Id};
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
 use edumdns_db::models::Group;
-use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE, Permission,
-};
+use edumdns_db::repositories::common::{DbCreate, DbDelete, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE, Permission, Pagination};
 use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::group::models::SelectManyGroups;
@@ -105,7 +103,7 @@ pub async fn get_probe(
         .collect();
 
     let matrix = group_repo
-        .read_many(&SelectManyGroups::new(None, None, None))
+        .read_many(&SelectManyGroups::new(None, None, Some(Pagination::default_pagination(query.page))))
         .await?
         .into_iter()
         .map(|g| {

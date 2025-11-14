@@ -101,7 +101,8 @@ CREATE TABLE IF NOT EXISTS "device"
     duration               bigint       NOT NULL DEFAULT 120,
     interval               bigint       NOT NULL DEFAULT 100,
     published              bool         NOT NULL DEFAULT FALSE,
-    proxy                  bool         NOT NULL DEFAULT FALSE,
+    proxy                  bool         NOT NULL DEFAULT TRUE,
+    exclusive              bool         NOT NULL DEFAULT FALSE,
     acl_src_cidr           cidr,
     acl_pwd_hash           text,
     acl_pwd_salt           text,
@@ -141,7 +142,7 @@ CREATE TABLE IF NOT EXISTS "packet_transmit_request"
     target_port    int          NOT NULL,
     permanent      bool         NOT NULL DEFAULT FALSE,
     created_at     timestamptz,
-    UNIQUE (device_id),
+    UNIQUE (device_id, target_ip, target_port),
     FOREIGN KEY (device_id) REFERENCES "device" (id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES "user" (id) ON DELETE CASCADE
 );

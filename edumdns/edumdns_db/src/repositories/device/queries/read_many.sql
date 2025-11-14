@@ -15,7 +15,8 @@
    AND ($6::INT IS NULL OR device.port = $6)
    AND ($7::TEXT IS NULL OR device.name ILIKE CONCAT('%', $7, '%'))
    AND ($8::BOOL IS NULL OR device.published = $8)
-   AND ($9::BOOL IS NULL OR device.proxy = $9))
+   AND ($9::BOOL IS NULL OR device.proxy = $9)
+   AND ($10::BOOL IS NULL OR device.exclusive = $10))
 UNION
 (SELECT device.*
  FROM device
@@ -29,6 +30,7 @@ UNION
    AND ($6::INT IS NULL OR device.port = $6)
    AND ($7::TEXT IS NULL OR device.name ILIKE CONCAT('%', $7, '%'))
    AND ($8::BOOL IS NULL OR device.published = $8)
-   AND ($9::BOOL IS NULL OR device.proxy = $9))
+   AND ($9::BOOL IS NULL OR device.proxy = $9)
+   AND ($10::BOOL IS NULL OR device.exclusive = $10))
 ORDER BY id
 LIMIT $10 OFFSET $11;

@@ -142,7 +142,8 @@ impl PgDeviceRepository {
             .bind::<Nullable<Int4>, _>(params.port)
             .bind::<Nullable<Text>, _>(params.name.as_ref())
             .bind::<Nullable<Bool>, _>(params.published)
-            .bind::<Nullable<Bool>, _>(params.proxy);
+            .bind::<Nullable<Bool>, _>(params.proxy)
+            .bind::<Nullable<Bool>, _>(params.exclusive);
 
         let result = query.get_result::<CountResult>(&mut conn).await?;
         Ok(result.count)
@@ -244,6 +245,7 @@ impl PgDeviceRepository {
             .bind::<Nullable<Text>, _>(params.name.as_ref())
             .bind::<Nullable<Bool>, _>(params.published)
             .bind::<Nullable<Bool>, _>(params.proxy)
+            .bind::<Nullable<Bool>, _>(params.exclusive)
             .bind::<BigInt, _>(pagination.limit.unwrap_or(i64::MAX))
             .bind::<BigInt, _>(pagination.offset.unwrap_or(0));
 
@@ -477,6 +479,11 @@ fn build_select_many_query<'a>(params: &'a SelectManyDevices) -> BoxedQuery<'a, 
     if let Some(p) = &params.proxy {
         query = query.filter(device::proxy.eq(p))
     }
+
+    if let Some(p) = &params.exclusive {
+        query = query.filter(device::exclusive.eq(p))
+    }
+
 
     if let Some(pagination) = params.pagination {
         query = query.limit(pagination.limit.unwrap_or(i64::MAX));

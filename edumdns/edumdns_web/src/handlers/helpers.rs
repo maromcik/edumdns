@@ -1,21 +1,22 @@
 use crate::error::WebError;
 use crate::forms::device::{DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest};
+use crate::handlers::utilities::verify_transmit_request_client_ap;
+use crate::utils::DeviceAclApDatabase;
 use actix_session::Session;
-use actix_web::{web, HttpRequest};
-use ipnetwork::IpNetwork;
+use actix_web::{HttpRequest, web};
 use edumdns_core::app_packet::Id;
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
+use edumdns_db::error::DbError;
 use edumdns_db::models::Device;
 use edumdns_db::repositories::device::models::CreatePacketTransmitRequest;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_server::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
+use ipnetwork::IpNetwork;
 use time::OffsetDateTime;
 use tokio::sync::mpsc::Sender;
-use crate::handlers::utilities::verify_transmit_request_client_ap;
-use crate::utils::DeviceAclApDatabase;
 
 pub async fn request_packet_transmit_helper(
     device_repo: web::Data<PgDeviceRepository>,
@@ -24,6 +25,14 @@ pub async fn request_packet_transmit_helper(
     command_channel: Sender<AppPacket>,
     form: &DeviceCustomPacketTransmitRequest,
 ) -> Result<(), WebError> {
+    let ongoing = device_repo
+        .read_packet_transmit_requests_by_device(&device.id)
+        .await?;
+    if (device.proxy || device.exclusive) && !ongoing.is_empty() {
+        return Err(WebError::DeviceTransmitRequestDenied(
+            "Discovery already in progress to another client, please try again later.".to_string(),
+        ));
+    }
     let request_db = CreatePacketTransmitRequest {
         device_id: device.id,
         user_id: *user_id,
@@ -38,11 +47,15 @@ pub async fn request_packet_transmit_helper(
         .await
     {
         Ok(p) => p,
-        Err(_) => {
-            return Err(WebError::DeviceTransmitRequestDenied(
-                "Transmission already in progress to another client, please try again later."
-                    .to_string(),
-            ));
+        Err(e) => {
+            return if let DbError::UniqueConstraintError(_) = e {
+                Err(WebError::DeviceTransmitRequestDenied(
+                    "The combination of device and target IP/port is already in use. Please try again later or delete existing packet transmissions."
+                        .to_string(),
+                ))
+            } else {
+                Err(e.into())
+            };
         }
     };
     let request_id = request.id;
@@ -99,7 +112,7 @@ pub async fn authorize_packet_transmit_request(
     ))?;
 
     let target_ip = target_ip.parse::<IpNetwork>()?;
-    
+
     if let Some(acl_src_cidr) = device.acl_src_cidr
         && !acl_src_cidr.contains(target_ip.ip())
     {
@@ -123,10 +136,10 @@ pub async fn authorize_packet_transmit_request(
 
     if let Some(acl_ap_hostname_regex) = &device.acl_ap_hostname_regex
         && !verify_transmit_request_client_ap(
-        device_acl_ap_database,
-        acl_ap_hostname_regex,
-        target_ip.ip().to_string().as_str(),
-    )
+            device_acl_ap_database,
+            acl_ap_hostname_regex,
+            target_ip.ip().to_string().as_str(),
+        )
         .await?
     {
         return Err(WebError::DeviceTransmitRequestDenied(

@@ -227,7 +227,8 @@
                 <p class="text-xs text-sat-m mt-1">Regex over the hostname of an AP a client is connected to</p>
             </div>
             <div class="flex flex-col">
-                <label class="inline-flex items-center">
+                <!-- Use Proxy -->
+                <label class="inline-flex items-center mb-2">
                     <input
                             type="checkbox"
                             name="proxy"
@@ -237,7 +238,20 @@
                     />
                     <span class="ml-2 text-sat-m">Use Proxy</span>
                 </label>
+
+                <!-- Exclusive Discovery -->
+                <label class="inline-flex items-center">
+                    <input
+                            type="checkbox"
+                            name="exclusive"
+                            value="true"
+                            class="rounded border-gray-300 text-acc focus:ring-acc"
+                            {% if device.exclusive %}checked{% endif %}
+                    />
+                    <span class="ml-2 text-sat-m">Exclusive discovery</span>
+                </label>
             </div>
+
             {% if permissions|has_perm("Update") %}
             <!-- Actions -->
             <div class="md:col-span-2 flex items-center gap-2 pt-2">
@@ -276,7 +290,7 @@
                         required
                         class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
                 />
-                <p class="text-xs text-sat-m mt-1">Destination IPv4/IPv6 address.</p>
+                <p class="text-xs text-sat-m mt-1">Destination IPv4/IPv6 subnet.</p>
             </div>
 
             <!-- Target Port -->

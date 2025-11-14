@@ -250,12 +250,16 @@ pub async fn get_device_for_transmit(
         "Could not determine target ip".to_string(),
     ))?;
 
-    let in_progress = device_repo
-        .read_packet_transmit_requests_by_device(&device.id)
-        .await?
-        .into_iter()
-        .map(|r| PacketTransmitRequestDisplay::from(r, device.duration))
-        .next();
+    let in_progress = if device.exclusive || device.proxy {
+        device_repo
+            .read_packet_transmit_requests_by_device(&device.id)
+            .await?
+            .into_iter()
+            .map(|r| PacketTransmitRequestDisplay::from(r, device.duration))
+            .next()
+    } else {
+        None
+    };
 
     let packet_transmit_request = device_repo
         .read_packet_transmit_request_by_user(&device.id, &user_id)

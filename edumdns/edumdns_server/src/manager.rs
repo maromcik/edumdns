@@ -5,7 +5,6 @@ use crate::database::DbCommand;
 use crate::ebpf::EbpfUpdater;
 use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
-use crate::utilities::rewrite_payloads;
 use crate::{BUFFER_SIZE, ProbeHandles};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
@@ -16,7 +15,6 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
-use edumdns_core::network_packet::ApplicationPacket;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::SelectManyPackets;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
@@ -29,12 +27,18 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
+use crate::utilities::process_packets;
 
 #[derive(Clone)]
 pub struct Proxy {
-    pub proxy_ipv4: Ipv4Addr,
-    pub proxy_ipv6: Ipv6Addr,
+    pub proxy_ip: ProxyIp,
     pub ebpf_updater: Arc<Mutex<EbpfUpdater>>,
+}
+
+#[derive(Clone)]
+pub struct ProxyIp {
+    pub ipv4: Ipv4Addr,
+    pub ipv6: Ipv6Addr,
 }
 
 pub struct PacketTransmitJob {
@@ -83,8 +87,7 @@ impl PacketManager {
         let proxy = match (proxy_ipv4, proxy_ipv6) {
             (Some(Some(ipv4)), Some(Some(ipv6))) => match EbpfUpdater::new() {
                 Ok(updater) => Some(Proxy {
-                    proxy_ipv4: ipv4,
-                    proxy_ipv6: ipv6,
+                    proxy_ip: ProxyIp { ipv4, ipv6 },
                     ebpf_updater: Arc::new(Mutex::new(updater)),
                 }),
                 Err(e) => {
@@ -432,21 +435,8 @@ impl PacketManager {
             };
 
             info!("Packets found for target: {}", request_packet);
-            let payloads = if let Some(p) = &proxy
-                && request_packet.device.proxy
-            {
-                rewrite_payloads(packets, p.proxy_ipv4, p.proxy_ipv6)
-            } else {
-                packets
-                    .into_iter()
-                    .filter_map(|p| {
-                        match ApplicationPacket::from_bytes(&p.payload, p.src_port, p.dst_port) {
-                            Ok(_) => Some(p.payload),
-                            Err(_) => None,
-                        }
-                    })
-                    .collect()
-            };
+
+            let payloads = process_packets(packets, &proxy);
 
             if payloads.is_empty() {
                 let warning = "no packets left after processing";
@@ -457,7 +447,7 @@ impl PacketManager {
                 return;
             }
 
-            if let Some(p) = proxy
+            if let Some(p) = &proxy
                 && request_packet.device.proxy
             {
                 match p
@@ -476,6 +466,7 @@ impl PacketManager {
 
             let transmitter = match PacketTransmitter::new(
                 payloads,
+                proxy.map(|p| p.proxy_ip.clone()),
                 request_packet.clone(),
                 global_timeout,
                 live_updates_receiver,

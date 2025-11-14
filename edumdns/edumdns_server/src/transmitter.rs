@@ -3,6 +3,8 @@ use crate::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
 use crate::error::ServerError;
+use crate::manager::ProxyIp;
+use crate::utilities::rewrite_payload;
 use edumdns_core::app_packet::Id;
 use edumdns_core::connection::UdpConnection;
 use log::{debug, error, info, trace};
@@ -40,6 +42,7 @@ impl PacketTransmitterTask {
 
 pub struct PacketTransmitter {
     pub payloads: Vec<Vec<u8>>,
+    pub proxy_ip: Option<ProxyIp>,
     pub transmit_request: PacketTransmitRequestPacket,
     pub udp_connection: UdpConnection,
     pub global_timeout: Duration,
@@ -49,12 +52,14 @@ pub struct PacketTransmitter {
 impl PacketTransmitter {
     pub async fn new(
         payloads: Vec<Vec<u8>>,
+        proxy_ip: Option<ProxyIp>,
         target: PacketTransmitRequestPacket,
         global_timeout: Duration,
         live_updater: Receiver<Vec<u8>>,
     ) -> Result<Self, ServerError> {
         Ok(Self {
             payloads,
+            proxy_ip,
             transmit_request: target.clone(),
             udp_connection: UdpConnection::new(global_timeout).await?,
             global_timeout,
@@ -74,8 +79,21 @@ impl PacketTransmitter {
         let sleep_interval = interval * DEFAULT_INTERVAL_MULTIPLICATOR;
         let total_time = Instant::now();
         loop {
-            while let Ok(p) = self.live_updates_receiver.try_recv() {
-                self.payloads.push(p);
+            while let Ok(payload) = self.live_updates_receiver.try_recv() {
+                match &self.proxy_ip {
+                    None => {
+                        self.payloads.push(payload);
+                        debug!("Packet from live update stored");
+                    }
+                    Some(proxy_ip) => {
+                        if let Some(rewritten_payload) =
+                            rewrite_payload(payload, proxy_ip.ipv4, proxy_ip.ipv6)
+                        {
+                            self.payloads.push(rewritten_payload);
+                            debug!("Rewritten and stored packet from live update");
+                        }
+                    }
+                }
                 if total_time.elapsed() > duration {
                     debug!("Duration exceeded; stopping transmission in live updater");
                     return;

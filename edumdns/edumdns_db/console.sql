@@ -31,3 +31,5 @@ alter table packet_transmit_request add column "created_at" timestamptz;
 alter table packet_transmit_request drop constraint "packet_transmit_request_device_id_key";
 
 alter table packet_transmit_request add constraint "packet_transmit_request_device_id_target_ip_target_port" UNIQUE (device_id, target_ip, target_port);
+
+alter table device add column "exclusive" bool default false;

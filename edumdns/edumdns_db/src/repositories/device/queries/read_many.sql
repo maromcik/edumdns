@@ -33,4 +33,4 @@ UNION
    AND ($9::BOOL IS NULL OR device.proxy = $9)
    AND ($10::BOOL IS NULL OR device.exclusive = $10))
 ORDER BY id
-LIMIT $10 OFFSET $11;
+LIMIT $11 OFFSET $12;

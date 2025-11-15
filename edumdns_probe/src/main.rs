@@ -33,46 +33,10 @@ struct PreCli {
 #[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
-    /// Optional `.env` file path for loading environment variables.
-    #[clap(short, long, value_name = "ENV_FILE")]
-    env_file: Option<String>,
-
-    /// Optional UUID file path used for persistent probe identity.
-    #[clap(short = 'u', long, value_name = "UUID", env = "EDUMDNS_PROBE_UUID")]
-    uuid: Option<uuid::Uuid>,
-
-    /// Optional UUID file path used for persistent probe identity.
+    /// Server host to connect to, e.g. example.com or 192.168.0.10.
     #[clap(
-        short = 'f',
+        short = 's',
         long,
-        value_name = "UUID_FILE",
-        env = "EDUMDNS_PROBE_UUID_FILE"
-    )]
-    uuid_file: Option<String>,
-
-    /// Local port to bind to.
-    #[clap(
-        long = "bind_port",
-        value_name = "BIND_PORT",
-        env = "EDUMDNS_PROBE_BIND_PORT",
-        default_value = "0"
-    )]
-    bind_port: u16,
-
-    /// Do not use TLS connection
-    #[clap(
-        short = 'n',
-        long = "no-tls",
-        value_name = "SECURE",
-        env = "EDUMDNS_PROBE_NO_TLS",
-        action = clap::ArgAction::SetTrue,
-    )]
-    no_tls: bool,
-
-    /// Optional domain name for TLS connections.
-    #[clap(
-        short = 'h',
-        long = "host",
         value_name = "SERVER_HOST",
         env = "EDUMDNS_PROBE_SERVER_HOST"
     )]
@@ -81,16 +45,53 @@ struct Cli {
     /// Server port to connect to.
     #[clap(
         short = 'p',
-        long = "server_port",
+        long,
         value_name = "SERVER_PORT",
         env = "EDUMDNS_PROBE_SERVER_PORT",
         default_value = "5000"
     )]
     server_port: u16,
 
+    /// Optional `.env` file path for loading environment variables.
+    #[clap(short, long, value_name = "ENV_FILE")]
+    env_file: Option<String>,
+
+    /// Optional UUID string used for connection.
+    #[clap(short = 'u', long, value_name = "UUID", env = "EDUMDNS_PROBE_UUID")]
+    uuid: Option<uuid::Uuid>,
+
+    /// Optional UUID file path used for persistent probe identity.
+    #[clap(
+        short = 'f',
+        long,
+        value_name = "UUID_FILE",
+        env = "EDUMDNS_PROBE_UUID_FILE",
+        default_value = "uuid"
+    )]
+    uuid_file: Option<String>,
+
+    /// Local port to bind to.
+    #[clap(
+        value_name = "BIND_PORT",
+        long,
+        env = "EDUMDNS_PROBE_BIND_PORT",
+        default_value = "0"
+    )]
+    bind_port: u16,
+
+    /// Do not use TLS connection
+    #[clap(
+        short = 'n',
+        long,
+        value_name = "SECURE",
+        env = "EDUMDNS_PROBE_NO_TLS",
+        action = clap::ArgAction::SetTrue,
+    )]
+    no_tls: bool,
+
     /// Retry interval in seconds before attempting reconnection.
     #[clap(
-        long = "retry_interval",
+        long,
         value_name = "RETRY_INTERVAL",
         env = "EDUMDNS_PROBE_RETRY_INTERVAL",
         default_value = "1"
@@ -99,7 +100,7 @@ struct Cli {
 
     /// Global timeout in seconds for probe execution.
     #[clap(
-        long = "global_timeout",
+        long,
         value_name = "GLOBAL_TIMEOUT",
         env = "EDUMDNS_PROBE_GLOBAL_TIMOUT",
         default_value = "10"
@@ -108,7 +109,7 @@ struct Cli {
 
     /// Maximum number of retries before failing.
     #[clap(
-        long = "max_retries",
+        long,
         value_name = "MAX_RETRIES",
         env = "EDUMDNS_PROBE_MAX_RETRIES",
         default_value = "5"
@@ -118,7 +119,7 @@ struct Cli {
     /// Optional pre-shared key for authentication.
     #[clap(
         short = 'k',
-        long = "psk",
+        long,
         value_name = "PRE_SHARED_KEY",
         env = "EDUMDNS_PROBE_PRE_SHARED_KEY"
     )]

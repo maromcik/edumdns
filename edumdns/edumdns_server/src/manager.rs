@@ -430,11 +430,18 @@ impl PacketManager {
 
             if request_packet.request.target_ip.size() > NetworkSize::V4(MAX_TRANSMIT_SUBNET_SIZE) {
                 let warning = format!(
-                    "target subnet size ({}) is greater than the maximum allowed ({MAX_TRANSMIT_SUBNET_SIZE})",
+                    "the target subnet size ({}) is greater than the maximum allowed ({MAX_TRANSMIT_SUBNET_SIZE})",
                     request_packet.request.target_ip.size()
                 );
                 warn!("{warning} for target: {request_packet}");
                 let _ = respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(warning)));
+                return;
+            }
+
+            if request_packet.device.proxy && request_packet.request.target_ip.size() > NetworkSize::V4(1){
+                let warning = "when proxy is enabled, the target IP must have prefix /32 for IPv4 or /128 for IPv6";
+                warn!("{warning} for target: {request_packet}");
+                let _ = respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(warning.to_string())));
                 return;
             }
 

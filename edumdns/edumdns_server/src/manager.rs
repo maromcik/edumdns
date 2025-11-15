@@ -438,10 +438,14 @@ impl PacketManager {
                 return;
             }
 
-            if request_packet.device.proxy && request_packet.request.target_ip.size() > NetworkSize::V4(1){
+            if request_packet.device.proxy
+                && request_packet.request.target_ip.size() > NetworkSize::V4(1)
+            {
                 let warning = "when proxy is enabled, the target IP must have prefix /32 for IPv4 or /128 for IPv6";
                 warn!("{warning} for target: {request_packet}");
-                let _ = respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(warning.to_string())));
+                let _ = respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(
+                    warning.to_string(),
+                )));
                 return;
             }
 
@@ -472,7 +476,7 @@ impl PacketManager {
 
             info!("Packets found for target: {}", request_packet);
 
-            let payloads = process_packets(packets, &proxy);
+            let payloads = process_packets(packets, &proxy, request_packet.device.proxy);
 
             if payloads.is_empty() {
                 let warning = "no packets left after processing";
@@ -502,7 +506,7 @@ impl PacketManager {
 
             let transmitter = match PacketTransmitter::new(
                 payloads,
-                proxy.map(|p| p.proxy_ip.clone()),
+                proxy.and_then(|p| request_packet.device.proxy.then(|| p.proxy_ip.clone())),
                 request_packet.clone(),
                 global_timeout,
                 live_updates_receiver,

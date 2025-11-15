@@ -47,9 +47,13 @@ pub(crate) fn rewrite_payloads(
         .collect()
 }
 
-pub(crate) fn process_packets(packets: Vec<Packet>, proxy: &Option<Proxy>) -> Vec<Vec<u8>> {
-    match proxy {
-        None => packets
+pub(crate) fn process_packets(packets: Vec<Packet>, proxy: &Option<Proxy>, use_proxy: bool) -> Vec<Vec<u8>> {
+    match (proxy, use_proxy) {
+        (Some(p), true) => {
+            let payloads = packets.into_iter().map(|p| p.payload).collect::<Vec<_>>();
+            rewrite_payloads(payloads, p.proxy_ip.ipv4, p.proxy_ip.ipv6)
+        }
+        _ => packets
             .into_iter()
             .filter_map(|p| {
                 match ApplicationPacket::from_bytes(&p.payload, p.src_port, p.dst_port) {
@@ -58,10 +62,6 @@ pub(crate) fn process_packets(packets: Vec<Packet>, proxy: &Option<Proxy>) -> Ve
                 }
             })
             .collect(),
-        Some(p) => {
-            let payloads = packets.into_iter().map(|p| p.payload).collect::<Vec<_>>();
-            rewrite_payloads(payloads, p.proxy_ip.ipv4, p.proxy_ip.ipv6)
-        }
     }
 }
 

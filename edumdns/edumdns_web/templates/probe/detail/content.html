@@ -688,17 +688,6 @@
 
 
 <script>
-    document.querySelectorAll("tr[data-href]").forEach(row => {
-        row.addEventListener("click", e => {
-            if (
-                e.target.closest("a, button, input, textarea") ||
-                window.getSelection().toString().length > 0
-            ) {
-                return;
-            }
-            window.location = row.dataset.href;
-        });
-    });
 
     let filters = ["id", "name","mac","ip","port", "published", "exclusive", "proxy"];
 
@@ -738,6 +727,21 @@
         });
     });
 
+    function clickOnDevice() {
+        document.querySelectorAll("tr[data-href]").forEach(row => {
+            row.addEventListener("click", e => {
+                if (
+                    e.target.closest("a, button, input, textarea") ||
+                    window.getSelection().toString().length > 0
+                ) {
+                    return;
+                }
+                window.location = row.dataset.href;
+            });
+        });
+
+    }
+
     function initEditOwnerButton() {
         const editBtn = document.getElementById("edit-owner-btn");
         if (!editBtn) return;
@@ -765,11 +769,14 @@
 
     // Run when page initially loads
     document.addEventListener("DOMContentLoaded", initEditOwnerButton);
+    document.addEventListener("DOMContentLoaded", clickOnDevice);
+
 
     // Re-run whenever HTMX swaps content into #probe-content-area
     document.body.addEventListener("htmx:afterSwap", (evt) => {
         if (evt.detail.target.id === "probe-content-area") {
             initEditOwnerButton();
+            clickOnDevice();
         }
     });
 

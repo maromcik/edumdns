@@ -32,45 +32,45 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
 
 #[derive(Clone)]
-pub struct Proxy {
-    pub proxy_ip: ProxyIp,
-    pub ebpf_updater: Arc<Mutex<EbpfUpdater>>,
+pub(crate) struct Proxy {
+    pub(crate) proxy_ip: ProxyIp,
+    pub(crate) ebpf_updater: Arc<Mutex<EbpfUpdater>>,
 }
 
 #[derive(Clone)]
-pub struct ProxyIp {
-    pub ipv4: Ipv4Addr,
-    pub ipv6: Ipv6Addr,
+pub(crate) struct ProxyIp {
+    pub(crate) ipv4: Ipv4Addr,
+    pub(crate) ipv6: Ipv6Addr,
 }
 
-pub struct PacketTransmitJob {
-    pub packet: PacketTransmitRequestPacket,
-    pub task: PacketTransmitterTask,
-    pub channel: Sender<LocalAppPacket>,
+struct PacketTransmitJob {
+    packet: PacketTransmitRequestPacket,
+    task: PacketTransmitterTask,
+    channel: Sender<LocalAppPacket>,
 }
 
 #[derive(Default)]
-pub struct PacketItems {
-    pub packets: HashSet<ProbePacket>,
-    pub live_updates_transmitter: Option<Sender<LocalAppPacket>>,
+struct DeviceItem {
+    packets: HashSet<ProbePacket>,
+    live_updates_transmitter: Option<Sender<LocalAppPacket>>,
 }
 
-pub struct PacketManager {
-    pub packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), PacketItems>>,
-    pub command_transmitter: Sender<AppPacket>,
-    pub command_receiver: Receiver<AppPacket>,
-    pub data_receiver: Receiver<AppPacket>,
-    pub db_transmitter: Sender<DbCommand>,
-    pub transmitter_tasks: Arc<Mutex<HashMap<Id, PacketTransmitJob>>>,
-    pub probe_handles: ProbeHandles,
-    pub probe_ws_handles: HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<ProbeResponse>>>,
-    pub pg_device_repository: PgDeviceRepository,
-    pub pg_packet_repository: PgPacketRepository,
-    pub proxy: Option<Proxy>,
-    pub global_timeout: Duration,
+pub(crate) struct ServerManager {
+    packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), DeviceItem>>,
+    command_transmitter: Sender<AppPacket>,
+    command_receiver: Receiver<AppPacket>,
+    data_receiver: Receiver<AppPacket>,
+    db_transmitter: Sender<DbCommand>,
+    transmitter_tasks: Arc<Mutex<HashMap<Id, PacketTransmitJob>>>,
+    probe_handles: ProbeHandles,
+    probe_ws_handles: HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<ProbeResponse>>>,
+    pg_device_repository: PgDeviceRepository,
+    pg_packet_repository: PgPacketRepository,
+    proxy: Option<Proxy>,
+    global_timeout: Duration,
 }
 
-impl PacketManager {
+impl ServerManager {
     pub fn new(
         command_transmitter: Sender<AppPacket>,
         command_receiver: Receiver<AppPacket>,
@@ -117,7 +117,7 @@ impl PacketManager {
         })
     }
 
-    pub async fn handle_packets(&mut self) {
+    pub(crate) async fn handle_packets(&mut self) {
         loop {
             let packet = self.command_receiver.try_recv();
             if let Ok(packet) = packet {
@@ -144,14 +144,14 @@ impl PacketManager {
         }
     }
 
-    pub async fn route_packets(&mut self, packet: AppPacket) {
+    async fn route_packets(&mut self, packet: AppPacket) {
         match packet {
             AppPacket::Network(network_packet) => self.handle_network_packet(network_packet).await,
             AppPacket::Local(local_packet) => self.handle_local_packet(local_packet).await,
         }
     }
 
-    pub async fn handle_local_packet(&mut self, packet: LocalAppPacket) {
+    async fn handle_local_packet(&mut self, packet: LocalAppPacket) {
         match packet {
             LocalAppPacket::Command(command) => match command {
                 LocalCommandPacket::RegisterForEvents {
@@ -258,7 +258,7 @@ impl PacketManager {
         }
     }
 
-    pub async fn handle_network_packet(&mut self, packet: NetworkAppPacket) {
+    async fn handle_network_packet(&mut self, packet: NetworkAppPacket) {
         match packet {
             NetworkAppPacket::Command(_) => {}
             NetworkAppPacket::Status(status) => match status {
@@ -304,7 +304,7 @@ impl PacketManager {
                                 }
                             }
                             Entry::Vacant(device_entry) => {
-                                let device_entry = device_entry.insert(PacketItems::default());
+                                let device_entry = device_entry.insert(DeviceItem::default());
                                 device_entry.packets.insert(probe_packet.clone());
                                 self.send_db_packet(DbCommand::StoreDevice(probe_packet.clone()))
                                     .await;
@@ -333,17 +333,13 @@ impl PacketManager {
         }
     }
 
-    pub async fn send_db_packet(&self, db_command: DbCommand) {
+    async fn send_db_packet(&self, db_command: DbCommand) {
         if let Err(e) = self.db_transmitter.send(db_command).await {
             error!("Could not send commands to the DB handler: {e}");
         }
     }
 
-    pub async fn send_reconnect(
-        &self,
-        id: Uuid,
-        session_id: Option<Uuid>,
-    ) -> Result<(), ServerError> {
+    async fn send_reconnect(&self, id: Uuid, session_id: Option<Uuid>) -> Result<(), ServerError> {
         if let Some(handle) = self.probe_handles.write().await.remove(&id) {
             handle
                 .send_message_with_response(|tx| {
@@ -364,7 +360,7 @@ impl PacketManager {
         Ok(())
     }
 
-    pub async fn send_response_to_ws(
+    async fn send_response_to_ws(
         &self,
         id: Uuid,
         session_id: Option<Uuid>,
@@ -396,7 +392,7 @@ impl PacketManager {
         }
     }
 
-    pub async fn transmit_device_packets(
+    async fn transmit_device_packets(
         &mut self,
         request_packet: PacketTransmitRequestPacket,
         respond_to: tokio::sync::oneshot::Sender<Result<(), ServerError>>,
@@ -541,7 +537,7 @@ impl PacketManager {
         });
     }
 
-    pub async fn stop_device_packets(&mut self, request_id: Id) {
+    async fn stop_device_packets(&mut self, request_id: Id) {
         let device_repo = self.pg_device_repository.clone();
         let proxy = self.proxy.clone();
         let transmitter_tasks = self.transmitter_tasks.clone();

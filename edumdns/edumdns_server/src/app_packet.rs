@@ -15,7 +15,7 @@ pub enum AppPacket {
 pub enum LocalAppPacket {
     Command(LocalCommandPacket),
     Status(LocalStatusPacket),
-    Data(LocalDataPacket)
+    Data(LocalDataPacket),
 }
 
 #[derive(Debug)]
@@ -41,7 +41,7 @@ pub enum LocalCommandPacket {
     },
     StopTransmitDevicePackets(Id),
     InvalidateCache(EntityType),
-    ExtendPacketTransmitRequest(Id)
+    ExtendPacketTransmitRequest(Id),
 }
 
 #[derive(Debug)]

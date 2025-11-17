@@ -1,5 +1,7 @@
 use crate::repositories::common::Pagination;
-use crate::repositories::utilities::{empty_string_is_none, generate_salt, hash_password, validate_password, WEAK_PASSWORD_MESSAGE};
+use crate::repositories::utilities::{
+    WEAK_PASSWORD_MESSAGE, empty_string_is_none, generate_salt, hash_password, validate_password,
+};
 
 use crate::error::{BackendError, DbError};
 use crate::models::User;
@@ -68,9 +70,7 @@ impl UserUpdatePassword {
         }
         if !validate_password(new_password) {
             return Err(DbError::BackendError(
-                BackendError::UserPasswordVerificationFailed(
-                    WEAK_PASSWORD_MESSAGE.to_string(),
-                ),
+                BackendError::UserPasswordVerificationFailed(WEAK_PASSWORD_MESSAGE.to_string()),
             ));
         }
         Ok(Self {
@@ -160,9 +160,7 @@ impl UserCreate {
         }
         if !validate_password(password) {
             return Err(DbError::BackendError(
-                BackendError::UserPasswordVerificationFailed(
-                    WEAK_PASSWORD_MESSAGE.to_string(),
-                ),
+                BackendError::UserPasswordVerificationFailed(WEAK_PASSWORD_MESSAGE.to_string()),
             ));
         }
         let password_salt = generate_salt();

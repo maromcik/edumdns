@@ -50,7 +50,10 @@ pub async fn login(
 
     let env = state.jinja.acquire_env()?;
     let template = env.get_template("index/login.html")?;
-    let body = template.render(LoginTemplate { message: String::new(), return_url })?;
+    let body = template.render(LoginTemplate {
+        message: String::new(),
+        return_url,
+    })?;
 
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

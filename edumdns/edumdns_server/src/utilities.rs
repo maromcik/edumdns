@@ -47,7 +47,11 @@ pub(crate) fn rewrite_payloads(
         .collect()
 }
 
-pub(crate) fn process_packets(packets: Vec<Packet>, proxy: &Option<Proxy>, use_proxy: bool) -> Vec<Vec<u8>> {
+pub(crate) fn process_packets(
+    packets: Vec<Packet>,
+    proxy: &Option<Proxy>,
+    use_proxy: bool,
+) -> Vec<Vec<u8>> {
     match (proxy, use_proxy) {
         (Some(p), true) => {
             let payloads = packets.into_iter().map(|p| p.payload).collect::<Vec<_>>();

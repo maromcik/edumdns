@@ -2,7 +2,7 @@ use crate::app_packet::AppPacket;
 use crate::database::DatabaseManager;
 use crate::error::ServerError;
 use crate::listen::ListenerSpawner;
-use crate::manager::PacketManager;
+use crate::manager::ServerManager;
 use crate::ordered_map::OrderedMap;
 use crate::probe_tracker::{SharedProbeTracker, watchdog};
 use crate::utilities::load_all_packet_transmit_requests;
@@ -72,8 +72,8 @@ pub async fn spawn_server_tasks(
     let pool_local = pool.clone();
     let probe_handles_local = probe_handles.clone();
     let command_transmitter_local = command_transmitter.clone();
-    let _packet_manager_task = tokio::task::spawn(async move {
-        match PacketManager::new(
+    let _server_manager_task = tokio::task::spawn(async move {
+        match ServerManager::new(
             command_transmitter_local,
             command_receiver,
             data_channel.1,

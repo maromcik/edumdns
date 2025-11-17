@@ -45,7 +45,6 @@ pub struct PacketTransmitter {
     pub proxy_ip: Option<ProxyIp>,
     pub transmit_request: PacketTransmitRequestPacket,
     pub udp_connection: UdpConnection,
-    pub global_timeout: Duration,
     pub live_updates_receiver: Receiver<LocalAppPacket>,
 }
 
@@ -62,17 +61,22 @@ impl PacketTransmitter {
             proxy_ip,
             transmit_request: target.clone(),
             udp_connection: UdpConnection::new(global_timeout).await?,
-            global_timeout,
             live_updates_receiver: live_updater,
         })
     }
 
     pub async fn transmit(&mut self) {
-        let ips = self.transmit_request.request.target_ip
+        let ips = self
+            .transmit_request
+            .request
+            .target_ip
             .into_iter()
             .collect::<Vec<_>>();
         if ips.is_empty() {
-            warn!("No valid IP addresses found for target: {:?}", self.transmit_request.request);
+            warn!(
+                "No valid IP addresses found for target: {:?}",
+                self.transmit_request.request
+            );
             return;
         }
         let interval = Duration::from_millis(self.transmit_request.device.interval as u64);

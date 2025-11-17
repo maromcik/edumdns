@@ -1,5 +1,10 @@
 use crate::error::WebError;
-use crate::handlers::device::{create_device, create_device_form, delete_device, delete_request_packet_transmit, extend_custom_request_packet_transmit, extend_request_packet_transmit, get_device, get_device_for_transmit, get_devices, hide_device, publish_device, request_custom_packet_transmit, request_packet_transmit, update_device};
+use crate::handlers::device::{
+    create_device, create_device_form, delete_device, delete_request_packet_transmit,
+    extend_custom_request_packet_transmit, extend_request_packet_transmit, get_device,
+    get_device_for_transmit, get_devices, hide_device, publish_device,
+    request_custom_packet_transmit, request_packet_transmit, update_device,
+};
 use crate::handlers::group::{
     add_group_users, create_group, delete_group, delete_group_user, get_group, get_groups,
     search_group_users, update_group,
@@ -21,7 +26,11 @@ use crate::handlers::user::{
     update_user, update_user_password, user_manage, user_manage_form_page, user_manage_password,
     user_manage_password_form,
 };
-use crate::utils::{AppState, DeviceAclApDatabase, create_oidc, create_reloader, get_cors_middleware, get_identity_middleware, get_session_middleware, json_config, path_config, query_config, parse_host};
+use crate::utils::{
+    AppState, DeviceAclApDatabase, create_oidc, create_reloader, get_cors_middleware,
+    get_identity_middleware, get_session_middleware, json_config, parse_host, path_config,
+    query_config,
+};
 use crate::{DEFAULT_HOSTNAME, FORM_LIMIT, PAYLOAD_LIMIT, middleware};
 use actix_files::Files;
 use actix_multipart::form::MultipartFormConfig;

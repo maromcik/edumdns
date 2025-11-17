@@ -98,10 +98,7 @@ impl PgDeviceRepository {
             .map_err(DbError::from)
     }
 
-    pub async fn extend_packet_transmit_request(
-        &self,
-        params: &Id,
-    ) -> DbResult<()> {
+    pub async fn extend_packet_transmit_request(&self, params: &Id) -> DbResult<()> {
         let mut conn = self.pg_pool.get().await?;
         diesel::update(packet_transmit_request::table.find(&params))
             .set(packet_transmit_request::created_at.eq(OffsetDateTime::now_utc()))
@@ -483,7 +480,6 @@ fn build_select_many_query<'a>(params: &'a SelectManyDevices) -> BoxedQuery<'a, 
     if let Some(p) = &params.exclusive {
         query = query.filter(device::exclusive.eq(p))
     }
-
 
     if let Some(pagination) = params.pagination {
         query = query.limit(pagination.limit.unwrap_or(i64::MAX));

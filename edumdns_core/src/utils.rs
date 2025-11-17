@@ -1,7 +1,7 @@
+use crate::error::CoreError;
 use std::env;
 use std::net::SocketAddr;
 use tokio::net::lookup_host;
-use crate::error::CoreError;
 
 #[macro_export]
 macro_rules! retry {
@@ -36,7 +36,12 @@ pub trait Cancellable {
     fn is_cancelled(&self) -> bool;
 }
 
-pub async fn parse_and_lookup_host(hostname_env_key: &str, port_env_key: &str, default_hostname: &str, default_port: &str) -> Result<Vec<SocketAddr>, CoreError> {
+pub async fn parse_and_lookup_host(
+    hostname_env_key: &str,
+    port_env_key: &str,
+    default_hostname: &str,
+    default_port: &str,
+) -> Result<Vec<SocketAddr>, CoreError> {
     let port = env::var(port_env_key).unwrap_or(default_port.to_string());
     let hostnames_string = env::var(hostname_env_key).unwrap_or(default_hostname.to_string());
     let mut hostnames = Vec::default();

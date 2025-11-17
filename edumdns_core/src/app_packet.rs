@@ -3,6 +3,8 @@ use crate::bincode_types::{IpNetwork, MacAddr};
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};
 use crate::network_packet::{ApplicationPacket, DataLinkPacket, NetworkPacket};
 use bincode::{Decode, Encode};
+use hickory_proto::op::{Message, MessageType, OpCode};
+use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::hash::{DefaultHasher, Hash, Hasher};
 
@@ -187,4 +189,52 @@ pub fn calculate_hash(value: &[u8]) -> u64 {
     let mut hasher = DefaultHasher::default();
     value.hash(&mut hasher);
     hasher.finish()
+}
+
+pub struct HickoryDnsPacket<'a>(pub &'a Message);
+impl Display for HickoryDnsPacket<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        let m = self.0;
+        let write_query = |slice, f: &mut fmt::Formatter<'_>| -> Result<(), fmt::Error> {
+            for d in slice {
+                writeln!(f, ";; {d}")?;
+            }
+
+            Ok(())
+        };
+
+        let write_slice = |slice, f: &mut fmt::Formatter<'_>| -> Result<(), fmt::Error> {
+            for d in slice {
+                writeln!(f, "{d}")?;
+            }
+
+            Ok(())
+        };
+
+        writeln!(f, "; header {header}", header = m.header())?;
+
+        if let Some(edns) = m.extensions() {
+            writeln!(f, "; edns {edns}")?;
+        }
+
+        writeln!(f, "; query")?;
+        write_query(m.queries(), f)?;
+
+        if m.header().message_type() == MessageType::Response
+            || m.header().op_code() == OpCode::Update
+        {
+            writeln!(f, "; answers {}", m.answer_count())?;
+            write_slice(m.answers(), f)?;
+            writeln!(f, "; nameservers {}", m.name_server_count())?;
+            write_slice(m.name_servers(), f)?;
+            writeln!(f, "; additionals {}", m.additional_count())?;
+            write_slice(m.additionals(), f)?;
+        }
+        if m.header().message_type() == MessageType::Response && m.name_server_count() > 0 {
+            writeln!(f, "; authorities {}", m.name_server_count())?;
+            write_slice(m.name_servers(), f)?;
+        }
+
+        Ok(())
+    }
 }

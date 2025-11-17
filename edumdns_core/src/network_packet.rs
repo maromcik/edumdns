@@ -1,3 +1,4 @@
+use crate::app_packet::HickoryDnsPacket;
 use crate::bincode_types::{IpNetwork, MacAddr};
 use crate::error::CoreError;
 use crate::metadata::{IpMetadata, MacMetadata, PortMetadata, VlanMetadata};
@@ -619,7 +620,7 @@ impl<'a> ApplicationPacket<'a> {
 
     pub fn read_content(&self) -> String {
         match self.application_packet_type {
-            ApplicationPacketType::DnsPacket(ref packet) => packet.to_string(),
+            ApplicationPacketType::DnsPacket(ref packet) => HickoryDnsPacket(packet).to_string(),
             ApplicationPacketType::Other(packet) => String::from_utf8_lossy(packet).to_string(),
         }
     }

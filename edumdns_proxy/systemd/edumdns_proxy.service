@@ -1,0 +1,24 @@
+[Unit]
+Description=EduMDNS eBPF Proxy Loader
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/edumdns_proxy \
+  -i PROXY_INTERFACE \
+  --ip NEW_IPV4 \
+  --ip6 NEW_IPV6 \
+  --src-mac THIS_INTERFACE_MAC \
+  --dst-mac DEFAULT_GW_MAC \
+  --pin-path /var/local/bpf/edumdns \
+  -l info
+ExecStartPost=/bin/bash -c "sleep 1 && chown -R server-user: /var/local/bpf"
+Restart=always
+RestartSec=5
+
+# Needs root to load eBPF
+User=root
+
+[Install]
+WantedBy=multi-user.target

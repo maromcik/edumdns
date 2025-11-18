@@ -70,15 +70,6 @@ struct Cli {
     )]
     uuid_file: Option<String>,
 
-    /// Local port to bind to.
-    #[clap(
-        value_name = "BIND_PORT",
-        long,
-        env = "EDUMDNS_PROBE_BIND_PORT",
-        default_value = "0"
-    )]
-    bind_port: u16,
-
     /// Do not use TLS connection
     #[clap(
         short = 'n',

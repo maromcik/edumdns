@@ -96,7 +96,7 @@ impl PacketTransmitter {
                     LocalAppPacket::Data(data) => self.handle_data_packet(data).await,
                 }
 
-                if total_time.elapsed() > duration {
+                if !self.transmit_request.request.permanent && total_time.elapsed() > duration {
                     debug!("Duration exceeded; stopping transmission in live updater");
                     return;
                 }
@@ -107,13 +107,13 @@ impl PacketTransmitter {
                     self.send_packet(host.as_str(), payload).await;
                 }
 
-                if total_time.elapsed() > duration {
+                if !self.transmit_request.request.permanent && total_time.elapsed() > duration {
                     debug!("Duration exceeded; stopping transmission during packet transmission");
                     return;
                 }
                 tokio::time::sleep(interval).await;
             }
-            if total_time.elapsed() > duration {
+            if !self.transmit_request.request.permanent && total_time.elapsed() > duration {
                 debug!("Duration exceeded; stopping transmission before repeating");
                 return;
             }

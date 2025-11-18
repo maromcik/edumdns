@@ -198,6 +198,10 @@
     @apply border-gray-700 dark:border-gray-200
 }
 
+.border-permanent {
+    @apply border-gray-700 dark:border-gray-200
+}
+
 .text-error {
     @apply  text-red-800 dark:text-red-500
 }

@@ -39,12 +39,12 @@
 
                     <!-- Your IP -->
                     <div class="flex flex-col items-center gap-3">
-        <span class="text-sm uppercase tracking-wide text-sat-l font-semibold flex items-center gap-2">
+        <span class="text-sm md:text-lg uppercase tracking-wide text-sat-l font-semibold flex items-center gap-2">
           <i class="fa-solid fa-network-wired text-acc"></i>
           Your IP Address
         </span>
-                        <div class="px-6 py-3 bg-green-50 border border-green-200 rounded-lg shadow-sm">
-                            <span class="text-2xl font-mono text-green-700 tracking-tight select-all">{{ client_ip }}</span>
+                        <div class="px-4 py-2  border border-white-200 rounded-lg shadow-sm">
+                            <span class="text-2xl font-mono text-white tracking-tight select-all">{{ client_ip }}</span>
                         </div>
                     </div>
 
@@ -65,35 +65,38 @@
                     {% else %}
 
                     <!-- Transmission Controls -->
-                    <div class="flex flex-col items-center justify-center gap-8 w-full">
+                    <div class="flex flex-col items-center justify-center gap-6 w-full">
 
                         {% if packet_transmit_request is not none %}
 
                         <!-- Discovery Active -->
                         {% if packet_transmit_request.until is not none %}
-                        <div class="text-center">
-                            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-50 border border-green-200 text-green-800 shadow-sm">
-                                <i class="fa-solid fa-clock text-green-600"></i>
-                                <span class="font-medium">Discovery active until
-              <span class="font-mono text-green-700">{{ packet_transmit_request.until }}</span>
-            </span>
+                        <div class="w-full max-w-md">
+                            <div class="flex items-center justify-between w-full px-8 py-4 rounded-xl border border-gray-300 shadow-sm">
+                                <div>
+                                    <p class="font-semibold text-gray-50"><i class="fa-solid fa-clock text-gray-50 text-lg pr-2"></i>
+                                        Discovery Active</p>
+                                    <p class="text-sm text-gray-50">
+                                        Until {{ packet_transmit_request.until }}
+                                    </p>
+                                </div>
+
+                                <!-- Stop Button (small but strong) -->
+                                <button
+                                        hx-delete="/device/{{ device.id }}/transmit/{{ packet_transmit_request.id }}?return_url=/device/{{ device.id }}/transmit"
+                                        hx-target="#content-area"
+                                        hx-target-error="#transmit-result"
+                                        type="submit"
+                                        class="inline-flex items-center gap-2 rounded-lg border border-red-600 bg-red-500 text-white px-4 py-2 text-sm font-semibold shadow-sm hover:bg-red-600 transition"
+                                >
+                                    <i class="fa-solid fa-stop"></i>
+                                    Stop
+                                </button>
                             </div>
                         </div>
                         {% endif %}
 
-                        <!-- Stop Button -->
-                        <button
-                                hx-delete="/device/{{ device.id }}/transmit/{{ packet_transmit_request.id }}?return_url=/device/{{ device.id }}/transmit"
-                                hx-target="#content-area"
-                                hx-target-error="#transmit-result"
-                                type="submit"
-                                class="inline-flex items-center justify-center gap-3 rounded-xl border border-red-600 bg-red-500 text-white px-6 py-3 text-lg font-semibold shadow-sm hover:bg-red-600 focus:ring-2 focus:ring-red-400 transition"
-                        >
-                            <i class="fa-solid fa-stop"></i>
-                            Stop Discovery
-                        </button>
-
-                        <!-- Extend Discovery Form -->
+                    <!-- Extend Discovery Form -->
                         <form
                                 method="post"
                                 hx-post="/device/{{ device.id }}/transmit/{{ packet_transmit_request.id }}/extend"
@@ -109,7 +112,7 @@
                                         id="acl_pwd_extend"
                                         name="acl_pwd"
                                         type="password"
-                                        class="w-full rounded-md border border-base bg-bg px-3 py-2 bg-panes text-sat-l focus:outline-none focus:ring-2 focus:ring-acc placeholder-sat-m"
+                                        class="w-full rounded-md border border-base bg-bg px-3 py-2 bg-panes text-sat-l focus:outline-none placeholder-sat-m"
                                         placeholder="Enter password"
                                 >
                             </div>
@@ -117,7 +120,7 @@
 
                             <button
                                     type="submit"
-                                    class="inline-flex items-center justify-center gap-3 rounded-xl border border-blue-600 bg-blue-500 text-white px-6 py-3 text-lg font-semibold shadow-sm hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 transition"
+                                    class="inline-flex items-center justify-center gap-3 rounded-xl bg-acc text-white px-6 py-3 text-lg font-semibold shadow-sm focus:ring-2 hover:bg-acc-xl transition"
                             >
                                 <i class="fa-solid fa-arrows-rotate"></i>
                                 Extend Discovery
@@ -141,7 +144,7 @@
                                         id="acl_pwd"
                                         name="acl_pwd"
                                         type="password"
-                                        class="w-full rounded-md border border-base bg-bg px-3 py-2 bg-panes text-sat-l focus:outline-none focus:ring-2 focus:ring-acc placeholder-sat-m"
+                                        class="w-full rounded-md border border-base bg-bg px-3 py-2 bg-panes text-sat-l focus:outline-none placeholder-sat-m"
                                         placeholder="Enter password"
                                 >
                             </div>
@@ -149,7 +152,7 @@
 
                             <button
                                     type="submit"
-                                    class="inline-flex items-center justify-center gap-3 rounded-xl border border-green-600 bg-green-500 text-white px-6 py-3 text-lg font-semibold shadow-sm hover:bg-green-600 focus:ring-2 focus:ring-green-400 transition"
+                                    class="inline-flex items-center justify-center gap-3 rounded-xl bg-acc text-white px-6 py-3 text-lg font-semibold shadow-sm hover:bg-primary/90 transition-colors"
                             >
                                 <i class="fa-solid fa-search"></i>
                                 Discover

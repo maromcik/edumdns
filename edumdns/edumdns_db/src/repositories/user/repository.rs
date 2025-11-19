@@ -1,5 +1,5 @@
 use crate::error::{BackendError, DbError};
-use crate::models::{Group, GroupProbePermission, GroupUser, User};
+use crate::models::{Group, GroupProbePermission, User};
 use crate::repositories::common::{
     DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResult, DbResultMultiple, DbResultSingle,
     DbResultSinglePerm, DbUpdate,
@@ -11,7 +11,7 @@ use crate::repositories::utilities::{
     generate_salt, hash_password, validate_admin_conn, validate_user, verify_password_hash,
 };
 use crate::schema::user::BoxedQuery;
-use crate::schema::{group, group_user, user};
+use crate::schema::{group, group_user, probe, user};
 use diesel::pg::Pg;
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgTextExpressionMethods, QueryDsl,
@@ -266,10 +266,15 @@ impl UserBackend {
     pub async fn has_groups(conn: &mut AsyncPgConnection, user_id: &Id) -> DbResult<bool> {
         let group = group_user::table
             .filter(group_user::user_id.eq(user_id))
-            .select(GroupUser::as_select())
-            .first(conn)
+            .select(group_user::group_id)
+            .first::<Id>(conn)
             .await;
-        group.map(|_| true).or(Ok(false))
+        let probe = probe::table
+            .filter(probe::owner_id.eq(user_id))
+            .select(probe::id)
+            .first::<uuid::Uuid>(conn)
+            .await;
+        Ok(group.is_ok() || probe.is_ok())
     }
 
     async fn insert(conn: &mut AsyncPgConnection, data: &UserCreate) -> DbResultSingle<User> {

@@ -21,7 +21,8 @@
                 ("Device IP", device.ip),
                 ("Transmit Duration", device.duration ~ " seconds"),
                 ("Transmit Interval", device.interval ~ " ms"),
-                ("Via Proxy", device.proxy)
+                ("Via Proxy", device.proxy),
+                ("Exclusive", device.exclusive)
                 ] %}
                 <div class="flex flex-col">
                     <span class="text-xs uppercase tracking-wide text-sat-m">{{ label }}</span>
@@ -72,7 +73,7 @@
                         <!-- Discovery Active -->
                         {% if packet_transmit_request.until is not none %}
                         <div class="w-full max-w-md">
-                            <div class="flex items-center justify-between w-full px-8 py-4 rounded-xl border border-permanent ">
+                            <div class="flex flex-col sm:flex-row items-center justify-between w-full px-8 py-4 rounded-xl border border-permanent ">
                                 <div>
                                     <p class="font-semibold text-sat-l"><i class="fa-solid fa-clock text-sat-l text-lg pr-2"></i>
                                         Discovery Active</p>

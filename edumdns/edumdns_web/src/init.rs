@@ -75,12 +75,14 @@ impl WebSpawner {
                 .collect::<Vec<u8>>(),
         );
         let use_secure_cookie = env::var("EDUMDNS_USE_SECURE_COOKIE")
-            .unwrap_or("false".to_string())
-            .parse::<bool>()?;
+            .ok()
+            .and_then(|v| v.parse::<bool>().ok())
+            .unwrap_or(false);
 
         let oidc_users_admin = env::var("EDUMDNS_OIDC_NEW_USERS_ADMIN")
-            .unwrap_or("false".to_string())
-            .parse::<bool>()?;
+            .ok()
+            .and_then(|v| v.parse::<bool>().ok())
+            .unwrap_or(false);
 
         let jinja = Arc::new(create_reloader(format!("{files_dir}/templates")));
         let device_acl_ap_database = DeviceAclApDatabase {

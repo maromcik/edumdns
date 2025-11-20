@@ -7,7 +7,7 @@ use crate::ebpf::EbpfUpdater;
 use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use crate::utilities::process_packets;
-use crate::{BUFFER_SIZE, MAX_TRANSMIT_SUBNET_SIZE, ProbeHandles};
+use crate::{BUFFER_SIZE, ProbeHandles};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::Id;
@@ -68,6 +68,7 @@ pub(crate) struct ServerManager {
     pg_packet_repository: PgPacketRepository,
     proxy: Option<Proxy>,
     global_timeout: Duration,
+    max_transmit_subnet_size: u32,
 }
 
 impl ServerManager {
@@ -86,6 +87,11 @@ impl ServerManager {
         let proxy_ipv6 = env::var("EDUMDNS_SERVER_PROXY_IPV6")
             .map(|ip| ip.parse::<Ipv6Addr>().ok())
             .ok();
+
+        let max_transmit_subnet_size = env::var("EDUMDNS_SERVER_MAX_TRANSMIT_SUBNET_SIZE")
+            .ok()
+            .and_then(|s| s.trim().parse::<u32>().ok())
+            .unwrap_or(512);
 
         let proxy = match (proxy_ipv4, proxy_ipv6) {
             (Some(Some(ipv4)), Some(Some(ipv6))) => match EbpfUpdater::new() {
@@ -114,6 +120,7 @@ impl ServerManager {
             pg_packet_repository: PgPacketRepository::new(db_pool.clone()),
             proxy,
             global_timeout,
+            max_transmit_subnet_size,
         })
     }
 
@@ -401,6 +408,7 @@ impl ServerManager {
         let proxy = self.proxy.clone();
         let transmitter_tasks = self.transmitter_tasks.clone();
         let global_timeout = self.global_timeout;
+        let max_transmit_subnet_size = self.max_transmit_subnet_size;
         let command_transmitter_local = self.command_transmitter.clone();
         let live_updater_channel = tokio::sync::mpsc::channel(BUFFER_SIZE);
         let device_entry = self
@@ -424,9 +432,9 @@ impl ServerManager {
                 return;
             }
 
-            if request_packet.request.target_ip.size() > NetworkSize::V4(MAX_TRANSMIT_SUBNET_SIZE) {
+            if request_packet.request.target_ip.size() > NetworkSize::V4(max_transmit_subnet_size) {
                 let warning = format!(
-                    "the target subnet size ({}) is greater than the maximum allowed ({MAX_TRANSMIT_SUBNET_SIZE})",
+                    "the target subnet size ({}) is greater than the maximum allowed ({max_transmit_subnet_size})",
                     request_packet.request.target_ip.size()
                 );
                 warn!("{warning} for target: {request_packet}");

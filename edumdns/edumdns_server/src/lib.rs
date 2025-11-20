@@ -36,7 +36,6 @@ const DEFAULT_PORT: &str = "5000";
 const DEFAULT_INTERVAL_MULTIPLICATOR: u32 = 5;
 
 pub const BUFFER_SIZE: usize = 1000;
-pub const MAX_TRANSMIT_SUBNET_SIZE: u32 = 512;
 
 pub type ProbeHandles = Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>;
 
@@ -45,9 +44,10 @@ pub async fn server_init(
     (tx, rx): (Sender<AppPacket>, Receiver<AppPacket>),
 ) -> Result<(), ServerError> {
     let global_timeout = Duration::from_secs(
-        env::var("EDUMDNS_PROBE_GLOBAL_TIMEOUT")
-            .unwrap_or("10".to_string())
-            .parse::<u64>()?,
+        env::var("EDUMDNS_SERVER_GLOBAL_TIMEOUT")
+            .ok()
+            .and_then(|t| t.parse::<u64>().ok())
+            .unwrap_or(10),
     );
 
     load_all_packet_transmit_requests(pool.clone(), tx.clone()).await?;

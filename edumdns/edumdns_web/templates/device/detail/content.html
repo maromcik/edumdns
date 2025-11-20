@@ -69,7 +69,7 @@
 
     <!-- Device Card -->
     <div class="rounded-lg border border-base bg-cards p-6 mb-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
             <!-- ID -->
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
@@ -101,7 +101,7 @@
                 hx-post="/device/update"
                 hx-target="#content-area"
                 hx-target-error="#content-area"
-                class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
         >
             <input type="hidden" id="device_id" name="id" value="{{ device.id }}"/>
             <!-- Name -->
@@ -251,25 +251,24 @@
                     <span class="ml-2 text-sat-m">Exclusive discovery</span>
                 </label>
             </div>
-
-            {% if permissions|has_perm("Update") %}
-            <!-- Actions -->
-            <div class="md:col-span-2 flex items-center gap-2 pt-2">
-                <button
-                        type="submit"
-                        class="inline-flex items-center rounded-md bg-acc px-4 py-2 text-sm font-medium text-button transition-colors"
-                >
-                    Save
-                </button>
-                <button
-                        type="reset"
-                        class="inline-flex items-center rounded-md bg-acc-l px-4 py-2 text-sm font-medium text-button transition-colors"
-                >
-                    Reset
-                </button>
-            </div>
-            {% endif %}
         </form>
+        {% if permissions|has_perm("Update") %}
+        <!-- Actions -->
+        <div class="md:col-span-2 flex items-center gap-2 pt-2">
+            <button
+                    type="submit"
+                    class="inline-flex items-center rounded-md bg-acc px-4 py-2 text-sm font-medium text-button transition-colors"
+            >
+                Save
+            </button>
+            <button
+                    type="reset"
+                    class="inline-flex items-center rounded-md bg-acc-l px-4 py-2 text-sm font-medium text-button transition-colors"
+            >
+                Reset
+            </button>
+        </div>
+        {% endif %}
     </div>
 
 
@@ -277,7 +276,7 @@
     <div class="rounded-lg border border-base bg-cards p-6 mb-6">
         <h3 class="text-2xl font-medium mb-4 text-sat-l">Request Packet Transmission</h3>
 
-        <form class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <!-- Target IP -->
             <div class="flex flex-col">
                 <label for="target_ip" class="text-xs uppercase tracking-wide text-forms">Target IP</label>

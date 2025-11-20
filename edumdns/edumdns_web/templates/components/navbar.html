@@ -21,7 +21,7 @@
     </a>
 
     <!-- Navigation Links Laptop View -->
-    <div id="laptop-menu" class="hidden lg:flex lg:items-center lg:space-x-10 xl:space-x-16 xl:text-xl">
+    <div id="laptop-menu" class="hidden lg:flex sm:ml-2 sm:mr-2 md:mr-4 md:ml-4 lg:items-center sm:space-x-3 md:space-x-6 lg:space-x-10 xl:space-x-16 xl:text-xl">
         {% if user.has_groups or user.user.admin %}
         {% if user.user.admin %}
         <a href="/group"

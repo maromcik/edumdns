@@ -133,7 +133,7 @@ impl PacketTransmitter {
         }
         trace!(
             "Packet sent from device: {} to client: {}",
-            self.transmit_request.device.ip, self.transmit_request.request.target_ip
+            self.transmit_request.device.ip, socket_addr
         );
     }
 

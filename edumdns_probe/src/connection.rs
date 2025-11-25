@@ -241,13 +241,14 @@ impl ConnectionManager {
         target: ReceivePacketTargets,
         command_transmitter: mpsc::Sender<NetworkAppPacket>,
         cancellation_token: CancellationToken,
+        global_limit: Duration,
     ) -> Result<(), ProbeError> {
         join_set.spawn(async move {
             tokio::select! {
                 _ = cancellation_token.cancelled() => {
                     info!("Receive packets task cancelled");
                 }
-                result = ConnectionManager::receive_packets_worker(handle, target, command_transmitter) => { result.map_err(|e| {
+                result = ConnectionManager::receive_packets_worker(handle, target, command_transmitter, global_limit) => { result.map_err(|e| {
                         error!("Receive packets task exited with error: {e}");
                         e
                     })?;
@@ -263,10 +264,11 @@ impl ConnectionManager {
         handle: TcpConnectionHandle,
         target: ReceivePacketTargets,
         command_transmitter: mpsc::Sender<NetworkAppPacket>,
+        global_limit: Duration,
     ) -> Result<(), ProbeError> {
         loop {
             let packet = handle
-                .send_message_with_response(|tx| TcpConnectionMessage::receive_packet(tx, None))
+                .send_message_with_response(|tx| TcpConnectionMessage::receive_packet(tx, Some(global_limit)))
                 .await??;
             match packet {
                 None => return Ok(()),

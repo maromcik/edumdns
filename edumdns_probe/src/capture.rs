@@ -52,6 +52,7 @@ where
             debug!("Not a TCP/IP packet, skipping");
             continue;
         };
+        debug!("Probe packet received: {:?}, payload hash: {}", probe_packet.probe_metadata, probe_packet.payload_hash);
         let app_packet = NetworkAppPacket::Data(probe_packet);
         if let Err(e) = tx.blocking_send(app_packet) {
             warn!("Failed to send packet: {e}");

@@ -220,6 +220,7 @@ async fn main() -> Result<(), ProbeError> {
             targets,
             command_transmitter.clone(),
             cancellation_token.clone(),
+            global_timeout,
         )
         .await?;
         ConnectionManager::pinger(

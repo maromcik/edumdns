@@ -139,7 +139,7 @@ async fn main() -> Result<(), ProbeError> {
 
     let cli = Cli::parse();
 
-    let env = EnvFilter::new(cli.log_level);
+    let env = EnvFilter::new(format!("edumdns_probe={},info", cli.log_level));
     let timer = tracing_subscriber::fmt::time::LocalTime::rfc_3339();
     tracing_subscriber::fmt()
         .with_timer(timer)

@@ -1,3 +1,8 @@
+//! eBPF map integration for on-the-fly DNS payload IP rewriting.
+//!
+//! `EbpfUpdater` attaches to pinned kernel maps and maintains bi-directional
+//! mappings between original and proxy IPs for both IPv4 and IPv6.
+
 use crate::error::ServerError;
 use aya::maps::{HashMap, Map, MapData};
 use ipnetwork::IpNetwork;
@@ -6,12 +11,40 @@ use std::env;
 use std::net::IpAddr;
 use std::path::Path;
 
+/// Maintains references to pinned eBPF maps used for DNS IP rewriting.
+///
+/// The server optionally performs DNS proxying: it rewrites A/AAAA answers in
+/// DNS payloads to a configured proxy IPv4/IPv6 pair. To keep return traffic
+/// working transparently, the kernel eBPF program consults two hash maps that
+/// map original destination IPs to proxy IPs and vice versa. This struct holds
+/// handles to those pinned maps so we can add/remove entries at runtime.
+///
+/// Fields:
+/// - `rewrite_map_v4`: pinned `HashMap<u32, u32>` for IPv4 address rewrites. Keys
+///   and values are native-endian IPv4 addresses represented as `u32`.
+/// - `rewrite_map_v6`: pinned `HashMap<[u8; 16], [u8; 16]>` for IPv6 address
+///   rewrites. Keys and values are 16-byte IPv6 addresses.
 pub struct EbpfUpdater {
+    /// IPv4 rewrite map: original IPv4 → proxy IPv4 and proxy → original.
     pub rewrite_map_v4: HashMap<MapData, u32, u32>,
+    /// IPv6 rewrite map: original IPv6 → proxy IPv6 and proxy → original.
     pub rewrite_map_v6: HashMap<MapData, [u8; 16], [u8; 16]>,
 }
 
 impl EbpfUpdater {
+    /// Attach to the pinned eBPF maps used for DNS IP rewrites.
+    ///
+    /// Environment:
+    /// - `EDUMDNS_SERVER_EBPF_PIN_LOCATION` (optional): base directory where the
+    ///   eBPF maps are pinned. Defaults to `/sys/fs/bpf/edumdns`.
+    ///   The method expects two maps inside this directory:
+    ///   - `edumdns_proxy_rewrite_v4` (IPv4)
+    ///   - `edumdns_proxy_rewrite_v6` (IPv6)
+    ///
+    /// Returns:
+    /// - `Ok(EbpfUpdater)` when both maps are successfully opened and wrapped
+    ///   into `aya::maps::HashMap` handles.
+    /// - `Err(ServerError::EbpfMapError)` if the maps can't be opened or wrapped.
     pub fn new() -> Result<Self, ServerError> {
         let ebpf_dir = env::var("EDUMDNS_SERVER_EBPF_PIN_LOCATION")
             .unwrap_or("/sys/fs/bpf/edumdns".to_string());
@@ -34,6 +67,21 @@ impl EbpfUpdater {
         })
     }
 
+    /// Add a bi-directional rewrite rule for a pair of IP networks.
+    ///
+    /// This inserts two entries into the corresponding eBPF map, one in each
+    /// direction, effectively establishing a symmetric mapping between the
+    /// original and proxy addresses. Both arguments must have IPs of the same
+    /// family (both IPv4 or both IPv6); the network prefix of `IpNetwork` is
+    /// ignored here and only the host IP is used.
+    ///
+    /// Parameters:
+    /// - `a`: first IP (typically the original address as `IpNetwork`).
+    /// - `b`: second IP (typically the proxy address as `IpNetwork`).
+    ///
+    /// Returns:
+    /// - `Ok(())` if both map updates succeed.
+    /// - `Err(ServerError)` if the IP versions mismatch or map operations fail.
     pub fn add_ip(&mut self, a: IpNetwork, b: IpNetwork) -> Result<(), ServerError> {
         let err = |ip_a, ip_b, e| {
             ServerError::EbpfMapError(format!(
@@ -73,6 +121,20 @@ impl EbpfUpdater {
         Ok(())
     }
 
+    /// Remove a bi-directional rewrite rule for a pair of IP networks.
+    ///
+    /// Deletes both directions of the mapping that were previously inserted by
+    /// `add_ip`. If one of the removals fails (e.g., the key doesn't exist), an
+    /// error is returned. When IP families differ, the function is a no-op.
+    ///
+    /// Parameters:
+    /// - `a`: first IP (as `IpNetwork`). Only the host IP is used.
+    /// - `b`: second IP (as `IpNetwork`). Only the host IP is used.
+    ///
+    /// Returns:
+    /// - `Ok(())` if both entries are successfully removed (or nothing to do on
+    ///   family mismatch).
+    /// - `Err(ServerError)` if a removal from the corresponding eBPF map fails.
     pub fn remove_ip(&mut self, a: IpNetwork, b: IpNetwork) -> Result<(), ServerError> {
         let err = |ip, e| {
             ServerError::EbpfMapError(format!("Could not remove IP {ip} from the eBPF map: {e}"))

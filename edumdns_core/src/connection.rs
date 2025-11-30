@@ -1,3 +1,13 @@
+//! Framed TCP/UDP connections with timeouts and optional TLS.
+//!
+//! This module provides an actor-like abstraction over TCP streams used by the
+//! edumdns server and probe to exchange `NetworkAppPacket`s. It frames messages
+//! with `LengthDelimitedCodec`, encodes/decodes them using `bincode`, and offers
+//! request/response helpers with timeouts. TLS client/server variants are
+//! supported via `rustls`.
+//!
+//! It also exposes a minimal `UdpConnection` for sending UDP payloads with a
+//! global timeout, used by the server to replay captured packets.
 use crate::BUFFER_CAPACITY;
 use crate::app_packet::NetworkAppPacket;
 use crate::error::CoreError;
@@ -20,6 +30,17 @@ use tokio::time::timeout;
 use tokio_rustls::{TlsAcceptor, TlsConnector};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
+/// Actor that owns the sending half of a framed TCP connection.
+///
+/// This type runs in a dedicated task and consumes `TcpConnectionMessage`s from
+/// an mpsc channel. It serializes `NetworkAppPacket`s with `bincode`, wraps them
+/// into length‑delimited frames, and writes them to the socket within
+/// `global_timeout`.
+///
+/// Fields:
+/// - `receiver`: control channel from the multiplexer to this sender actor.
+/// - `framed_sink`: the sink side of the `Framed<BufStream<S>, LengthDelimitedCodec>`.
+/// - `global_timeout`: per‑operation timeout applied to `send`/`feed`.
 pub struct TcpConnectionSender<S> {
     pub receiver: mpsc::Receiver<TcpConnectionMessage>,
     pub framed_sink: SplitSink<Framed<BufStream<S>, LengthDelimitedCodec>, Bytes>,
@@ -30,6 +51,14 @@ impl<S> TcpConnectionSender<S>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
+    /// Send an encoded frame to the socket with a timeout.
+    ///
+    /// Parameters:
+    /// - `packet`: any type implementing `bincode::Encode` (typically `NetworkAppPacket`).
+    /// - `immediate`: when `true`, uses `SinkExt::send` (flush immediately);
+    ///   when `false`, uses `SinkExt::feed` to buffer and let the codec coalesce frames.
+    ///
+    /// Returns `Ok(())` on success or a `CoreError` on timeout or I/O failure.
     pub async fn send_packet<T>(&mut self, packet: T, immediate: bool) -> Result<(), CoreError>
     where
         T: Encode,
@@ -52,6 +81,10 @@ where
         Ok(())
     }
 
+    /// Encode a value into a length-delimited frame payload using `bincode`.
+    ///
+    /// This does not write to the socket; it only serializes the value into a
+    /// `Vec<u8>` ready to be fed into the `LengthDelimitedCodec` sink.
     pub fn encode_frame<T>(packet: T) -> Result<Vec<u8>, CoreError>
     where
         T: Encode,
@@ -60,6 +93,12 @@ where
     }
 }
 
+/// Actor that owns the receiving half of a framed TCP connection.
+///
+/// Reads length‑delimited frames from the socket, decodes them using `bincode`,
+/// and replies to the requester over a oneshot channel. A per‑call optional
+/// `timeout` can be supplied via the control message; otherwise the actor uses a
+/// blocking `next()` on the stream.
 pub struct TcpConnectionReceiver<S> {
     pub receiver: mpsc::Receiver<TcpConnectionMessage>,
     pub framed_stream: SplitStream<Framed<BufStream<S>, LengthDelimitedCodec>>,
@@ -70,6 +109,16 @@ impl<S> TcpConnectionReceiver<S>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
+    /// Receive and decode the next frame, with an optional timeout.
+    ///
+    /// Parameters:
+    /// - `timeout`: when `Some(d)`, the read is bounded to `d`; when `None`,
+    ///   the call waits until a frame arrives or the stream ends.
+    ///
+    /// Returns:
+    /// - `Ok(Some(T))` on successful decode of the next frame.
+    /// - `Ok(None)` when the stream is closed (EOF) before a frame is read.
+    /// - `Err(CoreError)` on I/O failure, decode error, or timeout.
     pub async fn receive_next<T>(
         &mut self,
         timeout: Option<Duration>,
@@ -93,6 +142,11 @@ where
         }
     }
 
+    /// Decode a `bincode` value from a length-delimited `frame`.
+    ///
+    /// The `BytesMut` contains exactly one frame payload as produced by
+    /// `LengthDelimitedCodec`. Returns the decoded value or a `CoreError` on
+    /// decode failure.
     pub fn decode_frame<T>(frame: BytesMut) -> Result<T, CoreError>
     where
         T: Decode<()>,
@@ -103,6 +157,17 @@ where
     }
 }
 
+/// Control messages understood by the TCP connection actors.
+///
+/// Variants:
+/// - `ReceivePacket { respond_to, timeout }` — ask the receiver actor to read
+///   the next frame and decode it, replying on `respond_to`. When `timeout` is
+///   `Some`, the read is bounded; otherwise it waits until a frame arrives.
+/// - `SendPacket { respond_to, packet, immediate }` — ask the sender actor to
+///   encode and write `packet`. When `immediate` is `true`, the frame is flushed
+///   immediately; otherwise it is buffered (`feed`). A `Result` is returned on
+///   `respond_to` to confirm I/O completion.
+/// - `Close` — shut down both actors gracefully.
 pub enum TcpConnectionMessage {
     ReceivePacket {
         respond_to: oneshot::Sender<Result<Option<NetworkAppPacket>, CoreError>>,
@@ -117,6 +182,9 @@ pub enum TcpConnectionMessage {
 }
 
 impl TcpConnectionMessage {
+    /// Convenience constructor for `SendPacket` with `immediate = true`.
+    ///
+    /// Use this when the caller expects the frame to be flushed right away.
     pub fn send_packet(
         respond_to: oneshot::Sender<Result<(), CoreError>>,
         packet: NetworkAppPacket,
@@ -128,6 +196,10 @@ impl TcpConnectionMessage {
         }
     }
 
+    /// Convenience constructor for `SendPacket` with `immediate = false`.
+    ///
+    /// Use this to buffer the frame (using `feed`) and let the codec decide when
+    /// to flush, which may improve throughput for bursts of small frames.
     pub fn send_packet_buffered(
         respond_to: oneshot::Sender<Result<(), CoreError>>,
         packet: NetworkAppPacket,
@@ -150,6 +222,16 @@ impl TcpConnectionMessage {
     }
 }
 
+/// Factory holding three internal channels wiring the connection actors.
+///
+/// A `TcpConnection` is split into three asynchronous actors:
+/// - a message multiplexer that receives user commands and routes them to
+///   either the send or receive actor,
+/// - a sender actor that encodes and writes frames,
+/// - a receiver actor that reads and decodes frames.
+///
+/// This struct simply groups the three mpsc channel pairs used to connect these
+/// tasks together.
 pub struct TcpConnectionActorChannels {
     pub command_channel: (
         mpsc::Sender<TcpConnectionMessage>,
@@ -166,6 +248,11 @@ pub struct TcpConnectionActorChannels {
 }
 
 impl TcpConnectionActorChannels {
+    /// Create three mpsc channel pairs with the given capacity.
+    ///
+    /// The capacity applies independently to the command, send, and receive
+    /// channels. A larger capacity may improve burst handling at the cost of
+    /// memory; typical values reuse `BUFFER_CAPACITY`.
     pub fn new(capacity: usize) -> Self {
         let command_channel = mpsc::channel(capacity);
         let send_channel = mpsc::channel(capacity);
@@ -179,6 +266,12 @@ impl TcpConnectionActorChannels {
     }
 }
 
+/// Receive-loop actor entry point.
+///
+/// Consumes `TcpConnectionMessage::ReceivePacket` requests from its control
+/// channel, performs the read/timeout, decodes the frame, and responds over the
+/// provided oneshot. Terminates when a `Close` message is received or the
+/// control channel is closed.
 async fn run_tcp_connection_receive_loop<S>(
     mut actor: TcpConnectionReceiver<S>,
 ) -> Result<(), CoreError>
@@ -208,6 +301,11 @@ where
     Ok(())
 }
 
+/// Send-loop actor entry point.
+///
+/// Consumes `TcpConnectionMessage::SendPacket` requests, encodes frames and
+/// writes them to the socket, replying over the provided oneshot with the I/O
+/// result. On `Close`, flushes and closes the sink then exits.
 async fn run_tcp_connection_send_loop<S>(mut actor: TcpConnectionSender<S>) -> Result<(), CoreError>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -235,6 +333,11 @@ where
     Ok(())
 }
 
+/// Message router that fans user commands out to send/receive actors.
+///
+/// Receives `TcpConnectionMessage`s from the handle's public `sender` channel
+/// and forwards them to the appropriate internal actor channel. On `Close`, it
+/// propagates the shutdown signal to both actors and exits.
 async fn run_message_multiplexer(
     mut receiver: mpsc::Receiver<TcpConnectionMessage>,
     send_channel: mpsc::Sender<TcpConnectionMessage>,
@@ -255,12 +358,22 @@ async fn run_message_multiplexer(
 }
 
 #[derive(Clone)]
+/// Public handle to a framed TCP connection backed by internal actors.
+///
+/// Cloning the handle clones the mpsc sender and the connection metadata, so it
+/// can be shared across tasks. The handle exposes helpers to wrap/connect a
+/// stream (plain or TLS), send typed messages and await responses, and close the
+/// connection gracefully.
 pub struct TcpConnectionHandle {
     pub sender: mpsc::Sender<TcpConnectionMessage>,
     pub connection_info: ConnectionInfo,
 }
 
 impl TcpConnectionHandle {
+    /// Spawn the three internal actors (multiplexer, send loop, receive loop).
+    ///
+    /// Returns the `ConnectionInfo` copied from the internal connection so it
+    /// can be placed onto the public handle.
     fn spawn_actors<S>(
         receiver: mpsc::Receiver<TcpConnectionMessage>,
         send_channel: mpsc::Sender<TcpConnectionMessage>,
@@ -291,6 +404,10 @@ impl TcpConnectionHandle {
         }
     }
 
+    /// Wrap an accepted plain TCP `stream` into a framed connection and spawn actors.
+    ///
+    /// Uses `LengthDelimitedCodec` over a buffered stream and starts the internal
+    /// multiplexer/send/receive tasks. All I/O operations use `global_timeout`.
     pub fn stream_to_framed(
         stream: TcpStream,
         global_timeout: Duration,
@@ -317,6 +434,11 @@ impl TcpConnectionHandle {
         })
     }
 
+    /// Resolve and connect to `conn_socket_addr`, then wrap into a framed connection.
+    ///
+    /// The address may resolve to multiple endpoints; the connector iterates them
+    /// until one succeeds, applying `global_timeout` to each attempt. Spawns the
+    /// internal actors on success.
     pub async fn connect(
         conn_socket_addr: &str,
         global_timeout: Duration,
@@ -344,6 +466,10 @@ impl TcpConnectionHandle {
         })
     }
 
+    /// Wrap an accepted TCP `stream` into a TLS client session and frame it.
+    ///
+    /// Performs a TLS client handshake for `domain` using the provided
+    /// `client_config` within `global_timeout`, then starts the internal actors.
     pub async fn stream_to_framed_tls_client(
         stream: TcpStream,
         domain: &str,
@@ -375,6 +501,10 @@ impl TcpConnectionHandle {
         })
     }
 
+    /// Wrap an accepted TCP `stream` into a TLS server session and frame it.
+    ///
+    /// Performs a TLS server handshake using `server_config` within
+    /// `global_timeout`, then starts the internal actors.
     pub async fn stream_to_framed_tls_server(
         stream: TcpStream,
         server_config: Arc<ServerConfig>,
@@ -403,6 +533,11 @@ impl TcpConnectionHandle {
         })
     }
 
+    /// Resolve and connect to `conn_socket_addr` over TLS, then frame it.
+    ///
+    /// Performs TCP connect with retries over all resolved addresses, then a TLS
+    /// client handshake for `domain` using `client_config` within
+    /// `global_timeout`. Spawns internal actors on success.
     pub async fn connect_tls(
         conn_socket_addr: &str,
         domain: &str,
@@ -450,11 +585,20 @@ impl TcpConnectionHandle {
 }
 
 #[derive(Clone)]
+/// Socket addresses associated with a live TCP connection.
+///
+/// Useful for logging and diagnostics; carried on the `TcpConnectionHandle` so
+/// callers can inspect local/peer endpoints.
 pub struct ConnectionInfo {
     pub local_addr: SocketAddr,
     pub peer_addr: SocketAddr,
 }
 
+/// Internal connection state shared by the three actors.
+///
+/// This type is not exposed publicly; it holds the split framed stream
+/// (sender/receiver halves) and basic connection metadata used to initialize the
+/// public `TcpConnectionHandle`.
 struct TcpConnection<S>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -634,12 +778,20 @@ where
     }
 }
 
+/// Minimal UDP sender with a global timeout applied to each send.
+///
+/// Used by the server to replay captured UDP payloads to target addresses.
 pub struct UdpConnection {
     pub socket: UdpSocket,
     pub global_timeout: Duration,
 }
 
 impl UdpConnection {
+    /// Create a new UDP connection bound to an ephemeral local port.
+    ///
+    /// The socket is created in non-connected mode and can send to arbitrary
+    /// remote endpoints via `send_packet`. All sends are bounded by
+    /// `global_timeout`.
     pub async fn new(global_timeout: Duration) -> Result<Self, CoreError> {
         let socket = UdpSocket::bind("[::]:0").await?;
         Ok(Self {

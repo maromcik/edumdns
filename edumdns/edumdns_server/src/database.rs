@@ -1,3 +1,9 @@
+//! Asynchronous database tasks for persisting devices and packets.
+//! 
+//! The `DatabaseManager` consumes `DbCommand`s from a channel and performs
+//! non-blocking writes to the PostgreSQL database using `diesel_async`.
+//! Packet inserts are pipelined and rate-limited with a small in-flight queue.
+
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::ProbePacket;

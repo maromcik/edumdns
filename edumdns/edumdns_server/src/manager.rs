@@ -1,3 +1,8 @@
+//! Central orchestrator that routes commands/data between probes, DB, and transmitters.
+//! 
+//! `ServerManager` owns channel receivers, tracks device state, manages per-device
+//! transmitters, handles WebSocket responses, and coordinates proxy/eBPF updates.
+
 use crate::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, LocalDataPacket, LocalStatusPacket,
     PacketTransmitRequestPacket,
@@ -32,29 +37,68 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
 
 #[derive(Clone)]
+/// Holds proxy configuration and a handle to the eBPF updater.
+///
+/// When DNS proxying is enabled, the server rewrites A/AAAA answers to point to
+/// a proxy IP pair and maintains kernel eBPF maps with original<->proxy IP
+/// mappings. This struct groups the configured proxy IPs and a shared, mutex-
+/// protected `EbpfUpdater` used to update those maps.
 pub(crate) struct Proxy {
+    /// IPv4/IPv6 pair to which DNS answers will be rewritten.
     pub(crate) proxy_ip: ProxyIp,
+    /// Shared eBPF maps updater used to add/remove rewrite rules.
     pub(crate) ebpf_updater: Arc<Mutex<EbpfUpdater>>,
 }
 
 #[derive(Clone)]
+/// Pair of proxy IPs used for DNS A/AAAA rewriting.
+///
+/// These addresses are substituted into outgoing DNS responses when proxying is
+/// enabled. Both IPv4 and IPv6 must be provided.
 pub(crate) struct ProxyIp {
+    /// IPv4 address that replaces A records in DNS payloads.
     pub(crate) ipv4: Ipv4Addr,
+    /// IPv6 address that replaces AAAA records in DNS payloads.
     pub(crate) ipv6: Ipv6Addr,
 }
 
+/// An in-flight transmit job along with its control channel.
+///
+/// Each job corresponds to a `PacketTransmitRequestPacket` and holds:
+/// - the original request (for bookkeeping and eBPF cleanup)
+/// - a join handle wrapper for the running transmitter task
+/// - a channel used to push live updates (e.g., additional payloads or extend-duration commands)
 struct PacketTransmitJob {
+    /// The original request describing device and target parameters.
     packet: PacketTransmitRequestPacket,
+    /// Handle to the spawned transmitter task.
     task: PacketTransmitterTask,
+    /// Channel used to send live updates/commands to the transmitter.
     channel: Sender<LocalAppPacket>,
 }
 
 #[derive(Default)]
+/// Cached data for a single device (MAC, IP) observed by a probe.
+///
+/// - `packets` keeps a deduplicated in-memory set of recently seen `ProbePacket`s
+///   so we can quickly satisfy transmit requests without re-querying the DB for
+///   duplicates.
+/// - `live_updates_transmitter` is an optional channel tied to an active
+///   transmitter job; when present, newly arriving packets are forwarded to the
+///   transmitter as live updates.
 struct DeviceItem {
+    /// Recent, deduplicated packets captured for this device.
     packets: HashSet<ProbePacket>,
+    /// If set, sender used to push live updates to the transmitter.
     live_updates_transmitter: Option<Sender<LocalAppPacket>>,
 }
 
+/// Central orchestrator for routing, caching, and transmit task management.
+///
+/// `ServerManager` owns inbound channels for control (`command_receiver`) and
+/// data (`data_receiver`), keeps an in-memory cache of recently seen packets per
+/// probe/device, spawns UDP transmitters on demand, forwards WebSocket
+/// responses, and optionally coordinates proxy/eBPF IP map updates.
 pub(crate) struct ServerManager {
     packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), DeviceItem>>,
     command_transmitter: Sender<AppPacket>,
@@ -72,6 +116,28 @@ pub(crate) struct ServerManager {
 }
 
 impl ServerManager {
+    /// Create a new `ServerManager`.
+    ///
+    /// Reads optional proxy configuration from environment (`EDUMDNS_SERVER_PROXY_IPV4`,
+    /// `EDUMDNS_SERVER_PROXY_IPV6`) and, when both are set, initializes an `EbpfUpdater`
+    /// for kernel map maintenance. Also reads
+    /// `EDUMDNS_SERVER_MAX_TRANSMIT_SUBNET_SIZE` to limit transmit job fan-out.
+    ///
+    /// Parameters:
+    /// - `command_transmitter`: channel used to post local commands back into the
+    ///   manager (e.g., to stop transmit jobs after completion).
+    /// - `command_receiver`: receives control packets from other subsystems (web,
+    ///   timers, etc.).
+    /// - `data_receiver`: receives network packets coming from probes.
+    /// - `db_transmitter`: channel to the async DB manager for persisting devices/packets.
+    /// - `db_pool`: database pool used to construct repositories for on-demand queries.
+    /// - `handles`: map of live probe TCP handles for direct messaging.
+    /// - `global_timeout`: I/O timeout applied to network operations.
+    ///
+    /// Returns:
+    /// - `Ok(ServerManager)` on success
+    /// - `Err(ServerError)` if proxy/eBPF initialization fails critically (non-fatal
+    ///   errors are logged and proxying is disabled)
     pub fn new(
         command_transmitter: Sender<AppPacket>,
         command_receiver: Receiver<AppPacket>,
@@ -124,6 +190,17 @@ impl ServerManager {
         })
     }
 
+    /// Main event loop that receives `AppPacket`s and routes them.
+    ///
+    /// This continuously polls both the command and data channels, preferring any
+    /// immediately available packets via `try_recv` before awaiting on either using
+    /// `tokio::select!`. Packets are forwarded to `route_packets` for handling.
+    ///
+    /// Inputs:
+    /// - `&mut self`: mutable access to update caches and internal state.
+    ///
+    /// Outputs:
+    /// - Never returns under normal operation; the loop runs indefinitely.
     pub(crate) async fn handle_packets(&mut self) {
         loop {
             let packet = self.command_receiver.try_recv();
@@ -151,6 +228,15 @@ impl ServerManager {
         }
     }
 
+    /// Dispatch a single `AppPacket` to the appropriate handler.
+    ///
+    /// Parameters:
+    /// - `packet`: either a `Network` packet coming from a probe or a `Local`
+    ///   packet generated by server subsystems (web UI, timers, transmitter).
+    ///
+    /// Side effects:
+    /// - Updates in-memory caches and may spawn/stop tasks depending on the
+    ///   contained command.
     async fn route_packets(&mut self, packet: AppPacket) {
         match packet {
             AppPacket::Network(network_packet) => self.handle_network_packet(network_packet).await,
@@ -158,6 +244,19 @@ impl ServerManager {
         }
     }
 
+    /// Handle a locally-generated packet from internal subsystems.
+    ///
+    /// This covers control and status messages originating from the web layer,
+    /// timers, or transmitter tasks. It updates internal state (e.g., WS
+    /// registration map), spawns/stops transmitters, invalidates caches, and
+    /// forwards updates to web sockets.
+    ///
+    /// Parameters:
+    /// - `packet`: a `LocalAppPacket` variant describing the operation.
+    ///
+    /// Side effects:
+    /// - Mutates `probe_ws_handles`, `packets`, and `transmitter_tasks`.
+    /// - Sends messages over channels to running tasks.
     async fn handle_local_packet(&mut self, packet: LocalAppPacket) {
         match packet {
             LocalAppPacket::Command(command) => match command {
@@ -265,6 +364,21 @@ impl ServerManager {
         }
     }
 
+    /// Handle packets coming from probes over the network.
+    ///
+    /// Variants:
+    /// - `NetworkAppPacket::Status::ProbeResponse` — forwards a response to
+    ///   registered websocket sessions.
+    /// - `NetworkAppPacket::Data` — updates the in-memory cache, forwards live
+    ///   updates to an active transmitter (if any), and persists device/packet
+    ///   records via the DB manager.
+    ///
+    /// Parameters:
+    /// - `packet`: network packet received from a probe connection.
+    ///
+    /// Side effects:
+    /// - Mutates `packets` cache; may send to `db_transmitter`; may send live
+    ///   update data to transmitter channels.
     async fn handle_network_packet(&mut self, packet: NetworkAppPacket) {
         match packet {
             NetworkAppPacket::Command(_) => {}
@@ -340,12 +454,35 @@ impl ServerManager {
         }
     }
 
+    /// Forward a database command to the async DB manager.
+    ///
+    /// Parameters:
+    /// - `db_command`: a `DbCommand` describing what to persist.
+    ///
+    /// Errors:
+    /// - Logs an error if the mpsc channel is closed; does not propagate.
     async fn send_db_packet(&self, db_command: DbCommand) {
         if let Err(e) = self.db_transmitter.send(db_command).await {
             error!("Could not send commands to the DB handler: {e}");
         }
     }
 
+    /// Ask a probe to reconnect and close its current TCP session.
+    ///
+    /// Sends a `NetworkCommandPacket::ReconnectThisProbe(session_id)` to the
+    /// probe's TCP connection (if present) and then closes the connection. This
+    /// is used to prompt the probe to reconnect, typically after configuration
+    /// changes.
+    ///
+    /// Parameters:
+    /// - `id`: probe identifier.
+    /// - `session_id`: optional web session that initiated the request (used for
+    ///   correlation on the probe side).
+    ///
+    /// Returns:
+    /// - `Ok(())` if the command was delivered and the connection closed.
+    /// - `Err(ServerError::ProbeNotFound)` if the probe is not connected.
+    /// - Other `ServerError` variants if sending/closing fails.
     async fn send_reconnect(&self, id: Uuid, session_id: Option<Uuid>) -> Result<(), ServerError> {
         if let Some(handle) = self.probe_handles.write().await.remove(&id) {
             handle
@@ -367,6 +504,20 @@ impl ServerManager {
         Ok(())
     }
 
+    /// Send a `ProbeResponse` to registered websocket clients for a probe.
+    ///
+    /// If `session_id` is `None`, the response is broadcast to all sessions
+    /// subscribed for the given `probe_id`. Otherwise, only the targeted session
+    /// receives the response.
+    ///
+    /// Parameters:
+    /// - `id`: identifier of the probe whose sessions should receive the message.
+    /// - `session_id`: optional specific session to target; `None` means broadcast.
+    /// - `response`: payload sent to the websocket(s).
+    ///
+    /// Side effects:
+    /// - Uses mpsc channels stored in `probe_ws_handles` to deliver messages; logs
+    ///   warnings on delivery failures.
     async fn send_response_to_ws(
         &self,
         id: Uuid,
@@ -399,6 +550,24 @@ impl ServerManager {
         }
     }
 
+    /// Start (or enqueue) a UDP transmitter for a device based on a request.
+    ///
+    /// Steps:
+    /// - Validates proxy/eBPF availability and subnet size constraints.
+    /// - Loads matching packets from the DB; processes them (rewrite/filter) based
+    ///   on proxy configuration; fails if none remain.
+    /// - Optionally updates eBPF maps to add reverse IP mappings for proxying.
+    /// - Spawns a `PacketTransmitter` task and registers it in `transmitter_tasks`.
+    /// - Wires a live-updates channel so subsequent captured packets can be pushed
+    ///   into the running transmitter.
+    ///
+    /// Parameters:
+    /// - `request_packet`: device + transmit request metadata.
+    /// - `respond_to`: oneshot where the result of the spawn operation is sent.
+    ///
+    /// Side effects:
+    /// - May mutate eBPF maps; spawns a tokio task; updates `transmitter_tasks` and
+    ///   sets a live update sender in the device cache.
     async fn transmit_device_packets(
         &mut self,
         request_packet: PacketTransmitRequestPacket,
@@ -545,6 +714,18 @@ impl ServerManager {
         });
     }
 
+    /// Stop a running transmitter task and clean up associated resources.
+    ///
+    /// Performs the following:
+    /// - Deletes the persisted transmit request from the DB.
+    /// - Aborts the corresponding transmitter task, if found.
+    /// - When proxying was used, removes the IP pair from the eBPF maps.
+    ///
+    /// Parameters:
+    /// - `request_id`: unique identifier of the transmit request to stop.
+    ///
+    /// Side effects:
+    /// - Mutates the `transmitter_tasks` registry and eBPF maps; logs outcomes.
     async fn stop_device_packets(&mut self, request_id: Id) {
         let device_repo = self.pg_device_repository.clone();
         let proxy = self.proxy.clone();

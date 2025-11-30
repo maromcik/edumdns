@@ -1,3 +1,16 @@
+//! Application-level packets shared between server and probe.
+//!
+//! This module defines the enums and structures exchanged over the control/data
+//! TCP channel between the server and probes:
+//! - `NetworkAppPacket` wraps command, status, and data messages
+//! - `NetworkCommandPacket` carries control commands (e.g., reconnect)
+//! - `NetworkStatusPacket` covers handshake, ping, and config exchange
+//! - `ProbeConfigElement` and `ProbeConfigPacket` describe capture settings
+//! - `ProbePacket` encapsulates a captured network packet plus metadata and a
+//!   content hash used for deduplication/logging
+//!
+//! It also provides display helpers for human‑readable logging and conversions
+//! from low-level `NetworkPacket` to high-level `ProbePacket` with metadata.
 use crate::bincode_types::Uuid;
 use crate::bincode_types::{IpNetwork, MacAddr};
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};

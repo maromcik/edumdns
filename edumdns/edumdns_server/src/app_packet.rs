@@ -1,3 +1,10 @@
+//! Application-level packets used inside the edumdns_server.
+//! 
+//! This module defines the `AppPacket` enum that wraps packets exchanged between
+//! server components and network probes, as well as "local" packets used for
+//! intra-server commands, status queries, and data streaming. The goal is to have
+//! a single strongly-typed channel payload that the server can route.
+
 use crate::error::ServerError;
 use edumdns_core::app_packet::{EntityType, Id, NetworkAppPacket, ProbeResponse};
 use edumdns_core::bincode_types::{MacAddr, Uuid};

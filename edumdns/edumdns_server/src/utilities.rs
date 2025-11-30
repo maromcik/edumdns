@@ -1,3 +1,9 @@
+//! Helper utilities: payload rewriting, filtering and bootstrapping transmit tasks.
+//! 
+//! - DNS A/AAAA record rewriting utilities for proxy scenarios
+//! - Filtering only valid DNS application packets when no proxy is used
+//! - Loading persisted transmit requests from DB into running transmitter tasks
+
 use crate::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };

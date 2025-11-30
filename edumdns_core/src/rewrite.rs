@@ -1,3 +1,14 @@
+//! Declarative rewrite specifications and helpers for Ethernet/IP/Transport.
+//!
+//! This module defines small data structures that describe how to rewrite
+//! captured packets at different layers and parsing helpers from strings/envs:
+//! - `DataLinkRewrite` (MAC and VLAN)
+//! - `IpRewrite` (IPv4 and IPv6 variants)
+//! - `PortRewrite` (source/destination ports)
+//! - `PacketRewrite` bundles all three and can be applied via `network_packet`.
+//!
+//! It also includes routines to apply these rewrites to mutable pnet packets and
+//! recompute checksums/lengths consistently.
 use log::debug;
 use pnet::packet::ethernet::MutableEthernetPacket;
 use pnet::packet::ipv4::MutableIpv4Packet;

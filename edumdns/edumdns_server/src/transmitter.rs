@@ -1,3 +1,9 @@
+//! UDP packet transmission task that replays captured payloads to targets.
+//! 
+//! The transmitter supports optional live updates (additional payloads) and
+//! optional DNS A/AAAA rewriting when a proxy IP is configured. It stops either
+//! when the request duration elapses or when a stop command is sent.
+
 use crate::DEFAULT_INTERVAL_MULTIPLICATOR;
 use crate::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, LocalDataPacket, PacketTransmitRequestPacket,
@@ -13,11 +19,33 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 
+/// Join-handle wrapper for a spawned UDP packet transmitter task.
+///
+/// This type encapsulates the background task responsible for replaying
+/// captured UDP payloads to target hosts. When the task finishes (either
+/// because the duration elapsed or a stop command was received), it sends a
+/// `LocalCommandPacket::StopTransmitDevicePackets` back to the `ServerManager`
+/// to finalize cleanup and book-keeping.
 pub struct PacketTransmitterTask {
+    /// Join handle of the running transmitter task.
     pub transmitter_task: JoinHandle<()>,
 }
 
 impl PacketTransmitterTask {
+    /// Spawn a new transmitter task.
+    ///
+    /// Parameters:
+    /// - `transmitter`: a fully constructed `PacketTransmitter` state machine
+    ///   that holds payloads, target info, and live-update channel.
+    /// - `command_transmitter`: channel used to notify the manager upon natural
+    ///   completion that the transmit request should be stopped/cleaned up.
+    /// - `request_id`: identifier of the corresponding `PacketTransmitRequest`.
+    ///
+    /// Returns:
+    /// - `PacketTransmitterTask` containing a join handle to the spawned task.
+    ///
+    /// Side effects:
+    /// - Spawns a Tokio task; upon completion, posts a local stop command.
     pub fn new(
         mut transmitter: PacketTransmitter,
         command_transmitter: Sender<AppPacket>,
@@ -40,15 +68,42 @@ impl PacketTransmitterTask {
     }
 }
 
+/// UDP transmitter that replays captured payloads to one or more targets.
+///
+/// A `PacketTransmitter` holds the prepared payloads, targeting information,
+/// an internal UDP connection with timeouts, and a channel to receive live
+/// updates while running. Live updates may extend the running time or append
+/// additional payloads (optionally rewritten for proxy deployments).
 pub struct PacketTransmitter {
+    /// Payloads to be sent, in the order they should be replayed.
     pub payloads: Vec<Vec<u8>>,
+    /// Optional proxy IP pair; when present, DNS A/AAAA answers in live-updated
+    /// payloads are rewritten to these addresses.
     pub proxy_ip: Option<ProxyIp>,
+    /// Original transmit request describing device, target IP/port, interval and duration.
     pub transmit_request: PacketTransmitRequestPacket,
+    /// UDP connection wrapper that applies the configured global timeout.
     pub udp_connection: UdpConnection,
+    /// Receiver for live updates and control commands (e.g., extend duration, add payload).
     pub live_updates_receiver: Receiver<LocalAppPacket>,
 }
 
 impl PacketTransmitter {
+    /// Construct a new `PacketTransmitter`.
+    ///
+    /// Parameters:
+    /// - `payloads`: ordered list of UDP payloads to replay.
+    /// - `proxy_ip`: when `Some`, live-updated DNS payloads will have A/AAAA
+    ///   records rewritten to these addresses.
+    /// - `target`: bundle containing device metadata and the transmit request
+    ///   (target IPs/port, interval, duration, permanence).
+    /// - `global_timeout`: timeout applied to UDP send operations.
+    /// - `live_updater`: channel over which live updates and control commands
+    ///   are received while transmission is in progress.
+    ///
+    /// Returns:
+    /// - `Ok(Self)` when the UDP connection is created successfully.
+    /// - `Err(ServerError)` if the UDP connection initialization fails.
     pub async fn new(
         payloads: Vec<Vec<u8>>,
         proxy_ip: Option<ProxyIp>,
@@ -65,6 +120,22 @@ impl PacketTransmitter {
         })
     }
 
+    /// Run the transmission loop until duration elapses or a stop condition occurs.
+    ///
+    /// Behavior:
+    /// - Validates target IP list; exits early if empty.
+    /// - Computes per-payload interval and overall request duration from
+    ///   `transmit_request`.
+    /// - Drains the live-update channel opportunistically between bursts to:
+    ///   - extend the duration (`ExtendPacketTransmitRequest`), or
+    ///   - append additional payloads (`LocalDataPacket::TransmitterLiveUpdateData`).
+    /// - Sends each payload to every target IP, waiting `interval` between
+    ///   payloads; after a full round, sleeps `interval * DEFAULT_INTERVAL_MULTIPLICATOR`.
+    /// - If `permanent` is false, stops once `duration` has elapsed since the
+    ///   last extension.
+    ///
+    /// Side effects:
+    /// - Performs UDP I/O; logs warnings/errors for invalid inputs and I/O issues.
     pub async fn transmit(&mut self) {
         let ips = self
             .transmit_request
@@ -123,6 +194,15 @@ impl PacketTransmitter {
         }
     }
 
+    /// Send a single UDP payload to the provided socket address.
+    ///
+    /// Parameters:
+    /// - `socket_addr`: target in `IP:PORT` form (IPv4 or IPv6 with port).
+    /// - `payload`: raw UDP payload bytes to transmit.
+    ///
+    /// Side effects:
+    /// - Performs a UDP send via `udp_connection`; logs errors but does not
+    ///   propagate them to the caller (non-fatal within the transmit loop).
     async fn send_packet(&self, socket_addr: &str, payload: &[u8]) {
         match self.udp_connection.send_packet(socket_addr, payload).await {
             Ok(_) => {}
@@ -137,6 +217,21 @@ impl PacketTransmitter {
         );
     }
 
+    /// Handle a live-update data packet coming from the manager.
+    ///
+    /// Currently supported updates:
+    /// - `LocalDataPacket::TransmitterLiveUpdateData(Vec<u8>)` — appends an
+    ///   additional payload to the replay list. If a proxy IP is configured,
+    ///   attempts to rewrite DNS A/AAAA records to the proxy addresses before
+    ///   storing. If rewriting fails to parse the payload as DNS, the payload is
+    ///   ignored when proxying; without proxying, the raw payload is always
+    ///   appended.
+    ///
+    /// Parameters:
+    /// - `packet`: the live update packet.
+    ///
+    /// Side effects:
+    /// - Mutates `self.payloads` by pushing new payloads; logs debug messages.
     async fn handle_data_packet(&mut self, packet: LocalDataPacket) {
         match packet {
             LocalDataPacket::TransmitterLiveUpdateData(payload) => match &self.proxy_ip {

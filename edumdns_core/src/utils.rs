@@ -1,3 +1,8 @@
+//! Small utilities and macros used across the core crate.
+//!
+//! - `retry!` — async retry macro with configurable attempts and interval (logs failures)
+//! - `Cancellable` — simple trait for cooperative cancellation in state machines
+//! - `parse_and_lookup_host` — reads host/port from env and resolves to socket addresses
 use crate::error::CoreError;
 use std::env;
 use std::net::SocketAddr;

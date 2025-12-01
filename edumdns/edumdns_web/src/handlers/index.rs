@@ -1,3 +1,4 @@
+use crate::authorized;
 use crate::error::WebError;
 use crate::forms::user::{UserLoginForm, UserLoginReturnURL};
 use crate::handlers::utilities::{
@@ -5,7 +6,6 @@ use crate::handlers::utilities::{
 };
 use crate::templates::index::{IndexTemplate, LoginTemplate};
 use crate::utils::AppState;
-use crate::{SESSION_EXPIRY, authorized};
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
@@ -76,7 +76,7 @@ pub async fn login_base(
             let c = actix_web::cookie::Cookie::build("auth", "local")
                 .path("/")
                 .secure(secure_cookie)
-                .expires(OffsetDateTime::now_utc() + Duration::days(SESSION_EXPIRY))
+                .expires(OffsetDateTime::now_utc() + Duration::seconds(state.session_expiry as i64))
                 .finish();
             resp.cookie(c);
             Ok(resp
@@ -120,7 +120,7 @@ pub async fn login_oidc(
     let mut resp = HttpResponse::SeeOther();
     let c = actix_web::cookie::Cookie::build("auth", "oidc")
         .secure(secure_cookie)
-        .expires(OffsetDateTime::now_utc() + Duration::days(SESSION_EXPIRY))
+        .expires(OffsetDateTime::now_utc() + Duration::seconds(state.session_expiry as i64))
         .path("/")
         .finish();
     resp.cookie(c);

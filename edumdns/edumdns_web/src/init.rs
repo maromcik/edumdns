@@ -31,7 +31,7 @@ use crate::utils::{
     get_identity_middleware, get_session_middleware, json_config, parse_host, path_config,
     query_config,
 };
-use crate::{DEFAULT_HOSTNAME, FORM_LIMIT, PAYLOAD_LIMIT, middleware};
+use crate::{DEFAULT_HOSTNAME, FORM_LIMIT, PAYLOAD_LIMIT, SECS_IN_MONTH, SECS_IN_WEEK, middleware};
 use actix_files::Files;
 use actix_multipart::form::MultipartFormConfig;
 use actix_web::cookie::Key;
@@ -59,6 +59,8 @@ pub struct WebSpawner {
     key: Key,
     site_url: String,
     use_secure_cookie: bool,
+    session_expiry: u64,
+    last_visit_deadline: u64,
 }
 
 impl WebSpawner {
@@ -79,6 +81,16 @@ impl WebSpawner {
             .and_then(|v| v.parse::<bool>().ok())
             .unwrap_or(false);
 
+        let session_expiry = env::var("EDUMDNS_WEB_SESSION_EXPIRY")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(SECS_IN_MONTH);
+
+        let last_visit_deadline = env::var("EDUMDNS_WEB_LAST_VISIT_DEADLINE")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(SECS_IN_WEEK);
+
         let oidc_users_admin = env::var("EDUMDNS_OIDC_NEW_USERS_ADMIN")
             .ok()
             .and_then(|v| v.parse::<bool>().ok())
@@ -96,6 +108,7 @@ impl WebSpawner {
             device_acl_ap_database,
             use_secure_cookie,
             oidc_users_admin,
+            session_expiry,
         );
         Ok(Self {
             pool,
@@ -105,6 +118,8 @@ impl WebSpawner {
             key,
             site_url,
             use_secure_cookie,
+            session_expiry,
+            last_visit_deadline,
         })
     }
 
@@ -218,6 +233,8 @@ impl WebSpawner {
         let site_url_local = self.site_url.clone();
         let pool_local = self.pool.clone();
         let user_secure_cookie_local = self.use_secure_cookie;
+        let session_expiry_local = self.session_expiry;
+        let last_visit_deadline_local = self.last_visit_deadline;
         let host_local = self.hostname.clone();
         match create_oidc().await {
             Err(e) => {
@@ -235,10 +252,14 @@ impl WebSpawner {
                         .app_data(query_config()) // <-- attach custom handler// <- important
                         .app_data(path_config()) // <-- attach custom handler// <- important
                         .wrap(NormalizePath::new(TrailingSlash::Trim))
-                        .wrap(get_identity_middleware())
+                        .wrap(get_identity_middleware(
+                            session_expiry_local,
+                            last_visit_deadline_local,
+                        ))
                         .wrap(get_session_middleware(
                             key_local.clone(),
                             user_secure_cookie_local,
+                            session_expiry_local,
                         ))
                         .wrap(get_cors_middleware(site_url_local.as_str()))
                         .wrap(middleware::RedirectToLogin)
@@ -268,10 +289,14 @@ impl WebSpawner {
                         .app_data(query_config()) // <-- attach custom handler// <- important
                         .app_data(path_config())
                         .wrap(NormalizePath::new(TrailingSlash::Trim))
-                        .wrap(get_identity_middleware())
+                        .wrap(get_identity_middleware(
+                            session_expiry_local,
+                            last_visit_deadline_local,
+                        ))
                         .wrap(get_session_middleware(
                             key_local.clone(),
                             user_secure_cookie_local,
+                            session_expiry_local,
                         ))
                         .wrap(get_cors_middleware(site_url_local.as_str()))
                         .wrap(oidc.get_middleware())

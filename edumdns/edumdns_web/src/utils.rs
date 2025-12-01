@@ -1,5 +1,5 @@
 use crate::error::WebError;
-use crate::{DEFAULT_HOSTNAME, DEFAULT_PORT, SECS_IN_MONTH, SECS_IN_WEEK, SESSION_EXPIRY};
+use crate::{DEFAULT_HOSTNAME, DEFAULT_PORT};
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_session::SessionMiddleware;
@@ -33,6 +33,7 @@ pub struct AppState {
     pub device_acl_ap_database: DeviceAclApDatabase,
     pub secure_cookie: bool,
     pub oidc_users_admin: bool,
+    pub session_expiry: u64,
 }
 
 impl AppState {
@@ -42,6 +43,7 @@ impl AppState {
         device_acl_ap_database: DeviceAclApDatabase,
         secure_cookie: bool,
         oidc_users_admin: bool,
+        session_expiry: u64,
     ) -> Self {
         AppState {
             jinja,
@@ -49,6 +51,7 @@ impl AppState {
             device_acl_ap_database,
             secure_cookie,
             oidc_users_admin,
+            session_expiry,
         }
     }
 }
@@ -147,18 +150,20 @@ pub fn get_cors_middleware(host: &str) -> Cors {
 pub fn get_session_middleware(
     key: actix_web::cookie::Key,
     use_secure_cookie: bool,
+    session_expiry: u64,
 ) -> SessionMiddleware<CookieSessionStore> {
     SessionMiddleware::builder(CookieSessionStore::default(), key.clone())
         .cookie_secure(use_secure_cookie)
         .session_lifecycle(
-            PersistentSession::default().session_ttl(time::Duration::days(SESSION_EXPIRY)),
+            PersistentSession::default()
+                .session_ttl(time::Duration::seconds(session_expiry as i64)),
         )
         .build()
 }
 
-pub fn get_identity_middleware() -> IdentityMiddleware {
-    let login_deadline = core::time::Duration::from_secs(SECS_IN_MONTH as u64);
-    let visit_deadline = core::time::Duration::from_secs(SECS_IN_WEEK);
+pub fn get_identity_middleware(session_expiry: u64, last_visit: u64) -> IdentityMiddleware {
+    let login_deadline = core::time::Duration::from_secs(session_expiry);
+    let visit_deadline = core::time::Duration::from_secs(last_visit);
     IdentityMiddleware::builder()
         .logout_behavior(actix_identity::config::LogoutBehavior::PurgeSession)
         .id_key("actix_identity.user_id")

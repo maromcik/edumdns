@@ -1,6 +1,6 @@
 @startuml
 ' Style Settings
-'skinparam dpi 150
+skinparam dpi 300
 skinparam componentStyle rectangle
 skinparam shadowing false
 skinparam linetype ortho

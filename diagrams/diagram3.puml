@@ -1,0 +1,88 @@
+@startuml
+'skinparam dpi 150
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+
+' --- LEGEND ---------------------------------------------------
+legend left
+  <b>Legend</b>
+
+  <color:#918df7><b>Purple:</b></color> Control / Commands
+  <color:#1F77B4><b>Blue:</b></color> Captured mDNS (Device → Probe → Server)
+  <color:#2CA02C><b>Green:</b></color> mDNS Rediscovery (Server → Clients)
+  <color:#C62828><b>Red:</b></color> Direct Data Traffic (Client ↔ Device)
+  <color:#8E44AD><b>Violet:</b></color> Proxied Data Traffic (Client ↔ Proxy ↔ Device)
+  <color:#cf97b2><b>Pink:</b></color> DB Access (Server → DB Layer → Postgres)
+endlegend
+
+' --- GROUPS ---
+
+rectangle "External Clients" as ClientsGroup {
+  node "Wireless Client" as ClientWireless
+  node "Wired Client" as ClientWired
+}
+
+rectangle "Central Host" as CentralHost #DDEBF7 {
+  component "eBPF Proxy\n(edumdns_proxy)" as Proxy #FFF2CC
+
+  database "DB Layer\n(edumdns_db)" as DBLayer #E6F2E6
+
+  rectangle "Server Stack" as ServerGroup #fcca03 {
+    component "Server\n(edumdns_server)" as ServerComponent
+    component "Web\n(edumdns_web)" as WebComponent
+  }
+}
+
+database "Postgres" as Postgres #D9E1F2
+
+rectangle "Remote VLAN A (Direct Segment)" as SiteA #FFEBCC {
+  component "Probe A\n(edumdns_probe)" as ProbeA #FFE0AA
+  rectangle "Smart Device A\n(Chromecast)" as DeviceA #FFF4DD
+}
+
+rectangle "Remote VLAN B (Proxied Segment)" as SiteB #FFEBCC {
+  component "Probe B\n(edumdns_probe)" as ProbeB #FFE0AA
+  rectangle "Smart Device B\n(Apple TV)" as DeviceB #FFF4DD
+}
+
+
+
+
+
+' --- CONNECTIONS (NO LABELS) ---------------------------------
+
+' Web ↔ Server (commands)
+ServerComponent <-[#918df7,thickness=3]-> WebComponent
+
+' Device -> Probe (captured mDNS)
+DeviceA -[#1F77B4,thickness=2]-> ProbeA
+DeviceB -[#1F77B4,thickness=2]-> ProbeB
+
+' Probe -> Server (encapsulated mDNS)
+ProbeA -[#1F77B4,thickness=2]-> ServerComponent
+ProbeB -[#1F77B4,thickness=2]-> ServerComponent
+
+' Probe ↔ Server (control)
+ProbeA <-[#918df7,thickness=2]-> ServerComponent
+ProbeB <-[#918df7,thickness=2]-> ServerComponent
+
+' Server ↔ DB Layer ↔ Postgres
+ServerGroup -[#cf97b2,thickness=2]-> DBLayer
+DBLayer -[#cf97b2,thickness=2]-> Postgres
+
+' Server → Proxy (proxy configuration)
+ServerComponent -[#ebd810,thickness=2]-> Proxy
+
+' Server → Clients (rediscovery mDNS)
+ServerComponent -[#2CA02C,thickness=2]-> ClientWireless
+ServerComponent -[#2CA02C,thickness=2]-> ClientWired
+
+' Direct data (no proxy)
+ClientWired <-[#C62828,thickness=3]-> DeviceA
+
+' Proxied traffic
+ClientWireless <-[#8E44AD,thickness=3]-> Proxy
+Proxy <-[#8E44AD,thickness=3]-> DeviceB
+
+@enduml

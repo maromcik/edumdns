@@ -1,5 +1,5 @@
 //! edumdns_server crate entry points and task orchestration.
-//! 
+//!
 //! This module wires together listeners, the packet manager, database manager,
 //! and the watchdog that reaps stale probe connections. Public functions here
 //! are used by the binary to initialize and spawn all server tasks.

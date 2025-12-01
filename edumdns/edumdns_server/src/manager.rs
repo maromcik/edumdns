@@ -1,5 +1,5 @@
 //! Central orchestrator that routes commands/data between probes, DB, and transmitters.
-//! 
+//!
 //! `ServerManager` owns channel receivers, tracks device state, manages per-device
 //! transmitters, handles WebSocket responses, and coordinates proxy/eBPF updates.
 

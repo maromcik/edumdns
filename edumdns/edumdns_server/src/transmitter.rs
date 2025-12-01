@@ -1,5 +1,5 @@
 //! UDP packet transmission task that replays captured payloads to targets.
-//! 
+//!
 //! The transmitter supports optional live updates (additional payloads) and
 //! optional DNS A/AAAA rewriting when a proxy IP is configured. It stops either
 //! when the request duration elapses or when a stop command is sent.

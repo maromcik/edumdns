@@ -1,5 +1,5 @@
 //! TCP connection lifecycle: handshake, authentication, registration and data transfer.
-//! 
+//!
 //! `ConnectionManager` encapsulates the server-side protocol for a probe connection:
 //! - validate the initial hello and optional pre-shared key
 //! - upsert the probe in the database and verify it's adopted

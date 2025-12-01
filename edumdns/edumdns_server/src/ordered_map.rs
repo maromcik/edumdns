@@ -1,5 +1,5 @@
 //! OrderedMap: combine O(log N) ordered traversal with O(1) key lookup.
-//! 
+//!
 //! Internally uses a `BTreeSet` to keep values ordered and a `HashMap` for
 //! fast access by a separate key. Values are stored in `Arc` so both
 //! structures can share ownership without cloning V.

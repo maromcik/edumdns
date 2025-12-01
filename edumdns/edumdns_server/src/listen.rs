@@ -1,5 +1,5 @@
 //! TCP listener and TLS configuration for accepting probe connections.
-//! 
+//!
 //! `ListenerSpawner` binds to configured addresses (with or without TLS) and
 //! spawns per-connection tasks that run a `ConnectionManager`.
 

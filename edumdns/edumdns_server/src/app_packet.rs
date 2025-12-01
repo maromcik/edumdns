@@ -1,5 +1,5 @@
 //! Application-level packets used inside the edumdns_server.
-//! 
+//!
 //! This module defines the `AppPacket` enum that wraps packets exchanged between
 //! server components and network probes, as well as "local" packets used for
 //! intra-server commands, status queries, and data streaming. The goal is to have

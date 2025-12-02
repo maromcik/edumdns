@@ -116,7 +116,7 @@
     function preloadDnsMessage() {
         const rawJson = `{{ message | safe }}`;
         if (!rawJson || rawJson.trim().length === 0) return;
-
+        console.log("Preloading DNS message:", rawJson);
         let msg = null;
         try {
             msg = JSON.parse(rawJson);
@@ -141,7 +141,12 @@
 
                 row.querySelector(".query-name").value = q.name ?? "";
                 row.querySelector(".query-type").value = q.query_type ?? "A";
-                row.querySelector(".query-class").value = q.query_class ?? "IN";
+                if (typeof q.query_class === "object" && q.query_class !== null && "Unknown" in q.query_class) {
+                    row.querySelector(".query-class").value = "IN";
+                } else {
+                    row.querySelector(".query-class").value = q.query_class ?? "IN";
+                }
+
             });
         }
 
@@ -152,7 +157,11 @@
 
             const row = document.querySelector(`#${kind}s-list .${kind}-row:last-child`);
             row.querySelector(`.${kind}-name`).value = rr.name_labels ?? "";
-            row.querySelector(`.${kind}-class`).value = rr.dns_class ?? "IN";
+            if (Object.keys(rr.dns_class)[0] === "Unknown") {
+                row.querySelector(`.${kind}-class`).value = "IN";
+            } else {
+                row.querySelector(`.${kind}-class`).value = rr.dns_class ?? "IN";
+            }
             row.querySelector(`.${kind}-ttl`).value = rr.ttl ?? 300;
 
             const type = Object.keys(rr.rdata)[0];

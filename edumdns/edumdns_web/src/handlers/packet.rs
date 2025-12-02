@@ -221,7 +221,7 @@ pub async fn update_packet_payload(
     request: HttpRequest,
     identity: Option<Identity>,
     packet_repo: web::Data<PgPacketRepository>,
-    form: web::Form<UpdatePacketPayloadForm>,
+    form: web::Json<UpdatePacketPayloadForm>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let params = form.into_inner().to_db_params()?;
@@ -256,11 +256,12 @@ pub async fn update_packet_payload_form(
     let template = env.get_template(&template_name)?;
     let body = template.render(PacketUpdatePayloadTemplate {
         user,
+        id: packet.data.id,
         probe_id: packet.data.probe_id,
         ip: packet.data.src_addr,
         mac: MacAddr::from_octets(packet.data.src_mac),
         port: packet.data.dst_port as u16,
-        message
+        message: serde_json::to_string(&message)?
     })?;
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

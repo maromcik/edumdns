@@ -25,8 +25,9 @@ async fn main() -> Result<(), AppError> {
         Cli::parse();
     }
     let command_channel = tokio::sync::mpsc::channel(BUFFER_SIZE);
-    let log_level = std::env::var("EDUMDNS_LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
-    let env = EnvFilter::new(format!("edumdns={},info", log_level));
+    let app_log_level = std::env::var("EDUMDNS_APP_LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
+    let all_log_level = std::env::var("EDUMDNS_ALL_LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
+    let env = EnvFilter::new(format!("edumdns={},{}", app_log_level, all_log_level));
     let timer = tracing_subscriber::fmt::time::LocalTime::rfc_3339();
     tracing_subscriber::fmt()
         .with_timer(timer)

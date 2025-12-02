@@ -72,7 +72,7 @@ impl SelectSinglePacket {
     }
 }
 
-#[derive(Serialize, Deserialize, AsChangeset, Insertable)]
+#[derive(Serialize, Deserialize, AsChangeset, Insertable, Debug)]
 #[diesel(table_name = crate::schema::packet)]
 pub struct CreatePacket {
     pub probe_id: Uuid,

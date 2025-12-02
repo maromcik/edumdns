@@ -39,9 +39,10 @@ pub struct PacketCreateTemplate {
 #[derive(Serialize)]
 pub struct PacketUpdatePayloadTemplate {
     pub user: UserDisplay,
+    pub id: Id,
     pub probe_id: Uuid,
     pub mac: MacAddr,
     pub ip: IpNetwork,
     pub port: u16,
-    pub message: Message
+    pub message: String
 }

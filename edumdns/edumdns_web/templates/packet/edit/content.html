@@ -1,16 +1,13 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-8">
     <form id="create-packet-json-form"
-          action="/packet/create"
+          action="/packet/update-payload"
           method="post"
           class="space-y-6 bg-cards shadow-md rounded px-8 pt-6 pb-8">
 
         <h2 class="text-xl text-sat-l font-bold text-center mb-4">Edit Packet</h2>
 
         <!-- Hidden fields provided by server -->
-        <input type="hidden" name="probe_id" id="probe_id" value="{{ probe_id }}" />
-        <input type="hidden" name="src_mac" id="src_mac" value="{{ mac }}" />
-        <input type="hidden" name="src_addr" id="src_addr" value="{{ ip }}" />
-        <input type="hidden" name="dst_port" id="dst_port" value="{{ port }}" />
+        <input type="hidden" name="packet_id" id="packet_id" value="{{ id }}" />
 
         <!-- Metadata preview -->
         <div class="grid grid-cols-2 gap-4">
@@ -111,8 +108,92 @@
     <pre id="json-preview" class="hidden mt-4 p-3 bg-forms text-button rounded overflow-auto" style="max-height:40vh"></pre>
 </div>
 
-<script id="initial-message-data" type="application/json">
-    {{ message | tojson }}
+<script>
+    /* --- PREPOPULATE DNS MESSAGE --- */
+    function preloadDnsMessage() {
+        const rawJson = `{{ message | safe }}`;
+        if (!rawJson || rawJson.trim().length === 0) return;
+
+        let msg = null;
+        try {
+            msg = JSON.parse(rawJson);
+        } catch (e) {
+            console.error("Invalid message JSON:", e);
+            return;
+        }
+
+        /* ---------------- HEADER ---------------- */
+        if (msg.header) {
+            document.getElementById("header-id").value = msg.header.id ?? 0;
+            document.getElementById("header-message_type").value = msg.header.message_type ?? "Query";
+            document.getElementById("header-op_code").value = msg.header.op_code ?? "Query";
+            document.getElementById("header-response_code").value = msg.header.response_code ?? "NoError";
+        }
+
+        /* ---------------- QUERIES ---------------- */
+        if (Array.isArray(msg.queries)) {
+            msg.queries.forEach(q => {
+                document.getElementById("add-query-btn").click();
+                const row = document.querySelector("#queries-list .query-row:last-child");
+
+                row.querySelector(".query-name").value = q.name ?? "";
+                row.querySelector(".query-type").value = q.query_type ?? "A";
+                row.querySelector(".query-class").value = q.query_class ?? "IN";
+            });
+        }
+
+        /* ---------------- RECORD PARSER (Answer/Additional) ---------------- */
+        function fillRecordRow(kind, rr) {
+            if (!rr) return;
+            document.getElementById(`add-${kind}-btn`).click();
+
+            const row = document.querySelector(`#${kind}s-list .${kind}-row:last-child`);
+            row.querySelector(`.${kind}-name`).value = rr.name_labels ?? "";
+            row.querySelector(`.${kind}-class`).value = rr.dns_class ?? "IN";
+            row.querySelector(`.${kind}-ttl`).value = rr.ttl ?? 300;
+
+            const type = Object.keys(rr.rdata)[0];
+            const value = rr.rdata[type];
+            const select = row.querySelector(`.${kind}-type`);
+            select.value = type;
+
+            /* Show SRV/subfields properly */
+            toggleSrvForRow(select, kind);
+
+            if (type === "TXT") {
+                // Hickory format: TXT: [ [bytes], [bytes] ]
+                const decoder = new TextDecoder();
+                const parts = (Array.isArray(value) ? value : [])
+                    .map(arr => decoder.decode(new Uint8Array(arr)));
+                row.querySelector(`.${kind}-rdata`).value = parts.join(", ");
+            }
+            else if (type === "SRV") {
+                row.querySelector(`.${kind}-srv-priority`).value = value.priority ?? 0;
+                row.querySelector(`.${kind}-srv-weight`).value = value.weight ?? 0;
+                row.querySelector(`.${kind}-srv-port`).value = value.port ?? 0;
+                row.querySelector(`.${kind}-srv-target`).value = value.target ?? "";
+            }
+            else {
+                // A, AAAA, CNAME, PTR, etc.
+                row.querySelector(`.${kind}-rdata`).value = value ?? "";
+            }
+        }
+
+        /* ---------------- ANSWERS ---------------- */
+        if (Array.isArray(msg.answers)) {
+            msg.answers.forEach(rr => fillRecordRow("answer", rr));
+        }
+
+        /* ---------------- ADDITIONALS ---------------- */
+        if (Array.isArray(msg.additionals)) {
+            msg.additionals.forEach(rr => fillRecordRow("additional", rr));
+        }
+    }
+    /* Full-page load */
+    document.addEventListener("DOMContentLoaded", preloadDnsMessage);
+
+    /* HTMX load (whenever fragment is swapped into DOM) */
+    document.addEventListener("htmx:afterSwap", preloadDnsMessage);
 </script>
 
 
@@ -123,8 +204,6 @@
         tmp.innerHTML = html.trim();
         return tmp.content.firstElementChild;
     };
-
-    function removeRowElement(el){ el?.closest?.('div')?.remove(); }
 
     /* delegation for deletes */
     document.addEventListener('click', (e) => {
@@ -249,10 +328,7 @@
 
     /* Build JSON */
     function buildCreatePacketJson() {
-        const probe_id = document.getElementById('probe_id').value;
-        const src_mac = document.getElementById('src_mac').value;
-        const src_addr = document.getElementById('src_addr').value;
-        const dst_port = Number(document.getElementById('dst_port')?.value || 0);
+        const packet_id = parseInt(document.getElementById('packet_id').value);
 
         const header = {
             id: Number(document.getElementById('header-id').value || 0),
@@ -318,7 +394,7 @@
         header.additional_count = additionals.length;
 
         return {
-            probe_id, src_mac, src_addr, dst_port,
+            packet_id: packet_id,
             message: {
                 header, queries, answers, additionals,
                 name_servers: [], signature: [], edns: null
@@ -356,3 +432,4 @@
             });
     });
 </script>
+

@@ -18,8 +18,13 @@ The following environment variables are used across all components of the edumdn
 
 ### Logging
 
-- **`EDUMDNS_LOG_LEVEL`** (optional, default: `"info"`)
-  - Sets the logging level for the application
+- **`EDUMDNS_APP_LOG_LEVEL`** (optional, default: `"info"`)
+  - Sets the logging level for the edumdns application only
+  - Valid values: `trace`, `debug`, `info`, `warn`, `error`
+  - Example: `EDUMDNS_LOG_LEVEL=debug`
+
+- **`EDUMDNS_ALL_LOG_LEVEL`** (optional, default: `"info"`)
+  - Sets the logging level for all crates used by the edumdns application
   - Valid values: `trace`, `debug`, `info`, `warn`, `error`
   - Example: `EDUMDNS_LOG_LEVEL=debug`
 

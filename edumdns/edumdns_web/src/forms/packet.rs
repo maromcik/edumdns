@@ -88,7 +88,7 @@ impl CreatePacketForm {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UpdatePacketPayloadForm {
-    pub id: Id,
+    pub packet_id: Id,
     pub message: Message,
 }
 impl UpdatePacketPayloadForm {
@@ -97,7 +97,7 @@ impl UpdatePacketPayloadForm {
         let payload = self.message.to_bytes()?;
         let payload_hash = edumdns_core::app_packet::calculate_hash(&payload);
         let packet = UpdatePacket {
-            id: self.id,
+            id: self.packet_id,
             probe_id: None,
             src_mac: None,
             dst_mac: None,

@@ -1,3 +1,17 @@
+//! Connection management for probe-to-server communication.
+//!
+//! This module handles the TCP connection between the probe and the central server,
+//! including:
+//! - Connection establishment with retry logic
+//! - TLS handshake (if enabled)
+//! - Connection initialization and authentication
+//! - Packet transmission and reception
+//! - Automatic reconnection on failures
+//! - Ping/keepalive mechanism
+//!
+//! The `ConnectionManager` orchestrates all communication tasks and handles the
+//! probe's connection lifecycle.
+
 use crate::error::ProbeError;
 use edumdns_core::app_packet::{
     NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeConfigPacket,
@@ -95,6 +109,28 @@ impl ConnectionManager {
         })
     }
 
+    /// Initializes the probe connection with the server and retrieves configuration.
+    ///
+    /// This function performs the initial handshake with the server:
+    /// 1. Sends a ProbeHello packet with probe metadata and optional pre-shared key
+    /// 2. Receives server response (ProbeAdopted, ProbeUnknown, or error)
+    /// 3. If adopted, requests probe configuration
+    /// 4. Receives and returns the ProbeConfigPacket
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(ProbeConfigPacket)` containing the server's configuration for this
+    /// probe (interface filters, capture settings), or a `ProbeError` if:
+    /// - The probe is not adopted (ProbeUnknown) - triggers reconnection
+    /// - Connection initiation is invalid - triggers reconnection
+    /// - Network I/O fails
+    /// - Unexpected packet types are received
+    ///
+    /// # Behavior
+    ///
+    /// If the probe is not adopted or connection initiation fails, this function
+    /// automatically triggers a reconnection after a delay. The caller should handle
+    /// the reconnection flow.
     pub async fn connection_init_probe(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
         let error = Err(ProbeError::InvalidConnectionInitiation(
             "Invalid connection initiation".to_string(),
@@ -168,6 +204,24 @@ impl ConnectionManager {
         }
     }
 
+    /// Reconnects to the server and re-initializes the connection.
+    ///
+    /// This function closes the current connection, establishes a new connection,
+    /// updates the probe metadata (MAC address may change), and performs the full
+    /// connection initialization sequence again.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(ProbeConfigPacket)` with the new configuration if reconnection
+    /// succeeds, or a `ProbeError` if:
+    /// - Connection establishment fails
+    /// - Connection initialization fails
+    ///
+    /// # Side Effects
+    ///
+    /// - Closes the existing TCP connection
+    /// - Updates `probe_metadata` with new MAC address (if interface changed)
+    /// - Updates `handle` with the new connection
     pub async fn reconnect(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
         self.handle.close().await?;
         match Self::connect(&self.conn_info, &self.conn_limits).await {
@@ -288,6 +342,32 @@ impl ConnectionManager {
         }
     }
 
+    /// Sends a packet with automatic retry and reconnection on failure.
+    ///
+    /// This function attempts to send a packet to the server. If sending fails, it
+    /// triggers a reconnection command and retries up to `max_retries` times with
+    /// delays between attempts.
+    ///
+    /// # Arguments
+    ///
+    /// * `handle` - TCP connection handle for sending packets
+    /// * `command_transmitter` - Channel for sending reconnection commands
+    /// * `max_retries` - Maximum number of retry attempts
+    /// * `retry_interval` - Delay between retry attempts
+    /// * `packet` - The packet to send (Data packets use buffered send, others use immediate)
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the packet is successfully sent, or a `ProbeError` if:
+    /// - All retry attempts are exhausted
+    /// - Network I/O fails persistently
+    ///
+    /// # Behavior
+    ///
+    /// - Data packets are sent with buffering (may be coalesced)
+    /// - Other packets are sent immediately (flushed)
+    /// - On failure, sends a ReconnectThisProbe command to trigger reconnection
+    /// - Waits `retry_interval` between retry attempts
     pub async fn send_packet_with_reconnect(
         handle: &TcpConnectionHandle,
         command_transmitter: &mpsc::Sender<NetworkAppPacket>,

@@ -1,3 +1,17 @@
+//! Device management handlers.
+//!
+//! This module provides HTTP handlers for managing smart devices discovered by probes:
+//! - Device listing with filtering and pagination
+//! - Device detail viewing with associated packets
+//! - Device creation and updates
+//! - Device deletion with cleanup of active transmissions
+//! - Packet transmission requests (custom and automatic)
+//! - Device publishing and hiding
+//! - ACL (Access Control List) validation for transmission requests
+//!
+//! These handlers coordinate with the server component to manage packet transmission
+//! and cache invalidation.
+
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::device::{
@@ -152,6 +166,31 @@ pub async fn update_device(
         .finish())
 }
 
+/// Deletes a device and cleans up associated resources.
+///
+/// This function stops all active packet transmission requests for the device, deletes
+/// the device from the database, and invalidates the server's cache for the device.
+/// It sends commands to the server to stop transmissions and clear cached packets.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity
+/// * `device_repo` - Device repository for database operations
+/// * `state` - Application state containing command channel
+/// * `path` - Path parameter containing device ID
+/// * `query` - Query parameters containing optional return URL
+///
+/// # Returns
+///
+/// Returns a redirect response to the return URL (or "/device" by default) after
+/// successfully deleting the device and cleaning up resources.
+///
+/// # Side Effects
+///
+/// - Stops all active packet transmission requests for the device
+/// - Deletes the device from the database
+/// - Sends cache invalidation commands to the server
 #[delete("{id}/delete")]
 pub async fn delete_device(
     request: HttpRequest,

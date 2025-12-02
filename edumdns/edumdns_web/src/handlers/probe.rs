@@ -1,3 +1,18 @@
+//! Probe management handlers.
+//!
+//! This module provides HTTP handlers for managing remote probes:
+//! - Probe listing with filtering and pagination
+//! - Probe detail viewing with associated devices and configurations
+//! - Probe creation, updates, and deletion
+//! - Probe adoption (registering new probes)
+//! - Probe reconnection commands
+//! - Configuration management (create, update, delete)
+//! - Permission management for probe access
+//! - WebSocket endpoint for real-time probe status updates
+//!
+//! These handlers coordinate with the server component to send commands to probes
+//! and manage probe state in the database.
+
 use crate::error::WebError;
 use crate::forms::device::DeviceQuery;
 use crate::forms::probe::{

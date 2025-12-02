@@ -1,3 +1,16 @@
+//! Group management handlers.
+//!
+//! This module provides HTTP handlers for managing user groups and permissions:
+//! - Group listing with filtering
+//! - Group detail viewing with member users
+//! - Group creation, updates, and deletion
+//! - User assignment to groups (bulk and individual)
+//! - User removal from groups
+//! - User search for group assignment
+//!
+//! Groups are used to organize users and control access to probes and devices through
+//! permission assignments.
+
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::group::{CreateGroupForm, GroupQuery};

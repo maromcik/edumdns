@@ -1,3 +1,16 @@
+//! User management handlers.
+//!
+//! This module provides HTTP handlers for managing users and their accounts:
+//! - User listing with filtering and pagination
+//! - User detail viewing with group memberships
+//! - User creation, updates, and deletion
+//! - Password management (user self-service and admin)
+//! - Group assignment management
+//! - User profile management
+//!
+//! These handlers enforce permission checks and coordinate with the database to
+//! manage user accounts and their relationships with groups.
+
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::user::{

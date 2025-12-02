@@ -1,3 +1,16 @@
+//! Packet management handlers.
+//!
+//! This module provides HTTP handlers for viewing and managing captured mDNS packets:
+//! - Packet listing with filtering and pagination
+//! - Packet detail viewing with metadata
+//! - Packet creation (manual packet entry)
+//! - Packet updates
+//! - Packet deletion
+//! - Packet reassignment to different devices
+//!
+//! These handlers allow administrators to view captured packets, create custom packets
+//! for testing, and manage packet associations with devices.
+
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::packet::{

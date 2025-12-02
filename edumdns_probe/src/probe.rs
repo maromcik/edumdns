@@ -1,3 +1,10 @@
+//! Probe capture orchestration and interface management.
+//!
+//! This module manages the packet capture process for the probe. It coordinates
+//! multiple capture threads (one per configured interface), applies BPF filters
+//! that exclude server traffic, and spawns capture tasks in a JoinSet for
+//! coordinated lifecycle management.
+
 use crate::capture::{PacketCaptureGeneric, capture_and_transmit};
 use crate::error::ProbeError;
 use edumdns_core::app_packet::{NetworkAppPacket, ProbeConfigPacket};
@@ -26,6 +33,29 @@ impl ProbeCapture {
             probe_config,
         }
     }
+    /// Starts packet capture on all configured interfaces.
+    ///
+    /// This function spawns blocking capture tasks for each interface specified in
+    /// the probe configuration. Each task applies a BPF filter that excludes packets
+    /// destined for the server to prevent capture loops.
+    ///
+    /// # Arguments
+    ///
+    /// * `join_set` - JoinSet for managing capture task lifecycle
+    /// * `server_host` - Hostname or IP of the server (excluded from capture)
+    /// * `cancellation_token` - Token for cancelling all captures
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(HashSet<Id>)` containing the task IDs of all spawned capture tasks,
+    /// or a `ProbeError` if interface opening fails.
+    ///
+    /// # BPF Filter
+    ///
+    /// Each capture applies a filter: `(host not {server_host}) and {custom_filter}`
+    /// This ensures that:
+    /// - Packets to/from the server are not captured (prevents loops)
+    /// - Any custom BPF filter from configuration is also applied
     pub async fn start_captures(
         &self,
         join_set: &mut JoinSet<Result<(), ProbeError>>,

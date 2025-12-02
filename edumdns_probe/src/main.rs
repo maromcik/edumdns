@@ -1,3 +1,16 @@
+//! Main entry point for the edumdns_probe binary.
+//!
+//! This module initializes the probe application, handles command-line arguments,
+//! sets up logging, and orchestrates the main probe lifecycle:
+//! - Connection management to the central server
+//! - Packet capture from network interfaces
+//! - Packet transmission to the server
+//! - Command reception and processing
+//! - Automatic reconnection on failures
+//!
+//! The probe maintains a persistent connection to the server, captures mDNS packets
+//! from configured interfaces, and forwards them to the server for processing.
+
 use crate::connection::{
     ConnectionInfo, ConnectionLimits, ConnectionManager, ReceivePacketTargets,
 };
@@ -287,6 +300,27 @@ async fn main() -> Result<(), ProbeError> {
     }
 }
 
+/// Generates or loads a persistent UUID for the probe.
+///
+/// This function attempts to load a UUID from a file. If the file doesn't exist or
+/// contains an invalid UUID, it generates a new UUID v7 (time-based) and saves it
+/// to the file for future use. This ensures the probe maintains a consistent identity
+/// across restarts.
+///
+/// # Arguments
+///
+/// * `uuid_file` - Optional path to the UUID file (defaults to "uuid" in current directory)
+///
+/// # Returns
+///
+/// Returns `Ok(uuid::Uuid)` with the loaded or newly generated UUID, or a `ProbeError`
+/// if file I/O operations fail.
+///
+/// # Behavior
+///
+/// - If the file exists and contains a valid UUID, that UUID is returned
+/// - If the file doesn't exist or contains invalid data, a new UUID v7 is generated
+/// - The new UUID is written to the file for persistence
 fn generate_uuid(uuid_file: Option<String>) -> Result<uuid::Uuid, ProbeError> {
     let mut file = OpenOptions::new()
         .write(true)

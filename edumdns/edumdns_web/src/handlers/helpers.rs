@@ -1,3 +1,14 @@
+//! Helper functions for request handlers.
+//!
+//! This module provides utility functions used across multiple handlers:
+//! - Packet transmission request authorization and validation
+//! - ACL (Access Control List) verification for device access
+//! - Probe reconnection coordination
+//!
+//! These helpers encapsulate complex business logic for device access control,
+//! including CIDR-based IP filtering, password authentication, and AP hostname
+//! verification through external databases.
+
 use crate::error::WebError;
 use crate::forms::device::{DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest};
 use crate::handlers::utilities::verify_transmit_request_client_ap;
@@ -18,6 +29,28 @@ use ipnetwork::IpNetwork;
 use time::OffsetDateTime;
 use tokio::sync::mpsc::Sender;
 
+/// Creates and initiates a packet transmission request for a device.
+///
+/// This function validates that a transmission request can be created (checking for
+/// exclusive/proxy device conflicts), creates the request in the database, and sends
+/// a command to the server to start transmission. If transmission fails, it cleans
+/// up the database record.
+///
+/// # Arguments
+///
+/// * `device_repo` - Device repository for database operations
+/// * `device` - The device to transmit packets for
+/// * `user_id` - ID of the user making the request
+/// * `command_channel` - Channel for sending commands to the server
+/// * `form` - Form data containing transmission parameters (target IP, port, permanent flag)
+///
+/// # Returns
+///
+/// Returns `Ok(())` if transmission is successfully initiated, or a `WebError` if:
+/// - Device has an ongoing exclusive/proxy transmission
+/// - Database operation fails
+/// - Server command fails
+/// - Duplicate request exists (unique constraint violation)
 pub async fn request_packet_transmit_helper(
     device_repo: web::Data<PgDeviceRepository>,
     device: Device,
@@ -97,6 +130,30 @@ pub async fn reconnect_probe(
     Ok(())
 }
 
+/// Authorizes a packet transmission request by validating ACL rules.
+///
+/// This function performs multiple authorization checks before allowing a packet
+/// transmission request:
+/// 1. Extracts the client's IP address from the request
+/// 2. Validates the IP is within the device's allowed CIDR range (if configured)
+/// 3. Validates the ACL password (if configured)
+/// 4. Verifies the client's access point hostname matches the regex (if configured)
+///
+/// # Arguments
+///
+/// * `request` - HTTP request containing client connection information
+/// * `device` - Device to authorize access for
+/// * `form` - Form data potentially containing ACL password
+/// * `device_acl_ap_database` - Configuration for AP hostname verification database
+///
+/// # Returns
+///
+/// Returns `Ok(IpNetwork)` with the validated target IP if all checks pass, or a
+/// `WebError` if:
+/// - Client IP cannot be determined
+/// - IP is not in the allowed CIDR range
+/// - ACL password is missing or incorrect
+/// - AP hostname does not match the required regex pattern
 pub async fn authorize_packet_transmit_request(
     request: &HttpRequest,
     device: &Device,

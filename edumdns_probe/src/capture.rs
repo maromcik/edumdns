@@ -1,3 +1,15 @@
+//! Packet capture functionality using libpcap.
+//!
+//! This module provides packet capture capabilities for the probe using the libpcap
+//! library. It supports:
+//! - Capturing packets from network interfaces
+//! - Applying BPF (Berkeley Packet Filter) filters
+//! - Parsing captured packets into ProbePacket format
+//! - Transmitting captured packets to the server via channels
+//!
+//! The capture process runs in blocking threads and filters out packets destined for
+//! the server to avoid capture loops.
+
 use crate::error::ProbeError;
 use edumdns_core::app_packet::{NetworkAppPacket, ProbeConfigElement, ProbePacket};
 use edumdns_core::metadata::ProbeMetadata;
@@ -9,6 +21,32 @@ use std::thread::sleep;
 use tokio::sync::mpsc::Sender;
 use tokio_util::sync::CancellationToken;
 
+/// Captures packets from a network interface and transmits them to the server.
+///
+/// This function runs the main capture loop for a single interface. It applies the
+/// configured BPF filter, captures packets, parses them into ProbePacket format, and
+/// sends them through the channel to the transmission worker.
+///
+/// # Arguments
+///
+/// * `capture` - Packet capture instance (device or file-based)
+/// * `probe_metadata` - Metadata identifying the probe (UUID, MAC, IP)
+/// * `tx` - Channel sender for transmitting captured packets
+/// * `cancellation_token` - Token for cooperative cancellation
+/// * `config_element` - Configuration for this interface (name, filter)
+///
+/// # Returns
+///
+/// Returns `Ok(())` when the capture loop exits normally (cancellation or end of file),
+/// or a `ProbeError` if capture setup or packet parsing fails.
+///
+/// # Behavior
+///
+/// - Applies the BPF filter to the capture interface
+/// - Loops continuously, capturing packets until cancellation
+/// - Skips non-TCP/IP packets
+/// - Sends ProbePackets through the channel (blocking send)
+/// - Handles timeout errors gracefully by continuing the loop
 pub fn capture_and_transmit<T>(
     mut capture: impl PacketCapture<T>,
     probe_metadata: ProbeMetadata,
@@ -81,6 +119,24 @@ impl<T> PacketCaptureGeneric<T>
 where
     T: State + Activated,
 {
+    /// Opens a packet capture on a network device.
+    ///
+    /// This function finds the specified network interface and opens a libpcap capture
+    /// on it. The capture is configured for promiscuous mode, immediate mode, and a
+    /// 10-second timeout. The capture is set to non-blocking mode.
+    ///
+    /// # Arguments
+    ///
+    /// * `device_name` - Name of the network interface to capture on (e.g., "eth0")
+    /// * `filter` - Optional BPF filter string to apply to captured packets
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(PacketCaptureGeneric<Active>)` if the device is found and capture
+    /// is successfully opened, or a `ProbeError` if:
+    /// - The device is not found in the system interfaces
+    /// - Capture initialization fails
+    /// - Setting non-blocking mode fails
     pub fn open_device_capture(
         device_name: &str,
         filter: Option<&str>,

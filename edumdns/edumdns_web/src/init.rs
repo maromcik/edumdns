@@ -1,3 +1,14 @@
+//! Web server initialization and configuration.
+//!
+//! This module handles the setup and configuration of the Actix Web server, including:
+//! - Creating and configuring the `WebSpawner` with database connections and application state
+//! - Setting up route handlers for all endpoints (users, probes, devices, packets, groups)
+//! - Configuring middleware (CORS, session, identity, OIDC)
+//! - Starting the HTTP server with or without OIDC support
+//!
+//! The `WebSpawner` struct encapsulates all the configuration needed to run the web server,
+//! including session keys, file directories, and middleware settings.
+
 use crate::error::WebError;
 use crate::handlers::device::{
     create_device, create_device_form, delete_device, delete_request_packet_transmit,
@@ -64,6 +75,35 @@ pub struct WebSpawner {
 }
 
 impl WebSpawner {
+    /// Creates a new `WebSpawner` instance with configuration from environment variables.
+    ///
+    /// This function initializes all the components needed to run the web server:
+    /// - Loads configuration from environment variables (site URL, files directory, session keys, etc.)
+    /// - Creates the template reloader for Minijinja
+    /// - Sets up the application state with command channel and ACL database configuration
+    /// - Configures session and identity middleware settings
+    ///
+    /// # Arguments
+    ///
+    /// * `pool` - Database connection pool for repository access
+    /// * `command_channel` - Channel sender for sending commands to the server component
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(WebSpawner)` if initialization succeeds, or a `WebError` if configuration fails.
+    ///
+    /// # Environment Variables
+    ///
+    /// This function reads the following environment variables:
+    /// - `EDUMDNS_SITE_URL` - Base URL for the application (default: "localhost")
+    /// - `EDUMDNS_FILES_DIR` - Directory containing templates and static files (default: "edumdns_web")
+    /// - `EDUMDNS_COOKIE_SESSION_KEY` - Secret key for session cookies (default: empty, insecure)
+    /// - `EDUMDNS_USE_SECURE_COOKIE` - Enable HTTPS-only cookies (default: false)
+    /// - `EDUMDNS_WEB_SESSION_EXPIRY` - Session expiry in seconds (default: 30 days)
+    /// - `EDUMDNS_WEB_LAST_VISIT_DEADLINE` - Last visit deadline in seconds (default: 7 days)
+    /// - `EDUMDNS_OIDC_NEW_USERS_ADMIN` - Grant admin to new OIDC users (default: false)
+    /// - `EDUMDNS_ACL_AP_DATABASE_CONNECTION_STRING` - ACL database connection string
+    /// - `EDUMDNS_ACL_AP_DATABASE_QUERY` - SQL query for ACL lookups
     pub async fn new(
         pool: Pool<AsyncPgConnection>,
         command_channel: Sender<AppPacket>,
@@ -123,6 +163,26 @@ impl WebSpawner {
         })
     }
 
+    /// Configures all route handlers and scopes for the web application.
+    ///
+    /// This function sets up all the HTTP endpoints organized by resource type:
+    /// - User management endpoints (CRUD operations, password management, group assignments)
+    /// - Probe management endpoints (adoption, configuration, monitoring, reconnection)
+    /// - Device management endpoints (discovery, publishing, packet transmission)
+    /// - Packet management endpoints (viewing, creation, reassignment)
+    /// - Group management endpoints (CRUD operations, user assignments)
+    /// - Static file serving
+    ///
+    /// # Arguments
+    ///
+    /// * `pool` - Database connection pool for creating repository instances
+    /// * `app_state` - Shared application state (templates, command channel, ACL config)
+    /// * `files_dir` - Directory path for static files
+    ///
+    /// # Returns
+    ///
+    /// Returns a boxed closure that configures the `ServiceConfig` with all routes and handlers.
+    /// The closure is called by Actix Web during application initialization.
     fn configure_webapp(
         pool: Pool<AsyncPgConnection>,
         app_state: AppState,
@@ -226,6 +286,33 @@ impl WebSpawner {
         })
     }
 
+    /// Starts the HTTP server and begins serving requests.
+    ///
+    /// This function creates and configures the Actix Web `HttpServer` with all middleware
+    /// and routes. It attempts to initialize OIDC support; if OIDC configuration is incomplete,
+    /// it falls back to local authentication only.
+    ///
+    /// The server is configured with:
+    /// - Multipart form limits (16 GiB)
+    /// - JSON, query, and path parameter parsing with custom error handlers
+    /// - Path normalization (trailing slash trimming)
+    /// - Identity middleware (user session tracking)
+    /// - Session middleware (cookie-based sessions)
+    /// - CORS middleware (configured for the site URL)
+    /// - OIDC middleware (if OIDC is configured)
+    /// - Login redirect middleware (for unauthenticated requests)
+    /// - Request logging
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the server runs successfully, or a `WebError` if:
+    /// - The server fails to bind to the configured address
+    /// - The server encounters a fatal error during operation
+    ///
+    /// # Note
+    ///
+    /// This function blocks until the server is shut down. The server will run indefinitely
+    /// unless interrupted by a signal or error.
     pub(crate) async fn run_web(&self) -> Result<(), WebError> {
         let app_state_local = self.app_state.clone();
         let files_dir_local = self.files_dir.clone();

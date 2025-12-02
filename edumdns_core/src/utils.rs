@@ -41,6 +41,31 @@ pub trait Cancellable {
     fn is_cancelled(&self) -> bool;
 }
 
+/// Parses hostname and port from environment variables and resolves them to socket addresses.
+///
+/// This function reads hostname and port values from environment variables (with fallback
+/// defaults), supports comma-separated hostnames for multiple bind addresses, and resolves
+/// each hostname to one or more socket addresses (IPv4 and/or IPv6).
+///
+/// # Arguments
+///
+/// * `hostname_env_key` - Environment variable name for the hostname (e.g., "EDUMDNS_WEB_HOSTNAME")
+/// * `port_env_key` - Environment variable name for the port (e.g., "EDUMDNS_WEB_PORT")
+/// * `default_hostname` - Default hostname if environment variable is not set
+/// * `default_port` - Default port if environment variable is not set
+///
+/// # Returns
+///
+/// Returns `Ok(Vec<SocketAddr>)` containing all resolved socket addresses, or a `CoreError`
+/// if DNS resolution fails for any hostname.
+///
+/// # Behavior
+///
+/// - If the hostname environment variable contains commas, it splits on commas and resolves
+///   each hostname separately
+/// - Each hostname is resolved to all available addresses (IPv4 and IPv6)
+/// - All resolved addresses are combined into a single vector
+/// - The same port is used for all hostnames
 pub async fn parse_and_lookup_host(
     hostname_env_key: &str,
     port_env_key: &str,

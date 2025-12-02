@@ -1,3 +1,14 @@
+//! Index and authentication handlers.
+//!
+//! This module provides HTTP handlers for:
+//! - Main index page (dashboard)
+//! - User login (local authentication)
+//! - OpenID Connect (OIDC) authentication flow
+//! - User logout and session cleanup
+//!
+//! These handlers manage user sessions, set authentication cookies, and handle
+//! redirects after successful authentication.
+
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::user::{UserLoginForm, UserLoginReturnURL};
@@ -58,6 +69,30 @@ pub async fn login(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Handles POST requests for local user authentication.
+///
+/// This function processes login form submissions, validates user credentials against
+/// the database, and creates a user session if authentication succeeds. It sets an
+/// authentication cookie and redirects to the return URL.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request containing session information
+/// * `user_repo` - User repository for database operations
+/// * `form` - Login form data (email, password, return URL)
+/// * `state` - Application state containing session configuration
+///
+/// # Returns
+///
+/// Returns a redirect response to the return URL on success, or renders the login
+/// page with an error message if authentication fails.
+///
+/// # Errors
+///
+/// Returns a `WebError` if:
+/// - Database operations fail
+/// - Session creation fails
+/// - Template rendering fails
 #[post("/login")]
 pub async fn login_base(
     request: HttpRequest,
@@ -101,6 +136,27 @@ pub async fn login_base(
     }
 }
 
+/// Handles OIDC authentication callback and user creation.
+///
+/// This function processes OIDC authentication by extracting user information from
+/// OIDC cookies, creating or retrieving a user account, and establishing a session.
+/// It sets an OIDC authentication cookie and redirects to the return URL.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request containing OIDC cookies and session information
+/// * `identity` - Optional user identity (if already logged in)
+/// * `user_repo` - User repository for database operations
+/// * `query` - Query parameters containing return URL
+/// * `state` - Application state containing OIDC configuration
+///
+/// # Returns
+///
+/// Returns a redirect response to the return URL on success, or a `WebError` if:
+/// - User is already authenticated (redirects to return URL)
+/// - OIDC cookies are missing or invalid
+/// - User creation fails
+/// - Session creation fails
 #[get("/login/oidc")]
 pub async fn login_oidc(
     request: HttpRequest,
@@ -161,6 +217,20 @@ pub async fn login_oidc_redirect(
 //     Ok(Redirect::to(path).using_status_code(StatusCode::FOUND))
 // }
 
+/// Handles user logout and session cleanup.
+///
+/// This function destroys the user session, logs out the identity, and clears all
+/// authentication-related cookies (including OIDC cookies). It then redirects to
+/// the login page.
+///
+/// # Arguments
+///
+/// * `session` - Active session to destroy
+/// * `identity` - Optional user identity to log out
+///
+/// # Returns
+///
+/// Returns a redirect response to the login page after clearing all cookies.
 #[get("/logout")]
 pub async fn logout_cleanup(
     session: Session,

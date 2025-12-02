@@ -1,3 +1,15 @@
+//! General utility functions for request handlers.
+//!
+//! This module provides various utility functions used throughout the web interface:
+//! - User authentication and session management helpers
+//! - Template name resolution based on HTMX requests
+//! - OIDC user information parsing
+//! - Access point (AP) hostname verification via external database
+//! - Request header parsing and validation
+//!
+//! These utilities abstract common operations and provide consistent behavior
+//! across all handlers.
+
 use crate::error::WebError;
 use crate::utils::DeviceAclApDatabase;
 use actix_identity::Identity;
@@ -49,6 +61,31 @@ pub fn is_htmx(request: &HttpRequest) -> bool {
         .map_or(false, |v| v == "true")
 }
 
+/// Verifies that a client's access point hostname matches the required regex pattern.
+///
+/// This function queries an external database (typically a RADIUS database) to retrieve
+/// the access point hostname associated with a client IP address. It then checks if
+/// the hostname matches the configured regex pattern.
+///
+/// # Arguments
+///
+/// * `database_config` - Configuration containing database connection string and query
+/// * `ap_hostname_regex` - Regular expression pattern that the AP hostname must match
+/// * `client_ip` - IP address of the client requesting packet transmission
+///
+/// # Returns
+///
+/// Returns `Ok(true)` if the AP hostname matches the regex, `Ok(false)` if it doesn't
+/// match or no AP is found, or a `WebError` if:
+/// - Database connection fails
+/// - Query execution fails
+/// - Regex compilation fails
+///
+/// # Note
+///
+/// The database query should use parameterized queries with `$$1` as a placeholder
+/// for the client IP address. The query should return at least one column containing
+/// the AP hostname.
 pub async fn verify_transmit_request_client_ap(
     database_config: &DeviceAclApDatabase,
     ap_hostname_regex: &str,

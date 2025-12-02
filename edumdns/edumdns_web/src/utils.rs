@@ -1,3 +1,16 @@
+//! Utility functions and types for the web interface.
+//!
+//! This module provides:
+//! - Application state management (`AppState`, `DeviceAclApDatabase`)
+//! - Template reloader creation with custom filters
+//! - OpenID Connect (OIDC) configuration and initialization
+//! - Middleware configuration (CORS, session, identity)
+//! - Request parsing configuration (JSON, query, path)
+//! - Hostname and port parsing from environment variables
+//!
+//! These utilities are used throughout the web interface to configure the server,
+//! handle authentication, and provide shared state to request handlers.
+
 use crate::error::WebError;
 use crate::{DEFAULT_HOSTNAME, DEFAULT_PORT};
 use actix_cors::Cors;
@@ -56,6 +69,20 @@ impl AppState {
     }
 }
 
+/// Creates a Minijinja template reloader with auto-reload support.
+///
+/// This function sets up a template environment that watches for file changes and
+/// automatically reloads templates during development. It also adds a custom `has_perm`
+/// filter for checking user permissions in templates.
+///
+/// # Arguments
+///
+/// * `template_path` - Directory path containing Minijinja template files
+///
+/// # Returns
+///
+/// Returns an `AutoReloader` instance that can be used to acquire template environments.
+/// The reloader watches the template directory for changes and reloads templates automatically.
 pub fn create_reloader(template_path: String) -> AutoReloader {
     AutoReloader::new(move |notifier| {
         let mut env = Environment::new();
@@ -78,6 +105,38 @@ fn has_perm(perms_values: Vec<Value>, query: Value) -> Result<bool, minijinja::E
     Ok(false)
 }
 
+/// Initializes and configures OpenID Connect (OIDC) authentication.
+///
+/// This function reads OIDC configuration from environment variables and creates an
+/// `ActixWebOpenId` instance. It configures the OIDC client with the necessary scopes
+/// (openid, profile, email) and sets up authentication requirements.
+///
+/// # Returns
+///
+/// Returns `Ok(ActixWebOpenId)` if all required environment variables are present and
+/// OIDC initialization succeeds, or a `WebError` if configuration is missing or invalid.
+///
+/// # Environment Variables
+///
+/// This function requires the following environment variables:
+/// - `EDUMDNS_OIDC_CLIENT_ID` - OIDC client ID from the identity provider
+/// - `EDUMDNS_OIDC_CLIENT_SECRET` - OIDC client secret from the identity provider
+/// - `EDUMDNS_OIDC_CALLBACK_URL` - Callback URL for OIDC authentication flow
+/// - `EDUMDNS_OIDC_ISSUER` - Base URL of the OIDC identity provider
+///
+/// # Authentication Logic
+///
+/// The function configures a `should_auth` callback that determines which requests require
+/// OIDC authentication:
+/// - Static files, login, and logout paths are excluded
+/// - Requests with `auth=local` cookie use local authentication
+/// - Requests with `auth=oidc` cookie require OIDC authentication
+/// - All other requests require OIDC authentication
+///
+/// # Note
+///
+/// If this function returns an error, the web server will start without OIDC support
+/// and use local authentication only.
 pub async fn create_oidc() -> Result<ActixWebOpenId, WebError> {
     let client_id = env::var("EDUMDNS_OIDC_CLIENT_ID").map_err(|_| {
         WebError::EnvVarError(
@@ -137,6 +196,24 @@ pub async fn create_oidc() -> Result<ActixWebOpenId, WebError> {
         .map_err(|e| WebError::OidcError(e.to_string()))
 }
 
+/// Creates CORS middleware configured for the application.
+///
+/// This function sets up Cross-Origin Resource Sharing (CORS) to allow requests from
+/// the configured site URL. It permits common HTTP methods and headers needed for the
+/// web interface.
+///
+/// # Arguments
+///
+/// * `host` - The hostname or base URL of the application (from `EDUMDNS_SITE_URL`)
+///
+/// # Returns
+///
+/// Returns a configured `Cors` middleware instance that:
+/// - Allows requests from `http://{host}`
+/// - Permits GET, POST, PUT, DELETE, and PATCH methods
+/// - Allows Authorization, Accept, and Content-Type headers
+/// - Supports credentials (cookies, authorization headers)
+/// - Sets a max age of 3600 seconds for preflight requests
 pub fn get_cors_middleware(host: &str) -> Cors {
     Cors::default()
         .allowed_origin(format!("http://{}", host).as_str())
@@ -147,6 +224,25 @@ pub fn get_cors_middleware(host: &str) -> Cors {
         .max_age(3600)
 }
 
+/// Creates session middleware for cookie-based session management.
+///
+/// This function configures session middleware that stores session data in encrypted
+/// cookies. Sessions persist across requests and can be configured with secure flags
+/// and expiry times.
+///
+/// # Arguments
+///
+/// * `key` - Secret key for encrypting and signing session cookies
+/// * `use_secure_cookie` - If true, cookies are only sent over HTTPS connections
+/// * `session_expiry` - Session time-to-live in seconds
+///
+/// # Returns
+///
+/// Returns a configured `SessionMiddleware` that:
+/// - Uses `CookieSessionStore` for client-side session storage
+/// - Encrypts session data with the provided key
+/// - Sets secure flag based on `use_secure_cookie`
+/// - Expires sessions after `session_expiry` seconds
 pub fn get_session_middleware(
     key: actix_web::cookie::Key,
     use_secure_cookie: bool,
@@ -161,6 +257,24 @@ pub fn get_session_middleware(
         .build()
 }
 
+/// Creates identity middleware for user authentication tracking.
+///
+/// This function configures middleware that tracks user identity across requests.
+/// It manages login deadlines and visit deadlines to automatically expire inactive sessions.
+///
+/// # Arguments
+///
+/// * `session_expiry` - Maximum session lifetime in seconds from login time
+/// * `last_visit` - Maximum time in seconds a session can remain inactive
+///
+/// # Returns
+///
+/// Returns a configured `IdentityMiddleware` that:
+/// - Tracks user identity using the `actix_identity.user_id` session key
+/// - Records last visit timestamp in `actix_identity.last_visited_at`
+/// - Expires sessions after `session_expiry` seconds from login
+/// - Expires sessions after `last_visit` seconds of inactivity
+/// - Purges session data on logout
 pub fn get_identity_middleware(session_expiry: u64, last_visit: u64) -> IdentityMiddleware {
     let login_deadline = core::time::Duration::from_secs(session_expiry);
     let visit_deadline = core::time::Duration::from_secs(last_visit);
@@ -195,6 +309,20 @@ pub fn path_config() -> PathConfig {
     })
 }
 
+/// Parses hostname and port from environment variables and formats as a bind address.
+///
+/// This function reads `EDUMDNS_WEB_HOSTNAME` and `EDUMDNS_WEB_PORT` from the environment
+/// and combines them into a format suitable for `HttpServer::bind()`.
+///
+/// # Returns
+///
+/// Returns a string in the format `{hostname}:{port}`. If environment variables are not set,
+/// defaults to `localhost:8000`.
+///
+/// # Environment Variables
+///
+/// - `EDUMDNS_WEB_HOSTNAME` - Hostname or IP address to bind (default: "localhost")
+/// - `EDUMDNS_WEB_PORT` - Port number to bind (default: "8000")
 pub fn parse_host() -> String {
     let hostname = env::var("EDUMDNS_WEB_HOSTNAME").unwrap_or(DEFAULT_HOSTNAME.to_string());
     let port = env::var("EDUMDNS_WEB_PORT").unwrap_or(DEFAULT_PORT.to_string());

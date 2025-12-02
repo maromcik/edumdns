@@ -106,6 +106,9 @@
             <button id="preview-json-btn" type="button" class="px-4 py-2 text-forms rounded border">Preview JSON</button>
             <button type="submit" class="bg-acc hover:bg-acc-l text-button px-6 py-2 rounded">Send Packet</button>
         </div>
+
+        <div id="form-error-msg" class="hidden"></div>
+
     </form>
 
     <pre id="json-preview" class="hidden mt-4 p-3 bg-forms text-button rounded overflow-auto" style="max-height:40vh"></pre>
@@ -330,6 +333,12 @@
         pre.classList.toggle('hidden');
     });
 
+    function showError(html) {
+        const container = document.getElementById('form-error-msg');
+        container.innerHTML = html;
+        container.classList.remove('hidden');
+    }
+
     /* Submit override */
     document.getElementById('create-packet-json-form').addEventListener('submit', (e) => {
         e.preventDefault();
@@ -340,15 +349,16 @@
             body: JSON.stringify(payload)
         })
             .then(resp => {
-                if (resp.redirected) {
+                if (resp.ok) {
                     window.location.href = resp.url;
                 } else {
-                    window.location.reload();
+                    resp.text().then(text => showError(text));
+                    console.log('submit error', resp);
                 }
             })
             .catch(err => {
                 console.error('submit error', err);
-                alert('Submit error, check console');
+                alert(`Error submitting packet: ${err}`);
             });
     });
 </script>

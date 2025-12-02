@@ -24,7 +24,6 @@
 
         ws.onmessage = (event) => {
             let data = event.data;
-            console.log("Update:", data);
             // Normalize booleans
             if (data === "true" || data === "false") {
                 const isAlive = data === "true";

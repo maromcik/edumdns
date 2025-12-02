@@ -185,4 +185,7 @@ pub struct UpdatePacket {
     pub dst_addr: Option<IpNetwork>,
     pub src_port: Option<i32>,
     pub dst_port: Option<i32>,
+    pub payload: Option<Vec<u8>>,
+    pub payload_hash: Option<i64>,
+    pub payload_string: Option<String>,
 }

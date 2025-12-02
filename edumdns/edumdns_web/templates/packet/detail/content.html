@@ -21,6 +21,16 @@
             <i class="fa-solid fa-trash"></i>
         </button>
         {% endif %}
+        {% if permissions|has_perm("Update") %}
+        <button hx-get="/packet/{{ packet.id }}/update-payload"
+                hx-target="#content-area"
+                hx-push-url="/packet/{{ packet.id }}/update-payload"
+                hx-target-error="#content-area"
+                class="flex items-center justify-center w-10 h-10 bg-acc hover:bg-acc-l rounded-md text-button shadow-md"
+                title="Edit packet">
+            <i class="fa-solid fa-pencil"></i>
+        </button>
+        {% endif %}
     </div>
     <!-- Packet Card -->
     <div class="rounded-lg border border-base bg-cards p-6 mb-8">

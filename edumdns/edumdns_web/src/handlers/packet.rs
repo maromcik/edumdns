@@ -13,13 +13,11 @@
 
 use crate::authorized;
 use crate::error::WebError;
-use crate::forms::packet::{
-    CreatePacketForm, PacketDeviceDataForm, PacketQuery, ReassignPacketForm, UpdatePacketForm,
-};
+use crate::forms::packet::{CreatePacketForm, PacketDeviceDataForm, PacketQuery, ReassignPacketForm, UpdatePacketForm, UpdatePacketPayloadForm};
 use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
 use crate::header::LOCATION;
 use crate::templates::PageInfo;
-use crate::templates::packet::{PacketCreateTemplate, PacketDetailTemplate, PacketTemplate};
+use crate::templates::packet::{PacketCreateTemplate, PacketDetailTemplate, PacketTemplate, PacketUpdatePayloadTemplate};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
@@ -33,6 +31,9 @@ use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets}
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use std::collections::HashMap;
+use hickory_proto::op::Message;
+use hickory_proto::serialize::binary::BinDecodable;
+use edumdns_core::bincode_types::MacAddr;
 
 #[get("")]
 pub async fn get_packets(
@@ -214,3 +215,53 @@ pub async fn create_packet_form(
     })?;
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
+
+#[post("update-payload")]
+pub async fn update_packet_payload(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    packet_repo: web::Data<PgPacketRepository>,
+    form: web::Form<UpdatePacketPayloadForm>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request);
+    let params = form.into_inner().to_db_params()?;
+    packet_repo
+        .update_auth(&params, &parse_user_id(&i)?)
+        .await?;
+
+    Ok(HttpResponse::SeeOther()
+        .insert_header((LOCATION, format!("/packet/{}", params.id)))
+        .finish())
+}
+
+
+#[get("{id}/update-payload")]
+pub async fn update_packet_payload_form(
+    request: HttpRequest,
+    identity: Option<Identity>,
+    state: web::Data<AppState>,
+    packet_repo: web::Data<PgPacketRepository>,
+    user_repo: web::Data<PgUserRepository>,
+    path: web::Path<(Id,)>,
+) -> Result<HttpResponse, WebError> {
+    let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
+    let user = user_repo.read_one(&user_id).await?;
+    let packet = packet_repo.read_one_auth(&path.0, &user_id).await?;
+
+    let message = Message::from_bytes(&packet.data.payload)?;
+
+    let template_name = get_template_name(&request, "packet/edit");
+    let env = state.jinja.acquire_env()?;
+    let template = env.get_template(&template_name)?;
+    let body = template.render(PacketUpdatePayloadTemplate {
+        user,
+        probe_id: packet.data.probe_id,
+        ip: packet.data.src_addr,
+        mac: MacAddr::from_octets(packet.data.src_mac),
+        port: packet.data.dst_port as u16,
+        message
+    })?;
+    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+}
+

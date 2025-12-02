@@ -1,3 +1,4 @@
+use hickory_proto::op::Message;
 use crate::forms::packet::PacketQuery;
 use crate::templates::PageInfo;
 use edumdns_core::app_packet::Id;
@@ -33,4 +34,14 @@ pub struct PacketCreateTemplate {
     pub mac: MacAddr,
     pub ip: IpNetwork,
     pub port: u16,
+}
+
+#[derive(Serialize)]
+pub struct PacketUpdatePayloadTemplate {
+    pub user: UserDisplay,
+    pub probe_id: Uuid,
+    pub mac: MacAddr,
+    pub ip: IpNetwork,
+    pub port: u16,
+    pub message: Message
 }

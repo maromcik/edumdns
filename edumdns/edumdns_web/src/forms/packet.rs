@@ -85,6 +85,34 @@ impl CreatePacketForm {
     }
 }
 
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UpdatePacketPayloadForm {
+    pub id: Id,
+    pub message: Message,
+}
+impl UpdatePacketPayloadForm {
+    pub fn to_db_params(self) -> Result<UpdatePacket, WebError> {
+        let payload_string = Some(self.message.to_string());
+        let payload = self.message.to_bytes()?;
+        let payload_hash = edumdns_core::app_packet::calculate_hash(&payload);
+        let packet = UpdatePacket {
+            id: self.id,
+            probe_id: None,
+            src_mac: None,
+            dst_mac: None,
+            src_addr: None,
+            dst_addr: None,
+            src_port: None,
+            dst_port: None,
+            payload: Some(payload),
+            payload_hash: Some(payload_hash as i64),
+            payload_string,
+        };
+        Ok(packet)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UpdatePacketForm {
     pub id: Id,
@@ -108,6 +136,9 @@ impl UpdatePacketForm {
             dst_addr: self.dst_addr,
             src_port: self.src_port,
             dst_port: self.dst_port,
+            payload: None,
+            payload_hash: None,
+            payload_string: None,
         }
     }
 }
@@ -134,6 +165,9 @@ impl ReassignPacketForm {
             dst_addr: None,
             src_port: None,
             dst_port: None,
+            payload: None,
+            payload_hash: None,
+            payload_string: None,
         }
     }
 }

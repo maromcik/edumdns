@@ -13,15 +13,21 @@
 
 use crate::authorized;
 use crate::error::WebError;
-use crate::forms::packet::{CreatePacketForm, PacketDeviceDataForm, PacketQuery, ReassignPacketForm, UpdatePacketForm, UpdatePacketPayloadForm};
+use crate::forms::packet::{
+    CreatePacketForm, PacketDeviceDataForm, PacketQuery, ReassignPacketForm, UpdatePacketForm,
+    UpdatePacketPayloadForm,
+};
 use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
 use crate::header::LOCATION;
 use crate::templates::PageInfo;
-use crate::templates::packet::{PacketCreateTemplate, PacketDetailTemplate, PacketTemplate, PacketUpdatePayloadTemplate};
+use crate::templates::packet::{
+    PacketCreateTemplate, PacketDetailTemplate, PacketTemplate, PacketUpdatePayloadTemplate,
+};
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
 use edumdns_core::app_packet::Id;
+use edumdns_core::bincode_types::MacAddr;
 use edumdns_db::repositories::common::{
     DbCreate, DbDelete, DbReadOne, PAGINATION_ELEMENTS_PER_PAGE,
 };
@@ -30,10 +36,9 @@ use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
-use std::collections::HashMap;
 use hickory_proto::op::Message;
 use hickory_proto::serialize::binary::BinDecodable;
-use edumdns_core::bincode_types::MacAddr;
+use std::collections::HashMap;
 
 #[get("")]
 pub async fn get_packets(
@@ -234,7 +239,6 @@ pub async fn update_packet_payload(
         .finish())
 }
 
-
 #[get("{id}/update-payload")]
 pub async fn update_packet_payload_form(
     request: HttpRequest,
@@ -249,7 +253,8 @@ pub async fn update_packet_payload_form(
     let user = user_repo.read_one(&user_id).await?;
     let packet = packet_repo.read_one_auth(&path.0, &user_id).await?;
 
-    let message = Message::from_bytes(&packet.data.payload)?;
+    let message = Message::from_bytes(&packet.data.payload)
+        .map_err(|_| WebError::BadRequest("Not a DNS packet payload".to_string()))?;
 
     let template_name = get_template_name(&request, "packet/edit");
     let env = state.jinja.acquire_env()?;
@@ -261,8 +266,7 @@ pub async fn update_packet_payload_form(
         ip: packet.data.src_addr,
         mac: MacAddr::from_octets(packet.data.src_mac),
         port: packet.data.dst_port as u16,
-        message: serde_json::to_string(&message)?
+        message: serde_json::to_string(&message)?,
     })?;
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
-

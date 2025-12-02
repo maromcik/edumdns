@@ -1,4 +1,3 @@
-use hickory_proto::op::Message;
 use crate::forms::packet::PacketQuery;
 use crate::templates::PageInfo;
 use edumdns_core::app_packet::Id;

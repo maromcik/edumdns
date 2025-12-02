@@ -1043,6 +1043,15 @@ pre code {
   width: 100%;
 }
 
+.w-fit {
+  width: -moz-fit-content;
+  width: fit-content;
+}
+
+.w-5\/6 {
+  width: 83.333333%;
+}
+
 .min-w-full {
   min-width: 100%;
 }
@@ -2520,10 +2529,6 @@ pre code {
     width: 24rem;
   }
 
-  .lg\:w-full {
-    width: 100%;
-  }
-
   .lg\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2556,10 +2561,6 @@ pre code {
     width: 25%;
   }
 
-  .xl\:w-5\/6 {
-    width: 83.333333%;
-  }
-
   .xl\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -2586,21 +2587,17 @@ pre code {
 }
 
 @media (min-width: 1536px) {
-  .\32xl\:w-3\/4 {
-    width: 75%;
-  }
-
   .\32xl\:w-5\/6 {
     width: 83.333333%;
+  }
+
+  .\32xl\:w-full {
+    width: 100%;
   }
 
   .\32xl\:w-fit {
     width: -moz-fit-content;
     width: fit-content;
-  }
-
-  .\32xl\:grid-cols-4 {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

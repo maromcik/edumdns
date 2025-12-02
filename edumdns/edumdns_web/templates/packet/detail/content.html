@@ -108,71 +108,114 @@
         </div>
     </div>
 
-<!--    <div class="rounded-lg border border-base bg-cards p-6 mb-8">-->
-<!--        <h3 class="text-2xl font-medium mb-4 text-sat-l">Reassign Packet</h3>-->
-<!--        <p class="text-xs text-sat-m mt-1">Change these settings to reassign the packet to a different device.</p>-->
+    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
+        <h3 class="text-2xl font-medium mb-4 text-sat-l">Edit Packet</h3>
+        <form
+                method="post"
+                hx-post="/packet/update"
+                hx-target="#content-area"
+                hx-target-error="#content-area"
+                class="gap-4"
+        >
+            <input type="hidden" id="packet_id" name="id" value="{{ packet.id }}"/>
 
-<!--        <form-->
-<!--                method="post"-->
-<!--                hx-post="/packet/update"-->
-<!--                hx-target="#content-area"-->
-<!--                hx-target-error="#content-area"-->
-<!--                class="gap-4"-->
-<!--        >-->
-<!--            <input type="hidden" id="packet_id" name="id" value="{{ packet.id }}"/>-->
+            <div class="flex flex-col">
+                <label for="probe_id" class="text-xs uppercase tracking-wide text-forms">Probe ID</label>
+                <input
+                        id="probe_id"
+                        name="probe_id"
+                        value="{{ packet.probe_id }}"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        required
+                />
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2">
+                <div class="flex flex-col">
+                    <label for="src_mac" class="text-xs uppercase tracking-wide text-forms mt-4">Source MAC</label>
+                    <input
+                            id="src_mac"
+                            name="src_mac"
+                            value="{{ packet.src_mac }}"
+                            class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                            required
+                    />
+                </div>
 
-<!--            <div class="flex flex-col">-->
-<!--                <label for="probe_id" class="text-xs uppercase tracking-wide text-forms">Probe ID</label>-->
-<!--                <input-->
-<!--                        id="probe_id"-->
-<!--                        name="probe_id"-->
-<!--                        value="{{ packet.probe_id }}"-->
-<!--                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"-->
-<!--                        required-->
-<!--                />-->
-<!--            </div>-->
-<!--            <div class="grid grid-cols-1 md:grid-cols-2">-->
-<!--                <div class="flex flex-col">-->
-<!--                    <label for="src_mac" class="text-xs uppercase tracking-wide text-forms mt-4">Source MAC</label>-->
-<!--                    <input-->
-<!--                            id="src_mac"-->
-<!--                            name="src_mac"-->
-<!--                            value="{{ packet.src_mac }}"-->
-<!--                            class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"-->
-<!--                            required-->
-<!--                    />-->
-<!--                </div>-->
+                <div class="flex flex-col">
+                    <label for="src_mac" class="text-xs uppercase tracking-wide text-forms mt-4">Destination MAC</label>
+                    <input
+                            id="dst_mac"
+                            name="dst_mac"
+                            value="{{ packet.dst_mac }}"
+                            class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                            required
+                    />
+                </div>
 
-<!--                <div class="flex flex-col">-->
-<!--                    <label for="src_addr" class="text-xs uppercase tracking-wide text-forms mt-4">Source Address</label>-->
-<!--                    <input-->
-<!--                            id="src_addr"-->
-<!--                            name="src_addr"-->
-<!--                            value="{{ packet.src_addr }}"-->
-<!--                            class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"-->
-<!--                            required-->
-<!--                    />-->
-<!--                </div>-->
-<!--            </div>-->
-<!--            {% if permissions|has_perm("Update") %}-->
-<!--            &lt;!&ndash; Actions &ndash;&gt;-->
-<!--            <div class="md:col-span-2 flex items-center gap-2 pt-2">-->
-<!--                <button-->
-<!--                        type="submit"-->
-<!--                        class="inline-flex items-center rounded-md bg-acc px-4 py-2 text-sm font-medium text-button transition-colors"-->
-<!--                >-->
-<!--                    Save-->
-<!--                </button>-->
-<!--                <button-->
-<!--                        type="reset"-->
-<!--                        class="inline-flex items-center rounded-md bg-acc-l px-4 py-2 text-sm font-medium text-button transition-colors"-->
-<!--                >-->
-<!--                    Reset-->
-<!--                </button>-->
-<!--            </div>-->
-<!--            {% endif %}-->
-<!--        </form>-->
-<!--    </div>-->
+                <div class="flex flex-col">
+                    <label for="src_addr" class="text-xs uppercase tracking-wide text-forms mt-4">Source Address</label>
+                    <input
+                            id="src_addr"
+                            name="src_addr"
+                            value="{{ packet.src_addr }}"
+                            class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                            required
+                    />
+                </div>
+
+                <div class="flex flex-col">
+                    <label for="dst_addr" class="text-xs uppercase tracking-wide text-forms mt-4">Destination Address</label>
+                    <input
+                            id="dst_addr"
+                            name="dst_addr"
+                            value="{{ packet.dst_addr }}"
+                            class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                            required
+                    />
+                </div>
+
+                <div class="flex flex-col">
+                    <label for="src_port" class="text-xs uppercase tracking-wide text-forms mt-4">Source Port</label>
+                    <input
+                            id="src_port"
+                            name="src_port"
+                            value="{{ packet.src_port }}"
+                            class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                            required
+                    />
+                </div>
+
+                <div class="flex flex-col">
+                    <label for="dst_port" class="text-xs uppercase tracking-wide text-forms mt-4">Destination Port</label>
+                    <input
+                            id="dst_port"
+                            name="dst_port"
+                            value="{{ packet.dst_port }}"
+                            class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                            required
+                    />
+                </div>
+
+            </div>
+            {% if permissions|has_perm("Update") %}
+            <!-- Actions -->
+            <div class="md:col-span-2 flex items-center gap-2 pt-2">
+                <button
+                        type="submit"
+                        class="inline-flex items-center rounded-md bg-acc px-4 py-2 text-sm font-medium text-button transition-colors"
+                >
+                    Save
+                </button>
+                <button
+                        type="reset"
+                        class="inline-flex items-center rounded-md bg-acc-l px-4 py-2 text-sm font-medium text-button transition-colors"
+                >
+                    Reset
+                </button>
+            </div>
+            {% endif %}
+        </form>
+    </div>
 
 
     <!-- Payload -->

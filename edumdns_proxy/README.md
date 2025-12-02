@@ -28,6 +28,7 @@ In the context of EduMDNS, the eBPF program intercepts packets destined for prox
 3. The modified packets are forwarded, ensuring all traffic is routed through the proxy
 4. The server maintains mappings in eBPF maps that define which IP addresses should be proxied
 
+---
 ## Environment Variables
 
 ### Interface Configuration
@@ -97,8 +98,16 @@ sudo edumdns_proxy --interface eth0 --ip 192.168.0.10 --ip6 ::1 \
 # Using a custom .env file
 sudo edumdns_proxy --env-file /path/to/.env
 ```
-
+---
 ## Prerequisites
+
+### Toolchain Requirements
+1. stable rust toolchains: `rustup toolchain install stable`
+1. nightly rust toolchains: `rustup toolchain install nightly --component rust-src`
+1. (if cross-compiling) rustup target: `rustup target add ${ARCH}-unknown-linux-musl`
+1. (if cross-compiling) LLVM: (e.g.) `brew install llvm` (on macOS)
+1. (if cross-compiling) C toolchain: (e.g.) [`brew install filosottile/musl-cross/musl-cross`](https://github.com/FiloSottile/homebrew-musl-cross) (on macOS)
+1. bpf-linker: `cargo install bpf-linker` (`--no-default-features` on macOS)
 
 ### Kernel Requirements
 
@@ -129,6 +138,8 @@ The proxy requires the following capabilities:
 
 Or simply run as root.
 
+---
+
 ## eBPF Maps
 
 The proxy creates and pins two eBPF maps:
@@ -141,6 +152,8 @@ These maps are used by the server to update which IP addresses should be proxied
 ## Integration with Server
 
 The server component (`edumdns_server`) reads the pinned eBPF maps and updates them when devices are enabled for proxy functionality. The server uses the `EDUMDNS_SERVER_EBPF_PIN_LOCATION` environment variable to locate the maps.
+
+---
 
 ## Building
 
@@ -158,6 +171,8 @@ cargo build --release
 
 The eBPF program is compiled separately and embedded in the main binary.
 
+--- 
+
 ## Shutdown
 
 The proxy handles SIGTERM and SIGINT signals gracefully:
@@ -166,6 +181,8 @@ The proxy handles SIGTERM and SIGINT signals gracefully:
 - The XDP program is automatically detached when the process exits
 - Clean shutdown ensures the interface returns to normal operation
 
+---
+
 ## Security Considerations
 
 - The proxy runs with elevated privileges and has access to network traffic
@@ -173,6 +190,8 @@ The proxy handles SIGTERM and SIGINT signals gracefully:
 - The eBPF program is sandboxed by the kernel, but the loader has significant privileges
 - Monitor the proxy's behavior in production environments
 - Use appropriate firewall rules to control access to the proxy IP addresses
+
+--- 
 
 ## Example Configuration File
 
@@ -188,38 +207,6 @@ EDUMDNS_PROXY_DST_MAC=18:7a:3b:5e:c6:4c
 EDUMDNS_PROXY_LOG_LEVEL=info
 ```
 
-
-## Prerequisites
-
-1. stable rust toolchains: `rustup toolchain install stable`
-1. nightly rust toolchains: `rustup toolchain install nightly --component rust-src`
-1. (if cross-compiling) rustup target: `rustup target add ${ARCH}-unknown-linux-musl`
-1. (if cross-compiling) LLVM: (e.g.) `brew install llvm` (on macOS)
-1. (if cross-compiling) C toolchain: (e.g.) [`brew install filosottile/musl-cross/musl-cross`](https://github.com/FiloSottile/homebrew-musl-cross) (on macOS)
-1. bpf-linker: `cargo install bpf-linker` (`--no-default-features` on macOS)
-
-## Build & Run
-
-Use `cargo build`, `cargo check`, etc. as normal. Run your program with:
-
-```shell
-cargo run --release --config 'target."cfg(all())".runner="sudo -E"'
-```
-
-Cargo build scripts are used to automatically build the eBPF correctly and include it in the
-program.
-
-## Cross-compiling on macOS
-
-Cross compilation should work on both Intel and Apple Silicon Macs.
-
-```shell
-CC=${ARCH}-linux-musl-gcc cargo build --package edumdns_proxy --release \
-  --target=${ARCH}-unknown-linux-musl \
-  --config=target.${ARCH}-unknown-linux-musl.linker=\"${ARCH}-linux-musl-gcc\"
-```
-The cross-compiled program `target/${ARCH}-unknown-linux-musl/release/edumdns_proxy` can be
-copied to a Linux server or VM and run there.
 
 ## License
 

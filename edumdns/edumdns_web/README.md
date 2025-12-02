@@ -16,6 +16,8 @@ The `edumdns_web` crate provides:
 
 The web interface uses Minijinja templates for rendering and supports both local authentication and OIDC integration.
 
+---
+
 ## Environment Variables
 
 ### Server Binding
@@ -45,7 +47,7 @@ The web interface uses Minijinja templates for rendering and supports both local
 
 ### Session Configuration
 
-- **`EDUMDNS_COOKIE_SESSION_KEY`** (optional, but highly recommended)
+- **`EDUMDNS_COOKIE_SESSION_KEY`**
   - Secret key for encrypting and signing session cookies
   - Should be a random string of sufficient length (32+ bytes recommended)
   - If not set, an empty key is used, which is insecure
@@ -120,6 +122,8 @@ These variables are used for integrating with an external database (typically a 
   - If not set, ACL database queries will be disabled
   - Example: `EDUMDNS_ACL_AP_DATABASE_QUERY="SELECT ap FROM log WHERE ip = $$1"`
 
+---
+
 ## Features
 
 ### Authentication
@@ -150,20 +154,3 @@ The web interface provides RESTful endpoints for:
 - **Session**: Cookie-based session management
 - **Identity**: User identity tracking and authentication
 - **OIDC**: OpenID Connect authentication middleware (when configured)
-
-## Payload Limits
-
-- **Form Limit**: 16 MiB
-- **Payload Limit**: 16 GiB
-- **Multipart Limit**: 16 GiB
-
-## Session Expiry
-
-The session expiry behavior is controlled by two separate deadlines:
-
-- **Login Deadline** (`EDUMDNS_WEB_SESSION_EXPIRY`): The maximum lifetime of a session from the time of login, regardless of activity. Default: 30 days (2,592,000 seconds).
-
-- **Visit Deadline** (`EDUMDNS_WEB_LAST_VISIT_DEADLINE`): The maximum time a session can remain inactive. If a user doesn't visit the site within this period, the session expires even if the login deadline hasn't been reached. Default: 7 days (604,800 seconds).
-
-Both deadlines are enforced independently - a session expires when either deadline is reached.
-

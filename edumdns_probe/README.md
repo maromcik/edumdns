@@ -15,6 +15,8 @@ The `edumdns_probe` binary is a standalone application that:
 
 The probe uses the Tokio async runtime for efficient packet processing and network communication.
 
+--- 
+
 ## Environment Variables
 
 ### Server Connection
@@ -85,6 +87,8 @@ The probe uses the Tokio async runtime for efficient packet processing and netwo
   - Valid values: `trace`, `debug`, `info`, `warn`, `error`
   - Example: `EDUMDNS_PROBE_LOG_LEVEL=debug`
 
+---
+
 ## Command Line Arguments
 
 All environment variables can also be provided as command-line arguments. The probe uses `clap` for argument parsing, and command-line arguments take precedence over environment variables.
@@ -102,6 +106,8 @@ edumdns_probe --server-host edumdns.example.com --server-port 5000
 edumdns_probe --env-file /path/to/.env
 ```
 
+---
+
 ## Probe Lifecycle
 
 1. **Initialization**: The probe loads or generates its UUID
@@ -112,15 +118,14 @@ edumdns_probe --env-file /path/to/.env
 6. **Command Processing**: Receives and executes commands from the server
 7. **Reconnection**: Automatically reconnects if the connection is lost
 
+---
+
 ## Packet Capture
 
-The probe captures mDNS packets from all available network interfaces. It uses libpcap for packet capture and parses:
-
-- mDNS query packets
-- mDNS response packets
-- mDNS announcement packets
-
+The probe captures mDNS packets from all available network interfaces. It uses libpcap for packet capture. 
 Captured packets are aggregated and sent to the server in batches for efficient transmission.
+
+---
 
 ## Error Handling
 
@@ -131,6 +136,8 @@ The probe includes robust error handling:
 - **Server Commands**: Invalid commands are logged and ignored
 - **Reconnection**: The probe can be instructed to reconnect by the server
 
+---
+
 ## Building
 
 ```bash
@@ -138,6 +145,8 @@ cargo build --release
 ```
 
 The resulting binary will be located at `target/release/edumdns_probe`.
+
+---
 
 ## Deployment
 

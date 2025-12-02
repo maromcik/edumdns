@@ -12,8 +12,11 @@ The `edumdns_server` crate is responsible for:
 - Transmitting mDNS packets to requesting clients
 - Integrating with eBPF proxy for secure packet relaying
 - Storing captured packet data in the database
+- Performing commands on behalf of the web interface
 
 The server uses an actor-based architecture with message channels for coordination between components.
+
+---
 
 ## Environment Variables
 
@@ -78,6 +81,8 @@ The following variables are used when eBPF proxy functionality is enabled for de
   - Limits the number of devices that can receive transmitted packets in a single operation
   - Example: `EDUMDNS_SERVER_MAX_TRANSMIT_SUBNET_SIZE=1024`
 
+---
+
 ## Architecture
 
 The server component consists of several key modules:
@@ -103,9 +108,11 @@ The server component consists of several key modules:
 
 - **EbpfUpdater**: Updates eBPF maps with IP address mappings for proxy functionality
 
+---
+
 ## ServerManager Module
 
-The `ServerManager` (`manager.rs`) is the central orchestrator that routes commands and data between probes, the database, and transmitters. It serves as the core coordination point for the entire server.
+The `ServerManager` (`manager.rs`) is the central component that routes commands and data between probes, the database, and transmitters. It serves as the core coordination point for the entire server.
 
 ### Responsibilities
 
@@ -117,7 +124,7 @@ The `ServerManager` is responsible for:
 - **Transmitter Management**: Spawns and manages UDP transmitter tasks for targeted packet transmission
 - **WebSocket Coordination**: Manages WebSocket connections for real-time probe status updates
 - **eBPF Map Updates**: Coordinates updates to eBPF maps when proxy mode is enabled
-- **Cache Invalidation**: Manages cache invalidation when devices or probes are modified
+- **Cache Invalidation**: Manages cache invalidation when devices or probes are deleted
 
 ### Packet Handling
 
@@ -157,41 +164,67 @@ When receiving `LocalAppPacket` from the web interface:
    - **IsProbeLive**: Checks if a specific probe is currently connected
    - **OperationUpdateToWs**: Sends status updates to WebSocket clients
 
-### Targeted Packet Transmission
+### Message Flow
+
+The `ServerManager` uses a main event loop that continuously polls two channels:
+
+1. **Command Channel**: Receives control packets from web interface and internal subsystems
+2. **Data Channel**: Receives network packets from probes
+
+The loop uses `try_recv` for immediate processing when packets are available, falling back to `tokio::select!` for awaiting packets when queues are empty. This ensures efficient processing with minimal latency.
+
+### Cache Management
+
+The in-memory packet cache:
+
+- **Structure**: Nested hash maps: `Probe ID → (MAC, IP) → Set<ProbePacket>`
+- **Deduplication**: Prevents storing duplicate packets (based on packet content)
+- **Size Limits**: Clears device cache when it exceeds `BUFFER_SIZE` (1000 packets per device)
+- **Invalidation**: Can be invalidated per probe or per device when data changes
+- **Live Updates**: Forwards new packets to active transmitters in real-time
+
+### WebSocket Integration
+
+The `ServerManager` maintains a registry of WebSocket sessions:
+
+- **Structure**: `Probe ID → Session ID → Sender<ProbeResponse>`
+- **Registration**: Web interface registers sessions to receive probe updates
+- **Broadcasting**: Can send responses to all sessions for a probe or to a specific session
+- **Cleanup**: Automatically removes empty probe entries when all sessions disconnect
+
+
+---
+
+## Targeted Packet Transmission
 
 The `ServerManager` implements targeted packet transmission with comprehensive validation:
 
-#### Validation Process
+### Validation Process
 
 Before starting transmission, the following validations are performed:
 
 1. **Proxy Configuration Check**:
    - If proxy mode is requested but eBPF is not configured, transmission is rejected
-   - Error: "eBPF is not configured properly; contact your administrator"
 
 2. **Subnet Size Validation**:
    - Target subnet size must not exceed `EDUMDNS_SERVER_MAX_TRANSMIT_SUBNET_SIZE` (default: 512)
    - Prevents accidental broadcast to overly large subnets
-   - Error: "the target subnet size (X) is greater than the maximum allowed (Y)"
 
 3. **Proxy Mode Subnet Restriction**:
    - When proxy mode is enabled, target must be a single host:
      - IPv4: Must be /32 (single address)
      - IPv6: Must be /128 (single address)
    - This ensures point-to-point communication through the proxy
-   - Error: "when proxy is enabled, the target IP must have prefix /32 for IPv4 or /128 for IPv6"
 
 4. **Packet Availability**:
    - Queries database for packets matching the device (probe ID, MAC, IP)
    - If no packets found, transmission is rejected
-   - Error: Database query error or "No packets found"
 
 5. **Packet Processing**:
    - Loaded packets are processed (DNS A/AAAA records rewritten if proxy enabled)
    - If no packets remain after processing, transmission is rejected
-   - Error: "no packets left after processing"
 
-#### Transmission Lifecycle
+### Transmission Lifecycle
 
 If all validations pass:
 
@@ -212,33 +245,7 @@ If all validations pass:
    - Aborts the transmitter task
    - Clears live update channel
 
-### Message Flow
-
-The `ServerManager` uses a main event loop that continuously polls two channels:
-
-1. **Command Channel**: Receives control packets from web interface and internal subsystems
-2. **Data Channel**: Receives network packets from probes
-
-The loop uses `try_recv` for immediate processing when packets are available, falling back to `tokio::select!` for awaiting packets when queues are empty. This ensures efficient processing with minimal latency.
-
-### Cache Management
-
-The in-memory packet cache:
-
-- **Structure**: Nested hash maps: `Probe ID → (MAC, IP) → Set<ProbePacket>`
-- **Deduplication**: Prevents storing duplicate packets (based on packet content)
-- **Size Limits**: Clears device cache when it exceeds `BUFFER_SIZE` (1000 packets)
-- **Invalidation**: Can be invalidated per probe or per device when data changes
-- **Live Updates**: Forwards new packets to active transmitters in real-time
-
-### WebSocket Integration
-
-The `ServerManager` maintains a registry of WebSocket sessions:
-
-- **Structure**: `Probe ID → Session ID → Sender<ProbeResponse>`
-- **Registration**: Web interface registers sessions to receive probe updates
-- **Broadcasting**: Can send responses to all sessions for a probe or to a specific session
-- **Cleanup**: Automatically removes empty probe entries when all sessions disconnect
+---
 
 ## Message Flow
 
@@ -257,7 +264,4 @@ The `ServerManager` maintains a registry of WebSocket sessions:
 7. Server transmits mDNS packets to requesting clients when discovery is enabled
 8. Transmitters automatically clean up when duration expires
 
-## Buffer Size
-
-The server uses a buffer size of 1000 for internal message channels, defined as `BUFFER_SIZE` in the crate.
 

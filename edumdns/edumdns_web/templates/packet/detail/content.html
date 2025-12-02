@@ -34,7 +34,7 @@
     </div>
     <!-- Packet Card -->
     <div class="rounded-lg border border-base bg-cards p-6 mb-8">
-        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <!-- ID -->
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
@@ -68,49 +68,6 @@
                     {% endif %}
                 </span>
             </div>
-        </div>
-    </div>
-
-    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
-        <h3 class="text-2xl font-medium mb-4 text-sat-l">Packet Metadata</h3>
-        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-
-            <!-- Source MAC -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Source MAC</span>
-                <span class="font-mono text-code"><code>{{ packet.src_mac }}</code></span>
-            </div>
-
-            <!-- Destination MAC -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Destination MAC</span>
-                <span class="font-mono text-code"><code>{{ packet.dst_mac }}</code></span>
-            </div>
-
-            <!-- Source Address -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Source Address</span>
-                <span class="font-mono text-code"><code>{{ packet.src_addr }}</code></span>
-            </div>
-
-            <!-- Destination Address -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Destination Address</span>
-                <span class="font-mono text-code"><code>{{ packet.dst_addr }}</code></span>
-            </div>
-
-            <!-- Source Port -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Source Port</span>
-                <span class="text-code"><code>{{ packet.src_port }}</code></span>
-            </div>
-
-            <!-- Destination Port -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Destination Port</span>
-                <span class="font-mono text-code"><code>{{ packet.dst_port }}</code></span>
-            </div>
-
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">Captured at</span>
                 <span class="text-sat-l">{{ packet.captured_at }}</span>
@@ -118,8 +75,56 @@
         </div>
     </div>
 
+<!--    <div class="rounded-lg border border-base bg-cards p-6 mb-8">-->
+<!--        <h3 class="text-2xl font-medium mb-4 text-sat-l">Packet Metadata</h3>-->
+<!--        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">-->
+
+<!--            &lt;!&ndash; Source MAC &ndash;&gt;-->
+<!--            <div class="flex flex-col">-->
+<!--                <span class="text-xs uppercase tracking-wide text-sat-m">Source MAC</span>-->
+<!--                <span class="font-mono text-code"><code>{{ packet.src_mac }}</code></span>-->
+<!--            </div>-->
+
+<!--            &lt;!&ndash; Destination MAC &ndash;&gt;-->
+<!--            <div class="flex flex-col">-->
+<!--                <span class="text-xs uppercase tracking-wide text-sat-m">Destination MAC</span>-->
+<!--                <span class="font-mono text-code"><code>{{ packet.dst_mac }}</code></span>-->
+<!--            </div>-->
+
+<!--            &lt;!&ndash; Source Address &ndash;&gt;-->
+<!--            <div class="flex flex-col">-->
+<!--                <span class="text-xs uppercase tracking-wide text-sat-m">Source Address</span>-->
+<!--                <span class="font-mono text-code"><code>{{ packet.src_addr }}</code></span>-->
+<!--            </div>-->
+
+<!--            &lt;!&ndash; Destination Address &ndash;&gt;-->
+<!--            <div class="flex flex-col">-->
+<!--                <span class="text-xs uppercase tracking-wide text-sat-m">Destination Address</span>-->
+<!--                <span class="font-mono text-code"><code>{{ packet.dst_addr }}</code></span>-->
+<!--            </div>-->
+
+<!--            &lt;!&ndash; Source Port &ndash;&gt;-->
+<!--            <div class="flex flex-col">-->
+<!--                <span class="text-xs uppercase tracking-wide text-sat-m">Source Port</span>-->
+<!--                <span class="text-code"><code>{{ packet.src_port }}</code></span>-->
+<!--            </div>-->
+
+<!--            &lt;!&ndash; Destination Port &ndash;&gt;-->
+<!--            <div class="flex flex-col">-->
+<!--                <span class="text-xs uppercase tracking-wide text-sat-m">Destination Port</span>-->
+<!--                <span class="font-mono text-code"><code>{{ packet.dst_port }}</code></span>-->
+<!--            </div>-->
+
+<!--            <div class="flex flex-col">-->
+<!--                <span class="text-xs uppercase tracking-wide text-sat-m">Captured at</span>-->
+<!--                <span class="text-sat-l">{{ packet.captured_at }}</span>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--    </div>-->
+
     <div class="rounded-lg border border-base bg-cards p-6 mb-8">
-        <h3 class="text-2xl font-medium mb-4 text-sat-l">Edit Packet</h3>
+        <h3 class="text-2xl font-medium mb-4 text-sat-l">Packet metadata</h3>
+        <p class="text-xs text-sat-m mt-1">Change these settings may reassign the packet to a different device.</p>
         <form
                 method="post"
                 hx-post="/packet/update"
@@ -139,7 +144,7 @@
                         required
                 />
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="flex flex-col">
                     <label for="src_mac" class="text-xs uppercase tracking-wide text-forms mt-4">Source MAC</label>
                     <input

@@ -116,7 +116,6 @@
     function preloadDnsMessage() {
         const rawJson = `{{ message | safe }}`;
         if (!rawJson || rawJson.trim().length === 0) return;
-        console.log("Preloading DNS message:", rawJson);
         let msg = null;
         try {
             msg = JSON.parse(rawJson);

@@ -34,11 +34,7 @@ use crate::handlers::user::{
     update_user, update_user_password, user_manage, user_manage_form_page, user_manage_password,
     user_manage_password_form,
 };
-use crate::utils::{
-    AppState, DeviceAclApDatabase, create_oidc, create_reloader, get_cors_middleware,
-    get_identity_middleware, get_session_middleware, json_config, parse_host, path_config,
-    query_config,
-};
+use crate::utils::{AppState, DeviceAclApDatabase, create_oidc, create_reloader, get_cors_middleware, get_identity_middleware, get_session_middleware, json_config, parse_host, path_config, query_config, form_config};
 use crate::{DEFAULT_HOSTNAME, FORM_LIMIT, PAYLOAD_LIMIT, SECS_IN_MONTH, SECS_IN_WEEK, middleware};
 use actix_files::Files;
 use actix_multipart::form::MultipartFormConfig;
@@ -336,7 +332,8 @@ impl WebSpawner {
                         .app_data(PayloadConfig::new(PAYLOAD_LIMIT))
                         .app_data(json_config())
                         .app_data(query_config()) // <-- attach custom handler// <- important
-                        .app_data(path_config()) // <-- attach custom handler// <- important
+                        .app_data(path_config())
+                        .app_data(form_config())// <-- attach custom handler// <- important
                         .wrap(NormalizePath::new(TrailingSlash::Trim))
                         .wrap(get_identity_middleware(
                             session_expiry_local,
@@ -374,6 +371,7 @@ impl WebSpawner {
                         .app_data(json_config())
                         .app_data(query_config()) // <-- attach custom handler// <- important
                         .app_data(path_config())
+                        .app_data(form_config())
                         .wrap(NormalizePath::new(TrailingSlash::Trim))
                         .wrap(get_identity_middleware(
                             session_expiry_local,

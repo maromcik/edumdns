@@ -21,7 +21,7 @@ use actix_session::storage::CookieSessionStore;
 use actix_web::ResponseError;
 use actix_web::dev::ServiceRequest;
 use actix_web::http::header;
-use actix_web::web::{JsonConfig, PathConfig, QueryConfig};
+use actix_web::web::{FormConfig, JsonConfig, PathConfig, QueryConfig};
 use actix_web_openidconnect::ActixWebOpenId;
 use edumdns_db::models::GroupProbePermission;
 use edumdns_db::repositories::common::Permission;
@@ -297,6 +297,13 @@ pub fn json_config() -> JsonConfig {
 
 pub fn query_config() -> QueryConfig {
     QueryConfig::default().error_handler(|err, _req| {
+        let web_error = WebError::ParseError(err.to_string());
+        actix_web::error::InternalError::from_response(err, web_error.error_response()).into()
+    })
+}
+
+pub fn form_config() -> FormConfig {
+    FormConfig::default().error_handler(|err, _req| {
         let web_error = WebError::ParseError(err.to_string());
         actix_web::error::InternalError::from_response(err, web_error.error_response()).into()
     })

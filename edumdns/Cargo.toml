@@ -8,9 +8,9 @@ resolver = "3"
 name = "edumdns"
 
 [dependencies]
-tracing = { version = "0.1.41", features = ["async-await"] }
-tracing-subscriber = { version = "0.3.19", features = ["env-filter", "local-time", "time"] }
-clap = { version = "4.5.38", features = ["derive"] }
+tracing = { version = "0.1.43", features = ["async-await"] }
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "local-time", "time"] }
+clap = { version = "4.5.53", features = ["derive"] }
 
 edumdns_server = { workspace = true }
 edumdns_db = { workspace = true }
@@ -25,14 +25,14 @@ edumdns_core = { path = "../edumdns_core"}
 edumdns_server = { path = "edumdns_server" }
 edumdns_db = { path = "edumdns_db" }
 edumdns_web = { path = "edumdns_web" }
-thiserror = "2.0.12"
+thiserror = "2.0.17"
 tokio = { version = "1.48.0", features = ["full"] }
 dotenvy = "0.15.7"
-actix-web = "4.11.0"
+actix-web = "4.12.1"
 log = "0.4.28"
 ipnetwork = { version = "0.21.1", features = ["serde"]}
-uuid = { version = "1.18.1", features = ["v4", "v7", "serde"] }
-diesel-async = { version = "0.6.1" , features = ["tokio-postgres", "postgres", "deadpool"]}
+uuid = { version = "1.19.0", features = ["v4", "v7", "serde"] }
+diesel-async = { version = "0.7.4" , features = ["tokio-postgres", "postgres", "deadpool"]}
 serde = { version = "1.0.226", features = ["derive", "std"] }
 hickory-proto = { version = "0.25.2", features = ["default", "serde"]}
 strum = "0.27.2"

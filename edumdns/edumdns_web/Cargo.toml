@@ -24,7 +24,6 @@ edumdns_core = { workspace = true }
 edumdns_db = { workspace = true }
 edumdns_server = { workspace = true }
 actix-web = { workspace = true }
-dotenvy = { workspace = true}
 log = { workspace = true}
 serde = { workspace = true}
 diesel-async = { workspace = true}
@@ -36,7 +35,6 @@ time = {workspace = true}
 futures-util = {workspace = true}
 hickory-proto = { workspace = true }
 strum = { workspace = true }
-rustls-pki-types = {workspace = true}
-rustls = {workspace = true}
+
 
 

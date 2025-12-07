@@ -14,7 +14,6 @@ use actix_web::http::header;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_server::app_packet::AppPacket;
-use log::warn;
 
 use crate::config::WebConfig;
 use tokio::sync::mpsc::Sender;
@@ -54,10 +53,6 @@ pub async fn web_init(
     command_channel: Sender<AppPacket>,
     web_config: WebConfig,
 ) -> Result<(), WebError> {
-    if let Err(e) = dotenvy::dotenv() {
-        warn!("failed loading .env file: {e}");
-    };
-
     WebSpawner::new(pool, command_channel, web_config)
         .await?
         .run_web()

@@ -120,6 +120,16 @@ struct Cli {
     )]
     max_retries: usize,
 
+    /// Maximum connection buffer capacity.
+    #[clap(
+        long,
+        value_name = "MAX_CONN_BUFFER_CAPACITY",
+        env = "EDUMDNS_PROBE_MAX_CONN_BUFFER_CAPACITY",
+        default_value = "1000"
+    )]
+    buffer_capacity: usize,
+
+
     /// Optional pre-shared key for authentication.
     #[clap(
         short = 'k',
@@ -186,6 +196,7 @@ async fn main() -> Result<(), ProbeError> {
         max_retries,
         retry_interval,
         global_timeout,
+        buffer_capacity: cli.buffer_capacity,
     };
 
     let mut connection_manager =

@@ -55,8 +55,8 @@ pub async fn spawn_server_tasks(
 ) -> Result<(), ServerError> {
     let probe_handles: ProbeHandles = Arc::new(RwLock::new(HashMap::new()));
     let tracker: SharedProbeTracker = Arc::new(RwLock::new(OrderedMap::new()));
-    let data_channel = tokio::sync::mpsc::channel(server_config.connection.buffer_size);
-    let db_channel = tokio::sync::mpsc::channel(server_config.connection.buffer_size);
+    let data_channel = tokio::sync::mpsc::channel(server_config.channel_buffer_capacity);
+    let db_channel = tokio::sync::mpsc::channel(server_config.channel_buffer_capacity);
 
     let pool_local = pool.clone();
     let probe_handles_local = probe_handles.clone();

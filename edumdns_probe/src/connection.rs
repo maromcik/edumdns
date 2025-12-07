@@ -36,6 +36,7 @@ pub(crate) struct ConnectionLimits {
     pub(crate) max_retries: usize,
     pub(crate) retry_interval: Duration,
     pub(crate) global_timeout: Duration,
+    pub(crate) buffer_capacity: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -66,7 +67,8 @@ impl ConnectionManager {
             retry!(
                 TcpConnectionHandle::connect(
                     connection_info.server_conn_socket_addr.as_ref(),
-                    connection_limits.global_timeout
+                    connection_limits.global_timeout,
+                    connection_limits.buffer_capacity,
                 )
                 .await,
                 connection_limits.max_retries,
@@ -83,7 +85,8 @@ impl ConnectionManager {
                     connection_info.server_conn_socket_addr.as_ref(),
                     connection_info.host.as_ref(),
                     Arc::new(config.clone()),
-                    connection_limits.global_timeout
+                    connection_limits.global_timeout,
+                    connection_limits.buffer_capacity,
                 )
                 .await,
                 connection_limits.max_retries,

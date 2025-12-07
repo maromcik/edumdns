@@ -2,7 +2,7 @@
 #all_log_level="info"
 
 [database]
-connection_string="postgres://edumdns:edumdns@192.168.0.10/edumdns"
+connection_string="postgres://edumdns:edumdns@localhost/edumdns"
 
 #[server]
 #hostnames=["[::]:5000"]
@@ -25,9 +25,9 @@ connection_string="postgres://edumdns:edumdns@192.168.0.10/edumdns"
 #transmit_repeat_delay_multiplicator=5
 
 [web]
-session_cookie="Zm4aXgY1SJv9OnbwYgbhixYtb9R/ki6O1dIbcXS3X5ES+7QYdSyrfvat5wEsKmotNS9n17jEdNkhj7XZpnE="
+# Mandatory cookie secret, generate with `openssl rand -base64 32`
+session_cookie="<secret>"
 #hostnames=["[::]:8000"]
-
 #site_url="locahost"
 #static_files_dir="edumdns_web"
 
@@ -37,6 +37,11 @@ session_cookie="Zm4aXgY1SJv9OnbwYgbhixYtb9R/ki6O1dIbcXS3X5ES+7QYdSyrfvat5wEsKmot
 #issuer=
 #callback_url=
 #new_users_admin=
+
+#[web.limits]
+#payload_limit=17179869184
+#form_limit=16777216
+#probe_ping_interaval=1
 
 #[web.tls]
 #cert_path=

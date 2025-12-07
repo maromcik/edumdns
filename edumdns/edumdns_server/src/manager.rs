@@ -389,12 +389,12 @@ impl ServerManager {
                         match probe_entry.get_mut().entry((src_mac, src_ip)) {
                             Entry::Occupied(mut device_entry) => {
                                 if device_entry.get().packets.len()
-                                    > self.server_config.connection.buffer_size
+                                    > self.server_config.connection.buffer_capacity
                                 {
                                     device_entry.get_mut().packets.clear();
                                     info!(
                                         "Device buffer for <{src_mac}; {src_ip}> exceeded {} elements; cleared",
-                                        self.server_config.connection.buffer_size
+                                        self.server_config.connection.buffer_capacity
                                     );
                                 }
                                 if !device_entry.get().packets.contains(&probe_packet) {
@@ -570,7 +570,7 @@ impl ServerManager {
         let server_config_local = self.server_config.clone();
         let command_transmitter_local = self.command_transmitter.clone();
         let live_updater_channel =
-            tokio::sync::mpsc::channel(self.server_config.connection.buffer_size);
+            tokio::sync::mpsc::channel(self.server_config.connection.buffer_capacity);
         let device_entry = self
             .packets
             .entry(Uuid(request_packet.device.probe_id))

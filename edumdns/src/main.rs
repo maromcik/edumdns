@@ -40,7 +40,7 @@ async fn main() -> Result<(), AppError> {
         .init();
 
     info!("Config used:\n{config:#?}");
-    let command_channel = tokio::sync::mpsc::channel(config.server.connection.buffer_size);
+    let command_channel = tokio::sync::mpsc::channel(config.server.channel_buffer_capacity);
 
     let pool = db_init(config.database).await?;
     let pool_local = pool.clone();

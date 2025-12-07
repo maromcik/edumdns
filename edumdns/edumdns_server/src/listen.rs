@@ -70,8 +70,7 @@ impl ListenerSpawner {
             let data_channel_local = self.data_transmitter.clone();
             let probe_handles_local = self.probe_handles.clone();
             let tracker_local = self.tracker.clone();
-            let timeout = self.server_config.connection.global_timeout;
-            let config_local = self.server_config.tls.clone();
+            let config_local = self.server_config.clone();
             tokio::spawn(async move {
                 if let Err(e) = Self::listen(
                     pool_local,
@@ -81,7 +80,6 @@ impl ListenerSpawner {
                     tracker_local,
                     config_local,
                     socket_addr,
-                    timeout,
                 )
                 .await
                 {
@@ -99,12 +97,11 @@ impl ListenerSpawner {
         data_transmitter: Sender<AppPacket>,
         probe_handles: ProbeHandles,
         tracker: SharedProbeTracker,
-        config: Option<TlsConfig>,
+        config: ServerConfig,
         hostname: SocketAddr,
-        global_timeout: Duration,
     ) -> Result<(), ServerError> {
         let listener = TcpListener::bind(hostname).await?;
-        let server_config = parse_tls_config(&config).await?;
+        let server_config = parse_tls_config(&config.tls).await?;
         info!("Server listening on: {}", listener.local_addr()?);
         loop {
             let (stream, addr) = listener.accept().await?;
@@ -117,7 +114,8 @@ impl ListenerSpawner {
                 data_transmitter.clone(),
                 probe_handles.clone(),
                 tracker.clone(),
-                global_timeout,
+                config.connection.global_timeout,
+                config.connection.buffer_capacity,
             )
             .await
             {

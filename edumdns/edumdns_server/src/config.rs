@@ -9,6 +9,8 @@ use std::time::Duration;
 pub struct ServerConfig {
     #[serde(default = "default_server_hostname")]
     pub hostnames: HashSet<String>,
+    #[serde(default = "default_channel_buffer_capacity")]
+    pub channel_buffer_capacity: usize,
     #[serde(default)]
     pub connection: ConnectionConfig,
     #[serde(default)]
@@ -23,6 +25,7 @@ impl Default for ServerConfig {
     fn default() -> Self {
         Self {
             hostnames: default_server_hostname(),
+            channel_buffer_capacity: 1000,
             connection: ConnectionConfig::default(),
             transmit: TransmitConfig::default(),
             ebpf: None,
@@ -33,6 +36,10 @@ impl Default for ServerConfig {
 
 fn default_server_hostname() -> HashSet<String> {
     HashSet::from(["[::]:5000".into()])
+}
+
+fn default_channel_buffer_capacity() -> usize {
+    1000
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
@@ -68,14 +75,14 @@ impl Default for TransmitConfig {
 pub struct ConnectionConfig {
     #[serde(deserialize_with = "duration_from_secs")]
     pub global_timeout: Duration,
-    pub buffer_size: usize,
+    pub buffer_capacity: usize,
 }
 
 impl Default for ConnectionConfig {
     fn default() -> Self {
         Self {
             global_timeout: Duration::from_secs(10),
-            buffer_size: 1000,
+            buffer_capacity: 1000,
         }
     }
 }

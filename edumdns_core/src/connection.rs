@@ -8,7 +8,6 @@
 //!
 //! It also exposes a minimal `UdpConnection` for sending UDP payloads with a
 //! global timeout, used by the server to replay captured packets.
-use crate::BUFFER_CAPACITY;
 use crate::app_packet::NetworkAppPacket;
 use crate::error::CoreError;
 use bincode::{Decode, Encode};
@@ -411,8 +410,9 @@ impl TcpConnectionHandle {
     pub fn stream_to_framed(
         stream: TcpStream,
         global_timeout: Duration,
+        buffer_capacity: usize
     ) -> Result<Self, CoreError> {
-        let channels = TcpConnectionActorChannels::new(BUFFER_CAPACITY);
+        let channels = TcpConnectionActorChannels::new(buffer_capacity);
 
         let actors: TcpConnection<TcpStream> = TcpConnection::<TcpStream>::stream_to_framed(
             channels.send_channel.1,
@@ -442,8 +442,9 @@ impl TcpConnectionHandle {
     pub async fn connect(
         conn_socket_addr: &str,
         global_timeout: Duration,
+        buffer_capacity: usize
     ) -> Result<Self, CoreError> {
-        let channels = TcpConnectionActorChannels::new(BUFFER_CAPACITY);
+        let channels = TcpConnectionActorChannels::new(buffer_capacity);
 
         let actors: TcpConnection<TcpStream> = TcpConnection::<TcpStream>::connect(
             conn_socket_addr,
@@ -475,8 +476,9 @@ impl TcpConnectionHandle {
         domain: &str,
         client_config: Arc<ClientConfig>,
         global_timeout: Duration,
+        buffer_capacity: usize
     ) -> Result<Self, CoreError> {
-        let channels = TcpConnectionActorChannels::new(BUFFER_CAPACITY);
+        let channels = TcpConnectionActorChannels::new(buffer_capacity);
 
         let actors = TcpConnection::<tokio_rustls::client::TlsStream<TcpStream>>::stream_to_framed_tls_client(
             channels.send_channel.1,
@@ -509,8 +511,9 @@ impl TcpConnectionHandle {
         stream: TcpStream,
         server_config: Arc<ServerConfig>,
         global_timeout: Duration,
+        buffer_capacity: usize
     ) -> Result<Self, CoreError> {
-        let channels = TcpConnectionActorChannels::new(BUFFER_CAPACITY);
+        let channels = TcpConnectionActorChannels::new(buffer_capacity);
 
         let connection = TcpConnection::<tokio_rustls::server::TlsStream<TcpStream>>::stream_to_framed_tls_server(
             channels.send_channel.1,
@@ -543,8 +546,9 @@ impl TcpConnectionHandle {
         domain: &str,
         client_config: Arc<ClientConfig>,
         global_timeout: Duration,
+        buffer_capacity: usize
     ) -> Result<Self, CoreError> {
-        let channels = TcpConnectionActorChannels::new(BUFFER_CAPACITY);
+        let channels = TcpConnectionActorChannels::new(buffer_capacity);
 
         let actors = TcpConnection::<tokio_rustls::client::TlsStream<TcpStream>>::connect_tls(
             conn_socket_addr,

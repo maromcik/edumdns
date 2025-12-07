@@ -3,16 +3,17 @@
 //! `ServerManager` owns channel receivers, tracks device state, manages per-device
 //! transmitters, handles WebSocket responses, and coordinates proxy/eBPF updates.
 
+use crate::ProbeHandles;
 use crate::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, LocalDataPacket, LocalStatusPacket,
     PacketTransmitRequestPacket,
 };
+use crate::config::ServerConfig;
 use crate::database::DbCommand;
 use crate::ebpf::EbpfUpdater;
 use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use crate::utilities::process_packets;
-use crate::{BUFFER_SIZE, ProbeHandles};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::Id;
@@ -29,10 +30,8 @@ use ipnetwork::NetworkSize;
 use log::{debug, error, info, warn};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
 
@@ -111,8 +110,7 @@ pub(crate) struct ServerManager {
     pg_device_repository: PgDeviceRepository,
     pg_packet_repository: PgPacketRepository,
     proxy: Option<Proxy>,
-    global_timeout: Duration,
-    max_transmit_subnet_size: u32,
+    server_config: ServerConfig,
 }
 
 impl ServerManager {
@@ -145,24 +143,15 @@ impl ServerManager {
         db_transmitter: Sender<DbCommand>,
         db_pool: Pool<AsyncPgConnection>,
         handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
-        global_timeout: Duration,
+        server_config: ServerConfig,
     ) -> Result<Self, ServerError> {
-        let proxy_ipv4 = env::var("EDUMDNS_SERVER_PROXY_IPV4")
-            .map(|ip| ip.parse::<Ipv4Addr>().ok())
-            .ok();
-        let proxy_ipv6 = env::var("EDUMDNS_SERVER_PROXY_IPV6")
-            .map(|ip| ip.parse::<Ipv6Addr>().ok())
-            .ok();
-
-        let max_transmit_subnet_size = env::var("EDUMDNS_SERVER_MAX_TRANSMIT_SUBNET_SIZE")
-            .ok()
-            .and_then(|s| s.trim().parse::<u32>().ok())
-            .unwrap_or(512);
-
-        let proxy = match (proxy_ipv4, proxy_ipv6) {
-            (Some(Some(ipv4)), Some(Some(ipv6))) => match EbpfUpdater::new() {
+        let proxy = match &server_config.ebpf {
+            Some(config) => match EbpfUpdater::new(&config.pin_location) {
                 Ok(updater) => Some(Proxy {
-                    proxy_ip: ProxyIp { ipv4, ipv6 },
+                    proxy_ip: ProxyIp {
+                        ipv4: config.proxy_ipv4,
+                        ipv6: config.proxy_ipv6,
+                    },
                     ebpf_updater: Arc::new(Mutex::new(updater)),
                 }),
                 Err(e) => {
@@ -170,7 +159,7 @@ impl ServerManager {
                     None
                 }
             },
-            (_, _) => None,
+            _ => None,
         };
 
         Ok(Self {
@@ -185,8 +174,7 @@ impl ServerManager {
             pg_device_repository: PgDeviceRepository::new(db_pool.clone()),
             pg_packet_repository: PgPacketRepository::new(db_pool.clone()),
             proxy,
-            global_timeout,
-            max_transmit_subnet_size,
+            server_config,
         })
     }
 
@@ -400,10 +388,13 @@ impl ServerManager {
                     Entry::Occupied(mut probe_entry) => {
                         match probe_entry.get_mut().entry((src_mac, src_ip)) {
                             Entry::Occupied(mut device_entry) => {
-                                if device_entry.get().packets.len() > BUFFER_SIZE {
+                                if device_entry.get().packets.len()
+                                    > self.server_config.connection.buffer_size
+                                {
                                     device_entry.get_mut().packets.clear();
                                     info!(
-                                        "Device buffer for <{src_mac}; {src_ip}> exceeded {BUFFER_SIZE} elements; cleared"
+                                        "Device buffer for <{src_mac}; {src_ip}> exceeded {} elements; cleared",
+                                        self.server_config.connection.buffer_size
                                     );
                                 }
                                 if !device_entry.get().packets.contains(&probe_packet) {
@@ -576,10 +567,10 @@ impl ServerManager {
         let packet_repo = self.pg_packet_repository.clone();
         let proxy = self.proxy.clone();
         let transmitter_tasks = self.transmitter_tasks.clone();
-        let global_timeout = self.global_timeout;
-        let max_transmit_subnet_size = self.max_transmit_subnet_size;
+        let server_config_local = self.server_config.clone();
         let command_transmitter_local = self.command_transmitter.clone();
-        let live_updater_channel = tokio::sync::mpsc::channel(BUFFER_SIZE);
+        let live_updater_channel =
+            tokio::sync::mpsc::channel(self.server_config.connection.buffer_size);
         let device_entry = self
             .packets
             .entry(Uuid(request_packet.device.probe_id))
@@ -601,10 +592,13 @@ impl ServerManager {
                 return;
             }
 
-            if request_packet.request.target_ip.size() > NetworkSize::V4(max_transmit_subnet_size) {
+            if request_packet.request.target_ip.size()
+                > NetworkSize::V4(server_config_local.transmit.max_transmit_subnet_size)
+            {
                 let warning = format!(
-                    "the target subnet size ({}) is greater than the maximum allowed ({max_transmit_subnet_size})",
-                    request_packet.request.target_ip.size()
+                    "the target subnet size ({}) is greater than the maximum allowed ({})",
+                    request_packet.request.target_ip.size(),
+                    server_config_local.transmit.max_transmit_subnet_size
                 );
                 warn!("{warning} for target: {request_packet}");
                 let _ = respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(warning)));
@@ -681,8 +675,8 @@ impl ServerManager {
                 payloads,
                 proxy.and_then(|p| request_packet.device.proxy.then(|| p.proxy_ip.clone())),
                 request_packet.clone(),
-                global_timeout,
                 live_updates_receiver,
+                server_config_local,
             )
             .await
             {

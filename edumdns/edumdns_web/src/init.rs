@@ -9,6 +9,7 @@
 //! The `WebSpawner` struct encapsulates all the configuration needed to run the web server,
 //! including session keys, file directories, and middleware settings.
 
+use crate::config::WebConfig;
 use crate::error::WebError;
 use crate::handlers::device::{
     create_device, create_device_form, delete_device, delete_request_packet_transmit,
@@ -23,7 +24,10 @@ use crate::handlers::group::{
 use crate::handlers::index::{
     index, login, login_base, login_oidc, login_oidc_redirect, logout_cleanup,
 };
-use crate::handlers::packet::{create_packet, create_packet_form, delete_packet, get_packet, get_packets, reassign_packet, update_packet, update_packet_payload, update_packet_payload_form};
+use crate::handlers::packet::{
+    create_packet, create_packet_form, delete_packet, get_packet, get_packets, reassign_packet,
+    update_packet, update_packet_payload, update_packet_payload_form,
+};
 use crate::handlers::probe::{
     adopt, change_probe_permission, create_config, create_probe, delete_config, delete_probe,
     forget, get_probe, get_probe_ws, get_probes, reconnect, save_config, update_probe,
@@ -34,11 +38,13 @@ use crate::handlers::user::{
     update_user, update_user_password, user_manage, user_manage_form_page, user_manage_password,
     user_manage_password_form,
 };
-use crate::utils::{AppState, DeviceAclApDatabase, create_oidc, create_reloader, get_cors_middleware, get_identity_middleware, get_session_middleware, json_config, parse_host, path_config, query_config, form_config};
-use crate::{DEFAULT_HOSTNAME, FORM_LIMIT, PAYLOAD_LIMIT, SECS_IN_MONTH, SECS_IN_WEEK, middleware};
+use crate::utils::{
+    AppState, create_oidc, create_reloader, form_config, get_cors_middleware,
+    get_identity_middleware, get_session_middleware, json_config, path_config, query_config,
+};
+use crate::{middleware};
 use actix_files::Files;
 use actix_multipart::form::MultipartFormConfig;
-use actix_web::cookie::Key;
 use actix_web::middleware::{Logger, NormalizePath, TrailingSlash};
 use actix_web::web::{FormConfig, PayloadConfig, ServiceConfig};
 use actix_web::{App, HttpServer, web};
@@ -51,20 +57,13 @@ use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_server::app_packet::AppPacket;
 use log::info;
-use std::env;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
 pub struct WebSpawner {
     pool: Pool<AsyncPgConnection>,
     app_state: AppState,
-    hostname: String,
-    files_dir: String,
-    key: Key,
-    site_url: String,
-    use_secure_cookie: bool,
-    session_expiry: u64,
-    last_visit_deadline: u64,
+    web_config: WebConfig,
 }
 
 impl WebSpawner {
@@ -100,59 +99,18 @@ impl WebSpawner {
     pub async fn new(
         pool: Pool<AsyncPgConnection>,
         command_channel: Sender<AppPacket>,
+        web_config: WebConfig,
     ) -> Result<Self, WebError> {
-        let site_url = env::var("EDUMDNS_SITE_URL").unwrap_or(DEFAULT_HOSTNAME.to_string());
-        let files_dir = env::var("EDUMDNS_FILES_DIR").unwrap_or("edumdns_web".to_string());
-        let key = Key::from(
-            &env::var("EDUMDNS_COOKIE_SESSION_KEY")
-                .unwrap_or_default()
-                .bytes()
-                .collect::<Vec<u8>>(),
-        );
-        let use_secure_cookie = env::var("EDUMDNS_USE_SECURE_COOKIE")
-            .ok()
-            .and_then(|v| v.parse::<bool>().ok())
-            .unwrap_or(false);
+        let jinja = Arc::new(create_reloader(format!(
+            "{}/templates",
+            web_config.static_files_dir
+        )));
 
-        let session_expiry = env::var("EDUMDNS_WEB_SESSION_EXPIRY")
-            .ok()
-            .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(SECS_IN_MONTH);
-
-        let last_visit_deadline = env::var("EDUMDNS_WEB_LAST_VISIT_DEADLINE")
-            .ok()
-            .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(SECS_IN_WEEK);
-
-        let oidc_users_admin = env::var("EDUMDNS_OIDC_NEW_USERS_ADMIN")
-            .ok()
-            .and_then(|v| v.parse::<bool>().ok())
-            .unwrap_or(false);
-
-        let jinja = Arc::new(create_reloader(format!("{files_dir}/templates")));
-        let device_acl_ap_database = DeviceAclApDatabase {
-            connection_string: env::var("EDUMDNS_ACL_AP_DATABASE_CONNECTION_STRING")
-                .unwrap_or_default(),
-            query: env::var("EDUMDNS_ACL_AP_DATABASE_QUERY").unwrap_or_default(),
-        };
-        let app_state = AppState::new(
-            jinja.clone(),
-            command_channel.clone(),
-            device_acl_ap_database,
-            use_secure_cookie,
-            oidc_users_admin,
-            session_expiry,
-        );
+        let app_state = AppState::new(jinja.clone(), command_channel.clone(), web_config.clone());
         Ok(Self {
             pool,
             app_state,
-            hostname: parse_host(),
-            files_dir,
-            key,
-            site_url,
-            use_secure_cookie,
-            session_expiry,
-            last_visit_deadline,
+            web_config,
         })
     }
 
@@ -310,30 +268,32 @@ impl WebSpawner {
     /// unless interrupted by a signal or error.
     pub(crate) async fn run_web(&self) -> Result<(), WebError> {
         let app_state_local = self.app_state.clone();
-        let files_dir_local = self.files_dir.clone();
-        let key_local = self.key.clone();
-        let site_url_local = self.site_url.clone();
+        let files_dir_local = self.web_config.static_files_dir.clone();
+        let key_local = self.web_config.session_cookie.clone();
+        let site_url_local = self.web_config.site_url.clone();
         let pool_local = self.pool.clone();
-        let user_secure_cookie_local = self.use_secure_cookie;
-        let session_expiry_local = self.session_expiry;
-        let last_visit_deadline_local = self.last_visit_deadline;
-        let host_local = self.hostname.clone();
-        match create_oidc().await {
+        let user_secure_cookie_local = self.web_config.session.use_secure_cookie;
+        let session_expiry_local = self.web_config.session.session_expiration;
+        let last_visit_deadline_local = self.web_config.session.last_visit_deadline;
+        let host_local = self.web_config.hostname.clone();
+        let payload_limit = self.web_config.limits.payload_limit;
+        let form_limit = self.web_config.limits.payload_limit;
+        match create_oidc(&self.web_config.oidc).await {
             Err(e) => {
                 info!("Starting the web server without OIDC support. Reason: {e}");
                 HttpServer::new(move || {
                     App::new()
                         .app_data(
                             MultipartFormConfig::default()
-                                .total_limit(PAYLOAD_LIMIT)
-                                .memory_limit(PAYLOAD_LIMIT),
+                                .total_limit(payload_limit)
+                                .memory_limit(payload_limit),
                         )
-                        .app_data(FormConfig::default().limit(FORM_LIMIT))
-                        .app_data(PayloadConfig::new(PAYLOAD_LIMIT))
+                        .app_data(FormConfig::default().limit(form_limit))
+                        .app_data(PayloadConfig::new(payload_limit))
                         .app_data(json_config())
                         .app_data(query_config()) // <-- attach custom handler// <- important
                         .app_data(path_config())
-                        .app_data(form_config())// <-- attach custom handler// <- important
+                        .app_data(form_config()) // <-- attach custom handler// <- important
                         .wrap(NormalizePath::new(TrailingSlash::Trim))
                         .wrap(get_identity_middleware(
                             session_expiry_local,
@@ -363,11 +323,11 @@ impl WebSpawner {
                     App::new()
                         .app_data(
                             MultipartFormConfig::default()
-                                .total_limit(PAYLOAD_LIMIT)
-                                .memory_limit(PAYLOAD_LIMIT),
+                                .total_limit(payload_limit)
+                                .memory_limit(payload_limit),
                         )
-                        .app_data(FormConfig::default().limit(FORM_LIMIT))
-                        .app_data(PayloadConfig::new(PAYLOAD_LIMIT))
+                        .app_data(FormConfig::default().limit(form_limit))
+                        .app_data(PayloadConfig::new(payload_limit))
                         .app_data(json_config())
                         .app_data(query_config()) // <-- attach custom handler// <- important
                         .app_data(path_config())

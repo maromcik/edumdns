@@ -85,7 +85,6 @@ impl CreatePacketForm {
     }
 }
 
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UpdatePacketPayloadForm {
     pub packet_id: Id,

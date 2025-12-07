@@ -7,7 +7,6 @@ use crate::error::ServerError;
 use aya::maps::{HashMap, Map, MapData};
 use ipnetwork::IpNetwork;
 use log::{error, info};
-use std::env;
 use std::net::IpAddr;
 use std::path::Path;
 
@@ -45,9 +44,7 @@ impl EbpfUpdater {
     /// - `Ok(EbpfUpdater)` when both maps are successfully opened and wrapped
     ///   into `aya::maps::HashMap` handles.
     /// - `Err(ServerError::EbpfMapError)` if the maps can't be opened or wrapped.
-    pub fn new() -> Result<Self, ServerError> {
-        let ebpf_dir = env::var("EDUMDNS_SERVER_EBPF_PIN_LOCATION")
-            .unwrap_or("/sys/fs/bpf/edumdns".to_string());
+    pub fn new(ebpf_dir: &str) -> Result<Self, ServerError> {
         let map_path_v4 = format!("{ebpf_dir}/edumdns_proxy_rewrite_v4");
         let map_path_v6 = format!("{ebpf_dir}/edumdns_proxy_rewrite_v6");
         info!(

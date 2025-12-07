@@ -100,7 +100,6 @@ pub async fn login_base(
     form: web::Form<UserLoginForm>,
     state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
-    let secure_cookie = state.secure_cookie;
     match user_repo
         .login(&UserLogin::new(&form.email, &form.password))
         .await
@@ -110,8 +109,11 @@ pub async fn login_base(
             let mut resp = HttpResponse::SeeOther();
             let c = actix_web::cookie::Cookie::build("auth", "local")
                 .path("/")
-                .secure(secure_cookie)
-                .expires(OffsetDateTime::now_utc() + Duration::seconds(state.session_expiry as i64))
+                .secure(state.web_config.session.use_secure_cookie)
+                .expires(
+                    OffsetDateTime::now_utc()
+                        + Duration::seconds(state.web_config.session.session_expiration as i64),
+                )
                 .finish();
             resp.cookie(c);
             Ok(resp
@@ -165,6 +167,12 @@ pub async fn login_oidc(
     query: web::Query<UserLoginReturnURL>,
     state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
+    let Some(oidc_config) = &state.web_config.oidc else {
+        return Err(WebError::OidcError(
+            "OIDC is not enabled for this server".to_string(),
+        ));
+    };
+
     let return_url = query.ret.clone().unwrap_or(extract_referrer(&request));
     if identity.is_some() {
         return Ok(HttpResponse::SeeOther()
@@ -172,16 +180,18 @@ pub async fn login_oidc(
             .finish());
     }
 
-    let secure_cookie = state.secure_cookie;
     let mut resp = HttpResponse::SeeOther();
     let c = actix_web::cookie::Cookie::build("auth", "oidc")
-        .secure(secure_cookie)
-        .expires(OffsetDateTime::now_utc() + Duration::seconds(state.session_expiry as i64))
+        .secure(state.web_config.session.use_secure_cookie)
+        .expires(
+            OffsetDateTime::now_utc()
+                + Duration::seconds(state.web_config.session.session_expiration as i64),
+        )
         .path("/")
         .finish();
     resp.cookie(c);
 
-    let user_create = parse_user_from_oidc(&request, state.oidc_users_admin).ok_or(
+    let user_create = parse_user_from_oidc(&request, oidc_config.new_users_admin).ok_or(
         WebError::CookieError("Cookie or some of its fields were not found or invalid".to_string()),
     )?;
     let user = user_repo.create(&user_create).await?;

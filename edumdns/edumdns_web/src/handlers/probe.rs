@@ -24,7 +24,7 @@ use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_
 use crate::templates::PageInfo;
 use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
-use crate::{PING_INTERVAL, authorized};
+use crate::{authorized};
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
@@ -513,7 +513,10 @@ pub async fn get_probe_ws(
                     };
                 }
             }
-            tokio::time::sleep(std::time::Duration::from_secs(PING_INTERVAL)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(
+                state.web_config.limits.probe_ping_interval,
+            ))
+            .await;
         }
     });
     Ok(res)

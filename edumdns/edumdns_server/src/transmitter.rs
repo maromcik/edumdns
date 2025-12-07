@@ -3,11 +3,10 @@
 //! The transmitter supports optional live updates (additional payloads) and
 //! optional DNS A/AAAA rewriting when a proxy IP is configured. It stops either
 //! when the request duration elapses or when a stop command is sent.
-
-use crate::DEFAULT_INTERVAL_MULTIPLICATOR;
 use crate::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, LocalDataPacket, PacketTransmitRequestPacket,
 };
+use crate::config::ServerConfig;
 use crate::error::ServerError;
 use crate::manager::ProxyIp;
 use crate::utilities::rewrite_payload;
@@ -86,6 +85,7 @@ pub struct PacketTransmitter {
     pub udp_connection: UdpConnection,
     /// Receiver for live updates and control commands (e.g., extend duration, add payload).
     pub live_updates_receiver: Receiver<LocalAppPacket>,
+    pub server_config: ServerConfig,
 }
 
 impl PacketTransmitter {
@@ -108,15 +108,16 @@ impl PacketTransmitter {
         payloads: Vec<Vec<u8>>,
         proxy_ip: Option<ProxyIp>,
         target: PacketTransmitRequestPacket,
-        global_timeout: Duration,
         live_updater: Receiver<LocalAppPacket>,
+        server_config: ServerConfig,
     ) -> Result<Self, ServerError> {
         Ok(Self {
             payloads,
             proxy_ip,
             transmit_request: target.clone(),
-            udp_connection: UdpConnection::new(global_timeout).await?,
+            udp_connection: UdpConnection::new(server_config.connection.global_timeout).await?,
             live_updates_receiver: live_updater,
+            server_config,
         })
     }
 
@@ -152,7 +153,11 @@ impl PacketTransmitter {
         }
         let interval = Duration::from_millis(self.transmit_request.device.interval as u64);
         let duration = Duration::from_secs(self.transmit_request.device.duration as u64);
-        let sleep_interval = interval * DEFAULT_INTERVAL_MULTIPLICATOR;
+        let sleep_interval = interval
+            * self
+                .server_config
+                .transmit
+                .transmit_repeat_delay_multiplicator;
         let mut total_time = Instant::now();
         loop {
             while let Ok(update) = self.live_updates_receiver.try_recv() {

@@ -5,6 +5,7 @@
 //! are used by the binary to initialize and spawn all server tasks.
 
 use crate::app_packet::AppPacket;
+use crate::config::ServerConfig;
 use crate::database::DatabaseManager;
 use crate::error::ServerError;
 use crate::listen::ListenerSpawner;
@@ -18,13 +19,12 @@ use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::TcpConnectionHandle;
 use log::{error, info};
 use std::collections::HashMap;
-use std::env;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::RwLock;
 use tokio::sync::mpsc::{Receiver, Sender};
 
 pub mod app_packet;
+pub mod config;
 mod connection;
 mod database;
 mod ebpf;
@@ -36,35 +36,22 @@ mod probe_tracker;
 mod transmitter;
 mod utilities;
 
-const DEFAULT_HOSTNAME: &str = "localhost";
-const DEFAULT_PORT: &str = "5000";
-
-const DEFAULT_INTERVAL_MULTIPLICATOR: u32 = 5;
-
-pub const BUFFER_SIZE: usize = 1000;
-
 pub type ProbeHandles = Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>;
 
 pub async fn server_init(
     pool: Pool<AsyncPgConnection>,
     (tx, rx): (Sender<AppPacket>, Receiver<AppPacket>),
+    server_config: ServerConfig,
 ) -> Result<(), ServerError> {
-    let global_timeout = Duration::from_secs(
-        env::var("EDUMDNS_SERVER_GLOBAL_TIMEOUT")
-            .ok()
-            .and_then(|t| t.parse::<u64>().ok())
-            .unwrap_or(10),
-    );
-
     load_all_packet_transmit_requests(pool.clone(), tx.clone()).await?;
-    spawn_server_tasks(pool.clone(), (tx.clone(), rx), global_timeout).await?;
+    spawn_server_tasks(pool.clone(), (tx.clone(), rx), server_config).await?;
     Ok(())
 }
 
 pub async fn spawn_server_tasks(
     pool: Pool<AsyncPgConnection>,
     (command_transmitter, command_receiver): (Sender<AppPacket>, Receiver<AppPacket>),
-    global_timeout: Duration,
+    server_config: ServerConfig,
 ) -> Result<(), ServerError> {
     rustls::crypto::ring::default_provider()
         .install_default()
@@ -72,12 +59,13 @@ pub async fn spawn_server_tasks(
 
     let probe_handles: ProbeHandles = Arc::new(RwLock::new(HashMap::new()));
     let tracker: SharedProbeTracker = Arc::new(RwLock::new(OrderedMap::new()));
-    let data_channel = tokio::sync::mpsc::channel(BUFFER_SIZE);
-    let db_channel = tokio::sync::mpsc::channel(BUFFER_SIZE);
+    let data_channel = tokio::sync::mpsc::channel(server_config.connection.buffer_size);
+    let db_channel = tokio::sync::mpsc::channel(server_config.connection.buffer_size);
 
     let pool_local = pool.clone();
     let probe_handles_local = probe_handles.clone();
     let command_transmitter_local = command_transmitter.clone();
+    let server_config_local = server_config.clone();
     let _server_manager_task = tokio::task::spawn(async move {
         match ServerManager::new(
             command_transmitter_local,
@@ -86,7 +74,7 @@ pub async fn spawn_server_tasks(
             db_channel.0,
             pool_local,
             probe_handles_local,
-            global_timeout,
+            server_config_local,
         ) {
             Ok(mut manager) => manager.handle_packets().await,
             Err(e) => {
@@ -103,12 +91,17 @@ pub async fn spawn_server_tasks(
             .await;
     });
     info!("DB manager initialized");
-
+    let server_config_local = server_config.clone();
     let tracker_local: SharedProbeTracker = tracker.clone();
     let probe_handles_local = probe_handles.clone();
     let _probe_watchdog_task = tokio::task::spawn(async move {
         info!("Starting the probe watchdog");
-        watchdog(tracker_local, probe_handles_local, global_timeout).await;
+        watchdog(
+            tracker_local,
+            probe_handles_local,
+            server_config.connection.global_timeout,
+        )
+        .await;
     });
 
     ListenerSpawner::new(
@@ -117,7 +110,7 @@ pub async fn spawn_server_tasks(
         data_channel.0,
         probe_handles,
         tracker,
-        global_timeout,
+        server_config_local,
     )
     .await?
     .start_listeners()

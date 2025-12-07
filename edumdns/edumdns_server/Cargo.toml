@@ -18,3 +18,4 @@ ipnetwork = {workspace = true}
 uuid = {workspace = true}
 hickory-proto = {workspace = true}
 futures = {workspace = true}
+serde = { version = "1.0.228", features = ["derive"] }

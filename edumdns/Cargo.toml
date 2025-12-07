@@ -19,6 +19,8 @@ actix-web = { workspace = true }
 dotenvy = { workspace = true }
 tokio = { workspace = true }
 thiserror = { workspace = true }
+config = "0.15.19"
+serde = { version = "1.0.228", features = ["derive"] }
 
 [workspace.dependencies]
 edumdns_core = { path = "../edumdns_core"}
@@ -33,7 +35,7 @@ log = "0.4.28"
 ipnetwork = { version = "0.21.1", features = ["serde"]}
 uuid = { version = "1.19.0", features = ["v4", "v7", "serde"] }
 diesel-async = { version = "0.7.4" , features = ["tokio-postgres", "postgres", "deadpool"]}
-serde = { version = "1.0.226", features = ["derive", "std"] }
+serde = { version = "1.0.228", features = ["derive", "std"] }
 hickory-proto = { version = "0.25.2", features = ["default", "serde"]}
 strum = "0.27.2"
 time = { version = "0.3.44", features = ["serde", "local-offset", "parsing", "formatting"] }

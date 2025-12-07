@@ -11,8 +11,8 @@
 //! These utilities are used throughout the web interface to configure the server,
 //! handle authentication, and provide shared state to request handlers.
 
+use crate::config::{OidcConfig, WebConfig};
 use crate::error::WebError;
-use crate::{DEFAULT_HOSTNAME, DEFAULT_PORT};
 use actix_cors::Cors;
 use actix_identity::IdentityMiddleware;
 use actix_session::SessionMiddleware;
@@ -29,42 +29,26 @@ use edumdns_server::app_packet::AppPacket;
 use minijinja::{Environment, Value, path_loader};
 use minijinja_autoreload::AutoReloader;
 use serde::Deserialize;
-use std::env;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
-
-#[derive(Clone)]
-pub struct DeviceAclApDatabase {
-    pub connection_string: String,
-    pub query: String,
-}
 
 #[derive(Clone)]
 pub struct AppState {
     pub jinja: Arc<AutoReloader>,
     pub command_channel: Sender<AppPacket>,
-    pub device_acl_ap_database: DeviceAclApDatabase,
-    pub secure_cookie: bool,
-    pub oidc_users_admin: bool,
-    pub session_expiry: u64,
+    pub web_config: WebConfig,
 }
 
 impl AppState {
     pub fn new(
         jinja: Arc<AutoReloader>,
         command_channel: Sender<AppPacket>,
-        device_acl_ap_database: DeviceAclApDatabase,
-        secure_cookie: bool,
-        oidc_users_admin: bool,
-        session_expiry: u64,
+        web_config: WebConfig,
     ) -> Self {
         AppState {
             jinja,
             command_channel,
-            device_acl_ap_database,
-            secure_cookie,
-            oidc_users_admin,
-            session_expiry,
+            web_config,
         }
     }
 }
@@ -137,28 +121,10 @@ fn has_perm(perms_values: Vec<Value>, query: Value) -> Result<bool, minijinja::E
 ///
 /// If this function returns an error, the web server will start without OIDC support
 /// and use local authentication only.
-pub async fn create_oidc() -> Result<ActixWebOpenId, WebError> {
-    let client_id = env::var("EDUMDNS_OIDC_CLIENT_ID").map_err(|_| {
-        WebError::EnvVarError(
-            "Environment variable `EDUMDNS_OIDC_CLIENT_ID` could not be loaded".to_string(),
-        )
-    })?;
-    let client_secret = env::var("EDUMDNS_OIDC_CLIENT_SECRET").map_err(|_| {
-        WebError::EnvVarError(
-            "Environment variable `EDUMDNS_OIDC_CLIENT_SECRET` could not be loaded".to_string(),
-        )
-    })?;
-    let callback = env::var("EDUMDNS_OIDC_CALLBACK_URL").map_err(|_| {
-        WebError::EnvVarError(
-            "Environment variable `EDUMDNS_OIDC_CALLBACK_URL` could not be loaded".to_string(),
-        )
-    })?;
-    let issuer = env::var("EDUMDNS_OIDC_ISSUER").map_err(|_| {
-        WebError::EnvVarError(
-            "Environment variable `EDUMDNS_OIDC_ISSUER` could not be loaded".to_string(),
-        )
-    })?;
-
+pub async fn create_oidc(oidc_config: &Option<OidcConfig>) -> Result<ActixWebOpenId, WebError> {
+    let oidc_config = oidc_config
+        .clone()
+        .ok_or_else(|| WebError::OidcError("required OIDC parameters are missing".to_string()))?;
     let should_auth = |req: &ServiceRequest| {
         let path = req.path();
         if path.starts_with("/static") {
@@ -182,18 +148,22 @@ pub async fn create_oidc() -> Result<ActixWebOpenId, WebError> {
         true
     };
 
-    ActixWebOpenId::builder(client_id, callback, issuer)
-        .client_secret(client_secret)
-        .logout_path("/logout/oidc")
-        .should_auth(should_auth)
-        .scopes(vec![
-            "openid".to_string(),
-            "profile".to_string(),
-            "email".to_string(),
-        ])
-        .build_and_init()
-        .await
-        .map_err(|e| WebError::OidcError(e.to_string()))
+    ActixWebOpenId::builder(
+        oidc_config.client_id,
+        oidc_config.callback_url,
+        oidc_config.issuer,
+    )
+    .client_secret(oidc_config.client_secret)
+    .logout_path("/logout/oidc")
+    .should_auth(should_auth)
+    .scopes(vec![
+        "openid".to_string(),
+        "profile".to_string(),
+        "email".to_string(),
+    ])
+    .build_and_init()
+    .await
+    .map_err(|e| WebError::OidcError(e.to_string()))
 }
 
 /// Creates CORS middleware configured for the application.
@@ -244,10 +214,11 @@ pub fn get_cors_middleware(host: &str) -> Cors {
 /// - Sets secure flag based on `use_secure_cookie`
 /// - Expires sessions after `session_expiry` seconds
 pub fn get_session_middleware(
-    key: actix_web::cookie::Key,
+    key: String,
     use_secure_cookie: bool,
     session_expiry: u64,
 ) -> SessionMiddleware<CookieSessionStore> {
+    let key = actix_web::cookie::Key::from(&*key.bytes().collect::<Vec<u8>>());
     SessionMiddleware::builder(CookieSessionStore::default(), key.clone())
         .cookie_secure(use_secure_cookie)
         .session_lifecycle(
@@ -314,24 +285,4 @@ pub fn path_config() -> PathConfig {
         let web_error = WebError::ParseError(err.to_string());
         actix_web::error::InternalError::from_response(err, web_error.error_response()).into()
     })
-}
-
-/// Parses hostname and port from environment variables and formats as a bind address.
-///
-/// This function reads `EDUMDNS_WEB_HOSTNAME` and `EDUMDNS_WEB_PORT` from the environment
-/// and combines them into a format suitable for `HttpServer::bind()`.
-///
-/// # Returns
-///
-/// Returns a string in the format `{hostname}:{port}`. If environment variables are not set,
-/// defaults to `localhost:8000`.
-///
-/// # Environment Variables
-///
-/// - `EDUMDNS_WEB_HOSTNAME` - Hostname or IP address to bind (default: "localhost")
-/// - `EDUMDNS_WEB_PORT` - Port number to bind (default: "8000")
-pub fn parse_host() -> String {
-    let hostname = env::var("EDUMDNS_WEB_HOSTNAME").unwrap_or(DEFAULT_HOSTNAME.to_string());
-    let port = env::var("EDUMDNS_WEB_PORT").unwrap_or(DEFAULT_PORT.to_string());
-    format!("{hostname}:{port}")
 }

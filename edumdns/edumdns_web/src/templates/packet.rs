@@ -43,5 +43,5 @@ pub struct PacketUpdatePayloadTemplate {
     pub mac: MacAddr,
     pub ip: IpNetwork,
     pub port: u16,
-    pub message: String
+    pub message: String,
 }

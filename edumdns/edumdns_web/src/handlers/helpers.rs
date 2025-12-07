@@ -9,10 +9,10 @@
 //! including CIDR-based IP filtering, password authentication, and AP hostname
 //! verification through external databases.
 
+use crate::config::ExternalAuthDatabase;
 use crate::error::WebError;
 use crate::forms::device::{DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest};
 use crate::handlers::utilities::verify_transmit_request_client_ap;
-use crate::utils::DeviceAclApDatabase;
 use actix_session::Session;
 use actix_web::{HttpRequest, web};
 use edumdns_core::app_packet::Id;
@@ -158,7 +158,7 @@ pub async fn authorize_packet_transmit_request(
     request: &HttpRequest,
     device: &Device,
     form: &DevicePacketTransmitRequest,
-    device_acl_ap_database: &DeviceAclApDatabase,
+    device_acl_ap_database: &Option<ExternalAuthDatabase>,
 ) -> Result<IpNetwork, WebError> {
     let target_ip = request
         .connection_info()

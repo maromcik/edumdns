@@ -10,8 +10,8 @@
 //! These utilities abstract common operations and provide consistent behavior
 //! across all handlers.
 
+use crate::config::ExternalAuthDatabase;
 use crate::error::WebError;
-use crate::utils::DeviceAclApDatabase;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::HttpRequest;
@@ -87,13 +87,18 @@ pub fn is_htmx(request: &HttpRequest) -> bool {
 /// for the client IP address. The query should return at least one column containing
 /// the AP hostname.
 pub async fn verify_transmit_request_client_ap(
-    database_config: &DeviceAclApDatabase,
+    database_config: &Option<ExternalAuthDatabase>,
     ap_hostname_regex: &str,
     client_ip: &str,
 ) -> Result<bool, WebError> {
+    let Some(db_config) = database_config else {
+        return Err(WebError::ApDatabaseError(
+            "External AP Hostname database is not configured".to_string(),
+        ));
+    };
     let regex = Regex::new(ap_hostname_regex)?;
     let (client, connection) =
-        tokio_postgres::connect(database_config.connection_string.as_str(), NoTls).await?;
+        tokio_postgres::connect(db_config.connection_string.as_str(), NoTls).await?;
 
     tokio::spawn(async move {
         if let Err(e) = connection.await {
@@ -101,7 +106,7 @@ pub async fn verify_transmit_request_client_ap(
         }
     });
     for row in client
-        .query(database_config.query.as_str(), &[&client_ip])
+        .query(db_config.auth_query.as_str(), &[&client_ip])
         .await?
     {
         let ap: String = row.get(0);

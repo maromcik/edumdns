@@ -63,10 +63,7 @@ pub async fn get_devices(
     let query = query.into_inner();
     let params = SelectManyDevices::from(query.clone());
     let devices = device_repo.read_many_auth(&params, &user_id).await?;
-    let devices_parsed = devices
-        .into_iter()
-        .map(|d| DeviceDisplay::from(d))
-        .collect();
+    let devices_parsed = devices.into_iter().map(DeviceDisplay::from).collect();
 
     let device_count = device_repo.get_device_count(params, &user_id).await?;
     let total_pages = (device_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
@@ -340,9 +337,13 @@ pub async fn request_packet_transmit(
     }
     let device_id = device.id;
 
-    let target_ip =
-        authorize_packet_transmit_request(&request, &device, &form, &state.device_acl_ap_database)
-            .await?;
+    let target_ip = authorize_packet_transmit_request(
+        &request,
+        &device,
+        &form,
+        &state.web_config.external_auth_database,
+    )
+    .await?;
 
     let form = DeviceCustomPacketTransmitRequest::new(target_ip, device.port as u16, false);
     request_packet_transmit_helper(
@@ -423,8 +424,13 @@ pub async fn extend_request_packet_transmit(
         Some(_) => device_repo.read_one(&device_id).await?,
     };
 
-    authorize_packet_transmit_request(&request, &device, &form, &state.device_acl_ap_database)
-        .await?;
+    authorize_packet_transmit_request(
+        &request,
+        &device,
+        &form,
+        &state.web_config.external_auth_database,
+    )
+    .await?;
 
     device_repo
         .extend_packet_transmit_request(&request_id)

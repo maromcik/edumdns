@@ -32,8 +32,6 @@ pub enum ServerError {
     ParseError(String),
     #[error("eBPF map error: {0}")]
     EbpfMapError(String),
-    #[error("TLS error: {0}")]
-    TlsError(String),
     #[error("An error occurred while processing your request: {0}")]
     DiscoveryRequestProcessingError(String),
 }
@@ -95,17 +93,5 @@ impl From<AddrParseError> for ServerError {
 impl From<ParseBoolError> for ServerError {
     fn from(value: ParseBoolError) -> Self {
         ServerError::ParseError(value.to_string())
-    }
-}
-
-impl From<rustls::Error> for ServerError {
-    fn from(value: rustls::Error) -> Self {
-        ServerError::TlsError(value.to_string())
-    }
-}
-
-impl From<rustls_pki_types::pem::Error> for ServerError {
-    fn from(value: rustls_pki_types::pem::Error) -> Self {
-        ServerError::TlsError(value.to_string())
     }
 }

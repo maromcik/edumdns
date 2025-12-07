@@ -16,21 +16,24 @@ edumdns_server = { workspace = true }
 edumdns_db = { workspace = true }
 edumdns_web = { workspace = true }
 actix-web = { workspace = true }
-dotenvy = { workspace = true }
 tokio = { workspace = true }
 thiserror = { workspace = true }
+rustls = { workspace = true }
+serde = { workspace = true }
 config = "0.15.19"
-serde = { version = "1.0.228", features = ["derive"] }
+
 
 [workspace.dependencies]
 edumdns_core = { path = "../edumdns_core"}
 edumdns_server = { path = "edumdns_server" }
 edumdns_db = { path = "edumdns_db" }
 edumdns_web = { path = "edumdns_web" }
+rustls = { version = "0.23.35", features = ["ring", "default"] }
+rustls-pki-types = "1.13.1"
 thiserror = "2.0.17"
 tokio = { version = "1.48.0", features = ["full"] }
 dotenvy = "0.15.7"
-actix-web = "4.12.1"
+actix-web = { version = "4.12.1", features = ["rustls-0_23"] }
 log = "0.4.28"
 ipnetwork = { version = "0.21.1", features = ["serde"]}
 uuid = { version = "1.19.0", features = ["v4", "v7", "serde"] }

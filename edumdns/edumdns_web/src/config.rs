@@ -1,10 +1,12 @@
+use edumdns_core::utils::TlsConfig;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct WebConfig {
     #[serde(default = "default_web_hostname")]
-    pub hostname: String,
-    #[serde(default = "default_web_hostname")]
+    pub hostnames: HashSet<String>,
+    #[serde(default = "default_web_url")]
     pub site_url: String,
     #[serde(default = "default_static_files_dir")]
     pub static_files_dir: String,
@@ -17,9 +19,15 @@ pub struct WebConfig {
     pub oidc: Option<OidcConfig>,
     #[serde(default)]
     pub external_auth_database: Option<ExternalAuthDatabase>,
+    #[serde(default)]
+    pub tls: Option<TlsConfig>,
 }
 
-fn default_web_hostname() -> String {
+fn default_web_hostname() -> HashSet<String> {
+    HashSet::from(["[::]:8000".into()])
+}
+
+fn default_web_url() -> String {
     "localhost:8000".to_string()
 }
 fn default_static_files_dir() -> String {

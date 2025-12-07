@@ -13,6 +13,7 @@
 //! These handlers coordinate with the server component to send commands to probes
 //! and manage probe state in the database.
 
+use crate::authorized;
 use crate::error::WebError;
 use crate::forms::device::DeviceQuery;
 use crate::forms::probe::{
@@ -24,7 +25,6 @@ use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_
 use crate::templates::PageInfo;
 use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
 use crate::utils::AppState;
-use crate::{authorized};
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;

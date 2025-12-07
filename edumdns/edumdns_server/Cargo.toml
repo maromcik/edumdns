@@ -5,9 +5,7 @@ edition = "2024"
 
 [dependencies]
 aya = "0.13.1"
-rustls = { version = "0.23.35", features = ["ring"] }
-rustls-pki-types = "1.13.1"
-
+rustls = { workspace = true }
 edumdns_core = { workspace = true }
 edumdns_db = { workspace = true }
 thiserror = {workspace = true}

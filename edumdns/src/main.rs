@@ -21,6 +21,10 @@ struct Cli {
 
 #[actix_web::main]
 async fn main() -> Result<(), AppError> {
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install the default rustls crypto provider");
+
     let cli = Cli::parse();
 
     let config = AppConfig::parse_config(&cli.config)?;

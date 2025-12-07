@@ -53,10 +53,6 @@ pub async fn spawn_server_tasks(
     (command_transmitter, command_receiver): (Sender<AppPacket>, Receiver<AppPacket>),
     server_config: ServerConfig,
 ) -> Result<(), ServerError> {
-    rustls::crypto::ring::default_provider()
-        .install_default()
-        .expect("Failed to install rustls crypto provider");
-
     let probe_handles: ProbeHandles = Arc::new(RwLock::new(HashMap::new()));
     let tracker: SharedProbeTracker = Arc::new(RwLock::new(OrderedMap::new()));
     let data_channel = tokio::sync::mpsc::channel(server_config.connection.buffer_size);

@@ -66,6 +66,7 @@ dependencies = [
  "actix-codec",
  "actix-rt",
  "actix-service",
+ "actix-tls",
  "actix-utils",
  "base64 0.22.1",
  "bitflags 2.9.1",
@@ -230,6 +231,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-tls"
+version = "3.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac453898d866cdbecdbc2334fe1738c747b4eba14a677261f2b768ba05329389"
+dependencies = [
+ "actix-rt",
+ "actix-service",
+ "actix-utils",
+ "futures-core",
+ "impl-more",
+ "pin-project-lite",
+ "rustls-pki-types",
+ "tokio",
+ "tokio-rustls",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
 name = "actix-utils"
 version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -252,6 +272,7 @@ dependencies = [
  "actix-rt",
  "actix-server",
  "actix-service",
+ "actix-tls",
  "actix-utils",
  "actix-web-codegen",
  "bytes",
@@ -1655,10 +1676,10 @@ dependencies = [
  "actix-web",
  "clap",
  "config",
- "dotenvy",
  "edumdns_db",
  "edumdns_server",
  "edumdns_web",
+ "rustls",
  "serde",
  "thiserror 2.0.17",
  "tokio",
@@ -1724,7 +1745,6 @@ dependencies = [
  "ipnetwork 0.21.1",
  "log",
  "rustls",
- "rustls-pki-types",
  "serde",
  "thiserror 2.0.17",
  "tokio",
@@ -1756,6 +1776,8 @@ dependencies = [
  "minijinja",
  "minijinja-autoreload",
  "regex",
+ "rustls",
+ "rustls-pki-types",
  "serde",
  "serde_json",
  "strum",
@@ -3085,9 +3107,9 @@ dependencies = [
 
 [[package]]
 name = "minijinja"
-version = "2.12.0"
+version = "2.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9f264d75233323f4b7d2f03aefe8a990690cdebfbfe26ea86bcbaec5e9ac990"
+checksum = "0adbe6e92a6ce0fd6c4aac593fdfd3e3950b0f61b1a63aa9731eb6fd85776fa3"
 dependencies = [
  "memo-map",
  "self_cell",
@@ -3097,9 +3119,9 @@ dependencies = [
 
 [[package]]
 name = "minijinja-autoreload"
-version = "2.12.0"
+version = "2.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f506e21a0304f72e4dcd6c0b5fb04d500eb09484cd1880954479cca34ec937f3"
+checksum = "b7dbeb469832618faff49204fde310bac88ce6f66a7832bbc7f5740e3176b376"
 dependencies = [
  "minijinja",
  "notify",

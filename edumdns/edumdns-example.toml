@@ -4,7 +4,7 @@
 [database]
 connection_string="postgres://edumdns:edumdns@192.168.0.10/edumdns"
 
-[server]
+#[server]
 #hostnames=["[::]:5000"]
 
 #[server.ebpf]
@@ -26,7 +26,7 @@ connection_string="postgres://edumdns:edumdns@192.168.0.10/edumdns"
 
 [web]
 session_cookie="Zm4aXgY1SJv9OnbwYgbhixYtb9R/ki6O1dIbcXS3X5ES+7QYdSyrfvat5wEsKmotNS9n17jEdNkhj7XZpnE="
-#hostname="localhost:8000"
+#hostnames=["[::]:8000"]
 
 #site_url="locahost"
 #static_files_dir="edumdns_web"
@@ -37,6 +37,10 @@ session_cookie="Zm4aXgY1SJv9OnbwYgbhixYtb9R/ki6O1dIbcXS3X5ES+7QYdSyrfvat5wEsKmot
 #issuer=
 #callback_url=
 #new_users_admin=
+
+#[web.tls]
+#cert_path=
+#key_path=
 
 #[web.external_auth_database]
 #connection_string=

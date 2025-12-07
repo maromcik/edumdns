@@ -38,11 +38,11 @@ use crate::handlers::user::{
     update_user, update_user_password, user_manage, user_manage_form_page, user_manage_password,
     user_manage_password_form,
 };
+use crate::middleware;
 use crate::utils::{
     AppState, create_oidc, create_reloader, form_config, get_cors_middleware,
     get_identity_middleware, get_session_middleware, json_config, path_config, query_config,
 };
-use crate::{middleware};
 use actix_files::Files;
 use actix_multipart::form::MultipartFormConfig;
 use actix_web::middleware::{Logger, NormalizePath, TrailingSlash};
@@ -50,6 +50,7 @@ use actix_web::web::{FormConfig, PayloadConfig, ServiceConfig};
 use actix_web::{App, HttpServer, web};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
+use edumdns_core::utils::parse_tls_config;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
@@ -268,81 +269,84 @@ impl WebSpawner {
     /// unless interrupted by a signal or error.
     pub(crate) async fn run_web(&self) -> Result<(), WebError> {
         let app_state_local = self.app_state.clone();
-        let files_dir_local = self.web_config.static_files_dir.clone();
-        let key_local = self.web_config.session_cookie.clone();
-        let site_url_local = self.web_config.site_url.clone();
         let pool_local = self.pool.clone();
-        let user_secure_cookie_local = self.web_config.session.use_secure_cookie;
-        let session_expiry_local = self.web_config.session.session_expiration;
-        let last_visit_deadline_local = self.web_config.session.last_visit_deadline;
-        let host_local = self.web_config.hostname.clone();
-        let payload_limit = self.web_config.limits.payload_limit;
-        let form_limit = self.web_config.limits.payload_limit;
+        let config = self.web_config.clone();
         match create_oidc(&self.web_config.oidc).await {
             Err(e) => {
-                info!("Starting the web server without OIDC support. Reason: {e}");
-                HttpServer::new(move || {
+                info!("Starting the web server without OIDC support: {e}");
+                let mut server = HttpServer::new(move || {
                     App::new()
                         .app_data(
                             MultipartFormConfig::default()
-                                .total_limit(payload_limit)
-                                .memory_limit(payload_limit),
+                                .total_limit(config.limits.payload_limit)
+                                .memory_limit(config.limits.payload_limit),
                         )
-                        .app_data(FormConfig::default().limit(form_limit))
-                        .app_data(PayloadConfig::new(payload_limit))
+                        .app_data(FormConfig::default().limit(config.limits.form_limit))
+                        .app_data(PayloadConfig::new(config.limits.payload_limit))
                         .app_data(json_config())
-                        .app_data(query_config()) // <-- attach custom handler// <- important
+                        .app_data(query_config())
                         .app_data(path_config())
-                        .app_data(form_config()) // <-- attach custom handler// <- important
+                        .app_data(form_config())
                         .wrap(NormalizePath::new(TrailingSlash::Trim))
                         .wrap(get_identity_middleware(
-                            session_expiry_local,
-                            last_visit_deadline_local,
+                            config.session.session_expiration,
+                            config.session.last_visit_deadline,
                         ))
                         .wrap(get_session_middleware(
-                            key_local.clone(),
-                            user_secure_cookie_local,
-                            session_expiry_local,
+                            config.session_cookie.clone(),
+                            config.session.use_secure_cookie,
+                            config.session.session_expiration,
                         ))
-                        .wrap(get_cors_middleware(site_url_local.as_str()))
+                        .wrap(get_cors_middleware(config.site_url.as_str()))
                         .wrap(middleware::RedirectToLogin)
                         .wrap(Logger::default())
                         .configure(Self::configure_webapp(
                             pool_local.clone(),
                             app_state_local.clone(),
-                            files_dir_local.clone(),
+                            config.static_files_dir.clone(),
                         ))
-                })
-                .bind(&host_local)?
-                .run()
-                .await?;
+                });
+
+                match parse_tls_config(&config.tls).await? {
+                    None => {
+                        for addr in config.hostnames {
+                            server = server.bind(addr)?;
+                        }
+                    }
+                    Some(tls_config) => {
+                        for addr in config.hostnames {
+                            server = server.bind_rustls_0_23(addr, tls_config.clone())?;
+                        }
+                    }
+                }
+                server.run().await?;
             }
             Ok(oidc) => {
                 info!("Starting the web server with OIDC support");
-                HttpServer::new(move || {
+                let mut server = HttpServer::new(move || {
                     App::new()
                         .app_data(
                             MultipartFormConfig::default()
-                                .total_limit(payload_limit)
-                                .memory_limit(payload_limit),
+                                .total_limit(config.limits.payload_limit)
+                                .memory_limit(config.limits.payload_limit),
                         )
-                        .app_data(FormConfig::default().limit(form_limit))
-                        .app_data(PayloadConfig::new(payload_limit))
+                        .app_data(FormConfig::default().limit(config.limits.form_limit))
+                        .app_data(PayloadConfig::new(config.limits.payload_limit))
                         .app_data(json_config())
-                        .app_data(query_config()) // <-- attach custom handler// <- important
+                        .app_data(query_config())
                         .app_data(path_config())
                         .app_data(form_config())
                         .wrap(NormalizePath::new(TrailingSlash::Trim))
                         .wrap(get_identity_middleware(
-                            session_expiry_local,
-                            last_visit_deadline_local,
+                            config.session.session_expiration,
+                            config.session.last_visit_deadline,
                         ))
                         .wrap(get_session_middleware(
-                            key_local.clone(),
-                            user_secure_cookie_local,
-                            session_expiry_local,
+                            config.session_cookie.clone(),
+                            config.session.use_secure_cookie,
+                            config.session.session_expiration,
                         ))
-                        .wrap(get_cors_middleware(site_url_local.as_str()))
+                        .wrap(get_cors_middleware(config.site_url.as_str()))
                         .wrap(oidc.get_middleware())
                         .wrap(middleware::RedirectToLogin)
                         .wrap(Logger::default())
@@ -350,12 +354,22 @@ impl WebSpawner {
                         .configure(Self::configure_webapp(
                             pool_local.clone(),
                             app_state_local.clone(),
-                            files_dir_local.clone(),
+                            config.static_files_dir.clone(),
                         ))
-                })
-                .bind(&host_local)?
-                .run()
-                .await?;
+                });
+                match parse_tls_config(&config.tls).await? {
+                    None => {
+                        for addr in config.hostnames {
+                            server = server.bind(addr)?;
+                        }
+                    }
+                    Some(tls_config) => {
+                        for addr in config.hostnames {
+                            server = server.bind_rustls_0_23(addr, tls_config.clone())?;
+                        }
+                    }
+                }
+                server.run().await?;
             }
         }
         Ok(())

@@ -3,24 +3,21 @@
 //! `ListenerSpawner` binds to configured addresses (with or without TLS) and
 //! spawns per-connection tasks that run a `ConnectionManager`.
 
+use crate::ProbeHandles;
 use crate::app_packet::AppPacket;
+use crate::config::ServerConfig;
 use crate::connection::ConnectionManager;
 use crate::error::ServerError;
 use crate::probe_tracker::SharedProbeTracker;
-use crate::{ProbeHandles};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::bincode_types::Uuid;
+use edumdns_core::utils::{TlsConfig, lookup_hosts, parse_tls_config};
 use log::{debug, error, info, warn};
-use rustls_pki_types::pem::PemObject;
-use rustls_pki_types::{CertificateDer, PrivateKeyDer};
-use rustls::ServerConfig as RustlsServerConfig;
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
-use edumdns_core::utils::lookup_hosts;
-use crate::config::{ServerConfig, TlsConfig};
 
 #[derive(Debug, Clone)]
 pub struct ServerTlsConfig {
@@ -51,10 +48,10 @@ impl ListenerSpawner {
         data_transmitter: Sender<AppPacket>,
         probe_handles: ProbeHandles,
         tracker: SharedProbeTracker,
-        server_config: ServerConfig
+        server_config: ServerConfig,
     ) -> Result<Self, ServerError> {
         let socket_addrs = lookup_hosts(server_config.hostnames.clone()).await?;
-        
+
         Ok(Self {
             pool,
             command_transmitter,
@@ -86,12 +83,11 @@ impl ListenerSpawner {
                     socket_addr,
                     timeout,
                 )
-                    .await
+                .await
                 {
                     error!("Could not start the server on {socket_addr}: {e}");
                 }
             });
-            
         }
 
         Ok(())
@@ -108,24 +104,8 @@ impl ListenerSpawner {
         global_timeout: Duration,
     ) -> Result<(), ServerError> {
         let listener = TcpListener::bind(hostname).await?;
-        let server_config = match config {
-            None => {
-                info!("Listening on {} without TLS", listener.local_addr()?);
-                None
-            }
-            Some(config) => {
-                info!("Listening on {} with TLS enabled", listener.local_addr()?);
-                let certs = CertificateDer::pem_file_iter(&config.cert_path)?
-                    .collect::<Result<Vec<_>, _>>()?;
-                let key = PrivateKeyDer::from_pem_file(&config.key_path)?;
-                Some(
-                    RustlsServerConfig::builder()
-                        .with_no_client_auth()
-                        .with_single_cert(certs, key)?,
-                )
-            }
-        };
-
+        let server_config = parse_tls_config(&config).await?;
+        info!("Server listening on: {}", listener.local_addr()?);
         loop {
             let (stream, addr) = listener.accept().await?;
             info!("Connection from {addr}");

@@ -1,5 +1,6 @@
-use std::collections::HashSet;
+use edumdns_core::utils::TlsConfig;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::time::Duration;
 
@@ -31,9 +32,7 @@ impl Default for ServerConfig {
 }
 
 fn default_server_hostname() -> HashSet<String> {
-    let mut h = HashSet::default();
-    h.insert("[::]:5000".to_string());
-    h
+    HashSet::from(["[::]:5000".into()])
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
@@ -46,12 +45,6 @@ pub struct EbpfConfig {
 
 fn default_ebpf_ping_location() -> String {
     "/sys/fs/bpf/edumdns".to_owned()
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
-pub struct TlsConfig {
-    pub cert_path: String,
-    pub key_path: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]

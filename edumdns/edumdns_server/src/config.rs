@@ -32,7 +32,7 @@ impl Default for ServerConfig {
 
 fn default_server_hostname() -> HashSet<String> {
     let mut h = HashSet::default();
-    h.insert("[::]:8000".to_string());
+    h.insert("[::]:5000".to_string());
     h
 }
 

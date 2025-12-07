@@ -4,8 +4,9 @@
 [database]
 connection_string="postgres://edumdns:edumdns@localhost/edumdns"
 
-#[server]
+[server]
 #hostnames=["[::]:5000"]
+#channel_buffer_capacity=1000
 
 #[server.ebpf]
 #proxy_ipv4=
@@ -16,9 +17,9 @@ connection_string="postgres://edumdns:edumdns@localhost/edumdns"
 #cert_path=
 #key_path=
 
-#[server.connection]
+[server.connection]
 #global_timeout=10
-#buffer_size=1000
+#buffer_capacity=1000
 
 #[server.transmit]
 #max_transmit_subnet_size=512

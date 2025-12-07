@@ -12,10 +12,9 @@ use crate::probe_tracker::SharedProbeTracker;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::bincode_types::Uuid;
-use edumdns_core::utils::{TlsConfig, lookup_hosts, parse_tls_config};
+use edumdns_core::utils::{lookup_hosts, parse_tls_config};
 use log::{debug, error, info, warn};
 use std::net::SocketAddr;
-use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
 

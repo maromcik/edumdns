@@ -50,6 +50,7 @@ pub struct ExternalAuthDatabase {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
+#[serde(default)]
 pub struct SessionExpirationConfig {
     pub session_expiration: u64,
     pub last_visit_deadline: u64,
@@ -67,6 +68,7 @@ impl Default for SessionExpirationConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
+#[serde(default)]
 pub struct Limits {
     pub payload_limit: usize,
     pub form_limit: usize,

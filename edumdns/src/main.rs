@@ -15,7 +15,7 @@ mod error;
 #[clap(author, version, about, long_about = None)]
 struct Cli {
     /// Optional `.env` file path for loading environment variables.
-    #[clap(short, long, value_name = "ENV_FILE", default_value = "edumdns.toml")]
+    #[clap(short, long, value_name = "CONFIG_FILE", default_value = "edumdns.toml", env = "EDUMDNS_CONFIG_FILE")]
     config: String,
 }
 
@@ -39,7 +39,7 @@ async fn main() -> Result<(), AppError> {
         .with_env_filter(env)
         .init();
 
-    info!("Config used:\n{config:#?}");
+    info!("Config used: {}\n{config:#?}", cli.config);
     let command_channel = tokio::sync::mpsc::channel(config.server.channel_buffer_capacity);
 
     let pool = db_init(config.database).await?;

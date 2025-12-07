@@ -10,7 +10,7 @@ name = "edumdns"
 [dependencies]
 tracing = { version = "0.1.43", features = ["async-await"] }
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "local-time", "time"] }
-clap = { version = "4.5.53", features = ["derive"] }
+clap = { version = "4.5.53", features = ["derive", "env"] }
 
 edumdns_server = { workspace = true }
 edumdns_db = { workspace = true }

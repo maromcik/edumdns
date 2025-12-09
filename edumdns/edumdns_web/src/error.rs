@@ -2,10 +2,10 @@ use crate::templates::error::GenericError;
 use actix_web::http::StatusCode;
 use actix_web::http::header::ContentType;
 use actix_web::{HttpResponse, ResponseError};
+use askama::Template;
 use edumdns_core::error::CoreError;
 use edumdns_db::error::{BackendError, DbError};
 use edumdns_server::error::ServerError;
-use minijinja::{Environment, path_loader};
 use std::env;
 use std::error::Error;
 use std::fmt::Debug;
@@ -230,19 +230,15 @@ impl ResponseError for WebError {
 }
 
 fn render_generic(error: &WebError) -> HttpResponse {
-    let mut env = Environment::new();
-    let files_dir = env::var("EDUMDNS_FILES_DIR").unwrap_or("edumdns_web".to_string());
-    env.set_loader(path_loader(format!("{files_dir}/templates")));
-    let template = env
-        .get_template("error.html")
-        .expect("Failed to read the error template");
-    let context = GenericError {
+    let template = GenericError {
         code: error.status_code().as_u16(),
         status_code: error.status_code().to_string(),
         description: error.to_string(),
     };
-    let body = template.render(context).unwrap_or_default();
-    HttpResponse::build(error.status_code())
-        .insert_header(ContentType::html())
-        .body(body)
+    match template.render() {
+        Ok(body) => HttpResponse::build(error.status_code())
+            .insert_header(ContentType::html())
+            .body(body),
+        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
+    }
 }

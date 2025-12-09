@@ -1,4 +1,4 @@
-FROM rust:1.91 as base
+FROM rust:1.93 as base
 
 RUN apt-get update
 RUN apt-get install -y postgresql-client zip build-essential autoconf libtool pkg-config libpq-dev libpcap-dev libssl-dev libxdp-dev clang
@@ -16,6 +16,7 @@ COPY ./edumdns/edumdns_server/ ./edumdns/edumdns_server
 
 COPY ./edumdns/actix_web_openidconnect ./edumdns/actix_web_openidconnect
 
+COPY ./edumdns/edumdns_web/templates/error.html ./edumdns/edumdns_web/templates/error.html
 COPY ./edumdns/edumdns_web/src ./edumdns/edumdns_web/src
 COPY ./edumdns/edumdns_web/Cargo.toml ./edumdns/edumdns_web/Cargo.toml
 
@@ -38,6 +39,7 @@ COPY ./edumdns/edumdns_server/ ./edumdns/edumdns_server
 
 COPY ./edumdns/actix_web_openidconnect ./edumdns/actix_web_openidconnect
 
+COPY ./edumdns/edumdns_web/templates/error.html ./edumdns/edumdns_web/templates/error.html
 COPY ./edumdns/edumdns_web/src ./edumdns/edumdns_web/src
 COPY ./edumdns/edumdns_web/Cargo.toml ./edumdns/edumdns_web/Cargo.toml
 

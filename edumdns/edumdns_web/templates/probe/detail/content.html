@@ -19,7 +19,6 @@
                     hx-get="/probe/{{ probe.id }}/reconnect"
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
-                    hx-push-url="/probe/{{ probe.id }}"
                     title="Reconnect probe"
             >
                 <i class="fa-solid fa-rotate-right"></i>
@@ -31,7 +30,6 @@
                     hx-get="/probe/{{ probe.id }}/forget"
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
-                    hx-push-url="/probe/{{ probe.id }}"
                     title="Stop (forget) probe"
             >
                 <i class="fa-solid fa-stop"></i>
@@ -43,7 +41,6 @@
                     hx-get="/probe/{{ probe.id }}/adopt"
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
-                    hx-push-url="/probe/{{ probe.id }}"
                     title="Resume (adopt) probe"
             >
                 <i class="fa-solid fa-play"></i>
@@ -686,7 +683,13 @@
 
 </div>
 
-
+<script>
+    window.onpageshow = function (event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    };
+</script>
 <script>
 
     function filter_probes() {

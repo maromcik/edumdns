@@ -58,7 +58,7 @@ pub fn is_htmx(request: &HttpRequest) -> bool {
     request
         .headers()
         .get("HX-Request")
-        .map_or(false, |v| v == "true")
+        .is_some_and(|v| v == "true")
 }
 
 /// Verifies that a client's access point hostname matches the required regex pattern.

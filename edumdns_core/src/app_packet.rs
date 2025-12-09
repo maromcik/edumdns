@@ -7,10 +7,8 @@
 //! - `NetworkStatusPacket` covers handshake, ping, and config exchange
 //! - `ProbeConfigElement` and `ProbeConfigPacket` describe capture settings
 //! - `ProbePacket` encapsulates a captured network packet plus metadata and a
-//!   content hash used for deduplication/logging
+//!   content hash used for deduplication/indexed storage
 //!
-//! It also provides display helpers for human‑readable logging and conversions
-//! from low-level `NetworkPacket` to high-level `ProbePacket` with metadata.
 use crate::bincode_types::Uuid;
 use crate::bincode_types::{IpNetwork, MacAddr};
 use crate::metadata::{DataLinkMetadata, PacketMetadata, ProbeMetadata};

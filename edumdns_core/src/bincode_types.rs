@@ -1,4 +1,5 @@
-//! Thin wrappers around common types with stable bincode/serde representations.
+//! These types provide bincode/serde representations for types that 
+//! did not implement these traits by default.
 //!
 //! Provided types:
 //! - `MacAddr` — wrapper over `pnet::datalink::MacAddr` with `bincode` encode/decode,

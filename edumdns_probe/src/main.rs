@@ -202,25 +202,33 @@ async fn main() -> Result<(), ProbeError> {
     let mut connection_manager =
         ConnectionManager::new(uuid, connection_info, connection_limits).await?;
 
+    // Perform initial connection initiation
     let mut config = connection_manager.connection_init_probe().await?;
     let mut session_id = Some(Uuid(uuid::Uuid::nil()));
     loop {
+        // enters main run/retry loop.
         let handle = connection_manager.handle.clone();
         let handle_local = connection_manager.handle.clone();
         let cancellation_token = CancellationToken::new();
+
+        // Task join-set to conveniently await multiple tasks at once
         let mut join_set = tokio::task::JoinSet::new();
 
-        let (send_transmitter, send_receiver) = mpsc::channel(1000);
-        let (command_transmitter, mut command_receiver) = mpsc::channel(1000);
-        let (pinger_receive_transmitter, pinger_receive_receiver) = mpsc::channel(1000);
+        // Set-up channels
+        let (send_transmitter, send_receiver) = mpsc::channel(cli.buffer_capacity);
+        let (command_transmitter, mut command_receiver) = mpsc::channel(cli.buffer_capacity);
+        let (pinger_receive_transmitter, pinger_receive_receiver) = mpsc::channel(cli.buffer_capacity);
 
+        // Open packet capture
         let probe_capture =
             ProbeCapture::new(send_transmitter, connection_manager.probe_metadata.clone(), config.clone());
 
+        // All fields of this struct will get newly received packets
         let targets = ReceivePacketTargets {
             pinger: pinger_receive_transmitter,
         };
 
+        // Spawn packet capture task
         let capture_handles = probe_capture
             .start_captures(
                 &mut join_set,
@@ -228,6 +236,8 @@ async fn main() -> Result<(), ProbeError> {
                 cancellation_token.clone(),
             )
             .await?;
+
+        // Spawn packet transmit task (connection to the server)
         ConnectionManager::transmit_packets(
             &mut join_set,
             connection_manager.handle.clone(),
@@ -238,6 +248,9 @@ async fn main() -> Result<(), ProbeError> {
             retry_interval,
         )
         .await?;
+
+        // Spawn packet receive task (connection to the server)
+        // Ping replies and commands are usually received
         ConnectionManager::receive_packets(
             &mut join_set,
             connection_manager.handle.clone(),
@@ -247,6 +260,8 @@ async fn main() -> Result<(), ProbeError> {
             global_timeout,
         )
         .await?;
+
+        // Spawn the pinger task
         ConnectionManager::pinger(
             &mut join_set,
             handle_local,
@@ -258,12 +273,18 @@ async fn main() -> Result<(), ProbeError> {
         )
         .await?;
 
+        // Tokio select to await multiple futures at once
         tokio::select! {
-
+            // a task finished
             result = async {
                 while let Some(task) = join_set.join_next_with_id().await {
+                    // Unwrap join error
                     let res = task?;
+                    // Failed capture tasks should not trigger reconnection
                     if capture_handles.contains(&res.0) {
+                        // The reason for failed capture tasks is transmitted back to the
+                        // server and from there delivered to the websocket, thus we are sending
+                        // session_id as well
                         if let Err(e) = res.1 {
                             error!("{e}");
                             handle
@@ -275,6 +296,8 @@ async fn main() -> Result<(), ProbeError> {
                                         ProbeResponse(uuid, session_id, ProbeResponse::new_error(e.to_string()))))).await??;
                         }
                     }
+                    // If something else than a capture task failed
+                    // send a reconnect signal
                     else {
                         match res.1 {
                             Ok(_) => {}
@@ -293,12 +316,17 @@ async fn main() -> Result<(), ProbeError> {
             } => {
                 result?;
             },
+            // Reconnect signal was received via the command channel.
             Some(NetworkAppPacket::Command(NetworkCommandPacket::ReconnectThisProbe(ses_id))) = command_receiver.recv() => {
+                // Store session_id obtained from the frontend (to deliver results to the websocket)
                 session_id = ses_id;
                 warn!("Reconnect signal received. Canceling tasks.");
+                // Cancel sync capture tasks
                 cancellation_token.cancel();
                 info!("Reconnecting...");
+                // Reconnect, performing the initiation phase again
                 config = connection_manager.reconnect().await?;
+                // If successful, send the results back to the server
                 let _ = connection_manager.handle
                 .send_message_with_response(|tx|
                     TcpConnectionMessage::send_packet(

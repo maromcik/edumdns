@@ -1,10 +1,3 @@
-//! Core crate error type aggregating failures from networking, codecs, I/O, and DNS/TLS.
-//!
-//! `CoreError` is a lightweight enum used across the core crate (and re-used by
-//! higher-level crates) to represent recoverable failures. It implements
-//! `thiserror::Error` for display and a series of `From<T>` conversions for
-//! common libraries (pnet, tokio, bincode, ipnetwork, hickory, rustls types),
-//! making `?` ergonomics work throughout the codebase.
 use pnet::datalink::ParseMacAddrErr;
 use std::fmt::Debug;
 use std::net::AddrParseError;

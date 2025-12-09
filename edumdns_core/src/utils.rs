@@ -1,9 +1,3 @@
-//! Small utilities and macros used across the core crate.
-//!
-//! - `retry!` — async retry macro with configurable attempts and interval (logs failures)
-//! - `Cancellable` — simple trait for cooperative cancellation in state machines
-//! - `parse_and_lookup_host` — reads host/port from env and resolves to socket addresses
-
 use std::collections::HashSet;
 use crate::error::CoreError;
 use std::net::SocketAddr;
@@ -40,11 +34,6 @@ macro_rules! retry {
     ($f:expr) => {
         retry!($f, 5, 1000)
     };
-}
-
-pub trait Cancellable {
-    fn cancel(&mut self);
-    fn is_cancelled(&self) -> bool;
 }
 
 pub async fn lookup_hosts(

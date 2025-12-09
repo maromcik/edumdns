@@ -1,6 +1,6 @@
 //! Low-level interface helpers using pnet (alternative capture path).
 //!
-//! This module exposes a thin wrapper over `pnet` for opening datalink and
+//! This module exposes a wrapper over `pnet` for opening datalink and
 //! transport channels directly. It is currently not used in the main data path,
 //! but can be useful for experiments or custom capture setups.
 //!

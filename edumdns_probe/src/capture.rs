@@ -164,7 +164,20 @@ where
             filter: filter.map(|s| s.to_string()),
         })
     }
-
+    /// Opens a packet capture on a pcap file 
+    /// (not used in this system, taken over from packet rewriter)
+    //////
+    /// # Arguments
+    ///
+    /// * `file_path` - Path to the pcap file
+    /// * `filter` - Optional BPF filter string to apply to captured packets
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(PacketCaptureGeneric<Offline>)` if the file is found and capture
+    /// is successfully opened, or a `ProbeError` if:
+    /// - The file is not found
+    /// - Capture initialization fails
     pub fn open_file_capture(
         file_path: &str,
         filter: Option<String>,

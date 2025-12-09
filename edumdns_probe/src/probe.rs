@@ -1,4 +1,4 @@
-//! Probe capture orchestration and interface management.
+//! Probe capture and interface management.
 //!
 //! This module manages the packet capture process for the probe. It coordinates
 //! multiple capture threads (one per configured interface), applies BPF filters

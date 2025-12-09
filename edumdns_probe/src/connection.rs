@@ -9,8 +9,6 @@
 //! - Automatic reconnection on failures
 //! - Ping/keepalive mechanism
 //!
-//! The `ConnectionManager` orchestrates all communication tasks and handles the
-//! probe's connection lifecycle.
 
 use crate::error::ProbeError;
 use edumdns_core::app_packet::{
@@ -47,8 +45,8 @@ pub(crate) struct ConnectionInfo {
     pub(crate) no_tls: bool,
 }
 
-pub struct ReceivePacketTargets {
-    pub pinger: mpsc::Sender<NetworkAppPacket>,
+pub(crate) struct ReceivePacketTargets {
+    pub(crate) pinger: mpsc::Sender<NetworkAppPacket>,
 }
 
 pub(crate) struct ConnectionManager {
@@ -126,14 +124,16 @@ impl ConnectionManager {
     /// probe (interface filters, capture settings), or a `ProbeError` if:
     /// - The probe is not adopted (ProbeUnknown) - triggers reconnection
     /// - Connection initiation is invalid - triggers reconnection
+    /// - A probe with the same UUID is already connected
+    /// - The probe did not provide a matching PSK, if a PSK is configured
+    /// in the server database
     /// - Network I/O fails
     /// - Unexpected packet types are received
     ///
     /// # Behavior
     ///
     /// If the probe is not adopted or connection initiation fails, this function
-    /// automatically triggers a reconnection after a delay. The caller should handle
-    /// the reconnection flow.
+    /// automatically triggers a reconnection after a delay.
     pub async fn connection_init_probe(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
         let error = Err(ProbeError::InvalidConnectionInitiation(
             "Invalid connection initiation".to_string(),
@@ -245,6 +245,77 @@ impl ConnectionManager {
         }
     }
 
+    /// Sends a packet with automatic retry and reconnection on failure.
+    ///
+    /// This function attempts to send a packet to the server. If sending fails, it
+    /// triggers a reconnection command and retries up to `max_retries` times with
+    /// delays between attempts.
+    ///
+    /// # Arguments
+    ///
+    /// * `handle` - TCP connection handle for sending packets
+    /// * `command_transmitter` - Channel for sending reconnection commands
+    /// * `max_retries` - Maximum number of retry attempts
+    /// * `retry_interval` - Delay between retry attempts
+    /// * `packet` - The packet to send (Data packets use buffered send, others use immediate)
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the packet is successfully sent, or a `ProbeError` if:
+    /// - All retry attempts are exhausted
+    /// - Network I/O fails persistently
+    ///
+    /// # Behavior
+    ///
+    /// - Data packets are sent with buffering (may be coalesced)
+    /// - Other packets are sent immediately (flushed)
+    /// - On failure, sends a ReconnectThisProbe command to trigger reconnection
+    /// - Waits `retry_interval` between retry attempts
+    pub async fn send_packet_with_reconnect(
+        handle: &TcpConnectionHandle,
+        command_transmitter: &mpsc::Sender<NetworkAppPacket>,
+        max_retries: usize,
+        retry_interval: Duration,
+        packet: NetworkAppPacket,
+    ) -> Result<(), ProbeError> {
+        let mut counter = 0;
+        loop {
+            let res = match packet {
+                NetworkAppPacket::Data(_) => {
+                    handle
+                        .send_message_with_response(|tx| {
+                            TcpConnectionMessage::send_packet_buffered(tx, packet.clone())
+                        })
+                        .await?
+                }
+                _ => {
+                    handle
+                        .send_message_with_response(|tx| {
+                            TcpConnectionMessage::send_packet(tx, packet.clone())
+                        })
+                        .await?
+                }
+            };
+            match res {
+                Ok(_) => return Ok(()),
+                Err(e) => {
+                    error!("Failed to send packet: {e}");
+                    command_transmitter
+                        .send(NetworkAppPacket::Command(
+                            NetworkCommandPacket::ReconnectThisProbe(None),
+                        ))
+                        .await?;
+                    if counter >= max_retries {
+                        return Err(ProbeError::from(e));
+                    }
+                    counter += 1;
+                    warn!("Retrying to send the packet; attempt: {counter} of {max_retries}");
+                    sleep(retry_interval).await;
+                }
+            }
+        }
+    }
+
     pub async fn transmit_packets(
         join_set: &mut JoinSet<Result<(), ProbeError>>,
         handle: TcpConnectionHandle,
@@ -341,77 +412,6 @@ impl ConnectionManager {
                         _ => {}
                     },
                 },
-            }
-        }
-    }
-
-    /// Sends a packet with automatic retry and reconnection on failure.
-    ///
-    /// This function attempts to send a packet to the server. If sending fails, it
-    /// triggers a reconnection command and retries up to `max_retries` times with
-    /// delays between attempts.
-    ///
-    /// # Arguments
-    ///
-    /// * `handle` - TCP connection handle for sending packets
-    /// * `command_transmitter` - Channel for sending reconnection commands
-    /// * `max_retries` - Maximum number of retry attempts
-    /// * `retry_interval` - Delay between retry attempts
-    /// * `packet` - The packet to send (Data packets use buffered send, others use immediate)
-    ///
-    /// # Returns
-    ///
-    /// Returns `Ok(())` if the packet is successfully sent, or a `ProbeError` if:
-    /// - All retry attempts are exhausted
-    /// - Network I/O fails persistently
-    ///
-    /// # Behavior
-    ///
-    /// - Data packets are sent with buffering (may be coalesced)
-    /// - Other packets are sent immediately (flushed)
-    /// - On failure, sends a ReconnectThisProbe command to trigger reconnection
-    /// - Waits `retry_interval` between retry attempts
-    pub async fn send_packet_with_reconnect(
-        handle: &TcpConnectionHandle,
-        command_transmitter: &mpsc::Sender<NetworkAppPacket>,
-        max_retries: usize,
-        retry_interval: Duration,
-        packet: NetworkAppPacket,
-    ) -> Result<(), ProbeError> {
-        let mut counter = 0;
-        loop {
-            let res = match packet {
-                NetworkAppPacket::Data(_) => {
-                    handle
-                        .send_message_with_response(|tx| {
-                            TcpConnectionMessage::send_packet_buffered(tx, packet.clone())
-                        })
-                        .await?
-                }
-                _ => {
-                    handle
-                        .send_message_with_response(|tx| {
-                            TcpConnectionMessage::send_packet(tx, packet.clone())
-                        })
-                        .await?
-                }
-            };
-            match res {
-                Ok(_) => return Ok(()),
-                Err(e) => {
-                    error!("Failed to send packet: {e}");
-                    command_transmitter
-                        .send(NetworkAppPacket::Command(
-                            NetworkCommandPacket::ReconnectThisProbe(None),
-                        ))
-                        .await?;
-                    if counter >= max_retries {
-                        return Err(ProbeError::from(e));
-                    }
-                    counter += 1;
-                    warn!("Retrying to send the packet; attempt: {counter} of {max_retries}");
-                    sleep(retry_interval).await;
-                }
             }
         }
     }

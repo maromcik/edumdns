@@ -40,10 +40,10 @@ use tokio_util::codec::{Framed, LengthDelimitedCodec};
 /// - `receiver`: control channel from the multiplexer to this sender actor.
 /// - `framed_sink`: the sink side of the `Framed<BufStream<S>, LengthDelimitedCodec>`.
 /// - `global_timeout`: per‑operation timeout applied to `send`/`feed`.
-pub struct TcpConnectionSender<S> {
-    pub receiver: mpsc::Receiver<TcpConnectionMessage>,
-    pub framed_sink: SplitSink<Framed<BufStream<S>, LengthDelimitedCodec>, Bytes>,
-    pub global_timeout: Duration,
+struct TcpConnectionSender<S> {
+    receiver: mpsc::Receiver<TcpConnectionMessage>,
+    framed_sink: SplitSink<Framed<BufStream<S>, LengthDelimitedCodec>, Bytes>,
+    global_timeout: Duration,
 }
 
 impl<S> TcpConnectionSender<S>
@@ -58,7 +58,7 @@ where
     ///   when `false`, uses `SinkExt::feed` to buffer and let the codec coalesce frames.
     ///
     /// Returns `Ok(())` on success or a `CoreError` on timeout or I/O failure.
-    pub async fn send_packet<T>(&mut self, packet: T, immediate: bool) -> Result<(), CoreError>
+    async fn send_packet<T>(&mut self, packet: T, immediate: bool) -> Result<(), CoreError>
     where
         T: Encode,
     {
@@ -98,10 +98,9 @@ where
 /// and replies to the requester over a oneshot channel. A per‑call optional
 /// `timeout` can be supplied via the control message; otherwise the actor uses a
 /// blocking `next()` on the stream.
-pub struct TcpConnectionReceiver<S> {
-    pub receiver: mpsc::Receiver<TcpConnectionMessage>,
-    pub framed_stream: SplitStream<Framed<BufStream<S>, LengthDelimitedCodec>>,
-    pub global_timeout: Duration,
+struct TcpConnectionReceiver<S> {
+    receiver: mpsc::Receiver<TcpConnectionMessage>,
+    framed_stream: SplitStream<Framed<BufStream<S>, LengthDelimitedCodec>>,
 }
 
 impl<S> TcpConnectionReceiver<S>
@@ -118,7 +117,7 @@ where
     /// - `Ok(Some(T))` on successful decode of the next frame.
     /// - `Ok(None)` when the stream is closed (EOF) before a frame is read.
     /// - `Err(CoreError)` on I/O failure, decode error, or timeout.
-    pub async fn receive_next<T>(
+    async fn receive_next<T>(
         &mut self,
         timeout: Option<Duration>,
     ) -> Result<Option<T>, CoreError>
@@ -146,7 +145,7 @@ where
     /// The `BytesMut` contains exactly one frame payload as produced by
     /// `LengthDelimitedCodec`. Returns the decoded value or a `CoreError` on
     /// decode failure.
-    pub fn decode_frame<T>(frame: BytesMut) -> Result<T, CoreError>
+    fn decode_frame<T>(frame: BytesMut) -> Result<T, CoreError>
     where
         T: Decode<()>,
     {
@@ -231,16 +230,16 @@ impl TcpConnectionMessage {
 ///
 /// This struct simply groups the three mpsc channel pairs used to connect these
 /// tasks together.
-pub struct TcpConnectionActorChannels {
-    pub command_channel: (
+struct TcpConnectionActorChannels {
+    command_channel: (
         mpsc::Sender<TcpConnectionMessage>,
         mpsc::Receiver<TcpConnectionMessage>,
     ),
-    pub send_channel: (
+    send_channel: (
         mpsc::Sender<TcpConnectionMessage>,
         mpsc::Receiver<TcpConnectionMessage>,
     ),
-    pub recv_channel: (
+    recv_channel: (
         mpsc::Sender<TcpConnectionMessage>,
         mpsc::Receiver<TcpConnectionMessage>,
     ),
@@ -251,8 +250,8 @@ impl TcpConnectionActorChannels {
     ///
     /// The capacity applies independently to the command, send, and receive
     /// channels. A larger capacity may improve burst handling at the cost of
-    /// memory; typical values reuse `BUFFER_CAPACITY`.
-    pub fn new(capacity: usize) -> Self {
+    /// memory.
+    fn new(capacity: usize) -> Self {
         let command_channel = mpsc::channel(capacity);
         let send_channel = mpsc::channel(capacity);
         let recv_channel = mpsc::channel(capacity);
@@ -638,7 +637,6 @@ where
             receiver: TcpConnectionReceiver {
                 receiver: message_channel_receiver,
                 framed_stream: framed.1,
-                global_timeout,
             },
             connection_info: ConnectionInfo {
                 local_addr,

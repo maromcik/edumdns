@@ -132,6 +132,23 @@ pub async fn request_packet_transmit_helper(
     Ok(())
 }
 
+/// Sends a reconnect command to a probe via the server.
+///
+/// This function sends a command to the server to force a probe to disconnect and reconnect.
+/// It retrieves the session ID from the session (if available) to enable WebSocket updates
+/// about the reconnection status.
+///
+/// # Arguments
+///
+/// * `command_channel` - Channel for sending commands to the server component
+/// * `probe_id` - UUID of the probe to reconnect
+/// * `session` - Session for retrieving session ID for WebSocket updates
+///
+/// # Returns
+///
+/// Returns `Ok(())` if the command is successfully sent, or a `WebError` if:
+/// - Session ID retrieval fails
+/// - Command channel send fails
 pub async fn reconnect_probe(
     command_channel: Sender<AppPacket>,
     probe_id: uuid::Uuid,
@@ -223,6 +240,33 @@ pub async fn authorize_packet_transmit_request(
     Ok(target_ip)
 }
 
+/// Renders the probe detail page with devices and permission matrix.
+///
+/// This helper function assembles all data needed for the probe detail page:
+/// - Probe information and permissions
+/// - Permission matrix showing which groups have which permissions
+/// - Associated devices with pagination
+/// - Device filters from query parameters
+///
+/// This function is used by multiple probe handlers to avoid code duplication.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection and query string extraction
+/// * `probe_repo` - Probe repository for database operations
+/// * `group_repo` - Group repository for permission matrix
+/// * `device_repo` - Device repository for associated devices
+/// * `state` - Application state containing template engine
+/// * `user` - Current user display information
+/// * `probe_id` - UUID of the probe to display
+/// * `query` - Query parameters for device filtering and pagination
+///
+/// # Returns
+///
+/// Returns an HTML response with the probe detail page, or an error if:
+/// - The probe is not found or the user lacks permission
+/// - Database operations fail
+/// - Template rendering fails
 pub async fn get_probe_content(
     request: HttpRequest,
     probe_repo: web::Data<PgProbeRepository>,

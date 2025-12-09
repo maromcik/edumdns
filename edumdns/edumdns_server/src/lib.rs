@@ -1,4 +1,4 @@
-//! edumdns_server crate entry points and task orchestration.
+//! edumdns_server crate entry points and task management.
 //!
 //! This module wires together listeners, the packet manager, database manager,
 //! and the watchdog that reaps stale probe connections. Public functions here
@@ -17,7 +17,7 @@ use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::TcpConnectionHandle;
-use log::{error, info};
+use log::{info};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -63,7 +63,7 @@ pub async fn spawn_server_tasks(
     let command_transmitter_local = command_transmitter.clone();
     let server_config_local = server_config.clone();
     let _server_manager_task = tokio::task::spawn(async move {
-        match ServerManager::new(
+        let mut manager = ServerManager::new(
             command_transmitter_local,
             command_receiver,
             data_channel.1,
@@ -71,12 +71,8 @@ pub async fn spawn_server_tasks(
             pool_local,
             probe_handles_local,
             server_config_local,
-        ) {
-            Ok(mut manager) => manager.handle_packets().await,
-            Err(e) => {
-                error!("Could not initialize packet manager: {e}");
-            }
-        }
+        );
+        manager.handle_packets().await;
     });
     info!("Packet manager initialized");
 

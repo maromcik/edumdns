@@ -1,8 +1,3 @@
-//! Server error type aggregating errors from subsystems and I/O.
-//!
-//! `ServerError` provides a single error surface for the server crate by wrapping
-//! errors coming from the core crate, database, I/O, TLS, channels, and parsing.
-
 use edumdns_core::error::CoreError;
 use edumdns_db::error::DbError;
 use std::fmt::Debug;

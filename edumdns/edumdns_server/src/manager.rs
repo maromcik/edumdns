@@ -38,8 +38,8 @@ use tokio::sync::{Mutex, RwLock};
 #[derive(Clone)]
 /// Holds proxy configuration and a handle to the eBPF updater.
 ///
-/// When DNS proxying is enabled, the server rewrites A/AAAA answers to point to
-/// a proxy IP pair and maintains kernel eBPF maps with original<->proxy IP
+/// When proxying is enabled for the server, the server rewrites A/AAAA answers to point to
+/// a proxy IP pair and maintains kernel eBPF maps with client<->device IP
 /// mappings. This struct groups the configured proxy IPs and a shared, mutex-
 /// protected `EbpfUpdater` used to update those maps.
 pub(crate) struct Proxy {
@@ -80,8 +80,7 @@ struct PacketTransmitJob {
 /// Cached data for a single device (MAC, IP) observed by a probe.
 ///
 /// - `packets` keeps a deduplicated in-memory set of recently seen `ProbePacket`s
-///   so we can quickly satisfy transmit requests without re-querying the DB for
-///   duplicates.
+///  acting as a simple cache to alleviate the load on the database.
 /// - `live_updates_transmitter` is an optional channel tied to an active
 ///   transmitter job; when present, newly arriving packets are forwarded to the
 ///   transmitter as live updates.
@@ -128,14 +127,12 @@ impl ServerManager {
     ///   timers, etc.).
     /// - `data_receiver`: receives network packets coming from probes.
     /// - `db_transmitter`: channel to the async DB manager for persisting devices/packets.
-    /// - `db_pool`: database pool used to construct repositories for on-demand queries.
+    /// - `db_pool`: database pool used to construct repositories for device/packet writes.
     /// - `handles`: map of live probe TCP handles for direct messaging.
-    /// - `global_timeout`: I/O timeout applied to network operations.
+    /// - `server_config`: global server configuration.
     ///
     /// Returns:
-    /// - `Ok(ServerManager)` on success
-    /// - `Err(ServerError)` if proxy/eBPF initialization fails critically (non-fatal
-    ///   errors are logged and proxying is disabled)
+    /// - `ServerManager`
     pub fn new(
         command_transmitter: Sender<AppPacket>,
         command_receiver: Receiver<AppPacket>,
@@ -144,7 +141,7 @@ impl ServerManager {
         db_pool: Pool<AsyncPgConnection>,
         handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
         server_config: ServerConfig,
-    ) -> Result<Self, ServerError> {
+    ) -> Self {
         let proxy = match &server_config.ebpf {
             Some(config) => match EbpfUpdater::new(&config.pin_location) {
                 Ok(updater) => Some(Proxy {
@@ -162,7 +159,7 @@ impl ServerManager {
             _ => None,
         };
 
-        Ok(Self {
+        Self {
             packets: HashMap::default(),
             command_transmitter,
             command_receiver,
@@ -175,7 +172,7 @@ impl ServerManager {
             pg_packet_repository: PgPacketRepository::new(db_pool.clone()),
             proxy,
             server_config,
-        })
+        }
     }
 
     /// Main event loop that receives `AppPacket`s and routes them.
@@ -467,8 +464,8 @@ impl ServerManager {
     ///
     /// Parameters:
     /// - `id`: probe identifier.
-    /// - `session_id`: optional web session that initiated the request (used for
-    ///   correlation on the probe side).
+    /// - `session_id`: optional web session that initiated the request (used for passing the 
+    /// response to a websocket).
     ///
     /// Returns:
     /// - `Ok(())` if the command was delivered and the connection closed.
@@ -547,7 +544,7 @@ impl ServerManager {
     /// - Validates proxy/eBPF availability and subnet size constraints.
     /// - Loads matching packets from the DB; processes them (rewrite/filter) based
     ///   on proxy configuration; fails if none remain.
-    /// - Optionally updates eBPF maps to add reverse IP mappings for proxying.
+    /// - Optionally updates eBPF maps to add IP mappings for client-device proxying.
     /// - Spawns a `PacketTransmitter` task and registers it in `transmitter_tasks`.
     /// - Wires a live-updates channel so subsequent captured packets can be pushed
     ///   into the running transmitter.

@@ -80,39 +80,26 @@ impl WebSpawner {
     ///
     /// * `pool` - Database connection pool for repository access
     /// * `command_channel` - Channel sender for sending commands to the server component
-    ///
+    /// * `web_config` - Global web configuration
     /// # Returns
     ///
-    /// Returns `Ok(WebSpawner)` if initialization succeeds, or a `WebError` if configuration fails.
-    ///
-    /// # Environment Variables
-    ///
-    /// This function reads the following environment variables:
-    /// - `EDUMDNS_SITE_URL` - Base URL for the application (default: "localhost")
-    /// - `EDUMDNS_FILES_DIR` - Directory containing templates and static files (default: "edumdns_web")
-    /// - `EDUMDNS_COOKIE_SESSION_KEY` - Secret key for session cookies (default: empty, insecure)
-    /// - `EDUMDNS_USE_SECURE_COOKIE` - Enable HTTPS-only cookies (default: false)
-    /// - `EDUMDNS_WEB_SESSION_EXPIRY` - Session expiry in seconds (default: 30 days)
-    /// - `EDUMDNS_WEB_LAST_VISIT_DEADLINE` - Last visit deadline in seconds (default: 7 days)
-    /// - `EDUMDNS_OIDC_NEW_USERS_ADMIN` - Grant admin to new OIDC users (default: false)
-    /// - `EDUMDNS_ACL_AP_DATABASE_CONNECTION_STRING` - ACL database connection string
-    /// - `EDUMDNS_ACL_AP_DATABASE_QUERY` - SQL query for ACL lookups
+    /// Returns `WebSpawner`.
     pub async fn new(
         pool: Pool<AsyncPgConnection>,
         command_channel: Sender<AppPacket>,
         web_config: WebConfig,
-    ) -> Result<Self, WebError> {
+    ) -> Self {
         let jinja = Arc::new(create_reloader(format!(
             "{}/templates",
             web_config.static_files_dir
         )));
 
         let app_state = AppState::new(jinja.clone(), command_channel.clone(), web_config.clone());
-        Ok(Self {
+        Self {
             pool,
             app_state,
             web_config,
-        })
+        }
     }
 
     /// Configures all route handlers and scopes for the web application.

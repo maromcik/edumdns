@@ -261,7 +261,7 @@ impl ConnectionManager {
     /// - `Err(ServerError::InvalidConnectionInitiation)` if `None` is received
     ///   (EOF or decode failure) during connection initiation.
     /// - Other `ServerError` variants if I/O or channel errors occur.
-    pub async fn receive_init_packet(&mut self) -> Result<NetworkAppPacket, ServerError> {
+    async fn receive_init_packet(&mut self) -> Result<NetworkAppPacket, ServerError> {
         let packet = self
             .handle
             .send_message_with_response(|tx| {
@@ -352,7 +352,7 @@ impl ConnectionManager {
     /// Returns:
     /// - `Ok(Probe)` returned by the repository after insertion/update.
     /// - `Err(ServerError)` if the DB operation fails.
-    pub async fn upsert_probe(&self, probe_metadata: &ProbeMetadata) -> Result<Probe, ServerError> {
+    async fn upsert_probe(&self, probe_metadata: &ProbeMetadata) -> Result<Probe, ServerError> {
         Ok(self
             .pg_probe_repository
             .create(&CreateProbe::new_connect(
@@ -377,7 +377,7 @@ impl ConnectionManager {
     /// Returns:
     /// - `Ok(ProbeConfigPacket)` containing interface/filter mappings.
     /// - `Err(ServerError)` if the DB lookup fails.
-    pub async fn get_probe_config(
+    async fn get_probe_config(
         &self,
         probe_metadata: &ProbeMetadata,
     ) -> Result<ProbeConfigPacket, ServerError> {

@@ -37,7 +37,7 @@ mod utils;
 ///
 /// * `pool` - Database connection pool for accessing PostgreSQL
 /// * `command_channel` - Channel sender for sending commands to the server component
-///
+/// * `web_config` - Global web configuration
 /// # Returns
 ///
 /// Returns `Ok(())` if the server starts successfully, or a `WebError` if initialization fails.
@@ -54,7 +54,7 @@ pub async fn web_init(
     web_config: WebConfig,
 ) -> Result<(), WebError> {
     WebSpawner::new(pool, command_channel, web_config)
-        .await?
+        .await
         .run_web()
         .await?;
 

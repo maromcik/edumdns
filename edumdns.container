@@ -10,21 +10,7 @@ PublishPort=8000:8000
 PublishPort=5000:5000
 Volume=/var/local/bpf/edumdns:/sys/fs/bpf:z
 Volume=/var/local/edumdns/certs:/etc/letsencrypt/live/edumdns.eu:z
-Environment=EDUMDNS_DATABASE_URL=postgres://edumdns:edumdns@edumdns-db:5432/edumdns
-Environment=EDUMDNS_WEB_HOSTNAME=::
-Environment=EDUMDNS_WEB_PORT=8000
-Environment=EDUMDNS_SERVER_HOSTNAME=::
-Environment=EDUMDNS_SERVER_PORT=5000
-Environment=EDUMDNS_COOKIE_SESSION_KEY=<secret>
-Environment=EDUMDNS_LOG_LEVEL=info
-Environment=EDUMDNS_USE_SECURE_COOKIE=true
-Environment=EDUMDNS_SERVER_PROXY_IPV4=192.168.0.10
-Environment=EDUMDNS_SERVER_PROXY_IPV6=::1
-Environment=EDUMDNS_SERVER_EBPF_PIN_LOCATION=/sys/fs/bpf
-Environment=EDUMDNS_ACL_AP_DATABASE_CONNECTION_STRING="host=radius-db user=postgres password=postgres dbname=radius port=5432"
-Environment=EDUMDNS_ACL_AP_DATABASE_QUERY="SELECT ap FROM log WHERE ip = $$1"
-Environment=EDUMDNS_SERVER_CERT=/etc/letsencrypt/live/edumdns.eu/fullchain.pem
-Environment=EDUMDNS_SERVER_KEY=/etc/letsencrypt/live/edumdns.eu/privkey.pem
+Environment=EDUMDNS_CONFIG_FILE=/usr/src/edumdns/config/edumdns.toml
 Environment=TZ=Europe/Prague
 AddCapability=CAP_BPF
 

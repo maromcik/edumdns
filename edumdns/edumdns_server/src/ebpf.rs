@@ -1,7 +1,7 @@
-//! eBPF map integration for on-the-fly DNS payload IP rewriting.
+//! eBPF map integration for cast data proxying.
 //!
 //! `EbpfUpdater` attaches to pinned kernel maps and maintains bi-directional
-//! mappings between original and proxy IPs for both IPv4 and IPv6.
+//! mappings between the client and the device for either IPv4 and IPv6.
 
 use crate::error::ServerError;
 use aya::maps::{HashMap, Map, MapData};
@@ -10,14 +10,8 @@ use log::{error, info};
 use std::net::IpAddr;
 use std::path::Path;
 
-/// Maintains references to pinned eBPF maps used for DNS IP rewriting.
-///
-/// The server optionally performs DNS proxying: it rewrites A/AAAA answers in
-/// DNS payloads to a configured proxy IPv4/IPv6 pair. To keep return traffic
-/// working transparently, the kernel eBPF program consults two hash maps that
-/// map original destination IPs to proxy IPs and vice versa. This struct holds
-/// handles to those pinned maps so we can add/remove entries at runtime.
-///
+/// Maintains references to pinned eBPF maps used for proxying.
+
 /// Fields:
 /// - `rewrite_map_v4`: pinned `HashMap<u32, u32>` for IPv4 address rewrites. Keys
 ///   and values are native-endian IPv4 addresses represented as `u32`.
@@ -31,14 +25,7 @@ pub struct EbpfUpdater {
 }
 
 impl EbpfUpdater {
-    /// Attach to the pinned eBPF maps used for DNS IP rewrites.
-    ///
-    /// Environment:
-    /// - `EDUMDNS_SERVER_EBPF_PIN_LOCATION` (optional): base directory where the
-    ///   eBPF maps are pinned. Defaults to `/sys/fs/bpf/edumdns`.
-    ///   The method expects two maps inside this directory:
-    ///   - `edumdns_proxy_rewrite_v4` (IPv4)
-    ///   - `edumdns_proxy_rewrite_v6` (IPv6)
+    /// Attach to the pinned eBPF maps.
     ///
     /// Returns:
     /// - `Ok(EbpfUpdater)` when both maps are successfully opened and wrapped
@@ -64,7 +51,7 @@ impl EbpfUpdater {
         })
     }
 
-    /// Add a bi-directional rewrite rule for a pair of IP networks.
+    /// Add a bi-directional rewrite rule for a pair of IP addresses.
     ///
     /// This inserts two entries into the corresponding eBPF map, one in each
     /// direction, effectively establishing a symmetric mapping between the
@@ -73,8 +60,8 @@ impl EbpfUpdater {
     /// ignored here and only the host IP is used.
     ///
     /// Parameters:
-    /// - `a`: first IP (typically the original address as `IpNetwork`).
-    /// - `b`: second IP (typically the proxy address as `IpNetwork`).
+    /// - `a`: first IP.
+    /// - `b`: second IP.
     ///
     /// Returns:
     /// - `Ok(())` if both map updates succeed.

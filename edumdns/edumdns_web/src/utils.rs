@@ -6,7 +6,6 @@
 //! - OpenID Connect (OIDC) configuration and initialization
 //! - Middleware configuration (CORS, session, identity)
 //! - Request parsing configuration (JSON, query, path)
-//! - Hostname and port parsing from environment variables
 //!
 //! These utilities are used throughout the web interface to configure the server,
 //! handle authentication, and provide shared state to request handlers.
@@ -99,14 +98,6 @@ fn has_perm(perms_values: Vec<Value>, query: Value) -> Result<bool, minijinja::E
 ///
 /// Returns `Ok(ActixWebOpenId)` if all required environment variables are present and
 /// OIDC initialization succeeds, or a `WebError` if configuration is missing or invalid.
-///
-/// # Environment Variables
-///
-/// This function requires the following environment variables:
-/// - `EDUMDNS_OIDC_CLIENT_ID` - OIDC client ID from the identity provider
-/// - `EDUMDNS_OIDC_CLIENT_SECRET` - OIDC client secret from the identity provider
-/// - `EDUMDNS_OIDC_CALLBACK_URL` - Callback URL for OIDC authentication flow
-/// - `EDUMDNS_OIDC_ISSUER` - Base URL of the OIDC identity provider
 ///
 /// # Authentication Logic
 ///

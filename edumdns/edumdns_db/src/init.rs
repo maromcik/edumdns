@@ -15,11 +15,9 @@ pub async fn init(database_config: DbConfig) -> Result<Pool<AsyncPgConnection>, 
     set_up_database_pool(&database_config)
 }
 
-/// Runs your embedded migrations
-/// EDUMDNS_DATABASE_URL environment variable needs to be set with proper connection string.
+
 pub fn run_migrations(database_config: &DbConfig) -> Result<(), DbError> {
     let mut connection = PgConnection::establish(&database_config.connection_string)?;
-
     connection
         .run_pending_migrations(MIGRATIONS)
         .map_err(|e| DbError::MigrationError(e.to_string()))?;

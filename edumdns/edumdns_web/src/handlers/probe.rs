@@ -20,10 +20,10 @@ use crate::forms::probe::{
     CreateProbeForm, ProbeConfigForm, ProbePermissionForm, ProbeQuery, UpdateProbeForm,
     UpdateProbeOwnerForm,
 };
-use crate::handlers::helpers::reconnect_probe;
+use crate::handlers::helpers::{get_probe_content, reconnect_probe};
 use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
 use crate::templates::PageInfo;
-use crate::templates::probe::{ProbeDetailTemplate, ProbeTemplate};
+use crate::templates::probe::ProbeTemplate;
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
@@ -33,13 +33,10 @@ use actix_ws::AggregatedMessage;
 use edumdns_core::app_packet::{EntityType, Id};
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::error::CoreError;
-use edumdns_db::models::Group;
 use edumdns_db::repositories::common::{
-    DbCreate, DbDelete, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE, Pagination, Permission,
+    DbCreate, DbDelete, DbReadOne, DbUpdate, PAGINATION_ELEMENTS_PER_PAGE,
 };
-use edumdns_db::repositories::device::models::{DeviceDisplay, SelectManyDevices};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use edumdns_db::repositories::group::models::SelectManyGroups;
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::probe::models::{
     AlterProbePermission, CreateProbe, CreateProbeConfig, ProbeDisplay, SelectManyProbes,
@@ -51,8 +48,7 @@ use edumdns_server::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket,
 };
 use log::{info, warn};
-use std::collections::{HashMap, HashSet};
-use strum::IntoEnumIterator;
+use std::collections::HashMap;
 use tokio::sync::mpsc;
 
 #[get("")]
@@ -108,61 +104,17 @@ pub async fn get_probe(
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     let user = user_repo.read_one(&user_id).await?;
-    let probe_id = path.0;
-    let page = query.page.unwrap_or(1);
-    let probe = probe_repo.read_one_auth(&probe_id, &user_id).await?;
-
-    let granted: HashSet<(Id, Permission)> = probe_repo
-        .get_permissions(&probe_id)
-        .await?
-        .iter()
-        .map(|x| (x.group_id, x.permission))
-        .collect();
-
-    let matrix = group_repo
-        .read_many(&SelectManyGroups::new(
-            None,
-            None,
-            Some(Pagination::default_pagination(query.page)),
-        ))
-        .await?
-        .into_iter()
-        .map(|g| {
-            (
-                {
-                    Permission::iter()
-                        .map(|p| (p, granted.contains(&(g.id, p))))
-                        .collect::<Vec<(Permission, bool)>>()
-                },
-                g,
-            )
-        })
-        .collect::<Vec<(Vec<(Permission, bool)>, Group)>>();
-
-    let query = query.into_inner();
-    let mut params = SelectManyDevices::from(query.clone());
-    params.probe_id = Some(probe_id);
-    let devices = device_repo.read_many(&params).await?;
-    let device_count = device_repo.get_device_count(params, &user_id).await?;
-    let total_pages = (device_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
-
-    let template_name = get_template_name(&request, "probe/detail");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let query_string = request.uri().query().unwrap_or("").to_string();
-    let body = template.render(ProbeDetailTemplate {
+    get_probe_content(
+        request,
+        probe_repo,
+        group_repo,
+        device_repo,
+        state,
         user,
-        permissions: probe.permissions,
-        permission_matrix: matrix,
-        probe: ProbeDisplay::from(probe.data.0),
-        devices: devices.into_iter().map(DeviceDisplay::from).collect(),
-        configs: probe.data.1,
-        page_info: PageInfo::new(page, total_pages),
-        filters: query,
-        query_string,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+        path.0,
+        query,
+    )
+    .await
 }
 
 #[get("{id}/adopt")]
@@ -172,14 +124,28 @@ pub async fn adopt(
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
     path: web::Path<(uuid::Uuid,)>,
+    group_repo: web::Data<PgGroupRepository>,
+    device_repo: web::Data<PgDeviceRepository>,
+    user_repo: web::Data<PgUserRepository>,
+    query: web::Query<DeviceQuery>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
-    probe_repo.adopt(&path.0, &parse_user_id(&i)?).await?;
+    let user_id = parse_user_id(&i)?;
+    let user = user_repo.read_one(&user_id).await?;
+    probe_repo.adopt(&path.0, &user_id).await?;
     reconnect_probe(state.command_channel.clone(), path.0, session).await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/probe/{}", path.0)))
-        .finish())
+    get_probe_content(
+        request,
+        probe_repo,
+        group_repo,
+        device_repo,
+        state,
+        user,
+        path.0,
+        query,
+    )
+    .await
 }
 
 #[get("{id}/forget")]
@@ -189,24 +155,42 @@ pub async fn forget(
     probe_repo: web::Data<PgProbeRepository>,
     state: web::Data<AppState>,
     path: web::Path<(uuid::Uuid,)>,
+    group_repo: web::Data<PgGroupRepository>,
+    device_repo: web::Data<PgDeviceRepository>,
+    user_repo: web::Data<PgUserRepository>,
+    query: web::Query<DeviceQuery>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
-    probe_repo.forget(&path.0, &parse_user_id(&i)?).await?;
+    let user_id = parse_user_id(&i)?;
+    let user = user_repo.read_one(&user_id).await?;
+    probe_repo.forget(&path.0, &user_id).await?;
     reconnect_probe(state.command_channel.clone(), path.0, session).await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/probe/{}", path.0)))
-        .finish())
+    get_probe_content(
+        request,
+        probe_repo,
+        group_repo,
+        device_repo,
+        state,
+        user,
+        path.0,
+        query,
+    )
+    .await
 }
 
 #[get("{id}/reconnect")]
 pub async fn reconnect(
     request: HttpRequest,
     identity: Option<Identity>,
-    probe_repo: web::Data<PgProbeRepository>,
-    state: web::Data<AppState>,
     path: web::Path<(uuid::Uuid,)>,
     session: Session,
+    probe_repo: web::Data<PgProbeRepository>,
+    group_repo: web::Data<PgGroupRepository>,
+    device_repo: web::Data<PgDeviceRepository>,
+    user_repo: web::Data<PgUserRepository>,
+    query: web::Query<DeviceQuery>,
+    state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     probe_repo
@@ -214,9 +198,19 @@ pub async fn reconnect(
         .await?;
 
     reconnect_probe(state.command_channel.clone(), path.0, session).await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/probe/{}", path.0)))
-        .finish())
+    let user_id = parse_user_id(&i)?;
+    let user = user_repo.read_one(&user_id).await?;
+    get_probe_content(
+        request,
+        probe_repo,
+        group_repo,
+        device_repo,
+        state,
+        user,
+        path.0,
+        query,
+    )
+    .await
 }
 
 #[post("{probe_id}/config")]

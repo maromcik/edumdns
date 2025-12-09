@@ -91,7 +91,7 @@ impl ConnectionManager {
         handles: ProbeHandles,
         probe_last_seen: SharedProbeTracker,
         global_timeout: Duration,
-        connection_buffer_capacity: usize, 
+        connection_buffer_capacity: usize,
     ) -> Result<Self, ServerError> {
         let handle = match config {
             Some(config) => {
@@ -103,7 +103,11 @@ impl ConnectionManager {
                 )
                 .await?
             }
-            _ => TcpConnectionHandle::stream_to_framed(stream, global_timeout, connection_buffer_capacity)?,
+            _ => TcpConnectionHandle::stream_to_framed(
+                stream,
+                global_timeout,
+                connection_buffer_capacity,
+            )?,
         };
         Ok(Self {
             handle,

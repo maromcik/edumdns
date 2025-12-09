@@ -15,7 +15,13 @@ mod error;
 #[clap(author, version, about, long_about = None)]
 struct Cli {
     /// Optional `.env` file path for loading environment variables.
-    #[clap(short, long, value_name = "CONFIG_FILE", default_value = "edumdns.toml", env = "EDUMDNS_CONFIG_FILE")]
+    #[clap(
+        short,
+        long,
+        value_name = "CONFIG_FILE",
+        default_value = "edumdns.toml",
+        env = "EDUMDNS_CONFIG_FILE"
+    )]
     config: String,
 }
 

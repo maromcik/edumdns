@@ -46,6 +46,23 @@ use edumdns_server::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket};
 use std::collections::HashMap;
 use uuid::Uuid;
 
+/// Lists all devices with filtering and pagination.
+///
+/// Retrieves devices accessible to the authenticated user, applies filters from query parameters,
+/// and renders them in a paginated list view.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection
+/// * `identity` - Optional user identity (required for access)
+/// * `device_repo` - Device repository for database operations
+/// * `user_repo` - User repository for user information
+/// * `state` - Application state containing template engine
+/// * `query` - Query parameters for filtering and pagination
+///
+/// # Returns
+///
+/// Returns an HTML response with the device list page, or redirects to login if not authenticated.
 #[get("")]
 pub async fn get_devices(
     request: HttpRequest,
@@ -83,6 +100,26 @@ pub async fn get_devices(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Displays detailed information about a specific device.
+///
+/// Shows device details, associated packets (with pagination), and active packet transmission
+/// requests. The user must have permission to view the device.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection
+/// * `identity` - Optional user identity (required for access)
+/// * `device_repo` - Device repository for database operations
+/// * `packet_repo` - Packet repository for retrieving associated packets
+/// * `user_repo` - User repository for user information
+/// * `path` - Path parameter containing device ID
+/// * `state` - Application state containing template engine
+/// * `query` - Query parameters for packet filtering and pagination
+///
+/// # Returns
+///
+/// Returns an HTML response with the device detail page, or an error if the device is not found
+/// or the user lacks permission.
 #[get("{id}")]
 pub async fn get_device(
     request: HttpRequest,
@@ -146,6 +183,21 @@ pub async fn get_device(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Updates device information.
+///
+/// Modifies device properties such as name, description, ACL settings, and other metadata.
+/// The user must have permission to update the device.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `device_repo` - Device repository for database operations
+/// * `form` - Form data containing updated device information
+///
+/// # Returns
+///
+/// Returns a redirect response to the device detail page after successful update.
 #[post("update")]
 pub async fn update_device(
     request: HttpRequest,
@@ -236,6 +288,23 @@ pub async fn delete_device(
         .finish())
 }
 
+/// Creates a custom packet transmission request for a device.
+///
+/// Initiates packet transmission to a custom target IP and port specified by the user.
+/// This is used for administrative control over packet transmission.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `device_repo` - Device repository for database operations
+/// * `path` - Path parameter containing device ID
+/// * `state` - Application state containing command channel
+/// * `form` - Form data containing target IP, port, and permanent flag
+///
+/// # Returns
+///
+/// Returns a redirect response to the device detail page after initiating transmission.
 #[post("{id}/transmit-custom")]
 pub async fn request_custom_packet_transmit(
     request: HttpRequest,
@@ -263,6 +332,24 @@ pub async fn request_custom_packet_transmit(
         .finish())
 }
 
+/// Displays the packet transmission request page for a device.
+///
+/// Shows a form for requesting packet transmission. For published devices, this page is publicly
+/// accessible. For unpublished devices, the user must have permission to view the device.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request containing client IP information
+/// * `identity` - Optional user identity (required for unpublished devices)
+/// * `device_repo` - Device repository for database operations
+/// * `user_repo` - User repository for user information
+/// * `path` - Path parameter containing device ID
+/// * `state` - Application state containing template engine
+///
+/// # Returns
+///
+/// Returns an HTML response with the transmission request form, showing the client's IP address
+/// and any existing transmission requests.
 #[get("{id}/transmit")]
 pub async fn get_device_for_transmit(
     request: HttpRequest,
@@ -320,6 +407,23 @@ pub async fn get_device_for_transmit(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Creates a packet transmission request from a public device page.
+///
+/// Validates ACL rules (CIDR, password, AP hostname) and initiates packet transmission to the
+/// client's IP address. This is the public-facing endpoint for device discovery requests.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request containing client IP information
+/// * `identity` - Optional user identity (required for unpublished devices)
+/// * `device_repo` - Device repository for database operations
+/// * `path` - Path parameter containing device ID
+/// * `state` - Application state containing command channel and external auth database config
+/// * `form` - Form data potentially containing ACL password
+///
+/// # Returns
+///
+/// Returns a redirect response to the transmission page after initiating transmission.
 #[post("{id}/transmit")]
 pub async fn request_packet_transmit(
     request: HttpRequest,
@@ -360,6 +464,23 @@ pub async fn request_packet_transmit(
         .finish())
 }
 
+/// Stops and deletes an active packet transmission request.
+///
+/// Sends a command to the server to stop transmission and removes the request from the database.
+/// The user must own the request or have permission to manage the device.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `device_repo` - Device repository for database operations
+/// * `path` - Path parameters containing device ID and request ID
+/// * `state` - Application state containing command channel
+/// * `query` - Query parameters containing optional return URL
+///
+/// # Returns
+///
+/// Returns a redirect response to the return URL (or device detail page) after stopping transmission.
 #[delete("{device_id}/transmit/{request_id}")]
 pub async fn delete_request_packet_transmit(
     request: HttpRequest,
@@ -400,6 +521,23 @@ pub async fn delete_request_packet_transmit(
         .finish())
 }
 
+/// Extends the duration of an active packet transmission request.
+///
+/// Validates ACL rules again and extends the transmission duration. The user must own the
+/// request or have permission to manage the device.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request containing client IP information
+/// * `identity` - Optional user identity (required for access)
+/// * `device_repo` - Device repository for database operations
+/// * `state` - Application state containing command channel and external auth database config
+/// * `form` - Form data potentially containing ACL password
+/// * `path` - Path parameters containing device ID and request ID
+///
+/// # Returns
+///
+/// Returns a redirect response to the transmission page after extending the request.
 #[post("{device_id}/transmit/{request_id}/extend")]
 pub async fn extend_request_packet_transmit(
     request: HttpRequest,
@@ -449,6 +587,22 @@ pub async fn extend_request_packet_transmit(
         .finish())
 }
 
+/// Extends the duration of a custom packet transmission request.
+///
+/// Extends the transmission duration without re-validating ACL rules (admin-only operation).
+/// The user must have permission to manage the device.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `device_repo` - Device repository for database operations
+/// * `state` - Application state containing command channel
+/// * `path` - Path parameters containing device ID and request ID
+///
+/// # Returns
+///
+/// Returns a redirect response to the device detail page after extending the request.
 #[post("{device_id}/transmit-custom/{request_id}/extend")]
 pub async fn extend_custom_request_packet_transmit(
     request: HttpRequest,
@@ -479,6 +633,21 @@ pub async fn extend_custom_request_packet_transmit(
         .finish())
 }
 
+/// Publishes a device, making it publicly accessible.
+///
+/// Sets the device's published flag to true, allowing unauthenticated users to request
+/// packet transmission from the device's public page.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `device_repo` - Device repository for database operations
+/// * `path` - Path parameter containing device ID
+///
+/// # Returns
+///
+/// Returns a redirect response to the device detail page after publishing.
 #[get("{id}/publish")]
 pub async fn publish_device(
     request: HttpRequest,
@@ -499,6 +668,21 @@ pub async fn publish_device(
         .finish())
 }
 
+/// Hides a device, making it accessible only to authorized users.
+///
+/// Sets the device's published flag to false, restricting access to users with appropriate
+/// permissions.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `device_repo` - Device repository for database operations
+/// * `path` - Path parameter containing device ID
+///
+/// # Returns
+///
+/// Returns a redirect response to the device detail page after hiding.
 #[get("{id}/hide")]
 pub async fn hide_device(
     request: HttpRequest,
@@ -517,6 +701,21 @@ pub async fn hide_device(
         .finish())
 }
 
+/// Creates a new device in the database.
+///
+/// Creates a device record associated with a probe, identified by MAC address and IP address.
+/// The user must have permission to create devices for the specified probe.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `device_repo` - Device repository for database operations
+/// * `form` - Form data containing device information (probe ID, MAC, IP, name, etc.)
+///
+/// # Returns
+///
+/// Returns a redirect response to the newly created device's detail page.
 #[post("create")]
 pub async fn create_device(
     request: HttpRequest,
@@ -534,6 +733,21 @@ pub async fn create_device(
         .finish())
 }
 
+/// Displays the device creation form.
+///
+/// Shows a form for creating a new device associated with a specific probe.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection
+/// * `identity` - Optional user identity (required for access)
+/// * `user_repo` - User repository for user information
+/// * `state` - Application state containing template engine
+/// * `path` - Path parameter containing probe ID
+///
+/// # Returns
+///
+/// Returns an HTML response with the device creation form.
 #[get("create/{id}")]
 pub async fn create_device_form(
     request: HttpRequest,

@@ -12,162 +12,119 @@ The `edumdns` binary orchestrates three main components:
 
 The system uses the asynchronous Tokio runtime to handle concurrent operations efficiently.
 
-## Environment Variables
+## Configuration
 
-The following environment variables are used across all components of the edumdns server:
+The edumdns server uses a TOML configuration file for all settings. The configuration file is specified via the `--config` command-line argument (default: `edumdns.toml`). Environment variables with the `APP_` prefix can also override configuration values.
 
-### Logging
+### Configuration File Structure
 
-- **`EDUMDNS_APP_LOG_LEVEL`** (optional, default: `"info"`)
+The configuration file is organized into sections:
+
+- **`[database]`**: Database connection settings
+- **`[server]`**: Server component settings (probe connections, packet transmission)
+- **`[web]`**: Web interface settings (authentication, sessions, OIDC)
+
+See `edumdns-example.toml` for a complete example configuration file.
+
+### Logging Configuration
+
+- **`app_log_level`** (optional, default: `"info"`)
   - Sets the logging level for the edumdns application only
   - Valid values: `trace`, `debug`, `info`, `warn`, `error`
-  - Example: `EDUMDNS_LOG_LEVEL=debug`
 
-- **`EDUMDNS_ALL_LOG_LEVEL`** (optional, default: `"info"`)
+- **`all_log_level`** (optional, default: `"info"`)
   - Sets the logging level for all crates used by the edumdns application
   - Valid values: `trace`, `debug`, `info`, `warn`, `error`
-  - Example: `EDUMDNS_LOG_LEVEL=debug`
 
-### Database Configuration
+### Database Configuration (`[database]`)
 
-- **`EDUMDNS_DATABASE_URL`** (required)
+- **`connection_string`** (required)
   - PostgreSQL connection string for the database
   - Format: `postgres://[user[:password]@][host][:port][/database]`
   - Example: `postgres://edumdns:password@localhost:5432/edumdns`
 
-### Server Component (edumdns_server)
+- **`pool_size`** (optional, default: `20`)
+  - Maximum number of database connections in the pool
 
-- **`EDUMDNS_SERVER_HOSTNAME`** (optional, default: `"localhost"`)
-  - Hostname or IP address to bind the server listener
+### Server Component Configuration (`[server]`)
+
+- **`hostnames`** (optional, default: `["[::]:5000"]`)
+  - List of hostname:port addresses to bind the server listener
   - Supports IPv4 and IPv6 addresses
-  - Example: `EDUMDNS_SERVER_HOSTNAME=0.0.0.0` or `EDUMDNS_SERVER_HOSTNAME=::`
+  - Example: `hostnames = ["0.0.0.0:5000", "[::]:5000"]`
 
-- **`EDUMDNS_SERVER_PORT`** (optional, default: `"5000"`)
-  - Port number for the server to listen on
-  - Example: `EDUMDNS_SERVER_PORT=5000`
+- **`channel_buffer_capacity`** (optional, default: `1000`)
+  - Internal message channel buffer size
 
-- **`EDUMDNS_SERVER_GLOBAL_TIMEOUT`** (optional, default: `10`)
-  - Global timeout in seconds for server operations
-  - Used for connection timeouts and packet operations
-  - Example: `EDUMDNS_SERVER_GLOBAL_TIMEOUT=30`
+- **`[server.connection]`**: Connection settings
+  - **`global_timeout`** (optional, default: `10`): Global timeout in seconds for server operations
+  - **`buffer_capacity`** (optional, default: `1000`): Connection buffer capacity
 
-- **`EDUMDNS_SERVER_PROXY_IPV4`** (optional)
-  - IPv4 address used by the eBPF proxy for packet rewriting
-  - Required if eBPF proxy functionality is enabled
-  - Example: `EDUMDNS_SERVER_PROXY_IPV4=192.168.0.10`
+- **`[server.transmit]`**: Packet transmission settings
+  - **`max_transmit_subnet_size`** (optional, default: `512`): Maximum subnet size for packet transmission
+  - **`transmit_repeat_delay_multiplicator`** (optional, default: `5`): Delay multiplicator for packet repetition
 
-- **`EDUMDNS_SERVER_PROXY_IPV6`** (optional)
-  - IPv6 address used by the eBPF proxy for packet rewriting
-  - Required if eBPF proxy functionality is enabled
-  - Example: `EDUMDNS_SERVER_PROXY_IPV6=::1`
+- **`[server.ebpf]`** (optional): eBPF proxy configuration
+  - **`proxy_ipv4`**: IPv4 address used by the eBPF proxy for packet rewriting
+  - **`proxy_ipv6`**: IPv6 address used by the eBPF proxy for packet rewriting
+  - **`pin_location`** (optional, default: `"/sys/fs/bpf/edumdns"`): Directory path where eBPF maps are pinned
 
-- **`EDUMDNS_SERVER_MAX_TRANSMIT_SUBNET_SIZE`** (optional, default: `512`)
-  - Maximum subnet size for packet transmission operations
-  - Example: `EDUMDNS_SERVER_MAX_TRANSMIT_SUBNET_SIZE=1024`
+- **`[server.tls]`** (optional): TLS configuration
+  - **`cert_path`**: Path to the TLS certificate file (PEM format)
+  - **`key_path`**: Path to the TLS private key file (PEM format)
 
-- **`EDUMDNS_SERVER_CERT`** (optional)
-  - Path to the TLS certificate file (PEM format)
-  - If not set, the server will run without TLS (not recommended for production)
-  - Example: `EDUMDNS_SERVER_CERT=/etc/letsencrypt/live/edumdns.eu/fullchain.pem`
+### Web Component Configuration (`[web]`)
 
-- **`EDUMDNS_SERVER_KEY`** (optional)
-  - Path to the TLS private key file (PEM format)
-  - Must be set together with `EDUMDNS_SERVER_CERT`
-  - Example: `EDUMDNS_SERVER_KEY=/etc/letsencrypt/live/edumdns.eu/privkey.pem`
+- **`hostnames`** (optional, default: `["[::]:8000"]`)
+  - List of hostname:port addresses to bind the web server
+  - Example: `hostnames = ["0.0.0.0:8000", "[::]:8000"]`
 
-- **`EDUMDNS_SERVER_EBPF_PIN_LOCATION`** (optional, default: `"/sys/fs/bpf/edumdns"`)
-  - Directory path where eBPF maps are pinned
-  - Must be a BPF filesystem (BPFFS) mount point
-  - Example: `EDUMDNS_SERVER_EBPF_PIN_LOCATION=/sys/fs/bpf/edumdns`
+- **`site_url`** (optional, default: `"localhost"`)
+  - Base URL of the web application (used for CORS configuration)
 
-### Web Component (edumdns_web)
-
-- **`EDUMDNS_WEB_HOSTNAME`** (optional, default: `"localhost"`)
-  - Hostname or IP address to bind the web server
-  - Supports IPv4 and IPv6 addresses
-  - Example: `EDUMDNS_WEB_HOSTNAME=0.0.0.0` or `EDUMDNS_WEB_HOSTNAME=::`
-
-- **`EDUMDNS_WEB_PORT`** (optional, default: `"8000"`)
-  - Port number for the web server to listen on
-  - Example: `EDUMDNS_WEB_PORT=8000`
-
-- **`EDUMDNS_SITE_URL`** (optional, default: `"localhost"`)
-  - Base URL of the web application
-  - Used for CORS configuration and redirects
-  - Example: `EDUMDNS_SITE_URL=edumdns.example.com`
-
-- **`EDUMDNS_FILES_DIR`** (optional, default: `"edumdns_web"`)
+- **`static_files_dir`** (optional, default: `"edumdns_web"`)
   - Directory path containing static files, templates, and web assets
-  - Example: `EDUMDNS_FILES_DIR=/var/lib/edumdns/web`
 
-- **`EDUMDNS_COOKIE_SESSION_KEY`** (optional, but recommended)
+- **`session_cookie`** (required)
   - Secret key for encrypting session cookies
   - Should be a random string of sufficient length (32+ bytes recommended)
-  - If not set, an empty key is used (insecure)
-  - Example: `EDUMDNS_COOKIE_SESSION_KEY=your-secret-key-here`
 
-- **`EDUMDNS_USE_SECURE_COOKIE`** (optional, default: `false`)
-  - Enable secure (HTTPS-only) cookies
-  - Set to `true` for production deployments with TLS
-  - Example: `EDUMDNS_USE_SECURE_COOKIE=true`
+- **`[web.session]`**: Session configuration
+  - **`session_expiration`** (optional, default: `2592000`): Session expiry time in seconds (30 days)
+  - **`last_visit_deadline`** (optional, default: `604800`): Last visit deadline in seconds (7 days)
+  - **`use_secure_cookie`** (optional, default: `true`): Enable secure (HTTPS-only) cookies
 
-- **`EDUMDNS_WEB_SESSION_EXPIRY`** (optional, default: `2592000` seconds = 30 days)
-  - Session expiry time in seconds
-  - Determines how long a user session remains valid after login
-  - Example: `EDUMDNS_WEB_SESSION_EXPIRY=2592000`
+- **`[web.limits]`**: Request limits
+  - **`payload_limit`** (optional, default: `17179869184`): Maximum request payload size in bytes (16 GiB)
+  - **`form_limit`** (optional, default: `16777216`): Maximum form submission size in bytes (16 MiB)
+  - **`probe_ping_interval`** (optional, default: `1`): Ping interval for probes in seconds (from WebSockets)
 
-- **`EDUMDNS_WEB_LAST_VISIT_DEADLINE`** (optional, default: `604800` seconds = 7 days)
-  - Last visit deadline in seconds
-  - Determines how long a session remains valid after the last activity
-  - Example: `EDUMDNS_WEB_LAST_VISIT_DEADLINE=604800`
+- **`[web.oidc]`** (optional): OpenID Connect configuration
+  - **`client_id`**: OIDC client ID from your identity provider
+  - **`client_secret`**: OIDC client secret from your identity provider
+  - **`issuer`**: OIDC issuer URL (base URL of your identity provider)
+  - **`callback_url`**: Callback URL for OIDC authentication flow
+  - **`new_users_admin`**: Whether new users created via OIDC should have administrator privileges
 
-#### OpenID Connect (OIDC) Configuration
+- **`[web.external_auth_database]`** (optional): External authentication database
+  - **`connection_string`**: PostgreSQL connection string for the ACL access point database
+  - **`auth_query`**: SQL query template for retrieving access point information (use `$$1` for IP parameter)
 
-The following variables are required if OIDC authentication is desired. If not set, the system will use local authentication only.
-
-- **`EDUMDNS_OIDC_CLIENT_ID`** (optional, required for OIDC)
-  - OIDC client ID from your identity provider
-  - Example: `EDUMDNS_OIDC_CLIENT_ID=edumdns-client`
-
-- **`EDUMDNS_OIDC_CLIENT_SECRET`** (optional, required for OIDC)
-  - OIDC client secret from your identity provider
-  - Example: `EDUMDNS_OIDC_CLIENT_SECRET=your-client-secret`
-
-- **`EDUMDNS_OIDC_CALLBACK_URL`** (optional, required for OIDC)
-  - Callback URL for OIDC authentication flow
-  - Must match the URL configured in your identity provider
-  - Example: `EDUMDNS_OIDC_CALLBACK_URL=https://edumdns.example.com/login/oidc/redirect`
-
-- **`EDUMDNS_OIDC_ISSUER`** (optional, required for OIDC)
-  - OIDC issuer URL (base URL of your identity provider)
-  - Example: `EDUMDNS_OIDC_ISSUER=https://auth.example.com/realms/edumdns`
-
-- **`EDUMDNS_OIDC_NEW_USERS_ADMIN`** (optional, default: `false`)
-  - Whether new users created via OIDC should have administrator privileges
-  - Set to `true` to grant admin access to all OIDC-authenticated users
-  - Example: `EDUMDNS_OIDC_NEW_USERS_ADMIN=false`
-
-#### Access Control List (ACL) Database Configuration
-
-- **`EDUMDNS_ACL_AP_DATABASE_CONNECTION_STRING`** (optional)
-  - PostgreSQL connection string for the ACL access point database
-  - Used for querying access point information for device access control
-  - Example: `EDUMDNS_ACL_AP_DATABASE_CONNECTION_STRING="host=radius-db user=postgres password=postgres dbname=radius port=5432"`
-
-- **`EDUMDNS_ACL_AP_DATABASE_QUERY`** (optional)
-  - SQL query template for retrieving access point information
-  - Should use parameterized queries with `$$1` for the IP address parameter
-  - Example: `EDUMDNS_ACL_AP_DATABASE_QUERY="SELECT ap FROM log WHERE ip = $$1"`
+- **`[web.tls]`** (optional): TLS configuration
+  - **`cert_path`**: Path to the TLS certificate file (PEM format)
+  - **`key_path`**: Path to the TLS private key file (PEM format)
 
 ## Usage
 
-The binary accepts an optional `--env-file` argument to load environment variables from a file:
+The binary accepts a `--config` argument to specify the configuration file path:
 
 ```bash
-edumdns --env-file /path/to/.env
+edumdns --config /path/to/edumdns.toml
 ```
 
-If not specified, the application will attempt to load a `.env` file from the current directory.
+If not specified, the application will look for `edumdns.toml` in the current directory.
+
+Configuration values can also be overridden using environment variables with the `APP_` prefix. For example, `APP_DATABASE_CONNECTION_STRING` will override the `database.connection_string` setting.
 
 ## Building
 
@@ -217,9 +174,9 @@ One of the key features is **targeted packet transmission**, which enables contr
    - Optional proxy mode for enhanced security
 
 2. **Validation**: Before transmission begins, the server performs several validation checks:
-   - **Subnet Size Validation**: Ensures the target subnet doesn't exceed `EDUMDNS_SERVER_MAX_TRANSMIT_SUBNET_SIZE` (default: 512 addresses)
+   - **Subnet Size Validation**: Ensures the target subnet doesn't exceed `server.transmit.max_transmit_subnet_size` (default: 512 addresses)
    - **Proxy Configuration**: If proxy mode is enabled, verifies that:
-     - eBPF proxy is properly configured (both IPv4 and IPv6 proxy IPs must be set)
+     - eBPF proxy is properly configured (both IPv4 and IPv6 proxy IPs must be set in `server.ebpf`)
      - Target IP is a single host (/32 for IPv4 or /128 for IPv6) - proxy mode requires point-to-point communication
    - **Packet Availability**: Verifies that packets exist for the specified device in the database
 

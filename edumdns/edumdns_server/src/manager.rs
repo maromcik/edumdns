@@ -115,10 +115,6 @@ pub(crate) struct ServerManager {
 impl ServerManager {
     /// Create a new `ServerManager`.
     ///
-    /// Reads optional proxy configuration from environment (`EDUMDNS_SERVER_PROXY_IPV4`,
-    /// `EDUMDNS_SERVER_PROXY_IPV6`) and, when both are set, initializes an `EbpfUpdater`
-    /// for kernel map maintenance. Also reads
-    /// `EDUMDNS_SERVER_MAX_TRANSMIT_SUBNET_SIZE` to limit transmit job fan-out.
     ///
     /// Parameters:
     /// - `command_transmitter`: channel used to post local commands back into the
@@ -464,7 +460,7 @@ impl ServerManager {
     ///
     /// Parameters:
     /// - `id`: probe identifier.
-    /// - `session_id`: optional web session that initiated the request (used for passing the 
+    /// - `session_id`: optional web session that initiated the request (used for passing the
     /// response to a websocket).
     ///
     /// Returns:

@@ -28,6 +28,22 @@ use edumdns_db::repositories::group::models::{CreateGroup, SelectManyGroups, Upd
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use std::collections::HashMap;
+/// Lists all groups with filtering.
+///
+/// Retrieves groups accessible to the authenticated user and renders them in a list view.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection
+/// * `identity` - Optional user identity (required for access)
+/// * `group_repo` - Group repository for database operations
+/// * `user_repo` - User repository for user information
+/// * `state` - Application state containing template engine
+/// * `query` - Query parameters for filtering
+///
+/// # Returns
+///
+/// Returns an HTML response with the group list page, or redirects to login if not authenticated.
 #[get("")]
 pub async fn get_groups(
     request: HttpRequest,
@@ -63,6 +79,23 @@ pub async fn get_groups(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Displays detailed information about a specific group.
+///
+/// Shows group details and member users. The user must have permission to view the group.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection
+/// * `identity` - Optional user identity (required for access)
+/// * `group_repo` - Group repository for database operations
+/// * `user_repo` - User repository for user information
+/// * `state` - Application state containing template engine
+/// * `path` - Path parameter containing group ID
+///
+/// # Returns
+///
+/// Returns an HTML response with the group detail page, or an error if the group is not found
+/// or the user lacks permission.
 #[get("{id}")]
 pub async fn get_group(
     request: HttpRequest,
@@ -85,6 +118,21 @@ pub async fn get_group(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Creates a new group.
+///
+/// Creates a group with the specified name and optional description. The current user must
+/// have permission to create groups.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `group_repo` - Group repository for database operations
+/// * `form` - Form data containing group name and description
+///
+/// # Returns
+///
+/// Returns a redirect response to the newly created group's detail page.
 #[post("create")]
 pub async fn create_group(
     request: HttpRequest,
@@ -104,6 +152,21 @@ pub async fn create_group(
         .finish())
 }
 
+/// Deletes a group from the system.
+///
+/// Removes a group from the database. Users assigned to the group will lose group-based
+/// permissions. The current user must have permission to delete the group.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `group_repo` - Group repository for database operations
+/// * `path` - Path parameter containing group ID
+///
+/// # Returns
+///
+/// Returns a redirect response to the group list page after deletion.
 #[delete("{id}")]
 pub async fn delete_group(
     request: HttpRequest,
@@ -119,6 +182,22 @@ pub async fn delete_group(
         .finish())
 }
 
+/// Adds one or more users to a group.
+///
+/// Assigns multiple users to a group in a single operation. The current user must have
+/// permission to manage group memberships.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `group_repo` - Group repository for database operations
+/// * `path` - Path parameter containing group ID
+/// * `form` - Form data containing list of user IDs to add
+///
+/// # Returns
+///
+/// Returns a redirect response to the group detail page after adding users.
 #[post("{id}/users/add")]
 pub async fn add_group_users(
     request: HttpRequest,
@@ -140,6 +219,22 @@ pub async fn add_group_users(
         .finish())
 }
 
+/// Removes a user from a group.
+///
+/// Unassigns a user from a group, removing group-based permissions. The current user must
+/// have permission to manage group memberships.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `group_repo` - Group repository for database operations
+/// * `path` - Path parameters containing group ID and user ID
+/// * `query` - Query parameters containing optional return URL
+///
+/// # Returns
+///
+/// Returns a redirect response to the return URL (or group list) after removing the user.
 #[get("{id}/users/{user_id}/delete")]
 pub async fn delete_group_user(
     request: HttpRequest,
@@ -165,6 +260,23 @@ pub async fn delete_group_user(
         .finish())
 }
 
+/// Searches for users that can be assigned to a group.
+///
+/// Returns a list of users matching the search query that can be added to the group.
+/// Used for dynamic user selection in the user interface.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `group_repo` - Group repository for database operations
+/// * `state` - Application state containing template engine
+/// * `path` - Path parameter containing group ID
+/// * `query` - Query parameters containing search term
+///
+/// # Returns
+///
+/// Returns an HTML response with search results for users.
 #[get("{id}/search")]
 pub async fn search_group_users(
     request: HttpRequest,
@@ -186,6 +298,21 @@ pub async fn search_group_users(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Updates group information.
+///
+/// Modifies group properties such as name and description. The current user must have
+/// permission to update the group.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `group_repo` - Group repository for database operations
+/// * `form` - Form data containing updated group information
+///
+/// # Returns
+///
+/// Returns a redirect response to the group detail page after updating.
 #[post("update")]
 pub async fn update_group(
     request: HttpRequest,

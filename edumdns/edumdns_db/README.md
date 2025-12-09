@@ -11,15 +11,20 @@ The `edumdns_db` crate handles all database-related operations for the EduMDNS s
 - Repository pattern for data access
 - Models and schema definitions for database tables
 
-## Environment Variables
+## Configuration
 
-### Required
+The database component is configured through the main `edumdns.toml` configuration file under the `[database]` section. See the main `edumdns` README for the complete configuration structure.
 
-- **`EDUMDNS_DATABASE_URL`** (required)
+### Database Configuration (`[database]`)
+
+- **`database.connection_string`** (required)
   - PostgreSQL connection string
   - Format: `postgres://[user[:password]@][host][:port][/database]`
   - Used for both running migrations and establishing the connection pool
   - Example: `postgres://edumdns:password@localhost:5432/edumdns`
+
+- **`database.pool_size`** (optional, default: `20`)
+  - Maximum number of database connections in the pool
 
 ## Features
 
@@ -50,9 +55,13 @@ Each repository provides an async interface for database operations, abstracting
 ## Usage
 
 ```rust
-use edumdns_db::db_init;
+use edumdns_db::{db_init, config::DbConfig};
 
-let pool = db_init().await?;
+let db_config = DbConfig {
+    connection_string: "postgres://...".to_string(),
+    pool_size: 20,
+};
+let pool = db_init(db_config).await?;
 // Use the pool for database operations
 ```
 

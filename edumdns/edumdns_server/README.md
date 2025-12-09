@@ -18,68 +18,67 @@ The server uses an actor-based architecture with message channels for coordinati
 
 ---
 
-## Environment Variables
+## Configuration
+
+The server component is configured through the main `edumdns.toml` configuration file under the `[server]` section. See the main `edumdns` README for the complete configuration structure.
 
 ### Server Binding
 
-- **`EDUMDNS_SERVER_HOSTNAME`** (optional, default: `"localhost"`)
-  - Hostname or IP address to bind the server listener
+- **`server.hostnames`** (optional, default: `["[::]:5000"]`)
+  - List of hostname:port addresses to bind the server listener
   - Supports both IPv4 and IPv6 addresses
-  - Use `0.0.0.0` to bind to all IPv4 interfaces or `::` for all IPv6 interfaces
-  - Example: `EDUMDNS_SERVER_HOSTNAME=0.0.0.0`
+  - Use `0.0.0.0:5000` to bind to all IPv4 interfaces or `[::]:5000` for all IPv6 interfaces
+  - Example: `hostnames = ["0.0.0.0:5000", "[::]:5000"]`
 
-- **`EDUMDNS_SERVER_PORT`** (optional, default: `"5000"`)
-  - Port number for the server to listen on
-  - Example: `EDUMDNS_SERVER_PORT=5000`
+- **`server.channel_buffer_capacity`** (optional, default: `1000`)
+  - Internal message channel buffer size
 
-### Timeout Configuration
+### Connection Configuration (`[server.connection]`)
 
-- **`EDUMDNS_SERVER_GLOBAL_TIMEOUT`** (optional, default: `10`)
+- **`server.connection.global_timeout`** (optional, default: `10` seconds)
   - Global timeout in seconds for server operations
   - Used for connection timeouts, packet operations, and probe health checks
-  - Example: `EDUMDNS_SERVER_GLOBAL_TIMEOUT=30`
 
-### TLS Configuration
+- **`server.connection.buffer_capacity`** (optional, default: `1000`)
+  - Connection buffer capacity
 
-- **`EDUMDNS_SERVER_CERT`** (optional)
-  - Path to the TLS certificate file (PEM format)
-  - If not set, the server will run without TLS encryption
-  - **Warning**: Running without TLS is not recommended for production use
-  - Example: `EDUMDNS_SERVER_CERT=/etc/letsencrypt/live/edumdns.eu/fullchain.pem`
+### Packet Transmission Configuration (`[server.transmit]`)
 
-- **`EDUMDNS_SERVER_KEY`** (optional)
-  - Path to the TLS private key file (PEM format)
-  - Must be set together with `EDUMDNS_SERVER_CERT` to enable TLS
-  - Example: `EDUMDNS_SERVER_KEY=/etc/letsencrypt/live/edumdns.eu/privkey.pem`
+- **`server.transmit.max_transmit_subnet_size`** (optional, default: `512`)
+  - Maximum subnet size for packet transmission operations
+  - Limits the number of devices that can receive transmitted packets in a single operation
 
-### eBPF Proxy Configuration
+- **`server.transmit.transmit_repeat_delay_multiplicator`** (optional, default: `5`)
+  - Delay multiplicator for packet repetition
+  - The actual delay is calculated as `transmit_repeat_delay_multiplicator * device_interval`
 
-The following variables are used when eBPF proxy functionality is enabled for devices:
+### eBPF Proxy Configuration (`[server.ebpf]`)
 
-- **`EDUMDNS_SERVER_PROXY_IPV4`** (optional)
+The following settings are used when eBPF proxy functionality is enabled for devices:
+
+- **`server.ebpf.proxy_ipv4`** (required for eBPF proxy)
   - IPv4 address used by the eBPF proxy for packet rewriting
   - This is the source IP address that will appear in packets relayed through the proxy
-  - Required if eBPF proxy is enabled and IPv4 traffic needs to be proxied
-  - Example: `EDUMDNS_SERVER_PROXY_IPV4=192.168.0.10`
 
-- **`EDUMDNS_SERVER_PROXY_IPV6`** (optional)
+- **`server.ebpf.proxy_ipv6`** (required for eBPF proxy)
   - IPv6 address used by the eBPF proxy for packet rewriting
   - This is the source IP address that will appear in packets relayed through the proxy
-  - Required if eBPF proxy is enabled and IPv6 traffic needs to be proxied
-  - Example: `EDUMDNS_SERVER_PROXY_IPV6=::1`
 
-- **`EDUMDNS_SERVER_EBPF_PIN_LOCATION`** (optional, default: `"/sys/fs/bpf/edumdns"`)
+- **`server.ebpf.pin_location`** (optional, default: `"/sys/fs/bpf/edumdns"`)
   - Directory path where eBPF maps are pinned by the proxy
   - Must be a BPF filesystem (BPFFS) mount point
   - The server reads the pinned maps from this location to update IP mappings
-  - Example: `EDUMDNS_SERVER_EBPF_PIN_LOCATION=/sys/fs/bpf/edumdns`
 
-### Packet Transmission
+### TLS Configuration (`[server.tls]`)
 
-- **`EDUMDNS_SERVER_MAX_TRANSMIT_SUBNET_SIZE`** (optional, default: `512`)
-  - Maximum subnet size for packet transmission operations
-  - Limits the number of devices that can receive transmitted packets in a single operation
-  - Example: `EDUMDNS_SERVER_MAX_TRANSMIT_SUBNET_SIZE=1024`
+- **`server.tls.cert_path`** (optional)
+  - Path to the TLS certificate file (PEM format)
+  - If not set, the server will run without TLS encryption
+  - **Warning**: Running without TLS is not recommended for production use
+
+- **`server.tls.key_path`** (optional)
+  - Path to the TLS private key file (PEM format)
+  - Must be set together with `cert_path` to enable TLS
 
 ---
 
@@ -207,7 +206,7 @@ Before starting transmission, the following validations are performed:
    - If proxy mode is requested but eBPF is not configured, transmission is rejected
 
 2. **Subnet Size Validation**:
-   - Target subnet size must not exceed `EDUMDNS_SERVER_MAX_TRANSMIT_SUBNET_SIZE` (default: 512)
+   - Target subnet size must not exceed `server.transmit.max_transmit_subnet_size` (default: 512)
    - Prevents accidental broadcast to overly large subnets
 
 3. **Proxy Mode Subnet Restriction**:

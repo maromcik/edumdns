@@ -1,3 +1,16 @@
+//! Main entry point for the edumdns server binary.
+//!
+//! This module orchestrates the initialization and startup of all system components:
+//! - Parses command-line arguments for configuration file path
+//! - Loads configuration from TOML file (with environment variable overrides)
+//! - Initializes logging with configurable levels
+//! - Sets up database connection pool
+//! - Spawns server component task for probe management
+//! - Starts web interface for user interaction
+//!
+//! The application uses a TOML configuration file for all settings, with optional
+//! environment variable overrides using the `APP_` prefix.
+
 use crate::config::AppConfig;
 use crate::error::AppError;
 use clap::Parser;
@@ -14,7 +27,7 @@ mod error;
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
-    /// Optional `.env` file path for loading environment variables.
+    /// Optional path to a `toml` configuration file, see edumdns-example.toml
     #[clap(
         short,
         long,
@@ -25,6 +38,33 @@ struct Cli {
     config: String,
 }
 
+/// Main entry point for the edumdns server.
+///
+/// This function:
+/// 1. Installs the default rustls crypto provider
+/// 2. Parses command-line arguments for configuration file path
+/// 3. Loads and parses the TOML configuration file
+/// 4. Initializes logging with configured levels
+/// 5. Creates database connection pool
+/// 6. Spawns server component task for probe management
+/// 7. Starts web interface (blocks until shutdown)
+///
+/// # Arguments
+///
+/// Configuration is loaded from:
+/// - TOML file specified by `--config` argument (default: `edumdns.toml`)
+/// - Environment variables with `APP_` prefix (override TOML values)
+///
+/// # Returns
+///
+/// Returns `Ok(())` on successful shutdown, or an `AppError` if:
+/// - Configuration file cannot be loaded or parsed
+/// - Database initialization fails
+/// - Server or web component initialization fails
+///
+/// # Environment Variables
+///
+/// - `EDUMDNS_CONFIG_FILE` - Path to configuration file (overrides `--config` argument)
 #[actix_web::main]
 async fn main() -> Result<(), AppError> {
     rustls::crypto::ring::default_provider()

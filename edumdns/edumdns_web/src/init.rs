@@ -68,22 +68,22 @@ pub struct WebSpawner {
 }
 
 impl WebSpawner {
-    /// Creates a new `WebSpawner` instance with configuration from environment variables.
+    /// Creates a new `WebSpawner` instance with configuration from `WebConfig`.
     ///
     /// This function initializes all the components needed to run the web server:
-    /// - Loads configuration from environment variables (site URL, files directory, session keys, etc.)
-    /// - Creates the template reloader for Minijinja
-    /// - Sets up the application state with command channel and ACL database configuration
-    /// - Configures session and identity middleware settings
+    /// - Creates the template reloader for Minijinja using the configured static files directory
+    /// - Sets up the application state with command channel and web configuration
+    /// - Configures session and identity middleware settings from the configuration
     ///
     /// # Arguments
     ///
     /// * `pool` - Database connection pool for repository access
     /// * `command_channel` - Channel sender for sending commands to the server component
-    /// * `web_config` - Global web configuration
+    /// * `web_config` - Global web configuration containing all web component settings
+    ///
     /// # Returns
     ///
-    /// Returns `WebSpawner`.
+    /// Returns a `WebSpawner` instance ready to start the web server.
     pub async fn new(
         pool: Pool<AsyncPgConnection>,
         command_channel: Sender<AppPacket>,
@@ -230,24 +230,30 @@ impl WebSpawner {
     /// Starts the HTTP server and begins serving requests.
     ///
     /// This function creates and configures the Actix Web `HttpServer` with all middleware
-    /// and routes. It attempts to initialize OIDC support; if OIDC configuration is incomplete,
-    /// it falls back to local authentication only.
+    /// and routes. It attempts to initialize OIDC support from `web_config.oidc`; if OIDC
+    /// configuration is incomplete, it falls back to local authentication only.
     ///
     /// The server is configured with:
-    /// - Multipart form limits (16 GiB)
-    /// - JSON, query, and path parameter parsing with custom error handlers
+    /// - Multipart form limits from `web_config.limits.payload_limit`
+    /// - Form limits from `web_config.limits.form_limit`
+    /// - JSON, query, path, and form parameter parsing with custom error handlers
     /// - Path normalization (trailing slash trimming)
-    /// - Identity middleware (user session tracking)
-    /// - Session middleware (cookie-based sessions)
-    /// - CORS middleware (configured for the site URL)
+    /// - Identity middleware (user session tracking with expiry from config)
+    /// - Session middleware (cookie-based sessions with secure flag from config)
+    /// - CORS middleware (configured for the site URL from config)
     /// - OIDC middleware (if OIDC is configured)
     /// - Login redirect middleware (for unauthenticated requests)
     /// - Request logging
+    /// - TLS support (if `web_config.tls` is configured)
+    ///
+    /// The server binds to all addresses specified in `web_config.hostnames` and supports
+    /// both plain HTTP and HTTPS (when TLS is configured).
     ///
     /// # Returns
     ///
     /// Returns `Ok(())` if the server runs successfully, or a `WebError` if:
-    /// - The server fails to bind to the configured address
+    /// - The server fails to bind to any configured address
+    /// - TLS configuration is invalid
     /// - The server encounters a fatal error during operation
     ///
     /// # Note

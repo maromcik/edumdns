@@ -40,6 +40,22 @@ use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_db::repositories::utilities::validate_password;
 use std::collections::HashMap;
 
+/// Lists all users with filtering and pagination.
+///
+/// Retrieves users accessible to the authenticated user and renders them in a paginated list view.
+/// Admin users can see all users; regular users see a limited view.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection
+/// * `identity` - Optional user identity (required for access)
+/// * `user_repo` - User repository for database operations
+/// * `state` - Application state containing template engine
+/// * `query` - Query parameters for filtering and pagination
+///
+/// # Returns
+///
+/// Returns an HTML response with the user list page, or redirects to login if not authenticated.
 #[get("")]
 pub async fn get_users(
     request: HttpRequest,
@@ -74,6 +90,22 @@ pub async fn get_users(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Displays detailed information about a specific user.
+///
+/// Shows user details and group memberships. The user must have permission to view the target user.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection
+/// * `identity` - Optional user identity (required for access)
+/// * `user_repo` - User repository for database operations
+/// * `state` - Application state containing template engine
+/// * `path` - Path parameter containing user ID
+///
+/// # Returns
+///
+/// Returns an HTML response with the user detail page, or an error if the user is not found
+/// or the current user lacks permission.
 #[get("{id}")]
 pub async fn get_user(
     request: HttpRequest,
@@ -99,6 +131,21 @@ pub async fn get_user(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Creates a new user account.
+///
+/// Creates a user with the specified email, name, surname, password, and admin status.
+/// The current user must have permission to create users.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `user_repo` - User repository for database operations
+/// * `form` - Form data containing user information and password
+///
+/// # Returns
+///
+/// Returns a redirect response to the newly created user's detail page.
 #[post("create")]
 pub async fn create_user(
     request: HttpRequest,
@@ -126,6 +173,22 @@ pub async fn create_user(
         .finish())
 }
 
+/// Deletes a user account.
+///
+/// Removes a user from the database. Users cannot delete their own account.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `user_repo` - User repository for database operations
+/// * `path` - Path parameter containing user ID to delete
+/// * `query` - Query parameters containing optional return URL
+///
+/// # Returns
+///
+/// Returns a redirect response to the return URL (or user list) after deletion, or an error
+/// if attempting to delete the currently logged-in user.
 #[delete("{id}")]
 pub async fn delete_user(
     request: HttpRequest,
@@ -154,6 +217,21 @@ pub async fn delete_user(
         .finish())
 }
 
+/// Updates user information.
+///
+/// Modifies user properties such as email, name, surname, and admin status.
+/// The current user must have permission to update the target user.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `user_repo` - User repository for database operations
+/// * `form` - Form data containing updated user information
+///
+/// # Returns
+///
+/// Returns a redirect response to the user detail page after updating.
 #[post("update")]
 pub async fn update_user(
     request: HttpRequest,
@@ -172,6 +250,21 @@ pub async fn update_user(
         .finish())
 }
 
+/// Updates a user's password (admin operation).
+///
+/// Changes a user's password without requiring the old password. This is an admin-only
+/// operation. The current user must have permission to update passwords.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `user_repo` - User repository for database operations
+/// * `form` - Form data containing user ID, new password, and confirmation
+///
+/// # Returns
+///
+/// Returns a redirect response to the user detail page after updating the password.
 #[post("update-pwd")]
 pub async fn update_user_password(
     request: HttpRequest,
@@ -196,6 +289,21 @@ pub async fn update_user_password(
         .finish())
 }
 
+/// Displays the user profile management page.
+///
+/// Shows a form for users to update their own profile information (email, name, surname).
+/// OIDC users may have limited editing capabilities depending on configuration.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection and OIDC cookie checking
+/// * `identity` - Optional user identity (required for access)
+/// * `user_repo` - User repository for database operations
+/// * `state` - Application state containing template engine
+///
+/// # Returns
+///
+/// Returns an HTML response with the profile management form.
 #[get("/manage")]
 pub async fn user_manage_form_page(
     request: HttpRequest,
@@ -224,6 +332,19 @@ pub async fn user_manage_form_page(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Displays the password change form.
+///
+/// Shows a form for users to change their own password. Requires the current password.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection
+/// * `identity` - Optional user identity (required for access)
+/// * `state` - Application state containing template engine
+///
+/// # Returns
+///
+/// Returns an HTML response with the password change form.
 #[get("/manage/password")]
 pub async fn user_manage_password_form(
     request: HttpRequest,
@@ -243,6 +364,22 @@ pub async fn user_manage_password_form(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Updates the current user's profile information.
+///
+/// Allows users to update their own email, name, and surname. OIDC users may have
+/// restrictions on what fields can be updated.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for OIDC cookie checking
+/// * `identity` - Optional user identity (required for access)
+/// * `user_repo` - User repository for database operations
+/// * `form` - Form data containing updated profile information
+/// * `state` - Application state containing template engine
+///
+/// # Returns
+///
+/// Returns an HTML response with the profile management page showing a success message.
 #[post("/manage")]
 pub async fn user_manage(
     request: HttpRequest,
@@ -285,6 +422,22 @@ pub async fn user_manage(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Changes the current user's password.
+///
+/// Validates the old password and updates to the new password. The new password must
+/// meet strength requirements and match the confirmation.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `user_repo` - User repository for database operations
+/// * `form` - Form data containing old password, new password, and confirmation
+/// * `state` - Application state containing template engine
+///
+/// # Returns
+///
+/// Returns an HTML response with the password change form showing success or error messages.
 #[post("/manage/password")]
 pub async fn user_manage_password(
     request: HttpRequest,
@@ -341,6 +494,22 @@ pub async fn user_manage_password(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Adds a user to one or more groups.
+///
+/// Assigns a user to multiple groups in a single operation. The current user must have
+/// permission to manage group memberships.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `user_repo` - User repository for database operations
+/// * `path` - Path parameter containing user ID
+/// * `form` - Form data containing list of group IDs to add
+///
+/// # Returns
+///
+/// Returns a redirect response to the user detail page after adding groups.
 #[post("{id}/groups/add")]
 pub async fn add_user_groups(
     request: HttpRequest,
@@ -362,6 +531,23 @@ pub async fn add_user_groups(
         .finish())
 }
 
+/// Searches for groups that can be assigned to a user.
+///
+/// Returns a list of groups matching the search query that can be added to the user.
+/// Used for dynamic group selection in the user interface.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `user_repo` - User repository for database operations
+/// * `state` - Application state containing template engine
+/// * `path` - Path parameter containing user ID
+/// * `query` - Query parameters containing search term
+///
+/// # Returns
+///
+/// Returns an HTML response with search results for groups.
 #[get("{id}/search")]
 pub async fn search_user_groups(
     request: HttpRequest,

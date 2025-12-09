@@ -90,14 +90,18 @@ fn has_perm(perms_values: Vec<Value>, query: Value) -> Result<bool, minijinja::E
 
 /// Initializes and configures OpenID Connect (OIDC) authentication.
 ///
-/// This function reads OIDC configuration from environment variables and creates an
-/// `ActixWebOpenId` instance. It configures the OIDC client with the necessary scopes
-/// (openid, profile, email) and sets up authentication requirements.
+/// This function creates an `ActixWebOpenId` instance from the provided `OidcConfig`.
+/// It configures the OIDC client with the necessary scopes (openid, profile, email) and
+/// sets up authentication requirements.
+///
+/// # Arguments
+///
+/// * `oidc_config` - Optional OIDC configuration from `WebConfig`
 ///
 /// # Returns
 ///
-/// Returns `Ok(ActixWebOpenId)` if all required environment variables are present and
-/// OIDC initialization succeeds, or a `WebError` if configuration is missing or invalid.
+/// Returns `Ok(ActixWebOpenId)` if `oidc_config` is `Some` and OIDC initialization succeeds,
+/// or a `WebError` if configuration is missing or invalid.
 ///
 /// # Authentication Logic
 ///
@@ -110,8 +114,8 @@ fn has_perm(perms_values: Vec<Value>, query: Value) -> Result<bool, minijinja::E
 ///
 /// # Note
 ///
-/// If this function returns an error, the web server will start without OIDC support
-/// and use local authentication only.
+/// If `oidc_config` is `None` or this function returns an error, the web server will start
+/// without OIDC support and use local authentication only.
 pub async fn create_oidc(oidc_config: &Option<OidcConfig>) -> Result<ActixWebOpenId, WebError> {
     let oidc_config = oidc_config
         .clone()
@@ -165,7 +169,7 @@ pub async fn create_oidc(oidc_config: &Option<OidcConfig>) -> Result<ActixWebOpe
 ///
 /// # Arguments
 ///
-/// * `host` - The hostname or base URL of the application (from `EDUMDNS_SITE_URL`)
+/// * `host` - The hostname or base URL of the application
 ///
 /// # Returns
 ///
@@ -189,19 +193,19 @@ pub fn get_cors_middleware(host: &str) -> Cors {
 ///
 /// This function configures session middleware that stores session data in encrypted
 /// cookies. Sessions persist across requests and can be configured with secure flags
-/// and expiry times.
+/// and expiry times from the web configuration.
 ///
 /// # Arguments
 ///
-/// * `key` - Secret key for encrypting and signing session cookies
-/// * `use_secure_cookie` - If true, cookies are only sent over HTTPS connections
-/// * `session_expiry` - Session time-to-live in seconds
+/// * `key` - Secret key string for encrypting and signing session cookies (from `web_config.session_cookie`)
+/// * `use_secure_cookie` - If true, cookies are only sent over HTTPS connections (from `web_config.session.use_secure_cookie`)
+/// * `session_expiry` - Session time-to-live in seconds (from `web_config.session.session_expiration`)
 ///
 /// # Returns
 ///
 /// Returns a configured `SessionMiddleware` that:
 /// - Uses `CookieSessionStore` for client-side session storage
-/// - Encrypts session data with the provided key
+/// - Encrypts session data with the provided key (converted to `actix_web::cookie::Key`)
 /// - Sets secure flag based on `use_secure_cookie`
 /// - Expires sessions after `session_expiry` seconds
 pub fn get_session_middleware(
@@ -223,11 +227,12 @@ pub fn get_session_middleware(
 ///
 /// This function configures middleware that tracks user identity across requests.
 /// It manages login deadlines and visit deadlines to automatically expire inactive sessions.
+/// The values come from `web_config.session.session_expiration` and `web_config.session.last_visit_deadline`.
 ///
 /// # Arguments
 ///
-/// * `session_expiry` - Maximum session lifetime in seconds from login time
-/// * `last_visit` - Maximum time in seconds a session can remain inactive
+/// * `session_expiry` - Maximum session lifetime in seconds from login time (from `web_config.session.session_expiration`)
+/// * `last_visit` - Maximum time in seconds a session can remain inactive (from `web_config.session.last_visit_deadline`)
 ///
 /// # Returns
 ///

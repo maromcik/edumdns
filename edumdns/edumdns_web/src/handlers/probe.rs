@@ -51,6 +51,23 @@ use log::{info, warn};
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 
+/// Lists all probes with filtering and pagination.
+///
+/// Retrieves probes accessible to the authenticated user, applies filters from query parameters,
+/// and renders them in a paginated list view.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection
+/// * `identity` - Optional user identity (required for access)
+/// * `probe_repo` - Probe repository for database operations
+/// * `user_repo` - User repository for user information
+/// * `state` - Application state containing template engine
+/// * `query` - Query parameters for filtering and pagination
+///
+/// # Returns
+///
+/// Returns an HTML response with the probe list page, or redirects to login if not authenticated.
 #[get("")]
 pub async fn get_probes(
     request: HttpRequest,
@@ -89,6 +106,26 @@ pub async fn get_probes(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Displays detailed information about a specific probe.
+///
+/// Shows probe details, associated devices, configuration, and permission matrix.
+/// Delegates to the `get_probe_content` helper function.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection
+/// * `identity` - Optional user identity (required for access)
+/// * `probe_repo` - Probe repository for database operations
+/// * `group_repo` - Group repository for permission matrix
+/// * `device_repo` - Device repository for associated devices
+/// * `user_repo` - User repository for user information
+/// * `state` - Application state containing template engine
+/// * `path` - Path parameter containing probe UUID
+/// * `query` - Query parameters for device filtering and pagination
+///
+/// # Returns
+///
+/// Returns an HTML response with the probe detail page.
 #[get("{id}")]
 pub async fn get_probe(
     request: HttpRequest,
@@ -117,6 +154,27 @@ pub async fn get_probe(
     .await
 }
 
+/// Adopts a probe, registering it for use in the system.
+///
+/// Marks a probe as adopted in the database and sends a reconnect command to the probe
+/// to establish a connection. After adoption, the probe will be able to connect to the server.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection
+/// * `identity` - Optional user identity (required for access)
+/// * `probe_repo` - Probe repository for database operations
+/// * `state` - Application state containing command channel
+/// * `path` - Path parameter containing probe UUID
+/// * `group_repo` - Group repository for permission matrix
+/// * `device_repo` - Device repository for associated devices
+/// * `user_repo` - User repository for user information
+/// * `query` - Query parameters for device filtering
+/// * `session` - Session for storing session ID
+///
+/// # Returns
+///
+/// Returns an HTML response with the probe detail page after adoption.
 #[get("{id}/adopt")]
 pub async fn adopt(
     request: HttpRequest,
@@ -148,6 +206,27 @@ pub async fn adopt(
     .await
 }
 
+/// Forgets a probe, unregistering it from the system.
+///
+/// Marks a probe as forgotten in the database and sends a reconnect command. After being
+/// forgotten, the probe will be rejected when attempting to connect until it is adopted again.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection
+/// * `identity` - Optional user identity (required for access)
+/// * `probe_repo` - Probe repository for database operations
+/// * `state` - Application state containing command channel
+/// * `path` - Path parameter containing probe UUID
+/// * `group_repo` - Group repository for permission matrix
+/// * `device_repo` - Device repository for associated devices
+/// * `user_repo` - User repository for user information
+/// * `query` - Query parameters for device filtering
+/// * `session` - Session for storing session ID
+///
+/// # Returns
+///
+/// Returns an HTML response with the probe detail page after forgetting.
 #[get("{id}/forget")]
 pub async fn forget(
     request: HttpRequest,
@@ -179,6 +258,28 @@ pub async fn forget(
     .await
 }
 
+/// Sends a reconnect command to a probe.
+///
+/// Forces the probe to disconnect and reconnect to the server. This is useful for applying
+/// configuration changes or recovering from connection issues. The user must have permission
+/// to reconnect the probe.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection
+/// * `identity` - Optional user identity (required for access)
+/// * `path` - Path parameter containing probe UUID
+/// * `session` - Session for storing session ID
+/// * `probe_repo` - Probe repository for permission checking
+/// * `group_repo` - Group repository for permission matrix
+/// * `device_repo` - Device repository for associated devices
+/// * `user_repo` - User repository for user information
+/// * `query` - Query parameters for device filtering
+/// * `state` - Application state containing command channel and template engine
+///
+/// # Returns
+///
+/// Returns an HTML response with the probe detail page after sending the reconnect command.
 #[get("{id}/reconnect")]
 pub async fn reconnect(
     request: HttpRequest,
@@ -213,6 +314,24 @@ pub async fn reconnect(
     .await
 }
 
+/// Creates a new capture configuration for a probe.
+///
+/// Adds a new interface and BPF filter configuration to a probe. The probe will be
+/// reconnected to apply the new configuration.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `probe_repo` - Probe repository for database operations
+/// * `state` - Application state containing command channel
+/// * `form` - Form data containing interface name and BPF filter
+/// * `path` - Path parameter containing probe UUID
+/// * `session` - Session for storing session ID
+///
+/// # Returns
+///
+/// Returns a redirect response to the probe detail page after creating the configuration.
 #[post("{probe_id}/config")]
 pub async fn create_config(
     request: HttpRequest,
@@ -239,6 +358,24 @@ pub async fn create_config(
         .finish())
 }
 
+/// Updates an existing capture configuration for a probe.
+///
+/// Replaces an existing configuration by deleting the old one and creating a new one with
+/// the updated values. The probe will be reconnected to apply the changes.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `probe_repo` - Probe repository for database operations
+/// * `state` - Application state containing command channel
+/// * `form` - Form data containing updated interface name and BPF filter
+/// * `path` - Path parameters containing probe UUID and configuration ID
+/// * `session` - Session for storing session ID
+///
+/// # Returns
+///
+/// Returns a redirect response to the probe detail page after updating the configuration.
 #[put("{probe_id}/config/{config_id}")]
 pub async fn save_config(
     request: HttpRequest,
@@ -270,6 +407,23 @@ pub async fn save_config(
         .finish())
 }
 
+/// Deletes a capture configuration from a probe.
+///
+/// Removes an interface and BPF filter configuration. The probe will be reconnected to
+/// apply the changes.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `probe_repo` - Probe repository for database operations
+/// * `state` - Application state containing command channel
+/// * `path` - Path parameters containing probe UUID and configuration ID
+/// * `session` - Session for storing session ID
+///
+/// # Returns
+///
+/// Returns a redirect response to the probe detail page after deleting the configuration.
 #[delete("{probe_id}/config/{config_id}")]
 pub async fn delete_config(
     request: HttpRequest,
@@ -295,6 +449,22 @@ pub async fn delete_config(
         .finish())
 }
 
+/// Toggles a permission for a group on a probe.
+///
+/// Adds or removes a permission (Read, Write, Full) for a specific group on a probe.
+/// This controls which groups can access the probe and its associated devices.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `probe_repo` - Probe repository for database operations
+/// * `form` - Form data containing group ID, permission type, and toggle value
+/// * `path` - Path parameter containing probe UUID
+///
+/// # Returns
+///
+/// Returns a redirect response to the probe detail page after updating permissions.
 #[post("{probe_id}/permission/toggle")]
 pub async fn change_probe_permission(
     request: HttpRequest,
@@ -321,6 +491,21 @@ pub async fn change_probe_permission(
         .finish())
 }
 
+/// Updates probe information.
+///
+/// Modifies probe properties such as name and description. The user must have permission
+/// to update the probe.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `probe_repo` - Probe repository for database operations
+/// * `form` - Form data containing updated probe information
+///
+/// # Returns
+///
+/// Returns a redirect response to the probe detail page after updating.
 #[post("update")]
 pub async fn update_probe(
     request: HttpRequest,
@@ -338,6 +523,21 @@ pub async fn update_probe(
         .finish())
 }
 
+/// Updates the owner of a probe.
+///
+/// Transfers ownership of a probe to a different user. The current user must have
+/// permission to change ownership.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `probe_repo` - Probe repository for database operations
+/// * `form` - Form data containing probe ID and new owner ID
+///
+/// # Returns
+///
+/// Returns a redirect response to the probe detail page after updating ownership.
 #[post("update-owner")]
 pub async fn update_probe_owner(
     request: HttpRequest,
@@ -354,6 +554,24 @@ pub async fn update_probe_owner(
         .finish())
 }
 
+/// Deletes a probe from the system.
+///
+/// Removes the probe from the database, invalidates its cache, and sends a reconnect command.
+/// Sends a WebSocket update to notify clients of the deletion.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `probe_repo` - Probe repository for database operations
+/// * `path` - Path parameter containing probe UUID
+/// * `state` - Application state containing command channel
+/// * `query` - Query parameters containing optional return URL
+/// * `session` - Session for retrieving session ID for WebSocket updates
+///
+/// # Returns
+///
+/// Returns a redirect response to the return URL (or probe list) after deletion.
 #[delete("{id}/delete")]
 pub async fn delete_probe(
     request: HttpRequest,
@@ -400,6 +618,31 @@ pub async fn delete_probe(
         .finish())
 }
 
+/// Establishes a WebSocket connection for real-time probe status updates.
+///
+/// Creates a WebSocket connection that receives real-time updates about probe status,
+/// including connection state and probe responses. The connection is registered with the
+/// server manager to receive events for the specified probe.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for WebSocket upgrade
+/// * `identity` - Optional user identity (required for access)
+/// * `state` - Application state containing command channel
+/// * `path` - Path parameter containing probe UUID
+/// * `stream` - WebSocket payload stream
+/// * `session` - Session for storing session ID
+///
+/// # Returns
+///
+/// Returns a WebSocket response that upgrades the HTTP connection to WebSocket.
+///
+/// # Behavior
+///
+/// - Registers the WebSocket session with the server manager
+/// - Spawns tasks to handle incoming messages and probe status updates
+/// - Periodically checks probe liveness and sends updates to the client
+/// - Automatically unregisters the session when the connection closes
 #[get("{id}/ws")]
 pub async fn get_probe_ws(
     request: HttpRequest,
@@ -516,6 +759,22 @@ pub async fn get_probe_ws(
     Ok(res)
 }
 
+/// Creates a new probe in the database.
+///
+/// Creates a probe record that can be adopted by a remote probe with a matching UUID.
+/// The user must be assigned to at least one group to create probes.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request
+/// * `identity` - Optional user identity (required for access)
+/// * `probe_repo` - Probe repository for database operations
+/// * `user_repo` - User repository for user information and group validation
+/// * `form` - Form data containing probe name
+///
+/// # Returns
+///
+/// Returns a redirect response to the newly created probe's detail page.
 #[post("create")]
 pub async fn create_probe(
     request: HttpRequest,

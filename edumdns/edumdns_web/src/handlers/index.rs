@@ -27,6 +27,20 @@ use edumdns_db::repositories::user::models::UserLogin;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use time::{Duration, OffsetDateTime};
 
+/// Displays the main dashboard page.
+///
+/// Shows the user's dashboard with an overview of the system. The user must be authenticated.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for template name detection
+/// * `identity` - Optional user identity (required for access)
+/// * `user_repo` - User repository for user information
+/// * `state` - Application state containing template engine
+///
+/// # Returns
+///
+/// Returns an HTML response with the dashboard page, or redirects to login if not authenticated.
 #[get("/")]
 pub async fn index(
     request: HttpRequest,
@@ -45,6 +59,21 @@ pub async fn index(
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
 
+/// Displays the login page.
+///
+/// Shows the login form. If the user is already authenticated, redirects to the return URL
+/// or the referrer. Supports both local and OIDC authentication.
+///
+/// # Arguments
+///
+/// * `request` - HTTP request for extracting referrer
+/// * `identity` - Optional user identity (if already logged in)
+/// * `query` - Query parameters containing optional return URL
+/// * `state` - Application state containing template engine
+///
+/// # Returns
+///
+/// Returns an HTML response with the login page, or redirects if already authenticated.
 #[get("/login")]
 pub async fn login(
     request: HttpRequest,
@@ -199,6 +228,18 @@ pub async fn login_oidc(
     Ok(resp.insert_header((LOCATION, return_url)).finish())
 }
 
+/// Redirects to the OIDC login endpoint.
+///
+/// Intermediate redirect handler that preserves query parameters when redirecting to OIDC
+/// authentication. Used as part of the OIDC authentication flow.
+///
+/// # Arguments
+///
+/// * `query` - Query parameters containing return URL
+///
+/// # Returns
+///
+/// Returns a redirect response to the OIDC login endpoint with preserved query parameters.
 #[get("/oidc/redirect")]
 pub async fn login_oidc_redirect(
     query: web::Query<UserLoginReturnURL>,

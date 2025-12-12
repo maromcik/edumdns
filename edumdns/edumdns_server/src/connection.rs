@@ -60,6 +60,7 @@ pub struct ConnectionManager {
     global_timeout: Duration,
 }
 
+#[hotpath::measure_all]
 impl ConnectionManager {
     /// Construct a new `ConnectionManager` for an accepted TCP stream.
     ///

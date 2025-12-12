@@ -47,6 +47,7 @@ use tokio_util::sync::CancellationToken;
 /// - Skips non-TCP/IP packets
 /// - Sends ProbePackets through the channel (blocking send)
 /// - Handles timeout errors gracefully by continuing the loop
+#[hotpath::measure]
 pub fn capture_and_transmit<T>(
     mut capture: impl PacketCapture<T>,
     probe_metadata: ProbeMetadata,
@@ -115,6 +116,7 @@ where
     pub filter: Option<String>,
 }
 
+#[hotpath::measure_all]
 impl<T> PacketCaptureGeneric<T>
 where
     T: State + Activated,
@@ -189,6 +191,7 @@ where
     }
 }
 
+#[hotpath::measure_all]
 impl<T> PacketCapture<T> for PacketCaptureGeneric<T>
 where
     T: State + Activated,

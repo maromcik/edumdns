@@ -24,6 +24,7 @@ pub struct EbpfUpdater {
     pub rewrite_map_v6: HashMap<MapData, [u8; 16], [u8; 16]>,
 }
 
+#[hotpath::measure_all]
 impl EbpfUpdater {
     /// Attach to the pinned eBPF maps.
     ///

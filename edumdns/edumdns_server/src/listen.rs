@@ -24,6 +24,7 @@ pub struct ServerTlsConfig {
     pub key_path: String,
 }
 
+#[hotpath::measure]
 async fn handle_connection(mut connection_manager: ConnectionManager) -> Result<Uuid, ServerError> {
     let uuid = connection_manager.connection_init_server().await?;
     connection_manager.transfer_packets().await?;
@@ -40,6 +41,7 @@ pub struct ListenerSpawner {
     socket_addrs: Vec<SocketAddr>,
     server_config: ServerConfig,
 }
+#[hotpath::measure_all]
 impl ListenerSpawner {
     pub async fn new(
         pool: Pool<AsyncPgConnection>,

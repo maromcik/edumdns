@@ -151,6 +151,7 @@ struct Cli {
 }
 
 #[tokio::main]
+#[hotpath::main]
 async fn main() -> Result<(), ProbeError> {
     let pre = PreCli::try_parse().unwrap_or_default();
 
@@ -215,9 +216,9 @@ async fn main() -> Result<(), ProbeError> {
         let mut join_set = tokio::task::JoinSet::new();
 
         // Set-up channels
-        let (send_transmitter, send_receiver) = mpsc::channel(cli.buffer_capacity);
-        let (command_transmitter, mut command_receiver) = mpsc::channel(cli.buffer_capacity);
-        let (pinger_receive_transmitter, pinger_receive_receiver) = mpsc::channel(cli.buffer_capacity);
+        let (send_transmitter, send_receiver) = hotpath::channel!(mpsc::channel(cli.buffer_capacity));
+        let (command_transmitter, mut command_receiver) = hotpath::channel!(mpsc::channel(cli.buffer_capacity));
+        let (pinger_receive_transmitter, pinger_receive_receiver) = hotpath::channel!(mpsc::channel(cli.buffer_capacity));
 
         // Open packet capture
         let probe_capture =

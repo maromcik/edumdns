@@ -21,6 +21,7 @@ pub struct ProbeCapture {
     probe_config: ProbeConfigPacket,
 }
 
+#[hotpath::measure_all]
 impl ProbeCapture {
     pub fn new(
         tx: Sender<NetworkAppPacket>,

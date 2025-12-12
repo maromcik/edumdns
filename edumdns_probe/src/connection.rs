@@ -56,6 +56,7 @@ pub(crate) struct ConnectionManager {
     pub(crate) conn_limits: ConnectionLimits,
 }
 
+#[hotpath::measure_all]
 impl ConnectionManager {
     pub async fn connect(
         connection_info: &ConnectionInfo,
@@ -271,6 +272,7 @@ impl ConnectionManager {
     /// - Other packets are sent immediately (flushed)
     /// - On failure, sends a ReconnectThisProbe command to trigger reconnection
     /// - Waits `retry_interval` between retry attempts
+    #[hotpath::measure]
     pub async fn send_packet_with_reconnect(
         handle: &TcpConnectionHandle,
         command_transmitter: &mpsc::Sender<NetworkAppPacket>,
@@ -343,6 +345,7 @@ impl ConnectionManager {
         Ok(())
     }
 
+    #[hotpath::measure]
     async fn transmit_packets_worker(
         handle: TcpConnectionHandle,
         mut data_receiver: mpsc::Receiver<NetworkAppPacket>,

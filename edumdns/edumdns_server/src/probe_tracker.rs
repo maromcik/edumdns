@@ -60,6 +60,7 @@ impl ProbeStat {
     }
 }
 
+#[hotpath::measure]
 pub async fn watchdog(tracker: SharedProbeTracker, probe_handles: ProbeHandles, max_age: Duration) {
     loop {
         tokio::time::sleep(max_age).await;

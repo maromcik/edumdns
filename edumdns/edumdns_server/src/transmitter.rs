@@ -30,6 +30,7 @@ pub struct PacketTransmitterTask {
     pub transmitter_task: JoinHandle<()>,
 }
 
+#[hotpath::measure_all]
 impl PacketTransmitterTask {
     /// Spawn a new transmitter task.
     ///
@@ -88,6 +89,7 @@ pub struct PacketTransmitter {
     pub server_config: ServerConfig,
 }
 
+#[hotpath::measure_all]
 impl PacketTransmitter {
     /// Construct a new `PacketTransmitter`.
     ///

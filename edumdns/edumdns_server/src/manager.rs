@@ -112,6 +112,7 @@ pub(crate) struct ServerManager {
     server_config: ServerConfig,
 }
 
+#[hotpath::measure_all]
 impl ServerManager {
     /// Create a new `ServerManager`.
     ///

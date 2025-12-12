@@ -29,6 +29,7 @@ pub struct DatabaseManager {
     pub packet_repo: PgPacketRepository,
 }
 
+#[hotpath::measure_all]
 impl DatabaseManager {
     pub fn new(
         receiver: tokio::sync::mpsc::Receiver<DbCommand>,

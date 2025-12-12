@@ -66,6 +66,7 @@ struct Cli {
 ///
 /// - `EDUMDNS_CONFIG_FILE` - Path to configuration file (overrides `--config` argument)
 #[actix_web::main]
+#[hotpath::main]
 async fn main() -> Result<(), AppError> {
     rustls::crypto::ring::default_provider()
         .install_default()
@@ -86,7 +87,7 @@ async fn main() -> Result<(), AppError> {
         .init();
 
     info!("Config used: {}\n{config:#?}", cli.config);
-    let command_channel = tokio::sync::mpsc::channel(config.server.channel_buffer_capacity);
+    let command_channel = hotpath::channel!(tokio::sync::mpsc::channel(config.server.channel_buffer_capacity));
 
     let pool = db_init(config.database).await?;
     let pool_local = pool.clone();

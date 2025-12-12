@@ -7,10 +7,18 @@ resolver = "3"
 [[bin]]
 name = "edumdns"
 
+
+[features]
+default = []
+hotpath = ["hotpath/tui", "hotpath/tokio", "hotpath/hotpath", "hotpath/futures", "hotpath/hotpath-alloc"]
+
+
 [dependencies]
 tracing = { version = "0.1.43", features = ["async-await"] }
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "local-time", "time"] }
 clap = { version = "4.5.53", features = ["derive", "env"] }
+config = "0.15.19"
+
 
 edumdns_server = { workspace = true }
 edumdns_db = { workspace = true }
@@ -20,15 +28,8 @@ tokio = { workspace = true }
 thiserror = { workspace = true }
 rustls = { workspace = true }
 serde = { workspace = true }
-config = "0.15.19"
-hotpath = {version = "0.9.0", features = ["default", "tui", "tokio", "hotpath-alloc", "hotpath", "futures"]}
+hotpath = { workspace = true }
 
-
-[features]
-hotpath = ["hotpath/hotpath"]
-hotpath-alloc = ["hotpath/hotpath-alloc"]
-tui = ["hotpath/tui"]
-tokio = ["hotpath/tokio"]
 
 [workspace.dependencies]
 edumdns_core = { path = "../edumdns_core"}
@@ -47,6 +48,7 @@ serde = { version = "1.0.228", features = ["derive", "std"] }
 hickory-proto = { version = "0.25.2", features = ["default", "serde"]}
 strum = "0.27.2"
 time = { version = "0.3.44", features = ["serde", "local-offset", "parsing", "formatting"] }
+hotpath = { version = "0.9.0" }
 futures = "0.3.31"
 futures-util = "0.3.31"
 

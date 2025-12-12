@@ -16,8 +16,11 @@ tokio-util = { version = "0.7.16", features = ["codec"] }
 log = "0.4.28"
 uuid = { version = "1.18.1", features = ["v7", "std", "serde"]}
 dotenvy = "0.15.7"
-tracing = { version = "0.1.43", features = ["async-await"]}
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "local-time", "time"] }
 rustls = "0.23.35"
 webpki-roots = "1.0.4"
-hotpath = {version = "0.9.0", features = ["tui", "tokio", "hotpath-alloc", "hotpath", "futures"]}
+hotpath = {version = "0.9.0"}
+
+[features]
+default = []
+hotpath = ["hotpath/tui", "hotpath/tokio", "hotpath/hotpath", "hotpath/futures", "hotpath/hotpath-alloc"]

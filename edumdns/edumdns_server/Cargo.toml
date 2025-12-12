@@ -16,12 +16,5 @@ ipnetwork = {workspace = true}
 uuid = {workspace = true}
 hickory-proto = {workspace = true}
 futures = {workspace = true}
-serde = { version = "1.0.228", features = ["derive"] }
-hotpath = {version = "0.9.0", features = ["default", "tui", "tokio", "hotpath-alloc", "hotpath", "futures"]}
-
-
-[features]
-hotpath = ["hotpath/hotpath"]
-hotpath-alloc = ["hotpath/hotpath-alloc"]
-tui = ["hotpath/tui"]
-tokio = ["hotpath/tokio"]
+serde = { workspace = true }
+hotpath = { workspace = true }

@@ -40,7 +40,7 @@ rectangle "Central Host" as CentralHost #eff9f6 {
   component "eBPF Proxy Binary\n(edumdns_proxy)" as Proxy #ffec3d
 }
 
-database "Postgres" as Postgres #D9E1F2
+database "PostgreSQL" as Postgres #D9E1F2
 
 
 ' --- LINKS ---

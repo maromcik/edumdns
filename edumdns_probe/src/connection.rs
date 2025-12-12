@@ -246,33 +246,7 @@ impl ConnectionManager {
         }
     }
 
-    /// Sends a packet with automatic retry and reconnection on failure.
-    ///
-    /// This function attempts to send a packet to the server. If sending fails, it
-    /// triggers a reconnection command and retries up to `max_retries` times with
-    /// delays between attempts.
-    ///
-    /// # Arguments
-    ///
-    /// * `handle` - TCP connection handle for sending packets
-    /// * `command_transmitter` - Channel for sending reconnection commands
-    /// * `max_retries` - Maximum number of retry attempts
-    /// * `retry_interval` - Delay between retry attempts
-    /// * `packet` - The packet to send (Data packets use buffered send, others use immediate)
-    ///
-    /// # Returns
-    ///
-    /// Returns `Ok(())` if the packet is successfully sent, or a `ProbeError` if:
-    /// - All retry attempts are exhausted
-    /// - Network I/O fails persistently
-    ///
-    /// # Behavior
-    ///
-    /// - Data packets are sent with buffering (may be coalesced)
-    /// - Other packets are sent immediately (flushed)
-    /// - On failure, sends a ReconnectThisProbe command to trigger reconnection
-    /// - Waits `retry_interval` between retry attempts
-    #[hotpath::measure]
+
     pub async fn send_packet_with_reconnect(
         handle: &TcpConnectionHandle,
         command_transmitter: &mpsc::Sender<NetworkAppPacket>,
@@ -344,8 +318,7 @@ impl ConnectionManager {
         });
         Ok(())
     }
-
-    #[hotpath::measure]
+    
     async fn transmit_packets_worker(
         handle: TcpConnectionHandle,
         mut data_receiver: mpsc::Receiver<NetworkAppPacket>,

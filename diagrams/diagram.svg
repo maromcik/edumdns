@@ -1,0 +1,993 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   contentStyleType="text/css"
+   data-diagram-type="DESCRIPTION"
+   height="805.2083px"
+   preserveAspectRatio="none"
+   style="width:783px;height:805px;background:#FFFFFF;"
+   version="1.1"
+   viewBox="0 0 783 805"
+   width="783.3333px"
+   zoomAndPan="magnify"
+   id="svg50"
+   sodipodi:docname="diagram.svg"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   inkscape:export-filename="diagram-edited.png"
+   inkscape:export-xdpi="400"
+   inkscape:export-ydpi="400"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview50"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.2485506"
+     inkscape:cx="427.69592"
+     inkscape:cy="434.90428"
+     inkscape:window-width="2560"
+     inkscape:window-height="1371"
+     inkscape:window-x="0"
+     inkscape:window-y="32"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg50" />
+  <defs
+     id="defs1" />
+  <g
+     class="cluster"
+     data-entity="ClientsGroup"
+     data-source-line="18"
+     data-uid="ent0002"
+     id="cluster_ClientsGroup">
+    <rect
+       fill="none"
+       height="107.3646"
+       rx="2.6041999"
+       ry="2.6041999"
+       style="stroke:#181818;stroke-width:1.0417"
+       width="336.45831"
+       x="7.2916999"
+       y="324.80209"
+       id="rect1" />
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       font-weight="bold"
+       lengthAdjust="spacing"
+       textLength="113.148"
+       x="118.9468"
+       y="342.47491"
+       id="text1">External Clients</text>
+  </g>
+  <g
+     class="cluster"
+     data-entity="SiteA"
+     data-source-line="23"
+     data-uid="ent0005"
+     id="cluster_SiteA">
+    <rect
+       fill="#fcf9ea"
+       height="239.86459"
+       rx="2.6041999"
+       ry="2.6041999"
+       style="stroke:#181818;stroke-width:1.0417"
+       width="175"
+       x="219.7917"
+       y="7.2916999"
+       id="rect2" />
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       font-weight="bold"
+       lengthAdjust="spacing"
+       textLength="111.9522"
+       x="251.3156"
+       y="24.9645"
+       id="text2">Remote VLAN A</text>
+  </g>
+  <g
+     class="cluster"
+     data-entity="SiteB"
+     data-source-line="28"
+     data-uid="ent0008"
+     id="cluster_SiteB">
+    <rect
+       fill="#fcf9ea"
+       height="239.86459"
+       rx="2.6041999"
+       ry="2.6041999"
+       style="stroke:#181818;stroke-width:1.0417"
+       width="175"
+       x="419.79169"
+       y="7.2916999"
+       id="rect3" />
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       font-weight="bold"
+       lengthAdjust="spacing"
+       textLength="112.1126"
+       x="451.23541"
+       y="24.9645"
+       id="text3">Remote VLAN B</text>
+  </g>
+  <rect
+     fill="#eff9f6"
+     height="445.21881"
+     rx="2.6041999"
+     ry="2.6041999"
+     style="stroke:#181818;stroke-width:1.0417"
+     width="408.33331"
+     x="368.75"
+     y="272.15631"
+     id="rect4" />
+  <text
+     fill="#000000"
+     font-family="sans-serif"
+     font-size="14.5833px"
+     font-weight="bold"
+     lengthAdjust="spacing"
+     textLength="90.369003"
+     x="527.73218"
+     y="289.8291"
+     id="text4"
+     transform="matrix(1.5106796,0,0,1.5106796,-160.54971,272.79533)">Central Host</text>
+  <rect
+     fill="#ddf9ca"
+     height="372.30209"
+     rx="2.6041999"
+     ry="2.6041999"
+     style="stroke:#181818;stroke-width:1.0417"
+     width="201.0417"
+     x="393.75"
+     y="320.07291"
+     id="rect5" />
+  <text
+     fill="#000000"
+     font-family="sans-serif"
+     font-size="14.5833px"
+     font-weight="bold"
+     lengthAdjust="spacing"
+     textLength="97.066299"
+     x="445.7377"
+     y="337.74579"
+     id="text5"
+     transform="matrix(0,1.0001669,-0.99983316,0,913.83322,-120.6654)">Server Binary</text>
+  <g
+     class="entity"
+     data-entity="ClientWireless"
+     data-source-line="19"
+     data-uid="ent0003"
+     id="entity_ClientWireless">
+    <polygon
+       fill="#ffffff"
+       points="327.3683,364.3854 327.3683,405.0812 316.9517,415.4978 185.1354,415.4978 185.1354,374.8021 195.5521,364.3854 "
+       style="stroke:#181818;stroke-width:0.5208"
+       id="polygon5" />
+    <line
+       style="stroke:#181818;stroke-width:0.5208"
+       x1="316.95169"
+       x2="327.36829"
+       y1="374.80209"
+       y2="364.38541"
+       id="line5" />
+    <line
+       style="stroke:#181818;stroke-width:0.5208"
+       x1="185.13541"
+       x2="316.95169"
+       y1="374.80209"
+       y2="374.80209"
+       id="line6" />
+    <line
+       style="stroke:#181818;stroke-width:0.5208"
+       x1="316.95169"
+       x2="316.95169"
+       y1="374.80209"
+       y2="415.4978"
+       id="line7" />
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="100.5663"
+       x="200.76041"
+       y="400.80829"
+       id="text7">Wireless Client</text>
+  </g>
+  <g
+     class="entity"
+     data-entity="ClientWired"
+     data-source-line="20"
+     data-uid="ent0004"
+     id="entity_ClientWired">
+    <polygon
+       fill="#ffffff"
+       points="149.0767,364.3854 149.0767,405.0812 138.6601,415.4978 23.8333,415.4978 23.8333,374.8021 34.25,364.3854 "
+       style="stroke:#181818;stroke-width:0.5208"
+       id="polygon7" />
+    <line
+       style="stroke:#181818;stroke-width:0.5208"
+       x1="138.6601"
+       x2="149.07671"
+       y1="374.80209"
+       y2="364.38541"
+       id="line8" />
+    <line
+       style="stroke:#181818;stroke-width:0.5208"
+       x1="23.8333"
+       x2="138.6601"
+       y1="374.80209"
+       y2="374.80209"
+       id="line9" />
+    <line
+       style="stroke:#181818;stroke-width:0.5208"
+       x1="138.6601"
+       x2="138.6601"
+       y1="374.80209"
+       y2="415.4978"
+       id="line10" />
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="83.576698"
+       x="39.458302"
+       y="400.80829"
+       id="text10">Wired Client</text>
+  </g>
+  <g
+     class="entity"
+     data-entity="DeviceA"
+     data-source-line="24"
+     data-uid="ent0006"
+     id="entity_DeviceA">
+    <rect
+       fill="#fcf0ea"
+       height="60.558201"
+       rx="2.6041999"
+       ry="2.6041999"
+       style="stroke:#181818;stroke-width:0.5208"
+       width="124.1121"
+       x="241.07291"
+       y="46.875"
+       id="rect10" />
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="103.2788"
+       x="251.48959"
+       y="72.881203"
+       id="text11">Smart Device A</text>
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="78.633003"
+       x="263.81241"
+       y="92.743599"
+       id="text12">(Playercast)</text>
+  </g>
+  <g
+     class="entity"
+     data-entity="ProbeA"
+     data-source-line="25"
+     data-uid="ent0007"
+     id="entity_ProbeA">
+    <rect
+       fill="#caeef9"
+       height="60.558201"
+       rx="2.6041999"
+       ry="2.6041999"
+       style="stroke:#181818;stroke-width:0.5208"
+       width="141.8745"
+       x="236.3542"
+       y="169.9375"
+       id="rect12" />
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="53.972698"
+       x="280.30511"
+       y="195.9437"
+       id="text13">Probe A</text>
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="121.0412"
+       x="246.7708"
+       y="215.80611"
+       id="text14">(edumdns_probe)</text>
+  </g>
+  <g
+     class="entity"
+     data-entity="DeviceB"
+     data-source-line="29"
+     data-uid="ent0009"
+     id="entity_DeviceB">
+    <rect
+       fill="#fcf0ea"
+       height="60.558201"
+       rx="2.6041999"
+       ry="2.6041999"
+       style="stroke:#181818;stroke-width:0.5208"
+       width="124.2725"
+       x="449.32291"
+       y="46.875"
+       id="rect14" />
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="103.4392"
+       x="459.73959"
+       y="72.881203"
+       id="text15">Smart Device B</text>
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="72.333099"
+       x="475.2926"
+       y="92.743599"
+       id="text16">(Streamer)</text>
+  </g>
+  <g
+     class="entity"
+     data-entity="ProbeB"
+     data-source-line="30"
+     data-uid="ent0010"
+     id="entity_ProbeB">
+    <rect
+       fill="#caeef9"
+       height="60.558201"
+       rx="2.6041999"
+       ry="2.6041999"
+       style="stroke:#181818;stroke-width:0.5208"
+       width="141.8745"
+       x="436.35419"
+       y="169.9375"
+       id="rect16" />
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="54.133099"
+       x="480.22491"
+       y="195.9437"
+       id="text17">Probe B</text>
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="121.0412"
+       x="446.77081"
+       y="215.80611"
+       id="text18">(edumdns_probe)</text>
+  </g>
+  <g
+     class="entity"
+     data-entity="Proxy"
+     data-source-line="39"
+     data-uid="ent0016"
+     id="entity_Proxy">
+    <rect
+       fill="#ffec3d"
+       height="60.558201"
+       rx="2.6041999"
+       ry="2.6041999"
+       style="stroke:#181818;stroke-width:0.5208"
+       width="145.2287"
+       x="614.88538"
+       y="482.71881"
+       id="rect18" />
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="124.3954"
+       x="625.30212"
+       y="508.72491"
+       id="text19">eBPF Proxy Binary</text>
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="118.9995"
+       x="628"
+       y="528.58728"
+       id="text20">(edumdns_proxy)</text>
+  </g>
+  <g
+     class="entity"
+     data-entity="ServerComponent"
+     data-source-line="35"
+     data-uid="ent0013"
+     id="entity_ServerComponent">
+    <rect
+       fill="#f7eca8"
+       height="60.558201"
+       rx="2.6041999"
+       ry="2.6041999"
+       style="stroke:#181818;stroke-width:0.5208"
+       width="143.7558"
+       x="410.41669"
+       y="359.65631"
+       id="rect20" />
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="43.910198"
+       x="460.33939"
+       y="385.66241"
+       id="text21">Server</text>
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="122.9224"
+       x="420.83331"
+       y="405.52481"
+       id="text22">(edumdns_server)</text>
+  </g>
+  <g
+     class="entity"
+     data-entity="WebComponent"
+     data-source-line="36"
+     data-uid="ent0014"
+     id="entity_WebComponent">
+    <rect
+       fill="#f7eca8"
+       height="60.558201"
+       rx="2.6041999"
+       ry="2.6041999"
+       style="stroke:#181818;stroke-width:0.5208"
+       width="129.52251"
+       x="410.23959"
+       y="482.71881"
+       id="rect22" />
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="50.151901"
+       x="449.9249"
+       y="508.72491"
+       id="text23">Web UI</text>
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="108.6891"
+       x="420.65631"
+       y="528.58728"
+       id="text24">(edumdns_web)</text>
+  </g>
+  <g
+     class="entity"
+     data-entity="DBLayer"
+     data-source-line="37"
+     data-uid="ent0015"
+     id="entity_DBLayer">
+    <path
+       d="m 437.4688,616.1979 c 0,-10.4166 59.4018,-10.4166 59.4018,-10.4166 0,0 59.4019,0 59.4019,10.4166 v 49.0998 c 0,10.4167 -59.4019,10.4167 -59.4019,10.4167 0,0 -59.4018,0 -59.4018,-10.4167 v -49.0998"
+       fill="#f7eca8"
+       style="stroke:#181818;stroke-width:0.5208"
+       id="path24" />
+    <path
+       d="m 437.4688,616.1979 c 0,10.4167 59.4018,10.4167 59.4018,10.4167 0,0 59.4019,0 59.4019,-10.4167"
+       fill="none"
+       style="stroke:#181818;stroke-width:0.5208"
+       id="path25" />
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="61.424702"
+       x="466.15829"
+       y="646.37079"
+       id="text25">DB Layer</text>
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="97.970497"
+       x="447.88541"
+       y="666.23322"
+       id="text26">(edumdns_db)</text>
+  </g>
+  <g
+     class="entity"
+     data-entity="Postgres"
+     data-source-line="42"
+     data-uid="ent0017"
+     id="entity_Postgres">
+    <path
+       d="m 446.3854,748.625 c 0,-10.4167 50.4915,-10.4167 50.4915,-10.4167 0,0 50.4916,0 50.4916,10.4167 v 29.2374 c 0,10.4167 -50.4916,10.4167 -50.4916,10.4167 0,0 -50.4915,0 -50.4915,-10.4167 V 748.625"
+       fill="#d9e1f2"
+       style="stroke:#181818;stroke-width:0.5208"
+       id="path26" />
+    <path
+       d="m 446.3854,748.625 c 0,10.4167 50.4915,10.4167 50.4915,10.4167 0,0 50.4916,0 50.4916,-10.4167"
+       fill="none"
+       style="stroke:#181818;stroke-width:0.5208"
+       id="path27" />
+    <text
+       fill="#000000"
+       font-family="sans-serif"
+       font-size="14.5833px"
+       lengthAdjust="spacing"
+       textLength="80.149696"
+       x="456.80209"
+       y="778.79779"
+       id="text27">PostgreSQL</text>
+  </g>
+  <path
+     d="m 516.13561,426.9167 c 0,18.7917 0,30.25 0,49.0521"
+     fill="none"
+     id="ServerComponent-WebComponent"
+     style="stroke:#918df7;stroke-width:3.125" />
+  <polygon
+     fill="#918df7"
+     points="496.6458,425.8854 500.8125,430.0521 496.6458,420.6771 492.4792,430.0521 "
+     style="stroke:#918df7;stroke-width:3.125"
+     id="polygon27"
+     transform="translate(19.489809,-0.0104024)" />
+  <polygon
+     fill="#918df7"
+     points="496.6458,477.0208 492.4792,472.8542 496.6458,482.2292 500.8125,472.8542 "
+     style="stroke:#918df7;stroke-width:3.125"
+     id="polygon28"
+     transform="translate(19.489809,-0.0104024)" />
+  <text
+     fill="#918df7"
+     font-family="sans-serif"
+     font-size="13.5417px"
+     lengthAdjust="spacing"
+     textLength="47.287498"
+     x="445.60419"
+     y="466.96561"
+     id="text28"
+     transform="translate(17.906461,-2.8150456)">Control</text>
+  <g
+     class="link"
+     data-entity-1="DeviceA"
+     data-entity-2="ProbeA"
+     data-source-line="50"
+     data-uid="lnk19"
+     id="link_DeviceA_ProbeA">
+    <path
+       d="m 303.125,107.8958 c 0,18.7917 0,36.5 0,55.3021"
+       fill="none"
+       id="DeviceA-to-ProbeA"
+       style="stroke:#1f77b4;stroke-width:2.0833" />
+    <polygon
+       fill="#1f77b4"
+       points="303.125,164.2396 298.9583,160.0729 303.125,169.4479 307.2917,160.0729 "
+       style="stroke:#1f77b4;stroke-width:2.0833"
+       id="polygon29" />
+    <text
+       fill="#1f77b4"
+       font-family="sans-serif"
+       font-size="13.5417px"
+       lengthAdjust="spacing"
+       textLength="50.970901"
+       x="247.9167"
+       y="134.3927"
+       id="text29">Capture</text>
+  </g>
+  <g
+     class="link"
+     data-entity-1="DeviceB"
+     data-entity-2="ProbeB"
+     data-source-line="51"
+     data-uid="lnk20"
+     id="link_DeviceB_ProbeB">
+    <path
+       d="m 511.4583,107.8958 c 0,18.7917 0,36.5 0,55.3021"
+       fill="none"
+       id="DeviceB-to-ProbeB"
+       style="stroke:#1f77b4;stroke-width:2.0833" />
+    <polygon
+       fill="#1f77b4"
+       points="511.4583,164.2396 507.2917,160.0729 511.4583,169.4479 515.625,160.0729 "
+       style="stroke:#1f77b4;stroke-width:2.0833"
+       id="polygon30" />
+    <text
+       fill="#1f77b4"
+       font-family="sans-serif"
+       font-size="13.5417px"
+       lengthAdjust="spacing"
+       textLength="50.970901"
+       x="456.25"
+       y="134.3927"
+       id="text30">Capture</text>
+  </g>
+  <path
+     d="m 378.4891,190.3878 c 25.9271,0 48.9791,0 48.9791,0 0,0 0,106.5937 0,162.5833"
+     fill="none"
+     id="ProbeA-to-ServerComponent"
+     style="stroke:#1f77b4;stroke-width:2.0833" />
+  <polygon
+     fill="#1f77b4"
+     points="427.7083,359.1979 431.875,349.8229 427.7083,353.9896 423.5417,349.8229 "
+     style="stroke:#1f77b4;stroke-width:2.0833"
+     id="polygon31" />
+  <text
+     fill="#1f77b4"
+     font-family="sans-serif"
+     font-size="13.5417px"
+     lengthAdjust="spacing"
+     textLength="29.967699"
+     x="397.5"
+     y="246.0177"
+     id="text31"
+     transform="translate(34.947589,17.377082)">Data</text>
+  <path
+     d="m 385.00249,210.10825 c 18.01157,0 28.04079,0 28.04079,0 0,0 0,91.80159 0,143.12801"
+     fill="none"
+     id="ProbeA-ServerComponent"
+     style="stroke:#918df7;stroke-width:1.88969" />
+  <polygon
+     fill="#918df7"
+     points="388.0833,214.3229 383.9167,210.1563 388.0833,205.9896 378.7083,210.1563 "
+     style="stroke:#918df7;stroke-width:2.0833"
+     id="polygon32"
+     transform="translate(1.08579,-0.04805)" />
+  <polygon
+     fill="#918df7"
+     points="419.0625,359.4375 423.2292,350.0625 419.0625,354.2292 414.8958,350.0625 "
+     style="stroke:#918df7;stroke-width:2.0833"
+     id="polygon33"
+     transform="matrix(1,0,0,1.0000038,-5.7673612,0.21744517)" />
+  <text
+     fill="#000000"
+     font-family="sans-serif"
+     font-size="13.5417px"
+     lengthAdjust="spacing"
+     textLength="3.5208001"
+     x="391.66461"
+     y="280.1427"
+     id="text33"> </text>
+  <text
+     fill="#918df7"
+     font-family="sans-serif"
+     font-size="13.5417px"
+     lengthAdjust="spacing"
+     textLength="47.287498"
+     x="368.02081"
+     y="298.58649"
+     id="text34"
+     transform="translate(-6.7321264,-34.116367)">Control</text>
+  <path
+     d="m 475.625,230.6979 c 0,35.3021 0,86.8646 0,122.2709"
+     fill="none"
+     id="ProbeB-to-ServerComponent"
+     style="stroke:#1f77b4;stroke-width:2.0833" />
+  <polygon
+     fill="#1f77b4"
+     points="475.625,359.2188 479.7917,349.8438 475.625,354.0104 471.4583,349.8438 "
+     style="stroke:#1f77b4;stroke-width:2.0833"
+     id="polygon34" />
+  <text
+     fill="#1f77b4"
+     font-family="sans-serif"
+     font-size="13.5417px"
+     lengthAdjust="spacing"
+     textLength="29.967699"
+     x="441.25"
+     y="290.68439"
+     id="text35"
+     transform="translate(0,11.812559)">Data</text>
+  <path
+     d="m 514.8958,236.9479 c 0,35.3021 0,80.6146 0,116.0209"
+     fill="none"
+     id="ProbeB-ServerComponent"
+     style="stroke:#918df7;stroke-width:2.0833" />
+  <polygon
+     fill="#918df7"
+     points="514.8958,230.6979 510.7292,240.0729 514.8958,235.9063 519.0625,240.0729 "
+     style="stroke:#918df7;stroke-width:2.0833"
+     id="polygon35" />
+  <polygon
+     fill="#918df7"
+     points="514.8958,359.2188 519.0625,349.8438 514.8958,354.0104 510.7292,349.8438 "
+     style="stroke:#918df7;stroke-width:2.0833"
+     id="polygon36" />
+  <text
+     fill="#918df7"
+     font-family="sans-serif"
+     font-size="13.5417px"
+     lengthAdjust="spacing"
+     textLength="47.287498"
+     x="466.97919"
+     y="310.4761"
+     id="text36"
+     transform="translate(53.978134,-0.51096718)">Control</text>
+  <path
+     d="m 488.6146,543.5938 c 0,18.6041 0,36.177 0,55.5833"
+     fill="none"
+     id="WebComponent-to-DBLayer"
+     style="stroke:#cf97b2;stroke-width:2.0833" />
+  <polygon
+     fill="#cf97b2"
+     points="488.6146,605.4271 492.7813,596.0521 488.6146,600.2188 484.4479,596.0521 "
+     style="stroke:#cf97b2;stroke-width:2.0833"
+     id="polygon37" />
+  <text
+     fill="#cf97b2"
+     font-family="sans-serif"
+     font-size="13.5417px"
+     lengthAdjust="spacing"
+     textLength="21.436501"
+     x="459.44791"
+     y="570.23651"
+     id="text37"
+     transform="translate(3.1498257,2.6252927)">API</text>
+  <path
+     d="m 544.5625,420.6979 c 0,46.6979 0,129 0,178.3438"
+     fill="none"
+     id="ServerComponent-to-DBLayer"
+     style="stroke:#cf97b2;stroke-width:2.0833" />
+  <polygon
+     fill="#cf97b2"
+     points="544.5625,605.2917 548.7292,595.9167 544.5625,600.0833 540.3958,595.9167 "
+     style="stroke:#cf97b2;stroke-width:2.0833"
+     id="polygon38" />
+  <text
+     fill="#cf97b2"
+     font-family="sans-serif"
+     font-size="13.5417px"
+     lengthAdjust="spacing"
+     textLength="21.436501"
+     x="552.64581"
+     y="528.50732"
+     id="text38"
+     transform="translate(-3.6293518,43.955433)">API</text>
+  <path
+     d="m 496.875,676.1771 c 0,19.7812 0,37.7187 0,55.5729"
+     fill="none"
+     id="DBLayer-to-Postgres"
+     style="stroke:#cf97b2;stroke-width:2.0833" />
+  <polygon
+     fill="#cf97b2"
+     points="496.875,738 501.0417,728.625 496.875,732.7917 492.7083,728.625 "
+     style="stroke:#cf97b2;stroke-width:2.0833"
+     id="polygon39" />
+  <text
+     fill="#cf97b2"
+     font-family="sans-serif"
+     font-size="13.5417px"
+     lengthAdjust="spacing"
+     textLength="25.1063"
+     x="467.70831"
+     y="702.81982"
+     id="text39"
+     transform="translate(0.07965636,5.4175365)">SQL</text>
+  <path
+     d="m 549.3646,420.4271 c 0,36.5312 0,92.8542 0,92.8542 0,0 25.6354,0 58.7708,0"
+     fill="none"
+     id="ServerComponent-to-Proxy"
+     style="stroke:#ff8a3d;stroke-width:2.0833" />
+  <polygon
+     fill="#ff8a3d"
+     points="614.3854,513.2813 605.0104,509.1146 609.1771,513.2813 605.0104,517.4479 "
+     style="stroke:#ff8a3d;stroke-width:2.0833"
+     id="polygon40" />
+  <text
+     fill="#ff8a3d"
+     font-family="sans-serif"
+     font-size="13.5417px"
+     lengthAdjust="spacing"
+     textLength="41.599998"
+     x="550.40631"
+     y="495.09061"
+     id="text40"
+     transform="translate(2.0716423,11.710662)">Config</text>
+  <path
+     d="m 410.1458,390.3646 c -26.3541,0 -49.8854,0 -76.1875,0"
+     fill="none"
+     id="ServerComponent-to-ClientWireless"
+     style="stroke:#2ca02c;stroke-width:2.0833" />
+  <polygon
+     fill="#2ca02c"
+     points="327.7083,390.3646 337.0833,394.5313 332.9167,390.3646 337.0833,386.1979 "
+     style="stroke:#2ca02c;stroke-width:2.0833"
+     id="polygon41" />
+  <text
+     fill="#2ca02c"
+     font-family="sans-serif"
+     font-size="13.5417px"
+     lengthAdjust="spacing"
+     textLength="85.773003"
+     x="321.01041"
+     y="405.88229"
+     id="text41"
+     transform="translate(2.9821127,-20.771684)">mDNS Advert</text>
+  <path
+     d="m 453.5313,420.6042 c 0,19.6979 0,41.6354 0,41.6354 0,0 -346.198,0 -346.198,0 0,0 0,-19.5729 0,-40.3542"
+     fill="none"
+     id="ServerComponent-to-ClientWired"
+     style="stroke:#2ca02c;stroke-width:2.0833" />
+  <polygon
+     fill="#2ca02c"
+     points="107.3333,415.6354 103.1667,425.0104 107.3333,420.8438 111.5,425.0104 "
+     style="stroke:#2ca02c;stroke-width:2.0833"
+     id="polygon42" />
+  <text
+     fill="#2ca02c"
+     font-family="sans-serif"
+     font-size="13.5417px"
+     lengthAdjust="spacing"
+     textLength="85.773003"
+     x="191.48959"
+     y="457.96561"
+     id="text42"
+     transform="translate(-80.353176,0.19220136)">mDNS Advert</text>
+  <g
+     class="link"
+     data-entity-1="ClientWired"
+     data-entity-2="DeviceA"
+     data-source-line="75"
+     data-uid="lnk31"
+     id="link_ClientWired_DeviceA">
+    <path
+       d="m 86.4583,357.8021 c 0,-75.0208 0,-280.9792 0,-280.9792 0,0 84.0313,0 148.0417,0"
+       fill="none"
+       id="ClientWired-DeviceA"
+       style="stroke:#c62828;stroke-width:3.125" />
+    <polygon
+       fill="#c62828"
+       points="86.4583,358.8438 82.2917,354.6771 86.4583,364.0521 90.625,354.6771 "
+       style="stroke:#c62828;stroke-width:3.125"
+       id="polygon43" />
+    <polygon
+       fill="#c62828"
+       points="235.5417,76.8229 231.375,80.9896 240.75,76.8229 231.375,72.6563 "
+       style="stroke:#c62828;stroke-width:3.125"
+       id="polygon44" />
+    <text
+       fill="#c62828"
+       font-family="sans-serif"
+       font-size="13.5417px"
+       lengthAdjust="spacing"
+       textLength="71.486504"
+       x="10.4167"
+       y="139.0177"
+       id="text44">Direct Data</text>
+  </g>
+  <path
+     d="m 279.9583,422.2292 c 0,12.7604 0,19.1771 0,19.1771 0,0 383.3334,0 383.3334,0 0,0 0,15.1562 0,34.5625"
+     fill="none"
+     id="ClientWireless-Proxy"
+     style="stroke:#8e44ad;stroke-width:3.125" />
+  <polygon
+     fill="#8e44ad"
+     points="279.9583,415.9792 275.7917,425.3542 279.9583,421.1875 284.125,425.3542 "
+     style="stroke:#8e44ad;stroke-width:3.125"
+     id="polygon45" />
+  <polygon
+     fill="#8e44ad"
+     points="663.2917,482.2188 667.4583,472.8438 663.2917,477.0104 659.125,472.8438 "
+     style="stroke:#8e44ad;stroke-width:3.125"
+     id="polygon46" />
+  <text
+     fill="#8e44ad"
+     font-family="sans-serif"
+     font-size="13.5417px"
+     lengthAdjust="spacing"
+     textLength="82.0896"
+     x="368.89581"
+     y="437.13229"
+     id="text46"
+     transform="translate(231.39455,-4.6113983)">Proxied Data</text>
+  <g
+     class="link"
+     data-entity-1="Proxy"
+     data-entity-2="DeviceB"
+     data-source-line="79"
+     data-uid="lnk33"
+     id="link_Proxy_DeviceB">
+    <path
+       d="m 711.7083,476.0729 c 0,-99.2812 0,-399.25 0,-399.25 0,0 -72.7083,0 -131.4687,0"
+       fill="none"
+       id="Proxy-DeviceB"
+       style="stroke:#8e44ad;stroke-width:3.125" />
+    <polygon
+       fill="#8e44ad"
+       points="711.7083,477.1146 707.5417,472.9479 711.7083,482.3229 715.875,472.9479 "
+       style="stroke:#8e44ad;stroke-width:3.125"
+       id="polygon47" />
+    <polygon
+       fill="#8e44ad"
+       points="579.1979,76.8229 583.3646,72.6563 573.9896,76.8229 583.3646,80.9896 "
+       style="stroke:#8e44ad;stroke-width:3.125"
+       id="polygon48" />
+    <text
+       fill="#8e44ad"
+       font-family="sans-serif"
+       font-size="13.5417px"
+       lengthAdjust="spacing"
+       textLength="82.0896"
+       x="625.25"
+       y="206.44479"
+       id="text48">Proxied Data</text>
+  </g>
+  <g
+     class="link"
+     data-entity-1="ClientWired"
+     data-entity-2="WebComponent"
+     data-source-line="82"
+     data-uid="lnk34"
+     id="link_ClientWired_WebComponent">
+    <path
+       d="m 65.5833,415.8438 c 0,38.625 0,106.8125 0,106.8125 0,0 222.8542,0 338.2917,0"
+       fill="none"
+       id="ClientWired-to-WebComponent"
+       style="stroke:#2ca02c;stroke-width:1.0417" />
+    <polygon
+       fill="#2ca02c"
+       points="404.9167,522.6563 400.75,526.8229 410.125,522.6563 400.75,518.4896 "
+       style="stroke:#2ca02c;stroke-width:1.0417"
+       id="polygon49" />
+    <text
+       fill="#2ca02c"
+       font-family="sans-serif"
+       font-size="13.5417px"
+       lengthAdjust="spacing"
+       textLength="116.8647"
+       x="66.739601"
+       y="518.38232"
+       id="text49">Request Discovery</text>
+  </g>
+  <path
+     d="m 232.5417,415.8438 c 0,33.3437 0,87.0208 0,87.0208 0,0 99.4166,0 171.2396,0"
+     fill="none"
+     id="ClientWireless-to-WebComponent"
+     style="stroke:#2ca02c;stroke-width:1.0417" />
+  <polygon
+     fill="#2ca02c"
+     points="410.0313,502.8646 400.6563,498.6979 404.8229,502.8646 400.6563,507.0313 "
+     style="stroke:#2ca02c;stroke-width:1.0417"
+     id="polygon50" />
+  <text
+     fill="#2ca02c"
+     font-family="sans-serif"
+     font-size="13.5417px"
+     lengthAdjust="spacing"
+     textLength="116.8647"
+     x="160.07291"
+     y="498.59061"
+     id="text50"
+     transform="translate(77.135201,-2.494011)">Request Discovery</text>
+</svg>

@@ -1,7 +1,7 @@
-# 📡 **eduMDNS**
+# 📡 **edumDNS**
 ### _Secure, access-controlled device discovery across enterprise networks_
 
-eduMDNS is a Rust-based system designed to make mDNS-based discovery (e.g., Chromecast, Apple TV, Playercast) work reliably and securely across multi-subnet, enterprise, and campus networks.  
+edumDNS is a Rust-based system designed to make mDNS-based discovery (e.g., Chromecast, Apple TV, Playercast) work reliably and securely across multi-subnet, enterprise, and campus networks.  
 It provides **on-demand, access-controlled discovery**, backed by remote probes, a central server, and an optional eBPF traffic-proxying layer.
 
 This repository contains **three binaries** and multiple **nested crates**, each with their own focused README files.  
@@ -27,10 +27,10 @@ This README focuses on the **system-level overview**.
 
 # 🧩 System Overview
 
-eduMDNS solves the problem that **mDNS is link-local** and cannot cross subnet boundaries.  
+edumDNS solves the problem that **mDNS is link-local** and cannot cross subnet boundaries.  
 Enterprise networks, especially large campus deployments, make local discovery difficult or impossible.
 
-eduMDNS provides:
+edumDNS provides:
 
 - 🔍 **Secure, on-demand discovery** across any subnet
 - 📡 **Remote probes** to capture real device packets
@@ -121,7 +121,7 @@ The proxy runs **on the same host as the server**, but is a **separate binary** 
 
 ---
 
-## 🌐 How eduMDNS Works
+## 🌐 How edumDNS Works
 
 ### 1. 🛰️ Remote probes
 Probes in remote networks capture mDNS packets from Chromecast, Apple TV, Playercast, etc.  
@@ -146,7 +146,7 @@ For networks requiring full isolation or NAT traversal:
 
 ## 🧪 Deployment Notes
 
-eduMDNS has been successfully deployed across:
+edumDNS has been successfully deployed across:
 
 - Masaryk University’s metropolitan network
 - eduroam SSIDs

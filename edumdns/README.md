@@ -1,6 +1,6 @@
 # edumdns
 
-The main server binary for the EduMDNS system. This crate combines the server, web interface, and database components into a single executable that manages probe connections, handles all commands, provides a user interface, and stores data in a PostgreSQL database.
+The main server binary for the edumDNS system. This crate combines the server, web interface, and database components into a single executable that manages probe connections, handles all commands, provides a user interface, and stores data in a PostgreSQL database.
 
 ## Overview
 
@@ -145,7 +145,7 @@ Both tasks share the same database connection pool and communicate through messa
 
 ## Server Functionality
 
-The server component (`edumdns_server`) provides the core functionality for managing the distributed EduMDNS system:
+The server component (`edumdns_server`) provides the core functionality for managing the distributed edumDNS system:
 
 ### Probe Management
 
@@ -167,7 +167,7 @@ One of the key features is **targeted packet transmission**, which enables contr
 
 #### How It Works
 
-1. **Request Creation**: Administrators create transmit requests through the web interface, specifying:
+1. **Request Creation**: Users create transmit requests through the web interface, specifying:
    - Target device (identified by probe, MAC address, and IP)
    - Target IP/subnet where packets should be transmitted
    - Duration for the transmission
@@ -210,6 +210,3 @@ The server uses message channels to coordinate between components:
 - **Data Channel**: Receives captured packets from probes
 - **Database Channel**: Queues database write operations
 - **WebSocket Channels**: Delivers real-time updates to web clients
-
-This architecture ensures efficient, non-blocking communication between all system components.
-

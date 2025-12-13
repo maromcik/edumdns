@@ -1,6 +1,6 @@
 # edumdns_web
 
-Web interface component of the EduMDNS system, providing a user interface for administrators and users to interact with the system.
+Web interface component of the edumDNS system, providing a user interface for administrators and users to interact with the system.
 
 ## Overview
 

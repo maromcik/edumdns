@@ -1,6 +1,6 @@
 # edumdns_server
 
-Server component of the EduMDNS system that facilitates probe connections and handles all commands from remote probes.
+Server component of the edumDNS system that facilitates probe connections and handles all commands from remote probes.
 
 ## Overview
 

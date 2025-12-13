@@ -1,5 +1,5 @@
 [Unit]
-Description=EduMDNS eBPF Proxy Loader
+Description=edumDNS eBPF Proxy Loader
 After=network-online.target
 Wants=network-online.target
 

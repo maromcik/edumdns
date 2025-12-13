@@ -1,6 +1,6 @@
 # edumdns_core
 
-Shared library crate containing common types, utilities, and the connection actor model used by both the server and probe components of the EduMDNS system.
+Shared library crate containing common types, utilities, and the connection actor model used by both the server and probe components of the edumDNS system.
 
 ## Overview
 

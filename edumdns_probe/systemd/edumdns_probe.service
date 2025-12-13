@@ -1,5 +1,5 @@
 [Unit]
-Description=EduMDNS Probe
+Description=edumDNS Probe
 After=network-online.target
 Wants=network-online.target
 

@@ -88,10 +88,11 @@ It includes three tightly integrated components compiled into a single binary:
 
 #### **🔸 Web Interface**
 - User login & session-based authentication
+- Handling discovery requests and queries to an external database 
 - Probe remote configuration and management
 - Device search and management
 - Packet crafting and editing tools
-- Administration UI for probes, devices, users, and policies
+- Administration UI for probes, devices, packets, users, groups, and permissions
 
 #### **🔸 Database Layer**
 A uniform DB abstraction crate included inside `edumdns`, responsible for:

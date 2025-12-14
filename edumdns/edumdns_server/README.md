@@ -27,11 +27,13 @@ The server component is configured through the main `edumdns.toml` configuration
 - **`server.hostnames`** (optional, default: `["[::]:5000"]`)
   - List of hostname:port addresses to bind the server listener
   - Supports both IPv4 and IPv6 addresses
-  - Use `0.0.0.0:5000` to bind to all IPv4 interfaces or `[::]:5000` for all IPv6 interfaces
-  - Example: `hostnames = ["0.0.0.0:5000", "[::]:5000"]`
+  - Use `0.0.0.0:5000` to bind to all IPv4 interfaces or `[::]:5000` for all IPv4 and IPv6 interfaces
+  - Example: `hostnames = ["127.0.0.1:5000", "[::1]:5000"]`
 
 - **`server.channel_buffer_capacity`** (optional, default: `1000`)
-  - Internal message channel buffer size
+  - Internal message channel buffer size.
+  - Typically, no adjustments should be needed.
+  - Consider lowering the value only if memory requirements are strict
 
 ### Connection Configuration (`[server.connection]`)
 
@@ -41,16 +43,18 @@ The server component is configured through the main `edumdns.toml` configuration
 
 - **`server.connection.buffer_capacity`** (optional, default: `1000`)
   - Connection buffer capacity
+  - Typically, no adjustments should be needed.
+  - Consider lowering the value only if memory requirements are strict
 
 ### Packet Transmission Configuration (`[server.transmit]`)
 
 - **`server.transmit.max_transmit_subnet_size`** (optional, default: `512`)
-  - Maximum subnet size for packet transmission operations
+  - Maximum subnet size for a single packet transmission request
   - Limits the number of devices that can receive transmitted packets in a single operation
 
 - **`server.transmit.transmit_repeat_delay_multiplicator`** (optional, default: `5`)
   - Delay multiplicator for packet repetition
-  - The actual delay is calculated as `transmit_repeat_delay_multiplicator * device_interval`
+  - The actual delay is calculated as `transmit_repeat_delay_multiplicator * device_interval_from_db`
 
 ### eBPF Proxy Configuration (`[server.ebpf]`)
 
@@ -58,11 +62,13 @@ The following settings are used when eBPF proxy functionality is enabled for dev
 
 - **`server.ebpf.proxy_ipv4`** (required for eBPF proxy)
   - IPv4 address used by the eBPF proxy for packet rewriting
-  - This is the source IP address that will appear in packets relayed through the proxy
+  - This is the IP address that will appear in A records of mDNS packets transmitted to a client
+  - Must match the IPv4 address configured for `edumdns_proxy`
 
 - **`server.ebpf.proxy_ipv6`** (required for eBPF proxy)
   - IPv6 address used by the eBPF proxy for packet rewriting
-  - This is the source IP address that will appear in packets relayed through the proxy
+  - This is the IP address that will appear in AAAA records of mDNS packets transmitted to a client
+  - Must match the IPv6 address configured for `edumdns_proxy`
 
 - **`server.ebpf.pin_location`** (optional, default: `"/sys/fs/bpf/edumdns"`)
   - Directory path where eBPF maps are pinned by the proxy
@@ -70,11 +76,11 @@ The following settings are used when eBPF proxy functionality is enabled for dev
   - The server reads the pinned maps from this location to update IP mappings
 
 ### TLS Configuration (`[server.tls]`)
+**Warning**: Running without TLS is not recommended for production use
 
 - **`server.tls.cert_path`** (optional)
   - Path to the TLS certificate file (PEM format)
   - If not set, the server will run without TLS encryption
-  - **Warning**: Running without TLS is not recommended for production use
 
 - **`server.tls.key_path`** (optional)
   - Path to the TLS private key file (PEM format)
@@ -172,35 +178,17 @@ The `ServerManager` uses a main event loop that continuously polls two channels:
 
 The loop uses `try_recv` for immediate processing when packets are available, falling back to `tokio::select!` for awaiting packets when queues are empty. This ensures efficient processing with minimal latency.
 
-### Cache Management
-
-The in-memory packet cache:
-
-- **Structure**: Nested hash maps: `Probe ID → (MAC, IP) → Set<ProbePacket>`
-- **Deduplication**: Prevents storing duplicate packets (based on packet content)
-- **Size Limits**: Clears device cache when it exceeds `BUFFER_SIZE` (1000 packets per device)
-- **Invalidation**: Can be invalidated per probe or per device when data changes
-- **Live Updates**: Forwards new packets to active transmitters in real-time
-
 ### WebSocket Integration
 
-The `ServerManager` maintains a registry of WebSocket sessions:
-
-- **Structure**: `Probe ID → Session ID → Sender<ProbeResponse>`
-- **Registration**: Web interface registers sessions to receive probe updates
-- **Broadcasting**: Can send responses to all sessions for a probe or to a specific session
-- **Cleanup**: Automatically removes empty probe entries when all sessions disconnect
-
+The `ServerManager` maintains a registry of WebSocket sessions. Web interface registers sessions to receive probe updates that can be sent to all sessions for a probe or to a specific session.
 
 ---
 
 ## Targeted Packet Transmission
 
-The `ServerManager` implements targeted packet transmission with comprehensive validation:
+The `ServerManager` implements targeted packet transmission
 
 ### Validation Process
-
-Before starting transmission, the following validations are performed:
 
 1. **Proxy Configuration Check**:
    - If proxy mode is requested but eBPF is not configured, transmission is rejected
@@ -245,22 +233,3 @@ If all validations pass:
    - Clears live update channel
 
 ---
-
-## Message Flow
-
-1. Probes connect to the server via TCP (with optional TLS)
-2. Connection is authenticated and probe is registered
-3. Probes send captured packets and receive commands
-4. `ServerManager` processes packets:
-   - Updates in-memory cache
-   - Queues for database storage
-   - Forwards to active transmitters (if any)
-5. Web interface sends commands through message channels
-6. `ServerManager` routes commands:
-   - To probes (reconnect, configuration)
-   - To transmitters (start, stop, extend)
-   - To database (invalidation)
-7. Server transmits mDNS packets to requesting clients when discovery is enabled
-8. Transmitters automatically clean up when duration expires
-
-

@@ -7,11 +7,12 @@ Web interface component of the edumDNS system, providing a user interface for ad
 The `edumdns_web` crate provides:
 
 - Web-based user interface using Actix Web
+- Public discovery page for requesting device discovery
 - User authentication (local and OpenID Connect)
 - Device management and discovery controls
 - Probe configuration and monitoring
 - Packet viewing and management
-- User and group administration
+- User, group, and permission administration
 - Real-time WebSocket updates for probe status
 
 The web interface uses Minijinja templates for rendering and supports both local authentication and OIDC integration.
@@ -27,8 +28,8 @@ The web component is configured through the main `edumdns.toml` configuration fi
 - **`web.hostnames`** (optional, default: `["[::]:8000"]`)
   - List of hostname:port addresses to bind the web server
   - Supports both IPv4 and IPv6 addresses
-  - Use `0.0.0.0:8000` to bind to all IPv4 interfaces or `[::]:8000` for all IPv6 interfaces
-  - Example: `hostnames = ["0.0.0.0:8000", "[::]:8000"]`
+  - Use `0.0.0.0:8000` to bind to all IPv4 interfaces or `[::]:8000` for all IPv4 and IPv6 interfaces
+  - Example: `hostnames = ["127.0.0.1:8000", "[::1]:8000"]`
 
 ### Application Configuration
 
@@ -114,12 +115,13 @@ These settings are used for integrating with an external database (typically a R
 
 - **`web.external_auth_database.auth_query`** (optional)
   - SQL query template for retrieving access point information
-  - Should use parameterized queries with `$$1` for the IP address parameter
+  - Should use parameterized queries with `$1` for the IP address parameter
   - The query should return a result set with access point information
   - If not set, ACL database queries will be disabled
-  - Example: `auth_query = "SELECT ap FROM log WHERE ip = $$1"`
+  - Example: `auth_query = "SELECT ap_name FROM log WHERE client_ip = $1"`
 
 ### TLS Configuration (`[web.tls]`)
+**Warning**: Running without TLS is not recommended for production use. Alternatively, you can use a reverse proxy like nginx.
 
 - **`web.tls.cert_path`** (optional)
   - Path to the TLS certificate file (PEM format)
@@ -131,33 +133,4 @@ These settings are used for integrating with an external database (typically a R
 
 ---
 
-## Features
 
-### Authentication
-
-- **Local Authentication**: Username/password authentication with session management
-- **OpenID Connect**: Integration with OIDC providers for single sign-on (SSO)
-- **Session Management**: Configurable session expiry (30 days default) with secure cookie support
-
-### User Interface
-
-- **Template Engine**: Minijinja templates with auto-reload support for development
-- **Static Files**: Serves static assets from the configured files directory
-- **WebSocket Support**: Real-time updates for probe status and monitoring
-
-### API Endpoints
-
-The web interface provides RESTful endpoints for:
-
-- **Users**: User management, password updates, group assignments
-- **Probes**: Probe registration, configuration, monitoring, and control
-- **Devices**: Device discovery, publishing, hiding, and packet transmission
-- **Packets**: Packet viewing, creation, and management
-- **Groups**: Group management and permission assignments
-
-### Middleware
-
-- **CORS**: Configurable CORS support
-- **Session**: Cookie-based session management
-- **Identity**: User identity tracking and authentication
-- **OIDC**: OpenID Connect authentication middleware (when configured)

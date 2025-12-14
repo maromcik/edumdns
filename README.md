@@ -5,7 +5,29 @@ edumDNS is a Rust-based system designed to make mDNS-based discovery (e.g., Chro
 It provides **on-demand, access-controlled discovery**, backed by remote probes, a central server, and an optional eBPF traffic-proxying layer.
 
 This repository contains **three binaries** and multiple **nested crates**, each with their own focused README files.  
-This top-level README provides a high-level overview of the project architecture, purpose, and usage.
+
+---
+
+## 🌐 How edumDNS Works
+
+### 1. 🛰️ Remote probes
+Probes in remote networks capture mDNS packets from Chromecast, Apple TV, Playercast, etc.  
+They securely forward these packets to the central server.
+
+### 2. 🖥️ Server & database
+The server parses packets, stores metadata, and exposes them in the web UI.  
+Administrators review and publish devices, set ACLs, and configure policies.
+
+### 3. 🌍 Users request discovery
+A user enters a **device ID** or scans a **short link**.  
+If authorised, the system transmits the device’s mDNS packets into the user’s local network.
+
+### 4. 🔄 Optional proxy mode
+For networks requiring full isolation or NAT traversal:
+- All traffic goes through the eBPF proxy
+- No direct connection is ever made to the device
+- Sessions automatically terminate after a timeout
+
 
 ---
 
@@ -118,28 +140,6 @@ The proxy runs **on the same host as the server**, but is a **separate binary** 
 - Server configures the proxy
 - Proxy handles data plane
 - eBPF ensures high performance and in-kernel filtering
-
----
-
-## 🌐 How edumDNS Works
-
-### 1. 🛰️ Remote probes
-Probes in remote networks capture mDNS packets from Chromecast, Apple TV, Playercast, etc.  
-They securely forward these packets to the central server.
-
-### 2. 🖥️ Server & database
-The server parses packets, stores metadata, and exposes them in the web UI.  
-Administrators review and publish devices, set ACLs, and configure policies.
-
-### 3. 🌍 Users request discovery
-A user enters a **device ID** or scans a **short link**.  
-If authorised, the system transmits the device’s mDNS packets into the user’s local network.
-
-### 4. 🔄 Optional proxy mode
-For networks requiring full isolation or NAT traversal:
-- All traffic goes through the eBPF proxy
-- No direct connection is ever made to the device
-- Sessions automatically terminate after a timeout
 
 ---
 

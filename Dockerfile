@@ -65,7 +65,6 @@ COPY --from=builder /usr/src/app/edumdns/target/release/edumdns /usr/local/bin
 
 COPY ./edumdns/edumdns_web/static ./edumdns_web/static
 COPY ./edumdns/edumdns_web/templates ./edumdns_web/templates
-COPY ./edumdns/edumdns_web/webroot ./edumdns_web/webroot
 
 EXPOSE 8000
 

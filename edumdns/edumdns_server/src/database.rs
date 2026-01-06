@@ -4,23 +4,40 @@
 //! non-blocking writes to the PostgreSQL database using `diesel_async`.
 //! Packet inserts are pipelined and rate-limited with a small in-flight queue.
 
+use crate::error::ServerError;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::ProbePacket;
+use edumdns_core::app_packet::{Id, ProbePacket};
+use edumdns_core::bincode_types::MacAddr;
+use edumdns_db::models::{Device, Packet, PacketTransmitRequest};
 use edumdns_db::repositories::common::DbCreate;
 use edumdns_db::repositories::device::models::CreateDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use edumdns_db::repositories::packet::models::{CreatePacket};
+use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use futures::stream::{FuturesUnordered, StreamExt};
 use log::{debug, error};
 use std::time::Duration;
 use tokio::time::sleep;
+use uuid::Uuid;
 
 pub enum DbCommand {
     StoreDevice(ProbePacket),
     StorePacket(ProbePacket),
-    // RemovePacketTransmitRequest
+    GetDevicePackets {
+        probe_id: Uuid,
+        mac: [u8; 6],
+        ip: ipnetwork::IpNetwork,
+        respond_to: tokio::sync::oneshot::Sender<Result<Vec<Packet>, ServerError>>,
+    },
+    RemovePacketTransmitRequest {
+        request_id: Id,
+        respond_to: tokio::sync::oneshot::Sender<Result<Vec<PacketTransmitRequest>, ServerError>>,
+    },
+    GetAllPacketTransmitRequests {
+        respond_to:
+            tokio::sync::oneshot::Sender<Result<Vec<(Device, PacketTransmitRequest)>, ServerError>>,
+    },
 }
 
 pub struct DatabaseManager {
@@ -46,36 +63,62 @@ impl DatabaseManager {
         loop {
             tokio::select! {
                 Some(command) = self.receiver.recv() => {
-                                match command {
-                                    DbCommand::StoreDevice(device_packet) => {
-                                        Self::store_device_in_database(&self.device_repo, device_packet).await;
-                                    }
-                                    DbCommand::StorePacket(probe_packet) => {
-                                        futs.push(Self::store_packet_in_database(&self.packet_repo, probe_packet));
-                                        if futs.len() > 10 {
-                                            futs.next().await;
-                                        }
-                                    }
-                                }
-                }
-                ret = futs.next() => {
-                    if ret.is_none() {
-                            sleep(Duration::from_millis(1)).await;
+                    match command {
+                        DbCommand::StoreDevice(device_packet) => {
+                            self.store_device_in_database(device_packet).await;
                         }
-                }
+                        DbCommand::StorePacket(probe_packet) => {
+                            futs.push(Self::store_packet_in_database(&self.packet_repo, probe_packet));
+                            if futs.len() > 10 {
+                                futs.next().await;
+                            }
+                        }
+                        DbCommand::GetDevicePackets { probe_id, mac, ip, respond_to} => {
+                            let res = self
+                            .get_device_packets(probe_id, mac, ip)
+                            .await;
+                            if respond_to.send(res).is_err() {
+                                error!("Failed to send response for GetDevicePackets command: {probe_id}; {}; {}", MacAddr::from_octets(mac), ip);
+                            }
+                        }
+                        DbCommand::RemovePacketTransmitRequest{ request_id, respond_to } => {
+                            let res = self
+                            .remove_packet_transmit_request(request_id)
+                            .await;
+                            if respond_to.send(res).is_err() {
+                                error!("Failed to send response for RemovePacketTransmitRequest command: {request_id}");
+                            }
+                        }
+                        DbCommand::GetAllPacketTransmitRequests{ respond_to } => {
+                            let res = self
+                            .device_repo
+                            .get_all_packet_transmit_requests()
+                            .await
+                            .map_err(ServerError::from);
+                            if respond_to.send(res).is_err() {
+                                error!("Failed to send response for GetAllPacketTransmitRequests command");
+                            }
+                        }
+                    }
+            }
+            ret = futs.next() => {
+                if ret.is_none() {
+                        sleep(Duration::from_millis(1)).await;
+                    }
+            }
 
             }
         }
     }
 
-    async fn store_device_in_database(device_repo: &PgDeviceRepository, packet: ProbePacket) {
+    async fn store_device_in_database(&self, packet: ProbePacket) {
         let src_mac = packet
             .packet_metadata
             .datalink_metadata
             .mac_metadata
             .src_mac;
         let src_ip = packet.packet_metadata.ip_metadata.src_ip;
-        let device = device_repo
+        let device = self.device_repo
             .create(&CreateDevice::new_discover(
                 packet.probe_metadata.id.0,
                 src_mac.to_octets(),
@@ -137,5 +180,40 @@ impl DatabaseManager {
                 src_mac, src_ip
             ),
         }
+    }
+
+    pub async fn get_device_packets(
+        &self,
+        probe_id: Uuid,
+        mac: [u8; 6],
+        ip: ipnetwork::IpNetwork,
+    ) -> Result<Vec<Packet>, ServerError> {
+        let packets = self
+            .packet_repo
+            .read_many(&SelectManyPackets::new(
+                None,
+                Some(probe_id),
+                Some(mac),
+                None,
+                Some(ip),
+                None,
+                None,
+                None,
+                None,
+                None,
+            ))
+            .await?;
+
+        Ok(packets)
+    }
+
+    pub async fn remove_packet_transmit_request(
+        &self,
+        request_id: Id,
+    ) -> Result<Vec<PacketTransmitRequest>, ServerError> {
+        self.device_repo
+            .delete_packet_transmit_request(&request_id)
+            .await
+            .map_err(ServerError::from)
     }
 }

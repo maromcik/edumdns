@@ -7,11 +7,12 @@ use crate::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, LocalDataPacket, PacketTransmitRequestPacket,
 };
 use crate::config::ServerConfig;
+use crate::database::DbCommand;
 use crate::error::ServerError;
-use crate::manager::{Proxy};
-use crate::utilities::{get_device_packets, process_packets, rewrite_payload};
+use crate::manager::Proxy;
+use crate::utilities::{process_packets, rewrite_payload};
 use edumdns_core::connection::UdpConnection;
-use edumdns_db::repositories::packet::repository::PgPacketRepository;
+use edumdns_db::models::Packet;
 use ipnetwork::NetworkSize;
 use log::{debug, error, info, trace, warn};
 use std::time::Duration;
@@ -172,11 +173,31 @@ impl PacketTransmitter {
         Ok(())
     }
 
-    pub async fn fetch_packets(
-        &mut self,
-        packet_repo: PgPacketRepository,
-    ) -> Result<(), ServerError> {
-        let packets = get_device_packets(packet_repo, &self.transmit_request).await?;
+    pub async fn fetch_packets(&mut self, db_handle: Sender<DbCommand>) -> Result<(), ServerError> {
+        let chan = tokio::sync::oneshot::channel::<Result<Vec<Packet>, ServerError>>();
+        db_handle
+            .send(DbCommand::GetDevicePackets {
+                probe_id: self.transmit_request.device.probe_id,
+                mac: self.transmit_request.device.mac,
+                ip: self.transmit_request.device.ip,
+                respond_to: chan.0,
+            })
+            .await?;
+
+        let packets = match chan.1.await? {
+            Ok(p) => {
+                info!("Packets found for target: {}", self.transmit_request);
+                p
+            }
+            Err(e) => {
+                warn!(
+                    "No packets found for target: {}: {}",
+                    self.transmit_request, e
+                );
+                return Err(ServerError::from(e));
+            }
+        };
+
         let payloads = process_packets(packets, &self.proxy, self.transmit_request.device.proxy);
         if payloads.is_empty() {
             let warning = "no packets left after processing";

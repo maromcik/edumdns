@@ -17,7 +17,7 @@ use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::TcpConnectionHandle;
-use log::{error, info};
+use log::info;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -43,6 +43,7 @@ pub async fn server_init(
     (tx, rx): (Sender<AppPacket>, Receiver<AppPacket>),
     server_config: ServerConfig,
 ) -> Result<(), ServerError> {
+    load_all_packet_transmit_requests(pool.clone(), tx.clone()).await?;
     spawn_server_tasks(pool.clone(), (tx.clone(), rx), server_config).await?;
     Ok(())
 }
@@ -56,16 +57,18 @@ pub async fn spawn_server_tasks(
     let tracker: SharedProbeTracker = Arc::new(RwLock::new(OrderedMap::new()));
     let data_channel = tokio::sync::mpsc::channel(server_config.channel_buffer_capacity);
     let db_channel = tokio::sync::mpsc::channel(server_config.channel_buffer_capacity);
+
+    let pool_local = pool.clone();
     let probe_handles_local = probe_handles.clone();
     let command_transmitter_local = command_transmitter.clone();
     let server_config_local = server_config.clone();
-    let db_transmitter = db_channel.0.clone();
     let _server_manager_task = tokio::task::spawn(async move {
         let mut manager = ServerManager::new(
             command_transmitter_local,
             command_receiver,
             data_channel.1,
-            db_transmitter,
+            db_channel.0,
+            pool_local,
             probe_handles_local,
             server_config_local,
         );
@@ -91,15 +94,6 @@ pub async fn spawn_server_tasks(
             server_config.connection.global_timeout,
         )
         .await;
-    });
-    let db_transmitter = db_channel.0.clone();
-    let command_transmitter_local = command_transmitter.clone();
-    let _load_transmit_requests_task = tokio::task::spawn(async move {
-        if let Err(e) =
-            load_all_packet_transmit_requests(command_transmitter_local, db_transmitter).await
-        {
-            error!("Failed to load transmit requests from DB: {e}");
-        }
     });
 
     ListenerSpawner::new(

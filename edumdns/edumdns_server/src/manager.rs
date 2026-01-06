@@ -13,6 +13,8 @@ use crate::database::DbCommand;
 use crate::ebpf::EbpfUpdater;
 use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
+use diesel_async::AsyncPgConnection;
+use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::Id;
 use edumdns_core::app_packet::{
     EntityType, NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbePacket,
@@ -20,6 +22,8 @@ use edumdns_core::app_packet::{
 };
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
+use edumdns_db::repositories::device::repository::PgDeviceRepository;
+use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use log::{debug, error, info, warn};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
@@ -99,6 +103,8 @@ pub(crate) struct ServerManager {
     transmitter_tasks: Arc<Mutex<HashMap<Id, PacketTransmitJob>>>,
     probe_handles: ProbeHandles,
     probe_ws_handles: HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<ProbeResponse>>>,
+    pg_device_repository: PgDeviceRepository,
+    pg_packet_repository: PgPacketRepository,
     proxy: Option<Proxy>,
     server_config: ServerConfig,
 }
@@ -125,6 +131,7 @@ impl ServerManager {
         command_receiver: Receiver<AppPacket>,
         data_receiver: Receiver<AppPacket>,
         db_transmitter: Sender<DbCommand>,
+        db_pool: Pool<AsyncPgConnection>,
         handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
         server_config: ServerConfig,
     ) -> Self {
@@ -154,6 +161,8 @@ impl ServerManager {
             transmitter_tasks: Arc::new(Mutex::new(HashMap::new())),
             probe_handles: handles,
             probe_ws_handles: HashMap::new(),
+            pg_device_repository: PgDeviceRepository::new(db_pool.clone()),
+            pg_packet_repository: PgPacketRepository::new(db_pool.clone()),
             proxy,
             server_config,
         }
@@ -545,6 +554,7 @@ impl ServerManager {
         request_packet: PacketTransmitRequestPacket,
         respond_to: tokio::sync::oneshot::Sender<Result<(), ServerError>>,
     ) {
+        let packet_repo = self.pg_packet_repository.clone();
         let transmitter_tasks = self.transmitter_tasks.clone();
         let command_transmitter_local = self.command_transmitter.clone();
         let live_updater_channel =
@@ -577,13 +587,12 @@ impl ServerManager {
             }
         };
 
-        let db_handle_local = self.db_transmitter.clone();
         tokio::spawn(async move {
             if let Err(e) = transmitter.validate().await {
                 let _ = respond_to.send(Err(e));
                 return;
             }
-            if let Err(e) = transmitter.fetch_packets(db_handle_local).await {
+            if let Err(e) = transmitter.fetch_packets(packet_repo).await {
                 let _ = respond_to.send(Err(e));
                 return;
             };
@@ -595,7 +604,7 @@ impl ServerManager {
 
             let task = PacketTransmitterTask::start(transmitter, command_transmitter_local);
             info!("Transmitter task created for target: {}", request_packet);
-
+            
             let job = PacketTransmitJob {
                 packet: request_packet,
                 task,
@@ -623,29 +632,16 @@ impl ServerManager {
     /// Side effects:
     /// - Mutates the `transmitter_tasks` registry and eBPF maps; logs outcomes.
     async fn stop_device_packets(&mut self, request_id: Id) {
+        let device_repo = self.pg_device_repository.clone();
         let proxy = self.proxy.clone();
         let transmitter_tasks = self.transmitter_tasks.clone();
-        let db_handle_local = self.db_transmitter.clone();
         tokio::task::spawn(async move {
-            let chan = tokio::sync::oneshot::channel();
-            if let Err(e) = db_handle_local
-                .send(DbCommand::RemovePacketTransmitRequest {
-                    request_id,
-                    respond_to: chan.0,
-                })
+            if let Err(e) = device_repo
+                .delete_packet_transmit_request(&request_id)
                 .await
             {
-                error!(
-                    "Could not delete packet command to DatabaseManager request ID: {request_id}: {e}"
-                );
+                error!("Could not delete packet transmit request ID: {request_id}: {e}");
             }
-
-            match chan.1.await {
-                Ok(Ok(_)) => info!("Packet transmit request deleted from DB: {request_id}"),
-                Ok(Err(e)) => error!("Could not delete packet request ID: {request_id}: {e}"),
-                Err(e) => error!("Could not process DatabaseCommand request ID: {request_id}: {e}"),
-            }
-
             let Some(job) = transmitter_tasks.lock().await.remove(&request_id) else {
                 warn!("Transmitter task not found for request ID: {}", request_id);
                 return;

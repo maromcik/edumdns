@@ -35,7 +35,6 @@ pub fn validate_user(user: &User) -> Result<(), DbError> {
     Ok(())
 }
 
-
 /// Validates whether a user has the required permission for a given probe.
 ///
 /// This function performs several checks to determine if a user has access:

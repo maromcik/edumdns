@@ -13,7 +13,6 @@ use crate::database::DbCommand;
 use crate::ebpf::EbpfUpdater;
 use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
-use crate::utilities::process_packets;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::Id;
@@ -24,9 +23,7 @@ use edumdns_core::app_packet::{
 use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use edumdns_db::repositories::packet::models::SelectManyPackets;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
-use ipnetwork::NetworkSize;
 use log::{debug, error, info, warn};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
@@ -558,9 +555,7 @@ impl ServerManager {
         respond_to: tokio::sync::oneshot::Sender<Result<(), ServerError>>,
     ) {
         let packet_repo = self.pg_packet_repository.clone();
-        let proxy = self.proxy.clone();
         let transmitter_tasks = self.transmitter_tasks.clone();
-        let server_config_local = self.server_config.clone();
         let command_transmitter_local = self.command_transmitter.clone();
         let live_updater_channel =
             tokio::sync::mpsc::channel(self.server_config.connection.buffer_capacity);
@@ -575,122 +570,45 @@ impl ServerManager {
             ))
             .or_default();
         packet_data.live_updates_transmitter = Some(live_updater_channel.0.clone());
-        let live_updates_receiver = live_updater_channel.1;
-        let live_updates_sender = live_updater_channel.0.clone();
-        tokio::task::spawn(async move {
-            if proxy.is_none() && request_packet.device.proxy {
-                let err = "eBPF is not configured properly; contact your administrator";
-                error!("{err} for target: {request_packet}");
-                let _ = respond_to.send(Err(ServerError::EbpfMapError(err.to_string())));
+
+        let mut transmitter = match PacketTransmitter::new(
+            self.proxy.clone(),
+            request_packet.clone(),
+            live_updater_channel.1,
+            self.server_config.clone(),
+        )
+        .await
+        {
+            Ok(t) => t,
+            Err(e) => {
+                error!("{e}");
+                let _ = respond_to.send(Err(e));
                 return;
             }
+        };
 
-            if request_packet.request.target_ip.size()
-                > NetworkSize::V4(server_config_local.transmit.max_transmit_subnet_size)
-            {
-                let warning = format!(
-                    "the target subnet size ({}) is greater than the maximum allowed ({})",
-                    request_packet.request.target_ip.size(),
-                    server_config_local.transmit.max_transmit_subnet_size
-                );
-                warn!("{warning} for target: {request_packet}");
-                let _ = respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(warning)));
+        tokio::spawn(async move {
+            if let Err(e) = transmitter.validate().await {
+                let _ = respond_to.send(Err(e));
                 return;
             }
-
-            if request_packet.device.proxy
-                && request_packet.request.target_ip.size() > NetworkSize::V4(1)
-            {
-                let warning = "when proxy is enabled, the target IP must have prefix /32 for IPv4 or /128 for IPv6";
-                warn!("{warning} for target: {request_packet}");
-                let _ = respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(
-                    warning.to_string(),
-                )));
+            if let Err(e) = transmitter.fetch_packets(packet_repo).await {
+                let _ = respond_to.send(Err(e));
                 return;
-            }
-
-            let packets = match packet_repo
-                .read_many(&SelectManyPackets::new(
-                    None,
-                    Some(request_packet.device.probe_id),
-                    Some(request_packet.device.mac),
-                    None,
-                    Some(request_packet.device.ip),
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                ))
-                .await
-            {
-                Ok(p) => p,
-                Err(e) => {
-                    warn!("No packets found for target: {request_packet}: {e}");
-                    let _ = respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(
-                        e.to_string(),
-                    )));
-                    return;
-                }
             };
 
-            info!("Packets found for target: {}", request_packet);
-
-            let payloads = process_packets(packets, &proxy, request_packet.device.proxy);
-
-            if payloads.is_empty() {
-                let warning = "no packets left after processing";
-                warn!("{warning} for target: {request_packet}");
-                let _ = respond_to.send(Err(ServerError::DiscoveryRequestProcessingError(
-                    warning.to_string(),
-                )));
+            if let Err(e) = transmitter.configure_ebpf().await {
+                let _ = respond_to.send(Err(e));
                 return;
-            }
-
-            if let Some(p) = &proxy
-                && request_packet.device.proxy
-            {
-                match p
-                    .ebpf_updater
-                    .lock()
-                    .await
-                    .add_ip(request_packet.device.ip, request_packet.request.target_ip)
-                {
-                    Ok(_) => {}
-                    Err(e) => {
-                        let _ = respond_to.send(Err(e));
-                        return;
-                    }
-                }
-            }
-
-            let transmitter = match PacketTransmitter::new(
-                payloads,
-                proxy.and_then(|p| request_packet.device.proxy.then(|| p.proxy_ip.clone())),
-                request_packet.clone(),
-                live_updates_receiver,
-                server_config_local,
-            )
-            .await
-            {
-                Ok(t) => t,
-                Err(e) => {
-                    error!("{e}");
-                    let _ = respond_to.send(Err(e));
-                    return;
-                }
             };
 
-            let task = PacketTransmitterTask::new(
-                transmitter,
-                command_transmitter_local,
-                request_packet.request.id,
-            );
+            let task = PacketTransmitterTask::start(transmitter, command_transmitter_local);
             info!("Transmitter task created for target: {}", request_packet);
+            
             let job = PacketTransmitJob {
                 packet: request_packet,
                 task,
-                channel: live_updates_sender,
+                channel: live_updater_channel.0,
             };
             transmitter_tasks
                 .lock()

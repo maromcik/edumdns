@@ -17,7 +17,7 @@ use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::TcpConnectionHandle;
-use log::{info};
+use log::info;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;

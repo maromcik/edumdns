@@ -8,10 +8,11 @@ use crate::app_packet::{
 };
 use crate::config::ServerConfig;
 use crate::error::ServerError;
-use crate::manager::ProxyIp;
-use crate::utilities::rewrite_payload;
-use edumdns_core::app_packet::Id;
+use crate::manager::{Proxy};
+use crate::utilities::{get_device_packets, process_packets, rewrite_payload};
 use edumdns_core::connection::UdpConnection;
+use edumdns_db::repositories::packet::repository::PgPacketRepository;
+use ipnetwork::NetworkSize;
 use log::{debug, error, info, trace, warn};
 use std::time::Duration;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -45,22 +46,26 @@ impl PacketTransmitterTask {
     ///
     /// Side effects:
     /// - Spawns a Tokio task; upon completion, posts a local stop command.
-    pub fn new(
+    pub fn start(
         mut transmitter: PacketTransmitter,
         command_transmitter: Sender<AppPacket>,
-        request_id: Id,
     ) -> Self {
         let transmitter_task = tokio::task::spawn(async move {
             transmitter.transmit().await;
             info!("Transmitter task finished");
             if let Err(e) = command_transmitter
                 .send(AppPacket::Local(LocalAppPacket::Command(
-                    LocalCommandPacket::StopTransmitDevicePackets(request_id),
+                    LocalCommandPacket::StopTransmitDevicePackets(
+                        transmitter.transmit_request.request.id,
+                    ),
                 )))
                 .await
                 .map_err(ServerError::from)
             {
-                error!("Error sending stop transmit command for request {request_id}: {e}");
+                error!(
+                    "Error sending stop transmit command for request {}: {}",
+                    transmitter.transmit_request.request.id, e
+                );
             }
         });
         Self { transmitter_task }
@@ -78,7 +83,7 @@ pub struct PacketTransmitter {
     pub payloads: Vec<Vec<u8>>,
     /// Optional proxy IP pair; when present, DNS A/AAAA answers in live-updated
     /// payloads are rewritten to these addresses.
-    pub proxy_ip: Option<ProxyIp>,
+    pub proxy: Option<Proxy>,
     /// Original transmit request describing device, target IP/port, interval and duration.
     pub transmit_request: PacketTransmitRequestPacket,
     /// UDP connection wrapper that applies the configured global timeout.
@@ -105,20 +110,82 @@ impl PacketTransmitter {
     /// - `Ok(Self)` when the UDP connection is created successfully.
     /// - `Err(ServerError)` if the UDP connection initialization fails.
     pub async fn new(
-        payloads: Vec<Vec<u8>>,
-        proxy_ip: Option<ProxyIp>,
+        proxy: Option<Proxy>,
         target: PacketTransmitRequestPacket,
         live_updater: Receiver<LocalAppPacket>,
         server_config: ServerConfig,
     ) -> Result<Self, ServerError> {
         Ok(Self {
-            payloads,
-            proxy_ip,
+            payloads: Vec::new(),
+            proxy,
             transmit_request: target.clone(),
             udp_connection: UdpConnection::new(server_config.connection.global_timeout).await?,
             live_updates_receiver: live_updater,
             server_config,
         })
+    }
+
+    pub async fn validate(&self) -> Result<(), ServerError> {
+        if self.proxy.is_none() && self.transmit_request.device.proxy {
+            let err = "eBPF is not configured properly; contact your administrator";
+            let err = ServerError::EbpfMapError(err.to_string());
+            error!("{err} for target: {}", self.transmit_request);
+            return Err(err);
+        }
+
+        if self.transmit_request.request.target_ip.size()
+            > NetworkSize::V4(self.server_config.transmit.max_transmit_subnet_size)
+        {
+            let warning = format!(
+                "the target subnet size ({}) is greater than the maximum allowed ({})",
+                self.transmit_request.request.target_ip.size(),
+                self.server_config.transmit.max_transmit_subnet_size
+            );
+            let warning = ServerError::DiscoveryRequestProcessingError(warning);
+            warn!("{warning} for target: {}", self.transmit_request);
+            return Err(warning);
+        }
+
+        if self.transmit_request.device.proxy
+            && self.transmit_request.request.target_ip.size() > NetworkSize::V4(1)
+        {
+            let warning = "when proxy is enabled, the target IP must have prefix /32 for IPv4 or /128 for IPv6";
+            warn!("{warning} for target: {}", self.transmit_request);
+            let warning = ServerError::DiscoveryRequestProcessingError(warning.to_string());
+            return Err(warning);
+        }
+        Ok(())
+    }
+
+    pub async fn configure_ebpf(&self) -> Result<(), ServerError> {
+        if let Some(p) = &self.proxy
+            && self.transmit_request.device.proxy
+        {
+            return match p.ebpf_updater.lock().await.add_ip(
+                self.transmit_request.device.ip,
+                self.transmit_request.request.target_ip,
+            ) {
+                Ok(_) => Ok(()),
+                Err(e) => Err(e),
+            };
+        }
+        Ok(())
+    }
+
+    pub async fn fetch_packets(
+        &mut self,
+        packet_repo: PgPacketRepository,
+    ) -> Result<(), ServerError> {
+        let packets = get_device_packets(packet_repo, &self.transmit_request).await?;
+        let payloads = process_packets(packets, &self.proxy, self.transmit_request.device.proxy);
+        if payloads.is_empty() {
+            let warning = "no packets left after processing";
+            warn!("{warning} for target: {}", self.transmit_request);
+            let warning = ServerError::DiscoveryRequestProcessingError(warning.to_string());
+            return Err(warning);
+        }
+        self.payloads = payloads;
+        Ok(())
     }
 
     /// Run the transmission loop until duration elapses or a stop condition occurs.
@@ -239,14 +306,14 @@ impl PacketTransmitter {
     /// - Mutates `self.payloads` by pushing new payloads; logs debug messages.
     async fn handle_data_packet(&mut self, packet: LocalDataPacket) {
         match packet {
-            LocalDataPacket::TransmitterLiveUpdateData(payload) => match &self.proxy_ip {
+            LocalDataPacket::TransmitterLiveUpdateData(payload) => match &self.proxy {
                 None => {
                     self.payloads.push(payload);
                     debug!("Packet from live update stored");
                 }
                 Some(proxy_ip) => {
                     if let Some(rewritten_payload) =
-                        rewrite_payload(payload, proxy_ip.ipv4, proxy_ip.ipv6)
+                        rewrite_payload(payload, proxy_ip.proxy_ip.ipv4, proxy_ip.proxy_ip.ipv6)
                     {
                         self.payloads.push(rewritten_payload);
                         debug!("Rewritten and stored packet from live update");

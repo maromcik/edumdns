@@ -7,6 +7,7 @@
 use crate::app_packet::AppPacket;
 use crate::config::ServerConfig;
 use crate::database::DatabaseManager;
+use crate::ebpf::{EbpfUpdater, Proxy, ProxyIp};
 use crate::error::ServerError;
 use crate::listen::ListenerSpawner;
 use crate::manager::ServerManager;
@@ -17,11 +18,11 @@ use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::TcpConnectionHandle;
-use log::info;
+use log::{error, info};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::{Mutex, RwLock};
 
 pub mod app_packet;
 pub mod config;
@@ -63,12 +64,30 @@ pub async fn spawn_server_tasks(
     let command_transmitter_local = command_transmitter.clone();
     let server_config_local = server_config.clone();
     let _server_manager_task = tokio::task::spawn(async move {
+        let proxy = match &server_config_local.ebpf {
+            Some(config) => match EbpfUpdater::new(&config.pin_location) {
+                Ok(updater) => Some(Proxy {
+                    proxy_ip: ProxyIp {
+                        ipv4: config.proxy_ipv4,
+                        ipv6: config.proxy_ipv6,
+                    },
+                    ebpf_updater: Arc::new(Mutex::new(updater)),
+                }),
+                Err(e) => {
+                    error!("Could not create ebpf updater: {}", e);
+                    None
+                }
+            },
+            _ => None,
+        };
+
         let mut manager = ServerManager::new(
             command_transmitter_local,
             command_receiver,
             data_channel.1,
             db_channel.0,
             pool_local,
+            proxy,
             probe_handles_local,
             server_config_local,
         );

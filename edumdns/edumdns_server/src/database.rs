@@ -10,7 +10,7 @@ use edumdns_core::app_packet::ProbePacket;
 use edumdns_db::repositories::common::DbCreate;
 use edumdns_db::repositories::device::models::CreateDevice;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use edumdns_db::repositories::packet::models::{CreatePacket};
+use edumdns_db::repositories::packet::models::CreatePacket;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use futures::stream::{FuturesUnordered, StreamExt};
 use log::{debug, error};

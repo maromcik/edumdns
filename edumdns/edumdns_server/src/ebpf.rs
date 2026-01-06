@@ -7,10 +7,36 @@ use crate::error::ServerError;
 use aya::maps::{HashMap, Map, MapData};
 use ipnetwork::IpNetwork;
 use log::{error, info};
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::Path;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
-/// Maintains references to pinned eBPF maps used for proxying.
+#[derive(Clone)]
+/// Holds proxy configuration and a handle to the eBPF updater.
+///
+/// When proxying is enabled for the server, the server rewrites A/AAAA answers to point to
+/// a proxy IP pair and maintains kernel eBPF maps with client<->device IP
+/// mappings. This struct groups the configured proxy IPs and a shared, mutex-
+/// protected `EbpfUpdater` used to update those maps.
+pub(crate) struct Proxy {
+    /// IPv4/IPv6 pair to which DNS answers will be rewritten.
+    pub(crate) proxy_ip: ProxyIp,
+    /// Shared eBPF maps updater used to add/remove rewrite rules.
+    pub(crate) ebpf_updater: Arc<Mutex<EbpfUpdater>>,
+}
+
+#[derive(Clone)]
+/// Pair of proxy IPs used for DNS A/AAAA rewriting.
+///
+/// These addresses are substituted into outgoing DNS responses when proxying is
+/// enabled. Both IPv4 and IPv6 must be provided.
+pub(crate) struct ProxyIp {
+    /// IPv4 address that replaces A records in DNS payloads.
+    pub(crate) ipv4: Ipv4Addr,
+    /// IPv6 address that replaces AAAA records in DNS payloads.
+    pub(crate) ipv6: Ipv6Addr,
+}
 
 /// Fields:
 /// - `rewrite_map_v4`: pinned `HashMap<u32, u32>` for IPv4 address rewrites. Keys

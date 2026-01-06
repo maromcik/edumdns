@@ -7,8 +7,8 @@
 use crate::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
+use crate::ebpf::Proxy;
 use crate::error::ServerError;
-use crate::manager::Proxy;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::network_packet::ApplicationPacket;

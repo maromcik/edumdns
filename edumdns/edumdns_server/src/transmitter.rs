@@ -7,8 +7,8 @@ use crate::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, LocalDataPacket, PacketTransmitRequestPacket,
 };
 use crate::config::ServerConfig;
+use crate::ebpf::Proxy;
 use crate::error::ServerError;
-use crate::manager::{Proxy};
 use crate::utilities::{get_device_packets, process_packets, rewrite_payload};
 use edumdns_core::connection::UdpConnection;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;

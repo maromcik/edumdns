@@ -10,7 +10,7 @@ use crate::app_packet::{
 };
 use crate::config::ServerConfig;
 use crate::database::DbCommand;
-use crate::ebpf::EbpfUpdater;
+use crate::ebpf::Proxy;
 use crate::error::ServerError;
 use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
 use diesel_async::AsyncPgConnection;
@@ -27,36 +27,9 @@ use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use log::{debug, error, info, warn};
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
-use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{Mutex, RwLock};
-
-#[derive(Clone)]
-/// Holds proxy configuration and a handle to the eBPF updater.
-///
-/// When proxying is enabled for the server, the server rewrites A/AAAA answers to point to
-/// a proxy IP pair and maintains kernel eBPF maps with client<->device IP
-/// mappings. This struct groups the configured proxy IPs and a shared, mutex-
-/// protected `EbpfUpdater` used to update those maps.
-pub(crate) struct Proxy {
-    /// IPv4/IPv6 pair to which DNS answers will be rewritten.
-    pub(crate) proxy_ip: ProxyIp,
-    /// Shared eBPF maps updater used to add/remove rewrite rules.
-    pub(crate) ebpf_updater: Arc<Mutex<EbpfUpdater>>,
-}
-
-#[derive(Clone)]
-/// Pair of proxy IPs used for DNS A/AAAA rewriting.
-///
-/// These addresses are substituted into outgoing DNS responses when proxying is
-/// enabled. Both IPv4 and IPv6 must be provided.
-pub(crate) struct ProxyIp {
-    /// IPv4 address that replaces A records in DNS payloads.
-    pub(crate) ipv4: Ipv4Addr,
-    /// IPv6 address that replaces AAAA records in DNS payloads.
-    pub(crate) ipv6: Ipv6Addr,
-}
 
 /// An in-flight transmit job along with its control channel.
 ///
@@ -132,26 +105,10 @@ impl ServerManager {
         data_receiver: Receiver<AppPacket>,
         db_transmitter: Sender<DbCommand>,
         db_pool: Pool<AsyncPgConnection>,
+        proxy: Option<Proxy>,
         handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
         server_config: ServerConfig,
     ) -> Self {
-        let proxy = match &server_config.ebpf {
-            Some(config) => match EbpfUpdater::new(&config.pin_location) {
-                Ok(updater) => Some(Proxy {
-                    proxy_ip: ProxyIp {
-                        ipv4: config.proxy_ipv4,
-                        ipv6: config.proxy_ipv6,
-                    },
-                    ebpf_updater: Arc::new(Mutex::new(updater)),
-                }),
-                Err(e) => {
-                    error!("Could not create ebpf updater: {}", e);
-                    None
-                }
-            },
-            _ => None,
-        };
-
         Self {
             packets: HashMap::default(),
             command_transmitter,
@@ -604,7 +561,7 @@ impl ServerManager {
 
             let task = PacketTransmitterTask::start(transmitter, command_transmitter_local);
             info!("Transmitter task created for target: {}", request_packet);
-            
+
             let job = PacketTransmitJob {
                 packet: request_packet,
                 task,

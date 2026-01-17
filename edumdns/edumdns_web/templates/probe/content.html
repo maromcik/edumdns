@@ -1,4 +1,4 @@
-<div class="max-w-7xl mx-auto mb-10 md:mb-5">
+<div class="w-full mx-auto mb-10 md:mb-5">
     <div class="flex flex-col justify-center items-center py-6">
         <h2 class="text-4xl font-bold text-sat-xl">Probes</h2>
     </div>
@@ -43,7 +43,7 @@
     </div>
     {% endif %}
 
-    <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards">
+    <div class="overflow-x-auto rounded-lg border border-base bg-cards">
         <table class="w-full divide-y divide-base">
             <thead class="bg-muted/10">
             <tr>
@@ -121,7 +121,7 @@
             </thead>
             <tbody class="divide-y divide-base">
             {% for probe in probes %}
-            <tr class="bg-table rounded-lg transition-colors">
+            <tr class="cursor-pointer rounded-lg bg-table transition-colors" data-href="/probe/{{ probe.id }}">
                 <!-- probe[1] is Probe -->
                 <td class="px-4 py-3 font-mono text-sm text-sat-l whitespace-nowrap">
                     <a href="/probe/{{ probe.id }}" class="text-primary hover:underline">
@@ -232,6 +232,17 @@
 </div>
 
 <script>
+    document.querySelectorAll("tr[data-href]").forEach(row => {
+        row.addEventListener("click", e => {
+            if (
+                e.target.closest("a, button, input, textarea") ||
+                window.getSelection().toString().length > 0
+            ) {
+                return;
+            }
+            window.location = row.dataset.href;
+        });
+    });
     function runSearch() {
         const params = new URLSearchParams();
 

@@ -1,0 +1,58 @@
+# app_log_level="info"        # Log level for application modules
+# all_log_level="info"        # Global log level override for all included crates
+
+[database]
+connection_string="postgres://edumdns:edumdns@localhost/edumdns"   # PostgreSQL connection string
+
+[server]
+# hostnames=["[::]:5000"]                    # Server listen addresses
+# channel_buffer_capacity=1000               # Internal mpsc buffer size
+
+# [server.ebpf]
+# proxy_ipv4=                                # IPv4 used for eBPF proxying
+# proxy_ipv6=                                # IPv6 used for eBPF proxying
+# pin_location="/sys/fs/bpf/edumdns"         # eBPF map/program pin directory
+
+# [server.tls]
+# cert_path=                                 # TLS certificate path
+# key_path=                                  # TLS private key path
+
+[server.connection]
+# global_timeout=10                          # Connection-level timeout (seconds)
+# buffer_capacity=1000                       # Connection and related channels' buffer size
+
+# [server.transmit]
+# max_transmit_subnet_size=512               # Max hosts for subnet-wide mDNS packet transmission
+# transmit_repeat_delay_multiplicator=5      # Delay multiplicator before repeating, resulting delay will be
+                                             # calucalted as transmit_repeat_delay_multiplicator * device interval
+
+[web]
+session_cookie="<secret>"                    # Required session cookie secret
+# hostnames=["[::]:8000"]                    # Web listen addresses
+# site_url="localhost"                       # External site URL used for CORS
+# static_files_dir="edumdns_web"             # Static files directory
+
+# [web.oidc]
+# client_id=                                 # OIDC client ID
+# client_secret=                             # OIDC client secret
+# issuer=                                    # OIDC issuer URL
+# callback_url=                              # OIDC redirect URI
+# new_users_admin=                           # Auto-admin for new OIDC users. Set to true only for evaluation.
+
+# [web.limits]
+# payload_limit=17179869184                  # Max request payload size in
+# form_limit=16777216                        # Max form submission size
+# probe_ping_interaval=1                     # Ping interval for probes (s) from WebSockets
+
+# [web.tls]
+# cert_path=                                 # TLS certificate path
+# key_path=                                  # TLS private key path
+
+# [web.external_auth_database]
+# connection_string=                         # External auth DB Connection string
+# auth_query=                                # External auth SQL query
+
+# [web.session]
+# session_expiration=2592000                 # Session lifetime (seconds)
+# last_visit_deadline=604800                 # Session refresh deadline (seconds)
+# use_secure_cookie=true                     # Enforce Secure cookie flag

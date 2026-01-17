@@ -1,24 +1,28 @@
+//! TCP listener and TLS configuration for accepting probe connections.
+//!
+//! `ListenerSpawner` binds to configured addresses (with or without TLS) and
+//! spawns per-connection tasks that run a `ConnectionManager`.
+
+use crate::ProbeHandles;
 use crate::app_packet::AppPacket;
+use crate::config::ServerConfig;
 use crate::connection::ConnectionManager;
 use crate::error::ServerError;
 use crate::probe_tracker::SharedProbeTracker;
-use crate::{ServerTlsConfig, parse_host};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::bincode_types::Uuid;
-use edumdns_core::connection::TcpConnectionHandle;
-use log::{debug, info, warn};
-use rustls::ServerConfig;
-use rustls_pki_types::pem::PemObject;
-use rustls_pki_types::{CertificateDer, PrivateKeyDer};
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::Duration;
+use edumdns_core::utils::{lookup_hosts, parse_tls_config};
+use log::{debug, error, info, warn};
+use std::net::SocketAddr;
 use tokio::net::TcpListener;
-use tokio::sync::RwLock;
 use tokio::sync::mpsc::Sender;
 
-pub type ProbeHandles = Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>;
+#[derive(Debug, Clone)]
+pub struct ServerTlsConfig {
+    pub cert_path: String,
+    pub key_path: String,
+}
 
 async fn handle_connection(mut connection_manager: ConnectionManager) -> Result<Uuid, ServerError> {
     let uuid = connection_manager.connection_init_server().await?;
@@ -27,71 +31,115 @@ async fn handle_connection(mut connection_manager: ConnectionManager) -> Result<
     Ok(uuid)
 }
 
-pub async fn listen(
+pub struct ListenerSpawner {
     pool: Pool<AsyncPgConnection>,
     command_transmitter: Sender<AppPacket>,
     data_transmitter: Sender<AppPacket>,
     probe_handles: ProbeHandles,
     tracker: SharedProbeTracker,
-    config: Option<ServerTlsConfig>,
-    global_timeout: Duration,
-) -> Result<(), ServerError> {
-    let host = parse_host();
-    let listener = TcpListener::bind(host).await?;
-    info!("Listening on {}", listener.local_addr()?);
-    let server_config = match config {
-        None => None,
-        Some(config) => {
-            let certs =
-                CertificateDer::pem_file_iter(&config.cert_path)?.collect::<Result<Vec<_>, _>>()?;
-            let key = PrivateKeyDer::from_pem_file(&config.key_path)?;
-            rustls::crypto::ring::default_provider()
-                .install_default()
-                .expect("Failed to install rustls crypto provider");
-            Some(
-                ServerConfig::builder()
-                    .with_no_client_auth()
-                    .with_single_cert(certs, key)?,
-            )
-        }
-    };
+    socket_addrs: Vec<SocketAddr>,
+    server_config: ServerConfig,
+}
+impl ListenerSpawner {
+    pub async fn new(
+        pool: Pool<AsyncPgConnection>,
+        command_transmitter: Sender<AppPacket>,
+        data_transmitter: Sender<AppPacket>,
+        probe_handles: ProbeHandles,
+        tracker: SharedProbeTracker,
+        server_config: ServerConfig,
+    ) -> Result<Self, ServerError> {
+        let socket_addrs = lookup_hosts(server_config.hostnames.clone()).await?;
 
-    loop {
-        let (stream, addr) = listener.accept().await?;
-        info!("Connection from {addr}");
-        let connection_manager = match ConnectionManager::new(
-            stream,
-            server_config.clone(),
-            pool.clone(),
-            command_transmitter.clone(),
-            data_transmitter.clone(),
-            probe_handles.clone(),
-            tracker.clone(),
-            global_timeout,
-        )
-        .await
-        {
-            Ok(c) => c,
-            Err(e) => {
-                warn!("Invalid connection from {addr}: {e}");
-                continue;
-            }
-        };
-        let probe_handles_local = probe_handles.clone();
-        tokio::spawn(async move {
-            match handle_connection(connection_manager).await {
-                Ok(uuid) => {
-                    probe_handles_local.write().await.remove(&uuid);
-                    debug!("Probe {uuid} removed from the map");
+        Ok(Self {
+            pool,
+            command_transmitter,
+            data_transmitter,
+            probe_handles,
+            tracker,
+            socket_addrs,
+            server_config,
+        })
+    }
+
+    pub async fn start_listeners(self) -> Result<(), ServerError> {
+        for socket_addr in self.socket_addrs {
+            let pool_local = self.pool.clone();
+            let command_transmitter_local = self.command_transmitter.clone();
+            let data_channel_local = self.data_transmitter.clone();
+            let probe_handles_local = self.probe_handles.clone();
+            let tracker_local = self.tracker.clone();
+            let config_local = self.server_config.clone();
+            tokio::spawn(async move {
+                if let Err(e) = Self::listen(
+                    pool_local,
+                    command_transmitter_local,
+                    data_channel_local,
+                    probe_handles_local,
+                    tracker_local,
+                    config_local,
+                    socket_addr,
+                )
+                .await
+                {
+                    error!("Could not start the server on {socket_addr}: {e}");
                 }
-                Err(err) => {
-                    if let ServerError::ProbeNotAdopted = err {
-                        info!("Client {addr} tried to connect, but probe is not adopted");
-                    } else {
-                        warn!("{err}");
+            });
+        }
+
+        Ok(())
+    }
+
+    pub async fn listen(
+        pool: Pool<AsyncPgConnection>,
+        command_transmitter: Sender<AppPacket>,
+        data_transmitter: Sender<AppPacket>,
+        probe_handles: ProbeHandles,
+        tracker: SharedProbeTracker,
+        config: ServerConfig,
+        hostname: SocketAddr,
+    ) -> Result<(), ServerError> {
+        let listener = TcpListener::bind(hostname).await?;
+        let server_config = parse_tls_config(&config.tls).await?;
+        info!("Server listening on: {}", listener.local_addr()?);
+        loop {
+            let (stream, addr) = listener.accept().await?;
+            info!("Connection from {addr}");
+            let connection_manager = match ConnectionManager::new(
+                stream,
+                server_config.clone(),
+                pool.clone(),
+                command_transmitter.clone(),
+                data_transmitter.clone(),
+                probe_handles.clone(),
+                tracker.clone(),
+                config.connection.global_timeout,
+                config.connection.buffer_capacity,
+            )
+            .await
+            {
+                Ok(c) => c,
+                Err(e) => {
+                    warn!("Invalid connection from {addr}: {e}");
+                    continue;
+                }
+            };
+            let probe_handles_local = probe_handles.clone();
+            tokio::spawn(async move {
+                match handle_connection(connection_manager).await {
+                    Ok(uuid) => {
+                        probe_handles_local.write().await.remove(&uuid);
+                        debug!("Probe {uuid} removed from the map");
+                    }
+                    Err(err) => {
+                        if let ServerError::ProbeNotAdopted = err {
+                            info!("Client {addr} tried to connect, but probe is not adopted");
+                        } else {
+                            warn!("{err}");
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
     }
 }

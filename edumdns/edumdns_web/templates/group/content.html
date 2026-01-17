@@ -1,4 +1,4 @@
-<div class="max-w-7xl mx-auto mb-10 md:mb-5">
+<div class="lg:w-3/4 w-full mx-auto mb-10 md:mb-5">
     <!-- Header Section -->
     <div class="flex flex-col justify-center items-center py-6">
         <h2 class="text-4xl font-bold text-sat-xl">Groups</h2>
@@ -40,7 +40,7 @@
         </form>
     </div>
 
-    <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards">
+    <div class="overflow-x-auto rounded-lg border border-base bg-cards">
         <table class="w-full divide-y divide-base">
             <thead class="bg-muted/10">
             <tr>
@@ -80,7 +80,7 @@
 
             <tbody class="divide-y divide-base">
             {% for group in groups %}
-            <tr class="bg-table rounded-lg transition-colors">
+            <tr class="cursor-pointer rounded-lg bg-table transition-colors" data-href="/group/{{ group.id }}">
                 <td class="px-4 py-3 font-mono text-sm text-sat-l">
                     <a href="/group/{{ group.id }}" class="text-primary hover:underline">
                         {{ group.id }}
@@ -124,6 +124,17 @@
 </div>
 
 <script>
+    document.querySelectorAll("tr[data-href]").forEach(row => {
+        row.addEventListener("click", e => {
+            if (
+                e.target.closest("a, button, input, textarea") ||
+                window.getSelection().toString().length > 0
+            ) {
+                return;
+            }
+            window.location = row.dataset.href;
+        });
+    });
     document.getElementById("filter-button").addEventListener("click", () => {
         const params = new URLSearchParams();
 

@@ -23,7 +23,7 @@ pub struct PacketDetailTemplate<'a> {
     pub user: UserDisplay,
     pub permissions: Permissions,
     pub packet: &'a PacketDisplay,
-    pub device_id: Id,
+    pub device_id: Option<Id>,
 }
 
 #[derive(Serialize)]
@@ -33,4 +33,15 @@ pub struct PacketCreateTemplate {
     pub mac: MacAddr,
     pub ip: IpNetwork,
     pub port: u16,
+}
+
+#[derive(Serialize)]
+pub struct PacketUpdatePayloadTemplate {
+    pub user: UserDisplay,
+    pub id: Id,
+    pub probe_id: Uuid,
+    pub mac: MacAddr,
+    pub ip: IpNetwork,
+    pub port: u16,
+    pub message: String,
 }

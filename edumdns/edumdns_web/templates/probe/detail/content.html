@@ -1,4 +1,4 @@
-<div class="max-w-7xl mx-auto px-4 sm:px-8">
+<div class="2xl:w-5/6 w-full mx-auto px-4 sm:px-8">
     <!-- Header -->
     <div class="flex items-center justify-between">
         <h1 class="text-4xl font-semibold text-sat-xl flex items-center gap-2">
@@ -19,7 +19,6 @@
                     hx-get="/probe/{{ probe.id }}/reconnect"
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
-                    hx-push-url="/probe/{{ probe.id }}"
                     title="Reconnect probe"
             >
                 <i class="fa-solid fa-rotate-right"></i>
@@ -31,7 +30,6 @@
                     hx-get="/probe/{{ probe.id }}/forget"
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
-                    hx-push-url="/probe/{{ probe.id }}"
                     title="Stop (forget) probe"
             >
                 <i class="fa-solid fa-stop"></i>
@@ -43,7 +41,6 @@
                     hx-get="/probe/{{ probe.id }}/adopt"
                     hx-target="#probe-content-area"
                     hx-target-error="#probe-content-area"
-                    hx-push-url="/probe/{{ probe.id }}"
                     title="Resume (adopt) probe"
             >
                 <i class="fa-solid fa-play"></i>
@@ -79,7 +76,7 @@
 
     <!-- Probe Card -->
     <div class="rounded-lg border border-base bg-cards p-6 mb-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             <!-- ID -->
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
@@ -209,11 +206,11 @@
 
     <!-- Permissions Table -->
     {% if user.user.admin %}
-    <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards mb-8">
+    <div class="overflow-x-auto rounded-lg border border-base bg-cards mb-8">
         <div class="flex flex-col justify-center items-center py-4">
             <h2 class="text-3xl font-medium text-sat-xl">Permissions</h2>
         </div>
-        <div class="max-w-7xl overflow-x-auto rounded-lg">
+        <div class="overflow-x-auto rounded-lg">
             <table class="w-full divide-y divide-base">
                 <thead class="bg-muted/10">
                 <tr>
@@ -263,7 +260,7 @@
                 {% for permissions, group in permission_matrix %}
                 <tr class="bg-table rounded-lg transition-colors">
                     <td class="px-4 py-3 text-sm text-sat-l">
-                        {{ group.name }}
+                        <a href="/group/{{ group.id }}">{{ group.name }}</a>
                     </td>
                     {% for perm, checked in permissions %}
                     <td class="px-4 py-3 text-sm text-sat-l text-center">
@@ -461,6 +458,18 @@
                     Port
                 </th>
                 <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Published
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Exclusive
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Proxy
+                </th>
+                <th scope="col"
                     class="px-4 py-3 text-left text-xs text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
                     Discovered At
                 </th>
@@ -480,6 +489,36 @@
                                              class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-port" value="{{ filters.port  | default('') }}"
                                              class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2">
+                    <select id="filter-published" class="w-full rounded-md border border-base px-2 py-1 text-sm">
+                        <option value="" {% if filters.published is none %} selected {% endif %}>All</option>
+                        <option value="true" {% if filters.published is sameas true %} selected {% endif %}>Published
+                        </option>
+                        <option value="false" {% if filters.published is sameas false %} selected {% endif %}>Not
+                            Published
+                        </option>
+                    </select>
+                </td>
+                <td class="px-4 py-2">
+                    <select id="filter-exclusive" class="w-full rounded-md border border-base px-2 py-1 text-sm">
+                        <option value="" {% if filters.exclusive is none %} selected {% endif %}>All</option>
+                        <option value="true" {% if filters.exclusive is sameas true %} selected {% endif %}>Exclusive
+                        </option>
+                        <option value="false" {% if filters.exclusive is sameas false %} selected {% endif %}>Not
+                            Exclusive
+                        </option>
+                    </select>
+                </td>
+                <td class="px-4 py-2">
+                    <select id="filter-proxy" class="w-full rounded-md border border-base px-2 py-1 text-sm">
+                        <option value="" {% if filters.proxy is none %} selected {% endif %}>All</option>
+                        <option value="true" {% if filters.proxy is sameas true %} selected {% endif %}>Proxy
+                        </option>
+                        <option value="false" {% if filters.proxy is sameas false %} selected {% endif %}>No
+                            Proxy
+                        </option>
+                    </select>
+                </td>
                 <td class="px-4 py-2"></td>
                 <td class="px-4 py-2 flex gap-2">
                     <button type="button" id="filter-button"
@@ -495,7 +534,7 @@
             </thead>
             <tbody class="divide-y divide-base">
             {% for device in devices %}
-            <tr class="bg-table rounded-lg transition-colors">
+            <tr class="cursor-pointer rounded-lg bg-table transition-colors" data-href="/device/{{ device.id }}">
                 <td class="px-4 py-3 font-mono text-sm text-sat-l">
                     <a href="/device/{{ device.id }}" class="text-primary hover:underline">
                         {{ device.id }}
@@ -511,6 +550,27 @@
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device.mac }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device.ip }}</td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device.port }}</td>
+                <td class="px-4 py-3 text-sm">
+                    {% if device.published %}
+                    <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
+                    {% else %}
+                    <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-sm">
+                    {% if device.exclusive %}
+                    <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
+                    {% else %}
+                    <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-sm">
+                    {% if device.proxy %}
+                    <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
+                    {% else %}
+                    <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
+                    {% endif %}
+                </td>
                 <td class="px-4 py-3 text-sm text-sat-l">{{ device.discovered_at }}</td>
                 {% if permissions|has_perm("Delete") %}
                 <td class="px-4 py-3 text-sm text-sat-l">
@@ -623,42 +683,71 @@
 
 </div>
 
-
 <script>
-    function runSearch() {
-        const params = new URLSearchParams();
+    window.onpageshow = function (event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    };
+</script>
+<script>
 
-        ["id", "name", "mac", "ip", "port"].forEach(field => {
-            const value = document.getElementById(`filter-${field}`).value.trim();
-            if (value) {
-                params.set(field, value);
-            }
+    function filter_probes() {
+        let filters = ["id", "name","mac","ip","port", "published", "exclusive", "proxy"];
+
+        function runSearch() {
+            const params = new URLSearchParams();
+
+            filters.forEach(field => {
+                const value = document.getElementById(`filter-${field}`).value.trim();
+                if (value) {
+                    params.set(field, value);
+                }
+            });
+
+            // Reset to first page when filtering
+            params.delete("page");
+
+            window.location.search = params.toString();
+        }
+
+
+        // Search button
+        document.getElementById("filter-button").addEventListener("click", runSearch);
+
+        // Reset button
+        document.getElementById("reset-button").addEventListener("click", () => {
+            window.location.href = window.location.pathname;
         });
 
-        // Reset to first page when filtering
-        params.delete("page");
+        // Trigger search on Enter in any filter input
+        filters.forEach(field => {
+            const input = document.getElementById(`filter-${field}`);
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault(); // prevent form-like submit
+                    runSearch();
+                }
+            });
+        });
 
-        window.location.search = params.toString();
     }
 
-    // Search button
-    document.getElementById("filter-button").addEventListener("click", runSearch);
 
-    // Reset button
-    document.getElementById("reset-button").addEventListener("click", () => {
-        window.location.href = window.location.pathname;
-    });
-
-    // Trigger search on Enter in any filter input
-    ["filter-id", "filter-name", "filter-mac", "filter-ip", "filter-port"].forEach(id => {
-        const input = document.getElementById(id);
-        input.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault(); // prevent form-like submit
-                runSearch();
-            }
+    function clickOnDevice() {
+        document.querySelectorAll("tr[data-href]").forEach(row => {
+            row.addEventListener("click", e => {
+                if (
+                    e.target.closest("a, button, input, textarea") ||
+                    window.getSelection().toString().length > 0
+                ) {
+                    return;
+                }
+                window.location = row.dataset.href;
+            });
         });
-    });
+
+    }
 
     function initEditOwnerButton() {
         const editBtn = document.getElementById("edit-owner-btn");
@@ -687,11 +776,16 @@
 
     // Run when page initially loads
     document.addEventListener("DOMContentLoaded", initEditOwnerButton);
+    document.addEventListener("DOMContentLoaded", clickOnDevice);
+    document.addEventListener("DOMContentLoaded", filter_probes);
+
 
     // Re-run whenever HTMX swaps content into #probe-content-area
     document.body.addEventListener("htmx:afterSwap", (evt) => {
         if (evt.detail.target.id === "probe-content-area") {
             initEditOwnerButton();
+            clickOnDevice();
+            filter_probes();
         }
     });
 

@@ -11,7 +11,6 @@ use serde::Serialize;
 #[derive(Serialize)]
 pub struct ProbeTemplate {
     pub user: UserDisplay,
-    pub permissions: Permissions,
     pub probes: Vec<ProbeDisplay>,
     pub page_info: PageInfo,
     pub filters: ProbeQuery,

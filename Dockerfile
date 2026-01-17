@@ -1,3 +1,7 @@
+# Builds the edumdns directory.
+# The file was placed here due to the dependency on the edumdns_core crate, and apparently
+# files from the parent directory cannot be copied over.
+
 FROM rust:1.91 as base
 
 RUN apt-get update
@@ -9,8 +13,21 @@ WORKDIR /usr/src/app/
 
 FROM base AS planner
 
-COPY ./edumdns_core ./edumdns_core
-COPY ./edumdns/ ./edumdns
+COPY ../edumdns_core ./edumdns_core
+
+COPY ./edumdns/edumdns_db/ ./edumdns/edumdns_db
+COPY ./edumdns/edumdns_server/ ./edumdns/edumdns_server
+
+COPY ./edumdns/actix_web_openidconnect ./edumdns/actix_web_openidconnect
+
+COPY ./edumdns/edumdns_web/templates/error.html ./edumdns/edumdns_web/templates/error.html
+COPY ./edumdns/edumdns_web/templates/head.html ./edumdns/edumdns_web/templates/head.html
+COPY ./edumdns/edumdns_web/src ./edumdns/edumdns_web/src
+COPY ./edumdns/edumdns_web/Cargo.toml ./edumdns/edumdns_web/Cargo.toml
+
+COPY ./edumdns/src ./edumdns/src
+COPY ./edumdns/Cargo.toml ./edumdns/Cargo.toml
+COPY ./edumdns/Cargo.lock ./edumdns/Cargo.lock
 
 RUN cd edumdns && cargo chef prepare --recipe-path recipe.json
 
@@ -19,10 +36,22 @@ FROM base as builder
 
 COPY --from=planner /usr/src/app/edumdns/recipe.json edumdns/recipe.json
 
-COPY ./edumdns_core ./edumdns_core
+COPY ../edumdns_core ./edumdns_core
 RUN cd edumdns && cargo chef cook --release --recipe-path recipe.json
 
-COPY ./edumdns/ ./edumdns
+COPY ./edumdns/edumdns_db/ ./edumdns/edumdns_db
+COPY ./edumdns/edumdns_server/ ./edumdns/edumdns_server
+
+COPY ./edumdns/actix_web_openidconnect ./edumdns/actix_web_openidconnect
+
+COPY ./edumdns/edumdns_web/templates/error.html ./edumdns/edumdns_web/templates/error.html
+COPY ./edumdns/edumdns_web/templates/head.html ./edumdns/edumdns_web/templates/head.html
+COPY ./edumdns/edumdns_web/src ./edumdns/edumdns_web/src
+COPY ./edumdns/edumdns_web/Cargo.toml ./edumdns/edumdns_web/Cargo.toml
+
+COPY ./edumdns/src ./edumdns/src
+COPY ./edumdns/Cargo.toml ./edumdns/Cargo.toml
+COPY ./edumdns/Cargo.lock ./edumdns/Cargo.lock
 
 RUN cd edumdns && cargo build --release --bin edumdns
 
@@ -36,7 +65,6 @@ COPY --from=builder /usr/src/app/edumdns/target/release/edumdns /usr/local/bin
 
 COPY ./edumdns/edumdns_web/static ./edumdns_web/static
 COPY ./edumdns/edumdns_web/templates ./edumdns_web/templates
-COPY ./edumdns/edumdns_web/webroot ./edumdns_web/webroot
 
 EXPOSE 8000
 

@@ -1,27 +1,29 @@
 use crate::error::DbError;
 use crate::models::{Packet, User};
 use crate::repositories::common::{
-    DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResultMultiple, DbResultSingle,
+    CountResult, DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResultMultiple, DbResultSingle,
     DbResultSinglePerm, Permission,
 };
-use crate::repositories::packet::models::{CreatePacket, SelectManyPackets, SelectSinglePacket};
-use std::collections::HashSet;
+use crate::repositories::packet::models::{
+    CreatePacket, SelectManyPackets, SelectSinglePacket, UpdatePacket,
+};
 
 use crate::repositories::utilities::{validate_permissions, validate_user};
 use crate::schema;
 use crate::schema::packet::BoxedQuery;
-use crate::schema::{group_probe_permission, group_user, probe, user};
+use crate::schema::user;
 use diesel::pg::Pg;
+use diesel::sql_types::{BigInt, Cidr, Int4, Macaddr, Nullable, Text, Uuid as DieselUuid};
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods,
-    PgTextExpressionMethods, QueryDsl, SelectableHelper,
+    ExpressionMethods, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl, SelectableHelper,
+    sql_query,
 };
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::Id;
-use itertools::Itertools;
 use schema::packet;
+
 #[derive(Clone)]
 pub struct PgPacketRepository {
     pg_pool: Pool<AsyncPgConnection>,
@@ -32,14 +34,44 @@ impl PgPacketRepository {
         Self { pg_pool }
     }
 
-    pub async fn get_packet_count(&self, mut params: SelectManyPackets) -> DbResultSingle<i64> {
+    pub async fn get_packet_count(
+        &self,
+        mut params: SelectManyPackets,
+        user_id: &Id,
+    ) -> DbResultSingle<i64> {
         let mut conn = self.pg_pool.get().await?;
+        let user_entry = user::table
+            .find(user_id)
+            .select(User::as_select())
+            .first(&mut conn)
+            .await?;
+
+        validate_user(&user_entry)?;
         params.pagination = None;
-        build_select_many_query(&params)
-            .count()
-            .get_result(&mut conn)
-            .await
-            .map_err(DbError::from)
+
+        if user_entry.admin {
+            return build_select_many_query(&params)
+                .count()
+                .get_result(&mut conn)
+                .await
+                .map_err(DbError::from);
+        }
+
+        let query = sql_query(include_str!("queries/count.sql"))
+            .bind::<BigInt, _>(user_id)
+            .bind::<Nullable<BigInt>, _>(params.id)
+            .bind::<Nullable<DieselUuid>, _>(params.probe_id)
+            .bind::<Nullable<Macaddr>, _>(params.src_mac)
+            .bind::<Nullable<Macaddr>, _>(params.dst_mac)
+            .bind::<Nullable<Cidr>, _>(params.src_addr)
+            .bind::<Nullable<Cidr>, _>(params.dst_addr)
+            .bind::<Nullable<Int4>, _>(params.src_port)
+            .bind::<Nullable<Int4>, _>(params.dst_port)
+            .bind::<Nullable<Text>, _>(params.payload_string.as_ref());
+
+        let count = query.get_result::<CountResult>(&mut conn).await?;
+
+        Ok(count.count)
     }
 
     pub async fn read_many(&self, params: &SelectManyPackets) -> DbResultMultiple<Packet> {
@@ -66,42 +98,40 @@ impl PgPacketRepository {
             return Ok(packets);
         }
 
-        let query = build_select_many_query(params);
-        let packets = query
-            .inner_join(probe::table)
-            .inner_join(
-                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
-            )
-            .filter(
-                group_probe_permission::permission
-                    .eq(Permission::Read)
-                    .or(group_probe_permission::permission.eq(Permission::Full)),
-            )
-            .inner_join(
-                group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
-            )
-            .filter(group_user::user_id.eq(user_id))
-            .select(Packet::as_select())
-            .load::<Packet>(&mut conn)
-            .await?;
+        let pagination = params.pagination.unwrap_or_default();
 
-        let query = build_select_many_query(params);
-        let owned_packets = query
-            .inner_join(probe::table)
-            .filter(probe::owner_id.eq(user_id))
-            .select(Packet::as_select())
-            .load::<Packet>(&mut conn)
-            .await?;
+        let query = sql_query(include_str!("queries/read_many.sql"))
+            .bind::<BigInt, _>(user_id)
+            .bind::<Nullable<BigInt>, _>(params.id)
+            .bind::<Nullable<DieselUuid>, _>(params.probe_id)
+            .bind::<Nullable<Macaddr>, _>(params.src_mac)
+            .bind::<Nullable<Macaddr>, _>(params.dst_mac)
+            .bind::<Nullable<Cidr>, _>(params.src_addr)
+            .bind::<Nullable<Cidr>, _>(params.dst_addr)
+            .bind::<Nullable<Int4>, _>(params.src_port)
+            .bind::<Nullable<Int4>, _>(params.dst_port)
+            .bind::<Nullable<Text>, _>(params.payload_string.as_ref())
+            .bind::<BigInt, _>(pagination.limit.unwrap_or(i64::MAX))
+            .bind::<BigInt, _>(pagination.offset.unwrap_or(0));
 
-        let mut packets: HashSet<Packet> = HashSet::from_iter(packets);
-        packets.extend(owned_packets);
-
-        let packets = packets
-            .into_iter()
-            .sorted_by_key(|p| p.id)
-            .collect::<Vec<_>>();
-
+        let packets = query.load::<Packet>(&mut conn).await?;
         Ok(packets)
+    }
+
+    pub async fn update_auth(
+        &self,
+        params: &UpdatePacket,
+        user_id: &Id,
+    ) -> DbResultMultiple<Packet> {
+        let mut conn = self.pg_pool.get().await?;
+        let old_probe_id = PacketBackend::select_one(&mut conn, &params.id)
+            .await?
+            .probe_id;
+        validate_permissions(&mut conn, user_id, &old_probe_id, Permission::Update).await?;
+        if let Some(new_probe_id) = &params.probe_id {
+            validate_permissions(&mut conn, user_id, new_probe_id, Permission::Create).await?;
+        }
+        PacketBackend::update(&mut conn, params).await
     }
 }
 
@@ -230,6 +260,17 @@ impl PacketBackend {
     async fn drop(conn: &mut AsyncPgConnection, params: &Id) -> DbResultMultiple<Packet> {
         diesel::delete(packet::table.find(params))
             .get_results(conn)
+            .await
+            .map_err(DbError::from)
+    }
+
+    async fn update(
+        conn: &mut AsyncPgConnection,
+        params: &UpdatePacket,
+    ) -> DbResultMultiple<Packet> {
+        diesel::update(packet::table.find(params.id))
+            .set(params)
+            .get_results::<Packet>(conn)
             .await
             .map_err(DbError::from)
     }

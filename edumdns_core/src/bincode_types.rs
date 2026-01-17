@@ -1,3 +1,14 @@
+//! These types provide bincode/serde representations for types that 
+//! did not implement these traits by default.
+//!
+//! Provided types:
+//! - `MacAddr` — wrapper over `pnet::datalink::MacAddr` with `bincode` encode/decode,
+//!   `serde` serialize/deserialize, and convenience helpers.
+//! - `IpNetwork` — wrapper over `ipnetwork::IpNetwork` used to carry IPs with prefix.
+//! - `Uuid` — wrapper over `uuid::Uuid` that implements `bincode` traits.
+//!
+//! These wrappers make network-facing structures portable across processes and crates
+//! while avoiding direct dependencies on external types in the wire format.
 use bincode::enc::Encoder;
 use ipnetwork::{Ipv4Network, Ipv6Network};
 use serde::de::Visitor;

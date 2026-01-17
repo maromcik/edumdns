@@ -84,7 +84,16 @@ impl GroupProbePermission {
 }
 
 #[derive(
-    Serialize, Deserialize, Queryable, Selectable, Identifiable, Eq, PartialEq, Hash, Debug,
+    Serialize,
+    Deserialize,
+    Queryable,
+    Selectable,
+    QueryableByName,
+    Identifiable,
+    Eq,
+    PartialEq,
+    Hash,
+    Debug,
 )]
 #[diesel(table_name = crate::schema::probe)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -119,6 +128,7 @@ pub struct ProbeConfig {
     Selectable,
     Identifiable,
     Associations,
+    QueryableByName,
     Hash,
     Eq,
     PartialEq,
@@ -139,6 +149,7 @@ pub struct Device {
     pub interval: i64,
     pub published: bool,
     pub proxy: bool,
+    pub exclusive: bool,
     pub acl_src_cidr: Option<ipnetwork::IpNetwork>,
     pub acl_pwd_hash: Option<String>,
     pub acl_pwd_salt: Option<String>,
@@ -153,6 +164,7 @@ pub struct Device {
     Selectable,
     Identifiable,
     Associations,
+    QueryableByName,
     Debug,
     Eq,
     PartialEq,

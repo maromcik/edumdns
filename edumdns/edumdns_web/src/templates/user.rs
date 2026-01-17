@@ -1,4 +1,3 @@
-use actix_csrf::extractor::CsrfToken;
 use crate::forms::user::UserQuery;
 use crate::templates::PageInfo;
 use edumdns_db::models::{Group, User};

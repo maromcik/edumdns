@@ -27,6 +27,8 @@ pub struct DeviceQuery {
     pub published: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub proxy: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub exclusive: Option<bool>,
 }
 
 impl From<DeviceQuery> for SelectManyDevices {
@@ -40,6 +42,7 @@ impl From<DeviceQuery> for SelectManyDevices {
             name: value.name,
             published: value.published,
             proxy: value.proxy,
+            exclusive: value.exclusive,
             pagination: Some(Pagination::default_pagination(value.page)),
         }
     }
@@ -93,6 +96,8 @@ pub struct UpdateDeviceForm {
     pub published: bool,
     #[serde(default)]
     pub proxy: bool,
+    #[serde(default)]
+    pub exclusive: bool,
 }
 
 impl UpdateDeviceForm {
@@ -120,6 +125,7 @@ impl UpdateDeviceForm {
             acl_pwd_hash: self.acl_password,
             acl_pwd_salt: None,
             proxy: Some(self.proxy),
+            exclusive: Some(self.exclusive),
         })
     }
 }

@@ -1,3 +1,5 @@
+//! Code in this module was taken over and modified.
+//! Original source: https://github.com/firezone/firezone/blob/21ee0a52a840b03b6c214fb332ec18d46c0c1e35/rust/relay/ebpf-turn-router/src/try_handle_turn/checksum.rs
 //! Incremental updates to Internet checksums.
 //!
 //! The Internet checksum is the one's complement of the one's complement sum of certain 16-bit words.

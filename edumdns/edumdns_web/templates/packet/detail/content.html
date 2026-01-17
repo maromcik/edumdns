@@ -1,4 +1,4 @@
-<div class="max-w-7xl mx-auto px-4 sm:px-8 ">
+<div class="2xl:w-5/6 w-full mx-auto px-4 sm:px-8 ">
     <!-- Header -->
     <div class="flex items-center justify-between">
         <h1 class="text-4xl font-semibold text-sat-l">Packet Detail</h1>
@@ -21,87 +21,262 @@
             <i class="fa-solid fa-trash"></i>
         </button>
         {% endif %}
+        {% if permissions|has_perm("Update") %}
+        <button hx-get="/packet/{{ packet.id }}/update-payload"
+                hx-target="#content-area"
+                hx-push-url="/packet/{{ packet.id }}/update-payload"
+                hx-target-error="#content-area"
+                class="flex items-center justify-center w-10 h-10 bg-acc hover:bg-acc-l rounded-md text-button shadow-md"
+                title="Edit packet">
+            <i class="fa-solid fa-pencil"></i>
+        </button>
+        {% endif %}
     </div>
     <!-- Packet Card -->
-    <div class="rounded-lg border border-base bg-cards p-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <!-- ID -->
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">ID</span>
                 <span class="font-mono text-code"><code>{{ packet.id }}</code></span>
             </div>
-
             <!-- Probe ID -->
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">Probe ID</span>
-                <span class="font-mono text-code">
-          <a class="underline text-code hover:text-acc-xl" href="/probe/{{ packet.probe_id }}"><code>{{ packet.probe_id }}</code></a>
+                <span class="font-mono">
+          <a class="hover:underline" href="/probe/{{ packet.probe_id }}">{{ packet.probe_id }}</a>
         </span>
             </div>
-
             <!-- Device ID -->
             <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Device ID</span>
-                <span class="font-mono text-code">
-          <a class="underline text-code hover:text-acc-xl"
-             href="/device/{{ device_id }}"><code>{{ device_id }}</code></a>
-        </span>
+                <span class="text-xs uppercase tracking-wide text-sat-m">Device</span>
+                <span id="device-id-field" class="font-mono text-code flex items-center gap-2">
+                    {% if device_id is none %}
+                      <span class="text-muted-foreground text-sat-m">—</span>
+                    {% else %}
+                      <a href="/device/{{ device_id }}" id="device-id-link">{{ device_id }}</a>
+                    {% endif %}
+                    {% if permissions|has_perm("Update") %}
+                      <button
+                              id="edit-device-id-btn"
+                              class="text-xs text-acc hover:text-acc-xl"
+                              title="Edit Device"
+                              type="button"
+                      >
+                        <i class="fa-solid fa-pen"></i>
+                      </button>
+                    {% endif %}
+                </span>
             </div>
-
-            <!-- Source MAC -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Source MAC</span>
-                <span class="font-mono text-code"><code>{{ packet.src_mac }}</code></span>
-            </div>
-
-            <!-- Destination MAC -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Destination MAC</span>
-                <span class="font-mono text-code"><code>{{ packet.dst_mac }}</code></span>
-            </div>
-
-            <!-- Source Address -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Source Address</span>
-                <span class="font-mono text-code"><code>{{ packet.src_addr }}</code></span>
-            </div>
-
-            <!-- Destination Address -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Destination Address</span>
-                <span class="font-mono text-code"><code>{{ packet.dst_addr }}</code></span>
-            </div>
-
-            <!-- Source Port -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Source Port</span>
-                <span class="text-code"><code>{{ packet.src_port }}</code></span>
-            </div>
-
-            <!-- Destination Port -->
-            <div class="flex flex-col">
-                <span class="text-xs uppercase tracking-wide text-sat-m">Destination Port</span>
-                <span class="font-mono text-code"><code>{{ packet.dst_port }}</code></span>
-            </div>
-
             <div class="flex flex-col">
                 <span class="text-xs uppercase tracking-wide text-sat-m">Captured at</span>
                 <span class="text-sat-l">{{ packet.captured_at }}</span>
             </div>
         </div>
+    </div>
 
-        <!-- Payload -->
-        <div class="mt-6">
-            <h3 class="text-2xl font-medium text-sat-l">Payload</h3>
-            {% if  packet.payload | length > 0 %}
-            <div class="rounded-lg border border-base p-2 overflow-x-auto">
-                    <pre><code>{{- packet.payload -}}</code></pre>
+<!--    <div class="rounded-lg border border-base bg-cards p-6 mb-8">-->
+<!--        <h3 class="text-2xl font-medium mb-4 text-sat-l">Packet Metadata</h3>-->
+<!--        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">-->
+
+<!--            &lt;!&ndash; Source MAC &ndash;&gt;-->
+<!--            <div class="flex flex-col">-->
+<!--                <span class="text-xs uppercase tracking-wide text-sat-m">Source MAC</span>-->
+<!--                <span class="font-mono text-code"><code>{{ packet.src_mac }}</code></span>-->
+<!--            </div>-->
+
+<!--            &lt;!&ndash; Destination MAC &ndash;&gt;-->
+<!--            <div class="flex flex-col">-->
+<!--                <span class="text-xs uppercase tracking-wide text-sat-m">Destination MAC</span>-->
+<!--                <span class="font-mono text-code"><code>{{ packet.dst_mac }}</code></span>-->
+<!--            </div>-->
+
+<!--            &lt;!&ndash; Source Address &ndash;&gt;-->
+<!--            <div class="flex flex-col">-->
+<!--                <span class="text-xs uppercase tracking-wide text-sat-m">Source Address</span>-->
+<!--                <span class="font-mono text-code"><code>{{ packet.src_addr }}</code></span>-->
+<!--            </div>-->
+
+<!--            &lt;!&ndash; Destination Address &ndash;&gt;-->
+<!--            <div class="flex flex-col">-->
+<!--                <span class="text-xs uppercase tracking-wide text-sat-m">Destination Address</span>-->
+<!--                <span class="font-mono text-code"><code>{{ packet.dst_addr }}</code></span>-->
+<!--            </div>-->
+
+<!--            &lt;!&ndash; Source Port &ndash;&gt;-->
+<!--            <div class="flex flex-col">-->
+<!--                <span class="text-xs uppercase tracking-wide text-sat-m">Source Port</span>-->
+<!--                <span class="text-code"><code>{{ packet.src_port }}</code></span>-->
+<!--            </div>-->
+
+<!--            &lt;!&ndash; Destination Port &ndash;&gt;-->
+<!--            <div class="flex flex-col">-->
+<!--                <span class="text-xs uppercase tracking-wide text-sat-m">Destination Port</span>-->
+<!--                <span class="font-mono text-code"><code>{{ packet.dst_port }}</code></span>-->
+<!--            </div>-->
+
+<!--            <div class="flex flex-col">-->
+<!--                <span class="text-xs uppercase tracking-wide text-sat-m">Captured at</span>-->
+<!--                <span class="text-sat-l">{{ packet.captured_at }}</span>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--    </div>-->
+
+    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
+        <h3 class="text-2xl font-medium mb-4 text-sat-l">Packet metadata</h3>
+        <p class="text-xs text-sat-m mt-1">Change these settings may reassign the packet to a different device.</p>
+        <form
+                method="post"
+                hx-post="/packet/update"
+                hx-target="#content-area"
+                hx-target-error="#content-area"
+                class="gap-4"
+        >
+            <input type="hidden" id="packet_id" name="id" value="{{ packet.id }}"/>
+
+            <div class="flex flex-col">
+                <label for="probe_id" class="text-xs uppercase tracking-wide text-forms">Probe ID</label>
+                <input
+                        id="probe_id"
+                        name="probe_id"
+                        value="{{ packet.probe_id }}"
+                        class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                        required
+                />
             </div>
-            {% else %}
-            <div class="rounded-lg border border-base bg-panes p-2 text-sat-m">
-                — No payload —
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex flex-col">
+                    <label for="src_mac" class="text-xs uppercase tracking-wide text-forms mt-4">Source MAC</label>
+                    <input
+                            id="src_mac"
+                            name="src_mac"
+                            value="{{ packet.src_mac }}"
+                            class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                            required
+                    />
+                </div>
+
+                <div class="flex flex-col">
+                    <label for="src_mac" class="text-xs uppercase tracking-wide text-forms mt-4">Destination MAC</label>
+                    <input
+                            id="dst_mac"
+                            name="dst_mac"
+                            value="{{ packet.dst_mac }}"
+                            class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                            required
+                    />
+                </div>
+
+                <div class="flex flex-col">
+                    <label for="src_addr" class="text-xs uppercase tracking-wide text-forms mt-4">Source Address</label>
+                    <input
+                            id="src_addr"
+                            name="src_addr"
+                            value="{{ packet.src_addr }}"
+                            class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                            required
+                    />
+                </div>
+
+                <div class="flex flex-col">
+                    <label for="dst_addr" class="text-xs uppercase tracking-wide text-forms mt-4">Destination Address</label>
+                    <input
+                            id="dst_addr"
+                            name="dst_addr"
+                            value="{{ packet.dst_addr }}"
+                            class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                            required
+                    />
+                </div>
+
+                <div class="flex flex-col">
+                    <label for="src_port" class="text-xs uppercase tracking-wide text-forms mt-4">Source Port</label>
+                    <input
+                            id="src_port"
+                            name="src_port"
+                            value="{{ packet.src_port }}"
+                            class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                            required
+                    />
+                </div>
+
+                <div class="flex flex-col">
+                    <label for="dst_port" class="text-xs uppercase tracking-wide text-forms mt-4">Destination Port</label>
+                    <input
+                            id="dst_port"
+                            name="dst_port"
+                            value="{{ packet.dst_port }}"
+                            class="mt-1 rounded-md border border-base bg-panes px-3 py-2 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+                            required
+                    />
+                </div>
+
+            </div>
+            {% if permissions|has_perm("Update") %}
+            <!-- Actions -->
+            <div class="md:col-span-2 flex items-center gap-2 pt-2">
+                <button
+                        type="submit"
+                        class="inline-flex items-center rounded-md bg-acc px-4 py-2 text-sm font-medium text-button transition-colors"
+                >
+                    Save
+                </button>
+                <button
+                        type="reset"
+                        class="inline-flex items-center rounded-md bg-acc-l px-4 py-2 text-sm font-medium text-button transition-colors"
+                >
+                    Reset
+                </button>
             </div>
             {% endif %}
+        </form>
+    </div>
+
+
+    <!-- Payload -->
+    <div class="rounded-lg border border-base bg-cards p-6 mb-8">
+        <h3 class="text-2xl font-medium text-sat-l">Payload</h3>
+        {% if packet.payload | length > 0 %}
+        <div class="rounded-lg overflow-x-auto">
+            <pre><code>{{- packet.payload -}}</code></pre>
         </div>
+        {% else %}
+        <div class="rounded-lg bg-panes text-sat-m">
+            — No payload —
+        </div>
+        {% endif %}
     </div>
 </div>
+
+
+<script>
+
+    function initEditDeviceButton() {
+        const editBtn = document.getElementById("edit-device-id-btn");
+        if (!editBtn) return;
+
+        editBtn.addEventListener("click", () => {
+            const deviceField = document.getElementById("device-id-field");
+            const packetId = "{{ packet.id }}";
+
+            deviceField.innerHTML = `
+          <form method="post" action="/packet/reassign" class="flex items-center gap-2">
+            <input type="hidden" name="packet_id" value="${packetId}">
+            <input
+              type="number"
+              name="device_id"
+              class="rounded-md border border-base bg-panes px-2 py-1 w-24 text-sat-l focus:outline-none focus:ring-2 focus:ring-acc"
+              placeholder="ID"
+            />
+            <button type="submit" title="Save" class="text-xs text-green-600 hover:text-green-800">
+              <i class="fa-solid fa-check"></i>
+            </button>
+          </form>
+        `;
+        });
+    }
+
+    // Run when page initially loads
+    document.addEventListener("DOMContentLoaded", initEditDeviceButton);
+
+</script>

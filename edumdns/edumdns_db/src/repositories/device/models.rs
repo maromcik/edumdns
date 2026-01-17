@@ -19,6 +19,7 @@ pub struct SelectManyDevices {
     pub name: Option<String>,
     pub published: Option<bool>,
     pub proxy: Option<bool>,
+    pub exclusive: Option<bool>,
     pub pagination: Option<Pagination>,
 }
 
@@ -32,6 +33,7 @@ impl SelectManyDevices {
         name: Option<&String>,
         published: Option<bool>,
         proxy: Option<bool>,
+        exclusive: Option<bool>,
         pagination: Option<Pagination>,
     ) -> Self {
         Self {
@@ -43,6 +45,7 @@ impl SelectManyDevices {
             name: name.map(|s| s.to_string()),
             published,
             proxy,
+            exclusive,
             pagination,
         }
     }
@@ -110,6 +113,7 @@ pub struct DeviceDisplay {
     pub interval: i64,
     pub published: bool,
     pub proxy: bool,
+    pub exclusive: bool,
     pub acl_src_cidr: Option<IpNetwork>,
     pub acl_pwd_hash: Option<String>,
     pub acl_ap_hostname_regex: Option<String>,
@@ -129,6 +133,7 @@ impl From<Device> for DeviceDisplay {
             interval: value.interval,
             published: value.published,
             proxy: value.proxy,
+            exclusive: value.exclusive,
             acl_src_cidr: value.acl_src_cidr,
             acl_pwd_hash: value.acl_pwd_hash,
             acl_ap_hostname_regex: value.acl_ap_hostname_regex,
@@ -192,6 +197,7 @@ pub struct UpdateDevice {
     pub interval: Option<i64>,
     pub published: Option<bool>,
     pub proxy: Option<bool>,
+    pub exclusive: Option<bool>,
     #[diesel(treat_none_as_null = true)]
     pub acl_src_cidr: Option<IpNetwork>,
     #[diesel(treat_none_as_null = true)]

@@ -1,5 +1,18 @@
+//! Zero-copy packet parsing and rewriting across Ethernet/IP/Transport layers.
+//!
+//! This module provides a layered view over mutable packet buffers and utilities
+//! to inspect, rewrite, and fix checksums/lengths while moving between layers:
+//! - `DataLinkPacket`, `IpPacket`, and `TransportPacket` wrap mutable pnet packets
+//! - `NetworkPacket` trait offers a common interface (payload, next layer, set_payload)
+//! - `FixablePacket` ensures header fields are consistent after payload changes
+//! - `ApplicationPacket` extracts application data (currently DNS via hickory)
+//! - Rewrite helpers integrate with `rewrite` types to adjust MAC/IP/ports/VLAN
+//!
+//! These primitives are used to turn raw frames into `ProbePacket`s and to modify
+//! payloads for proxying or replay.
+use crate::app_packet::HickoryDnsPacket;
 use crate::bincode_types::{IpNetwork, MacAddr};
-use crate::error::{CoreError};
+use crate::error::CoreError;
 use crate::metadata::{IpMetadata, MacMetadata, PortMetadata, VlanMetadata};
 use crate::rewrite::{
     DataLinkRewrite, IpRewrite, PortRewrite, rewrite_ipv4, rewrite_ipv6, rewrite_mac, rewrite_tcp,
@@ -20,22 +33,95 @@ use pnet::packet::vlan::MutableVlanPacket;
 use pnet::packet::{MutablePacket, Packet};
 use std::net::{Ipv4Addr, Ipv6Addr};
 
+/// Trait for packet layers that can fix dependent header fields after mutation.
+///
+/// Implementors adjust size- and checksum-related header fields so the packet
+/// remains valid after modifying its payload or nested layers. Typical
+/// implementors are IP (v4/v6) and transport (UDP/TCP) layers.
 pub trait FixablePacket {
+    /// Fix all dependent fields for this layer.
+    ///
+    /// This is a convenience method that updates both the payload length and the
+    /// checksum. When `payload_len` is:
+    /// - `Some(n)` — uses the explicit payload length `n` (in bytes) when
+    ///   updating header length fields.
+    /// - `None` — derives the payload length from the current buffer/state.
     fn fix(&mut self, payload_len: Option<usize>);
+
+    /// Update header fields that depend on the payload length.
+    ///
+    /// For example, IP `total_length` or UDP `length` fields. The value must be
+    /// the length of the payload carried by this layer (not including the header
+    /// itself), expressed in bytes.
     fn fix_payload_length(&mut self, payload_len: usize);
+
+    /// Recompute and set the checksum for this layer.
+    ///
+    /// Implementations should calculate the checksum over the current header and
+    /// payload (and pseudo‑header where applicable, e.g., UDP/TCP over IPv4/IPv6)
+    /// and write it back to the packet.
     fn fix_checksum(&mut self);
 }
 
+/// Common interface for navigating and mutating layered network packets.
+///
+/// Implemented by datalink, IP, and transport layer wrappers to provide a
+/// uniform way to:
+/// - traverse to the next layer (`get_next_layer`)
+/// - access or replace the payload (`get_payload`, `get_mut_payload`, `set_payload`)
+/// - access the entire serialized packet bytes (`get_packet`, `get_mut_packet`)
+///
+/// Lifetimes and associated types:
+/// - `ThisLayer<'a>` is the concrete type of the current layer (e.g.,
+///   `DataLinkPacket<'a>`, `IpPacket<'a>`, `TransportPacket<'a>`), parameterized
+///   by the packet buffer lifetime.
+/// - `NextLayer<'a>` is the type returned by `get_next_layer` for the layer
+///   below; for example, `Option<IpPacket<'a>>` when called on a datalink layer.
+///   The additional `where Self: 'a` bound makes the relationship explicit for
+///   implementors.
 pub trait NetworkPacket {
+    /// Concrete type of this layer for the given lifetime.
     type ThisLayer<'a>;
+
+    /// Concrete type of the next/lower layer for the given lifetime.
     type NextLayer<'a>
     where
         Self: 'a;
+
+    /// Return the next (lower) protocol layer parsed over the current payload.
+    ///
+    /// For example, when implemented on `DataLinkPacket`, this attempts to parse
+    /// an `IpPacket` from the Ethernet/VLAN payload, returning `None` if the
+    /// EtherType isn't IPv4/IPv6. For IP it returns a transport packet (UDP/TCP/ICMP).
+    ///
+    /// Returns a type determined by `NextLayer<'a>`.
     fn get_next_layer<'a>(&'a mut self) -> Self::NextLayer<'a>;
+
+    /// Mutable view into the payload carried by this layer (bytes after header).
+    ///
+    /// The slice is tied to the underlying buffer and reflects any subsequent
+    /// mutations to the packet.
     fn get_mut_payload(&mut self) -> &mut [u8];
+
+    /// Immutable view into the payload carried by this layer.
     fn get_payload(&self) -> &[u8];
+
+    /// Mutable view into the entire serialized packet of this layer (header+payload).
+    ///
+    /// Use this when lower-level operations need to read/modify header fields
+    /// directly or when passing the buffer to APIs that expect a full packet.
     fn get_mut_packet(&mut self) -> &mut [u8];
+
+    /// Immutable view into the entire serialized packet of this layer (header+payload).
     fn get_packet(&self) -> &[u8];
+
+    /// Replace the payload bytes for this layer.
+    ///
+    /// Caller responsibilities:
+    /// - Ensure header fields that depend on payload length/checksum are updated
+    ///   afterwards (e.g., call `FixablePacket::fix` on the appropriate layer).
+    /// - Maintain invariants for the next layer (e.g., replacing UDP payload with
+    ///   bytes that still represent a valid DNS message if expected upstream).
     fn set_payload(&mut self, payload: &[u8]);
 }
 
@@ -172,8 +258,9 @@ fn get_ip_packet(ether_type: EtherType, payload: &'_ mut [u8]) -> Option<IpPacke
 
 impl<'a> DataLinkPacket<'a> {
     pub fn from_slice(slice: &'a mut [u8]) -> Result<DataLinkPacket<'a>, CoreError> {
-        let new_packet = MutableEthernetPacket::new(slice).ok_or(CoreError::PacketConstructionError(
-            "Could not construct an EthernetPacket".to_string()))?;
+        let new_packet = MutableEthernetPacket::new(slice).ok_or(
+            CoreError::PacketConstructionError("Could not construct an EthernetPacket".to_string()),
+        )?;
         Ok(DataLinkPacket::EthPacket(new_packet))
     }
 
@@ -181,7 +268,9 @@ impl<'a> DataLinkPacket<'a> {
         value: &'a mut [u8],
         packet: &EthernetPacket,
     ) -> Result<DataLinkPacket<'a>, CoreError> {
-        let mut new_packet = MutableEthernetPacket::new(&mut value[..]).ok_or(CoreError::PacketConstructionError("Could not construct an EthernetPacket".to_string()))?;
+        let mut new_packet = MutableEthernetPacket::new(&mut value[..]).ok_or(
+            CoreError::PacketConstructionError("Could not construct an EthernetPacket".to_string()),
+        )?;
         new_packet.clone_from(packet);
         Ok(DataLinkPacket::EthPacket(new_packet))
     }
@@ -616,7 +705,7 @@ impl<'a> ApplicationPacket<'a> {
 
     pub fn read_content(&self) -> String {
         match self.application_packet_type {
-            ApplicationPacketType::DnsPacket(ref packet) => packet.to_string(),
+            ApplicationPacketType::DnsPacket(ref packet) => HickoryDnsPacket(packet).to_string(),
             ApplicationPacketType::Other(packet) => String::from_utf8_lossy(packet).to_string(),
         }
     }

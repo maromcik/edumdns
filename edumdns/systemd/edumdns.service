@@ -1,0 +1,14 @@
+[Unit]
+Description=edumdns Deployment
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Restart=always
+Type=simple
+RestartSec=5
+User=user
+ExecStart=/usr/bin/local/edumdns --config /opt/edumdns/edumdns.toml
+
+[Install]
+WantedBy=default.target

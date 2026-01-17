@@ -1,20 +1,29 @@
+//! Helper utilities: payload rewriting, filtering and bootstrapping transmit tasks.
+//!
+//! - DNS A/AAAA record rewriting utilities for proxy scenarios
+//! - Filtering only valid DNS application packets when no proxy is used
+//! - Loading persisted transmit requests from DB into running transmitter tasks
+
 use crate::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
+use crate::ebpf::Proxy;
 use crate::error::ServerError;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::error::CoreError;
+use edumdns_core::network_packet::ApplicationPacket;
 use edumdns_db::models::Packet;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
+use edumdns_db::repositories::packet::models::SelectManyPackets;
+use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use hickory_proto::op::Message;
 use hickory_proto::rr::{RData, Record};
 use hickory_proto::serialize::binary::BinDecodable;
-use std::collections::HashSet;
+use log::{info, warn};
 use std::net::{Ipv4Addr, Ipv6Addr};
 use tokio::sync::mpsc::Sender;
 
-pub fn rewrite_records(record: &mut Record, ipv4: Ipv4Addr, ipv6: Ipv6Addr) {
+pub(crate) fn rewrite_records(record: &mut Record, ipv4: Ipv4Addr, ipv6: Ipv6Addr) {
     if record.data().is_a() {
         record.set_data(RData::A(hickory_proto::rr::rdata::a::A::from(ipv4)));
     }
@@ -25,26 +34,51 @@ pub fn rewrite_records(record: &mut Record, ipv4: Ipv4Addr, ipv6: Ipv6Addr) {
     }
 }
 
-pub fn rewrite_payloads(packets: Vec<Packet>, ipv4: Ipv4Addr, ipv6: Ipv6Addr) -> HashSet<Vec<u8>> {
-    let mut payloads = HashSet::new();
-    for packet in packets {
-        let Ok(mut message) = Message::from_bytes(packet.payload.as_slice()) else {
-            continue;
-        };
-        for ans in message.answers_mut() {
-            rewrite_records(ans, ipv4, ipv6);
-        }
-        for add in message.additionals_mut() {
-            rewrite_records(add, ipv4, ipv6);
-        }
-        if let Ok(bytes) = message.to_vec() {
-            payloads.insert(bytes);
-        }
+pub(crate) fn rewrite_payload(payload: Vec<u8>, ipv4: Ipv4Addr, ipv6: Ipv6Addr) -> Option<Vec<u8>> {
+    let mut message = Message::from_bytes(payload.as_slice()).ok()?;
+    for ans in message.answers_mut() {
+        rewrite_records(ans, ipv4, ipv6);
     }
-    payloads
+    for add in message.additionals_mut() {
+        rewrite_records(add, ipv4, ipv6);
+    }
+    message.to_vec().ok()
 }
 
-pub async fn load_all_packet_transmit_requests(
+pub(crate) fn rewrite_payloads(
+    payloads: Vec<Vec<u8>>,
+    ipv4: Ipv4Addr,
+    ipv6: Ipv6Addr,
+) -> Vec<Vec<u8>> {
+    payloads
+        .into_iter()
+        .filter_map(|p| rewrite_payload(p, ipv4, ipv6))
+        .collect()
+}
+
+pub(crate) fn process_packets(
+    packets: Vec<Packet>,
+    proxy: &Option<Proxy>,
+    use_proxy: bool,
+) -> Vec<Vec<u8>> {
+    match (proxy, use_proxy) {
+        (Some(p), true) => {
+            let payloads = packets.into_iter().map(|p| p.payload).collect::<Vec<_>>();
+            rewrite_payloads(payloads, p.proxy_ip.ipv4, p.proxy_ip.ipv6)
+        }
+        _ => packets
+            .into_iter()
+            .filter_map(|p| {
+                match ApplicationPacket::from_bytes(&p.payload, p.src_port, p.dst_port) {
+                    Ok(_) => Some(p.payload),
+                    Err(_) => None,
+                }
+            })
+            .collect(),
+    }
+}
+
+pub(crate) async fn load_all_packet_transmit_requests(
     pool: Pool<AsyncPgConnection>,
     tx: Sender<AppPacket>,
 ) -> Result<(), ServerError> {
@@ -59,8 +93,37 @@ pub async fn load_all_packet_transmit_requests(
                 respond_to: channel.0,
             },
         )))
-        .await
-        .map_err(CoreError::from)?;
+        .await?;
     }
     Ok(())
+}
+
+pub async fn get_device_packets(
+    packet_repo: PgPacketRepository,
+    transmit_request: &PacketTransmitRequestPacket,
+) -> Result<Vec<Packet>, ServerError> {
+    let packets = match packet_repo
+        .read_many(&SelectManyPackets::new(
+            None,
+            Some(transmit_request.device.probe_id),
+            Some(transmit_request.device.mac),
+            None,
+            Some(transmit_request.device.ip),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ))
+        .await
+    {
+        Ok(p) => p,
+        Err(e) => {
+            warn!("No packets found for target: {}: {}", transmit_request, e);
+            return Err(ServerError::from(e));
+        }
+    };
+
+    info!("Packets found for target: {}", transmit_request);
+    Ok(packets)
 }

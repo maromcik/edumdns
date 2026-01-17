@@ -1,3 +1,13 @@
+//! eBPF proxy loader and configuration manager.
+//!
+//! This binary loads an eBPF XDP program into the Linux kernel and configures it
+//! for packet rewriting. The eBPF program intercepts packets matching entries in
+//! the rewrite maps and modifies their headers (IP addresses, MAC addresses) to
+//! route traffic through the proxy.
+//!
+//! This binary requires elevated privileges (root or CAP_BPF, CAP_NET_ADMIN, CAP_SYS_ADMIN)
+//! to load eBPF programs and attach them to network interfaces.
+
 mod error;
 use anyhow::Context as _;
 use aya::Pod;
@@ -86,6 +96,34 @@ struct Cli {
     log_level: log::LevelFilter,
 }
 
+/// Main entry point for the eBPF proxy loader.
+///
+/// This function:
+/// 1. Parses command-line arguments and environment variables
+/// 2. Sets up logging
+/// 3. Removes memory lock limits (required for eBPF)
+/// 4. Loads the compiled eBPF program
+/// 5. Initializes eBPF logging (if available)
+/// 6. Attaches the XDP program to the specified interface
+/// 7. Configures the CONFIG map with proxy IPs and MAC addresses
+/// 8. Pins the rewrite maps to the BPF filesystem
+/// 9. Waits for shutdown signals (SIGTERM, SIGINT)
+/// 10. Cleans up pinned maps on exit
+///
+/// # Returns
+///
+/// Returns `Ok(())` on successful shutdown, or a `ProxyError` if:
+/// - eBPF program loading fails
+/// - XDP attachment fails
+/// - Map configuration fails
+/// - Map pinning fails
+///
+/// # Prerequisites
+///
+/// - Linux kernel 5.8+ with XDP support
+/// - BPF filesystem mounted at the pin path
+/// - Elevated privileges (root or required capabilities)
+/// - Network interface must support XDP
 #[tokio::main]
 async fn main() -> Result<(), ProxyError> {
     let pre = PreCli::try_parse().unwrap_or_default();

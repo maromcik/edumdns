@@ -1,3 +1,6 @@
+This code was taken over from https://github.com/romainmichau/actixweb_openidconnect and integrated into 
+this repository to accommodate a change to Cookie paths.
+
 # Actix-Web openid
 
 Lightweight async OpenID Connect (OIDC) client and middleware for Actix-Web.  

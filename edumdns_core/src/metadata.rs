@@ -1,3 +1,11 @@
+//! Packet, probe, and layer metadata carried alongside payloads.
+//!
+//! These plain structs summarize properties extracted from network frames and
+//! associated with a `ProbePacket`:
+//! - `ProbeMetadata` identifies the probe (UUID, MAC, IP)
+//! - `DataLinkMetadata`, `IpMetadata`, and `PortMetadata` capture L2/L3/L4 fields
+//! - `PacketMetadata` bundles all layers for convenient transport/persistence
+//! - `VlanMetadata` carries VLAN tag when present
 use crate::bincode_types::{IpNetwork, MacAddr, Uuid};
 use bincode::{Decode, Encode};
 use std::net::IpAddr;
@@ -28,6 +36,12 @@ pub struct ProbeMetadata {
     pub id: Uuid,
     pub mac: MacAddr,
     pub ip: IpAddr,
+}
+
+impl ProbeMetadata {
+    pub fn new(id: Uuid, mac: MacAddr, ip: IpAddr) -> Self {
+        Self { id, mac, ip }
+    }
 }
 
 #[derive(Encode, Decode, Debug, Clone)]

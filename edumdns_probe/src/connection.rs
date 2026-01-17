@@ -1,12 +1,27 @@
+//! Connection management for probe-to-server communication.
+//!
+//! This module handles the TCP connection between the probe and the central server,
+//! including:
+//! - Connection establishment with retry logic
+//! - TLS handshake (if enabled)
+//! - Connection initialization and authentication
+//! - Packet transmission and reception
+//! - Automatic reconnection on failures
+//! - Ping/keepalive mechanism
+//!
+
 use crate::error::ProbeError;
 use edumdns_core::app_packet::{
     NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeConfigPacket,
 };
-use edumdns_core::bincode_types::Uuid;
+use edumdns_core::bincode_types::{MacAddr, Uuid};
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
+use edumdns_core::error::CoreError;
 use edumdns_core::metadata::ProbeMetadata;
 use edumdns_core::retry;
 use log::{debug, error, info, trace, warn};
+use pnet::ipnetwork;
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -19,25 +34,26 @@ pub(crate) struct ConnectionLimits {
     pub(crate) max_retries: usize,
     pub(crate) retry_interval: Duration,
     pub(crate) global_timeout: Duration,
+    pub(crate) buffer_capacity: usize,
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct ConnectionInfo {
-    pub(crate) server_connection_string: String,
-    pub(crate) bind_ip: String,
-    pub(crate) domain: Option<String>,
+    pub(crate) host: String,
+    pub(crate) server_conn_socket_addr: String,
     pub(crate) pre_shared_key: Option<String>,
+    pub(crate) no_tls: bool,
 }
 
-pub struct ReceivePacketTargets {
-    pub pinger: mpsc::Sender<NetworkAppPacket>,
+pub(crate) struct ReceivePacketTargets {
+    pub(crate) pinger: mpsc::Sender<NetworkAppPacket>,
 }
 
 pub(crate) struct ConnectionManager {
     pub(crate) handle: TcpConnectionHandle,
-    probe_metadata: ProbeMetadata,
-    conn_info: ConnectionInfo,
-    conn_limits: ConnectionLimits,
+    pub(crate) probe_metadata: ProbeMetadata,
+    pub(crate) conn_info: ConnectionInfo,
+    pub(crate) conn_limits: ConnectionLimits,
 }
 
 impl ConnectionManager {
@@ -45,46 +61,47 @@ impl ConnectionManager {
         connection_info: &ConnectionInfo,
         connection_limits: &ConnectionLimits,
     ) -> Result<TcpConnectionHandle, ProbeError> {
-        let handle = match connection_info.domain.as_ref() {
-            None => retry!(
+        let handle = if connection_info.no_tls {
+            retry!(
                 TcpConnectionHandle::connect(
-                    connection_info.server_connection_string.as_ref(),
-                    connection_info.bind_ip.as_ref(),
-                    connection_limits.global_timeout
+                    connection_info.server_conn_socket_addr.as_ref(),
+                    connection_limits.global_timeout,
+                    connection_limits.buffer_capacity,
                 )
                 .await,
                 connection_limits.max_retries,
                 connection_limits.retry_interval
-            )?,
-            Some(d) => {
-                let mut root_cert_store = rustls::RootCertStore::empty();
-                root_cert_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-                let config = rustls::ClientConfig::builder()
-                    .with_root_certificates(root_cert_store)
-                    .with_no_client_auth();
-                retry!(
-                    TcpConnectionHandle::connect_tls(
-                        connection_info.server_connection_string.as_ref(),
-                        connection_info.bind_ip.as_ref(),
-                        d,
-                        Arc::new(config.clone()),
-                        connection_limits.global_timeout
-                    )
-                    .await,
-                    connection_limits.max_retries,
-                    connection_limits.retry_interval
-                )?
-            }
+            )?
+        } else {
+            let mut root_cert_store = rustls::RootCertStore::empty();
+            root_cert_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+            let config = rustls::ClientConfig::builder()
+                .with_root_certificates(root_cert_store)
+                .with_no_client_auth();
+            retry!(
+                TcpConnectionHandle::connect_tls(
+                    connection_info.server_conn_socket_addr.as_ref(),
+                    connection_info.host.as_ref(),
+                    Arc::new(config.clone()),
+                    connection_limits.global_timeout,
+                    connection_limits.buffer_capacity,
+                )
+                .await,
+                connection_limits.max_retries,
+                connection_limits.retry_interval
+            )?
         };
         Ok(handle)
     }
 
     pub async fn new(
-        probe_metadata: ProbeMetadata,
+        uuid: Uuid,
         connection_info: ConnectionInfo,
         connection_limits: ConnectionLimits,
     ) -> Result<Self, ProbeError> {
         let handle = Self::connect(&connection_info, &connection_limits).await?;
+        let local_addr = handle.connection_info.local_addr.ip();
+        let probe_metadata = ProbeMetadata::new(uuid, determine_mac(&local_addr)?, local_addr);
         Ok(Self {
             handle,
             probe_metadata,
@@ -93,6 +110,30 @@ impl ConnectionManager {
         })
     }
 
+    /// Initializes the probe connection with the server and retrieves configuration.
+    ///
+    /// This function performs the initial handshake with the server:
+    /// 1. Sends a ProbeHello packet with probe metadata and optional pre-shared key
+    /// 2. Receives server response (ProbeAdopted, ProbeUnknown, or error)
+    /// 3. If adopted, requests probe configuration
+    /// 4. Receives and returns the ProbeConfigPacket
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(ProbeConfigPacket)` containing the server's configuration for this
+    /// probe (interface filters, capture settings), or a `ProbeError` if:
+    /// - The probe is not adopted (ProbeUnknown) - triggers reconnection
+    /// - Connection initiation is invalid - triggers reconnection
+    /// - A probe with the same UUID is already connected
+    /// - The probe did not provide a matching PSK, if a PSK is configured
+    /// in the server database
+    /// - Network I/O fails
+    /// - Unexpected packet types are received
+    ///
+    /// # Behavior
+    ///
+    /// If the probe is not adopted or connection initiation fails, this function
+    /// automatically triggers a reconnection after a delay.
     pub async fn connection_init_probe(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
         let error = Err(ProbeError::InvalidConnectionInitiation(
             "Invalid connection initiation".to_string(),
@@ -141,9 +182,12 @@ impl ConnectionManager {
             return error;
         };
         info!(
-            "Connected to the server {}",
-            self.conn_info.server_connection_string
+            "Successfully connected to {} ({}) from local address {}",
+            self.conn_info.host,
+            self.handle.connection_info.peer_addr,
+            self.handle.connection_info.local_addr
         );
+
         debug!("Obtained config <{config:?}>");
         Ok(config)
     }
@@ -154,29 +198,120 @@ impl ConnectionManager {
             .send_message_with_response(|tx| {
                 TcpConnectionMessage::receive_packet(tx, Some(self.conn_limits.global_timeout))
             })
-            .await??;
-        let Some(app_packet) = packet else {
-            return Err(ProbeError::InvalidConnectionInitiation(
-                "Invalid connection initiation".to_string(),
-            ));
-        };
-        Ok(app_packet)
+            .await?;
+        match packet {
+            Ok(Some(app_packet)) => Ok(app_packet),
+                Ok(None) => Err(ProbeError::InvalidConnectionInitiation(
+                    "Invalid connection initiation".to_string())),
+            Err(e) => Err(CoreError::ConnectionError(format!("{e}. Server probably uses TLS, and the probe does not. Try to remove the '-n' option.")).into())
+        }
     }
 
+    /// Reconnects to the server and re-initializes the connection.
+    ///
+    /// This function closes the current connection, establishes a new connection,
+    /// updates the probe metadata (MAC address may change), and performs the full
+    /// connection initialization sequence again.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(ProbeConfigPacket)` with the new configuration if reconnection
+    /// succeeds, or a `ProbeError` if:
+    /// - Connection establishment fails
+    /// - Connection initialization fails
+    ///
+    /// # Side Effects
+    ///
+    /// - Closes the existing TCP connection
+    /// - Updates `probe_metadata` with new MAC address (if interface changed)
+    /// - Updates `handle` with the new connection
     pub async fn reconnect(&mut self) -> Result<ProbeConfigPacket, ProbeError> {
         self.handle.close().await?;
-        match retry!(
-            Self::connect(&self.conn_info, &self.conn_limits).await,
-            self.conn_limits.max_retries,
-            self.conn_limits.retry_interval
-        ) {
+        match Self::connect(&self.conn_info, &self.conn_limits).await {
             Ok(connection) => {
+                let local_addr = connection.connection_info.local_addr.ip();
+                self.probe_metadata = ProbeMetadata::new(
+                    self.probe_metadata.id,
+                    determine_mac(&local_addr)?,
+                    local_addr,
+                );
                 self.handle = connection;
                 self.connection_init_probe().await
             }
             Err(e) => {
                 error!("Failed to reconnect: {e}");
                 Err(e)
+            }
+        }
+    }
+
+    /// Sends a packet with automatic retry and reconnection on failure.
+    ///
+    /// This function attempts to send a packet to the server. If sending fails, it
+    /// triggers a reconnection command and retries up to `max_retries` times with
+    /// delays between attempts.
+    ///
+    /// # Arguments
+    ///
+    /// * `handle` - TCP connection handle for sending packets
+    /// * `command_transmitter` - Channel for sending reconnection commands
+    /// * `max_retries` - Maximum number of retry attempts
+    /// * `retry_interval` - Delay between retry attempts
+    /// * `packet` - The packet to send (Data packets use buffered send, others use immediate)
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the packet is successfully sent, or a `ProbeError` if:
+    /// - All retry attempts are exhausted
+    /// - Network I/O fails persistently
+    ///
+    /// # Behavior
+    ///
+    /// - Data packets are sent with buffering (may be coalesced)
+    /// - Other packets are sent immediately (flushed)
+    /// - On failure, sends a ReconnectThisProbe command to trigger reconnection
+    /// - Waits `retry_interval` between retry attempts
+    pub async fn send_packet_with_reconnect(
+        handle: &TcpConnectionHandle,
+        command_transmitter: &mpsc::Sender<NetworkAppPacket>,
+        max_retries: usize,
+        retry_interval: Duration,
+        packet: NetworkAppPacket,
+    ) -> Result<(), ProbeError> {
+        let mut counter = 0;
+        loop {
+            let res = match packet {
+                NetworkAppPacket::Data(_) => {
+                    handle
+                        .send_message_with_response(|tx| {
+                            TcpConnectionMessage::send_packet_buffered(tx, packet.clone())
+                        })
+                        .await?
+                }
+                _ => {
+                    handle
+                        .send_message_with_response(|tx| {
+                            TcpConnectionMessage::send_packet(tx, packet.clone())
+                        })
+                        .await?
+                }
+            };
+            match res {
+                Ok(_) => return Ok(()),
+                Err(e) => {
+                    error!("Failed to send packet: {e}");
+                    command_transmitter
+                        .send(NetworkAppPacket::Command(
+                            NetworkCommandPacket::ReconnectThisProbe(None),
+                        ))
+                        .await?;
+                    if counter >= max_retries {
+                        return Err(ProbeError::from(e));
+                    }
+                    counter += 1;
+                    warn!("Retrying to send the packet; attempt: {counter} of {max_retries}");
+                    sleep(retry_interval).await;
+                }
             }
         }
     }
@@ -234,13 +369,14 @@ impl ConnectionManager {
         target: ReceivePacketTargets,
         command_transmitter: mpsc::Sender<NetworkAppPacket>,
         cancellation_token: CancellationToken,
+        global_limit: Duration,
     ) -> Result<(), ProbeError> {
         join_set.spawn(async move {
             tokio::select! {
                 _ = cancellation_token.cancelled() => {
                     info!("Receive packets task cancelled");
                 }
-                result = ConnectionManager::receive_packets_worker(handle, target, command_transmitter) => { result.map_err(|e| {
+                result = ConnectionManager::receive_packets_worker(handle, target, command_transmitter, global_limit) => { result.map_err(|e| {
                         error!("Receive packets task exited with error: {e}");
                         e
                     })?;
@@ -256,10 +392,11 @@ impl ConnectionManager {
         handle: TcpConnectionHandle,
         target: ReceivePacketTargets,
         command_transmitter: mpsc::Sender<NetworkAppPacket>,
+        global_limit: Duration,
     ) -> Result<(), ProbeError> {
         loop {
             let packet = handle
-                .send_message_with_response(|tx| TcpConnectionMessage::receive_packet(tx, None))
+                .send_message_with_response(|tx| TcpConnectionMessage::receive_packet(tx, Some(global_limit)))
                 .await??;
             match packet {
                 None => return Ok(()),
@@ -275,51 +412,6 @@ impl ConnectionManager {
                         _ => {}
                     },
                 },
-            }
-        }
-    }
-
-    pub async fn send_packet_with_reconnect(
-        handle: &TcpConnectionHandle,
-        command_transmitter: &mpsc::Sender<NetworkAppPacket>,
-        max_retries: usize,
-        retry_interval: Duration,
-        packet: NetworkAppPacket,
-    ) -> Result<(), ProbeError> {
-        let mut counter = 0;
-        loop {
-            let res = match packet {
-                NetworkAppPacket::Data(_) => {
-                    handle
-                        .send_message_with_response(|tx| {
-                            TcpConnectionMessage::send_packet_buffered(tx, packet.clone())
-                        })
-                        .await?
-                }
-                _ => {
-                    handle
-                        .send_message_with_response(|tx| {
-                            TcpConnectionMessage::send_packet(tx, packet.clone())
-                        })
-                        .await?
-                }
-            };
-            match res {
-                Ok(_) => return Ok(()),
-                Err(e) => {
-                    error!("Failed to send packet: {e}");
-                    command_transmitter
-                        .send(NetworkAppPacket::Command(
-                            NetworkCommandPacket::ReconnectThisProbe(None),
-                        ))
-                        .await?;
-                    if counter >= max_retries {
-                        return Err(ProbeError::from(e));
-                    }
-                    counter += 1;
-                    warn!("Retrying to send the packet; attempt: {counter} of {max_retries}");
-                    sleep(retry_interval).await;
-                }
             }
         }
     }
@@ -382,4 +474,20 @@ impl ConnectionManager {
             sleep(interval).await;
         }
     }
+}
+
+pub(crate) fn determine_mac(bind_ip: &IpAddr) -> Result<MacAddr, ProbeError> {
+    let probe_ip = bind_ip.to_string().parse::<ipnetwork::IpNetwork>()?;
+    let interfaces = pnet::datalink::interfaces();
+    let Some(interface) = interfaces
+        .iter()
+        .find(|i| i.is_up() && i.ips.iter().any(|ip| ip.ip() == probe_ip.ip()))
+    else {
+        return Err(ProbeError::ArgumentError(format!(
+            "No interface found for IP: {} or interface is not up",
+            bind_ip
+        )));
+    };
+
+    Ok(MacAddr(interface.mac.unwrap_or_default()))
 }

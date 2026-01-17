@@ -1,3 +1,19 @@
+//! eBPF XDP program for packet rewriting and proxying.
+//!
+//! This module contains the eBPF program that runs in the Linux kernel. It intercepts
+//! packets at the XDP (eXpress Data Path) hook and rewrites packet headers for packets
+//! that match entries in the rewrite maps.
+//!
+//! The program:
+//! - Checks if a packet's source IP matches an entry in the rewrite map
+//! - If matched, rewrites Ethernet MAC addresses, IP addresses, and updates checksums
+//! - Supports both IPv4 and IPv6
+//! - Handles TCP and UDP protocols
+//! - Returns XDP_TX to transmit the modified packet
+//! - Returns XDP_PASS for unmatched packets
+//!
+//! This code runs in a restricted eBPF environment with no standard library.
+
 #![no_std]
 #![no_main]
 
@@ -49,6 +65,22 @@ pub fn edumdns_proxy(ctx: XdpContext) -> u32 {
     }
 }
 
+/// Main XDP program entry point.
+///
+/// This function is called by the kernel for each packet received on the attached
+/// interface. It determines the packet type (IPv4 or IPv6) and delegates to the
+/// appropriate handler.
+///
+/// # Arguments
+///
+/// * `ctx` - XDP context containing packet data and metadata
+///
+/// # Returns
+///
+/// Returns an XDP action code:
+/// - `XDP_PASS` - Pass the packet unchanged to the kernel network stack
+/// - `XDP_TX` - Transmit the modified packet back out the same interface
+/// - `XDP_ABORTED` - Abort processing (on error)
 fn try_edumdns_proxy(ctx: XdpContext) -> Result<u32, ()> {
     let cfg = get_cfg()?;
 
@@ -60,6 +92,26 @@ fn try_edumdns_proxy(ctx: XdpContext) -> Result<u32, ()> {
     }
 }
 
+/// Handles IPv4 packet rewriting.
+///
+/// This function checks if the packet's source IPv4 address matches an entry in the
+/// rewrite map. If it does, it rewrites:
+/// - Ethernet source and destination MAC addresses
+/// - IPv4 source address (to proxy IP)
+/// - IPv4 destination address (from rewrite map)
+/// - IP header checksum
+/// - TCP or UDP checksum (depending on protocol)
+///
+/// # Arguments
+///
+/// * `ctx` - XDP context containing the packet
+/// * `ethhdr` - Pointer to the Ethernet header
+/// * `cfg` - Configuration containing proxy IPs and MAC addresses
+///
+/// # Returns
+///
+/// Returns `Ok(XDP_TX)` if the packet was rewritten and should be transmitted,
+/// or `Ok(XDP_PASS)` if the packet didn't match any rewrite rules.
 fn handle_ipv4(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32, ()> {
     let ipv4hdr: *mut Ipv4Hdr = ptr_at(ctx, EthHdr::LEN)?;
     let source = u32::from_be_bytes(unsafe { (*ipv4hdr).src_addr });
@@ -146,6 +198,25 @@ fn handle_ipv4(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32
     Ok(xdp_action::XDP_PASS)
 }
 
+/// Handles IPv6 packet rewriting.
+///
+/// This function checks if the packet's source IPv6 address matches an entry in the
+/// rewrite map. If it does, it rewrites:
+/// - Ethernet source and destination MAC addresses
+/// - IPv6 source address (to proxy IP)
+/// - IPv6 destination address (from rewrite map)
+/// - TCP or UDP checksum (depending on protocol)
+///
+/// # Arguments
+///
+/// * `ctx` - XDP context containing the packet
+/// * `ethhdr` - Pointer to the Ethernet header
+/// * `cfg` - Configuration containing proxy IPs and MAC addresses
+///
+/// # Returns
+///
+/// Returns `Ok(XDP_TX)` if the packet was rewritten and should be transmitted,
+/// or `Ok(XDP_PASS)` if the packet didn't match any rewrite rules.
 fn handle_ipv6(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32, ()> {
     let ipv6hdr: *mut Ipv6Hdr = ptr_at(ctx, EthHdr::LEN)?;
 

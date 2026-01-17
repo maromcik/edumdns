@@ -1,5 +1,5 @@
-use std::fmt::Debug;
 use pnet::datalink::ParseMacAddrErr;
+use std::fmt::Debug;
 use std::net::AddrParseError;
 use std::num::ParseIntError;
 use std::sync::mpsc;
@@ -35,6 +35,10 @@ pub enum CoreError {
     DnsPacketManipulationError(String),
     #[error("DNS error: {0}")]
     DnsError(String),
+    #[error("Connection failed: {0}")]
+    ConnectionError(String),
+    #[error("tls error: {0}")]
+    TlsError(String),
 }
 
 impl Debug for CoreError {
@@ -130,5 +134,17 @@ impl From<hickory_proto::ProtoError> for CoreError {
 impl From<rustls_pki_types::InvalidDnsNameError> for CoreError {
     fn from(value: rustls_pki_types::InvalidDnsNameError) -> Self {
         CoreError::DnsError(value.to_string())
+    }
+}
+
+impl From<rustls::Error> for CoreError {
+    fn from(value: rustls::Error) -> Self {
+        CoreError::TlsError(value.to_string())
+    }
+}
+
+impl From<rustls_pki_types::pem::Error> for CoreError {
+    fn from(value: rustls_pki_types::pem::Error) -> Self {
+        CoreError::TlsError(value.to_string())
     }
 }

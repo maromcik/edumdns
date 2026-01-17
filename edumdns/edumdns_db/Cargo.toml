@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-diesel = { version = "2.2.12", features = ["postgres", "time", "r2d2", "uuid", "network-address", "ipnet-address"] }
-diesel_migrations = { version = "2.2.0", features = ["postgres"] }
+diesel = { version = "2.3.4", features = ["postgres", "time", "r2d2", "uuid", "network-address", "ipnet-address"] }
+diesel_migrations = { version = "2.3.1", features = ["postgres"] }
 pbkdf2 = { version = "0.12.2", features = ["simple"] }
 rand_core = { version = "0.6.4", features = ["std"] }
 strum_macros = "0.27.2"

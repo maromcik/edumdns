@@ -4,8 +4,8 @@
 
     <a id="navbar-image" href="/" class="flex items-center">
         <!-- Text aligned vertically with image -->
-        <h2 class="font-extrabold text-acc text-xl sm:text-2xl mt-5 mr-4">
-            eduMDNS
+        <h2 class="font-extrabold text-acc text-lg sm:text-xl xl:text-2xl mt-5 mr-4">
+            edumDNS
         </h2>
         <!-- Vertical divider line -->
         <div class="border-l-2 border  border-gray-500 dark:border-gray-400 h-6"></div>
@@ -21,7 +21,7 @@
     </a>
 
     <!-- Navigation Links Laptop View -->
-    <div id="laptop-menu" class="hidden lg:flex lg:items-center lg:space-x-10 xl:space-x-16 xl:text-xl">
+    <div id="laptop-menu" class="hidden lg:flex sm:ml-2 sm:mr-2 md:mr-4 md:ml-4 lg:items-center sm:space-x-3 md:space-x-6 lg:space-x-10 xl:space-x-16 xl:text-xl">
         {% if user.has_groups or user.user.admin %}
         {% if user.user.admin %}
         <a href="/group"
@@ -64,7 +64,7 @@
             </svg>
             {{ user.user.email }}
         </a>
-        <a href="/logout/cleanup"
+        <a href="/logout"
            class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3"
                  stroke="currentColor"
@@ -85,9 +85,9 @@
                 aria-label="Toggle menu"
                 aria-expanded="false"
         >
-            <div class="w-10 h-0.5 md:w-12 md:h-1 m-2 bg-navbar-buttons"></div>
-            <div class="w-10 h-0.5 md:w-12 md:h-1 m-2 bg-navbar-buttons"></div>
-            <div class="w-10 h-0.5 md:w-12 md:h-1 m-2 bg-navbar-buttons"></div>
+            <div class="w-8 h-0.5 md:w-10 lg:w-12 md:h-1 m-2 bg-navbar-buttons"></div>
+            <div class="w-8 h-0.5 md:w-10 lg:w-12 md:h-1 m-2 bg-navbar-buttons"></div>
+            <div class="w-8 h-0.5 md:w-10 lg:w-12 md:h-1 m-2 bg-navbar-buttons"></div>
         </button>
     </div>
 </div>
@@ -121,7 +121,7 @@
            class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             {{ user.user.email }}
         </a>
-        <a href="/logout/cleanup"
+        <a href="/logout"
            class="flex items-center  text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
             Log out
         </a>
@@ -139,4 +139,19 @@
             menu.classList.remove('hidden');
         }
     }
+
+    document.addEventListener('click', function (event) {
+        const menu = document.getElementById('phone-menu');
+        const hamburger = document.getElementById('hamburger');
+
+        const clickInsideMenu = menu.contains(event.target);
+        const clickOnHamburger = hamburger.contains(event.target);
+
+        if (!menu.classList.contains('hidden') &&
+            !clickInsideMenu &&
+            !clickOnHamburger) {
+
+            menu.classList.add('hidden');
+        }
+    });
 </script>

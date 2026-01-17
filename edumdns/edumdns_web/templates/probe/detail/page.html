@@ -1,7 +1,7 @@
 {% extends "index/page.html" %}
 
 {% block content %}
-<div id="probe-content-area" class="max-w-7xl mx-auto mb-10 md:mb-5">
+<div id="probe-content-area">
     {% include "probe/detail/content.html"%}
 </div>
 <div id="notifications" class="fixed bottom-4 right-4 flex flex-col gap-2 z-50"></div>
@@ -24,7 +24,6 @@
 
         ws.onmessage = (event) => {
             let data = event.data;
-            console.log("Update:", data);
             // Normalize booleans
             if (data === "true" || data === "false") {
                 const isAlive = data === "true";

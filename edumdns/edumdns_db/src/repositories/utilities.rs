@@ -35,6 +35,55 @@ pub fn validate_user(user: &User) -> Result<(), DbError> {
     Ok(())
 }
 
+/// Validates whether a user has the required permission for a given probe.
+///
+/// This function performs several checks to determine if a user has access:
+///
+/// - Loads the user from the database and verifies that the user record is valid.
+/// - If the user is an admin, they automatically receive full permissions.
+/// - Otherwise, the function loads all group-based probe permissions assigned to the user.
+/// - If the user owns the probe, they are granted full *web* permissions in addition to any group permissions.
+/// - If any of the user’s permissions match the requested `permission` or are `Permission::Full`,
+///   the permission check succeeds.
+/// - If none of the above conditions are met, an error is returned.
+///
+/// # Arguments
+///
+/// * `conn` — A mutable async PostgreSQL connection.
+/// * `user_id` — The ID of the user whose permissions should be checked.
+/// * `probe_id` — The ID of the probe being accessed.
+/// * `permission` — The specific permission being requested.
+///
+/// # Returns
+///
+/// Returns:
+/// - `Ok((true, vec![GroupProbePermission])` if the user is an admin (full access).
+/// - `Ok((false, Vec<GroupProbePermission>))` if the user has sufficient permissions,
+///   with the boolean indicating whether the permission was admin-provided (`true`)
+///   or group/ownership-provided (`false`).
+/// - `Err(DbError)` if the user lacks permissions or the database operations fail.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The user does not exist or fails validation.
+/// - The required permission is not found and the user is neither admin nor owner.
+/// - Any database query fails.
+///
+/// # Asynchronous
+///
+/// This function is asynchronous and should be awaited.
+///
+/// # Examples
+///
+/// ```ignore
+/// let (is_admin, permissions) = validate_permissions(
+///     &mut conn,
+///     &user_id,
+///     &probe_id,
+///     Permission::Read
+/// ).await?;
+/// ```
 pub async fn validate_permissions(
     conn: &mut AsyncPgConnection,
     user_id: &Id,

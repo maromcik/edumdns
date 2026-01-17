@@ -1,0 +1,454 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-8">
+    <form id="create-packet-json-form"
+          action="/packet/update-payload"
+          method="post"
+          class="space-y-6 bg-cards shadow-md rounded px-8 pt-6 pb-8">
+
+        <h2 class="text-xl text-sat-l font-bold text-center mb-4">Edit Packet</h2>
+
+        <!-- Hidden fields provided by server -->
+        <input type="hidden" name="packet_id" id="packet_id" value="{{ id }}" />
+
+        <!-- Metadata preview -->
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs text-forms uppercase mb-1">Probe ID</label>
+                <div class="p-2 bg-forms-fields rounded border break-all"><code class="text-code">{{ probe_id }}</code></div>
+            </div>
+            <div>
+                <label class="block text-xs text-forms uppercase mb-1">Source MAC</label>
+                <div class="p-2 rounded border bg-forms-fields break-all"><code class="text-code">{{ mac }}</code></div>
+            </div>
+            <div>
+                <label class="block text-xs text-forms uppercase mb-1">Source IP</label>
+                <div class="p-2 rounded border bg-forms-fields break-all"><code class="text-code">{{ ip }}</code></div>
+            </div>
+            <div>
+                <label class="block text-xs text-forms uppercase mb-1">Dest Port</label>
+                <div class="p-2 rounded border bg-forms-fields break-all"><code class="text-code">{{ port }}</code></div>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <fieldset class="border-gray-500 dark:border-gray-300 border-4 dark:border-2 rounded p-4">
+            <legend class="text-lg text-sat-xl font-semibold">DNS Header</legend>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs text-forms uppercase mb-1">Message Type</label>
+                    <select id="header-message_type" class="w-full rounded border bg-gray-50 px-2 py-1">
+                        <option value="Query" selected>Query</option>
+                        <option value="Response">Response</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-forms uppercase mb-1">Op Code</label>
+                    <select id="header-op_code" class="w-full bg-gray-50 rounded border px-2 py-1">
+                        <option value="Query" selected>Query</option>
+                        <option value="IQuery">IQuery</option>
+                        <option value="Status">Status</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-forms uppercase mb-1">Response Code</label>
+                    <select id="header-response_code" class="w-full bg-gray-50 rounded border px-2 py-1">
+                        <option value="NoError" selected>NoError</option>
+                        <option value="FormErr">FormErr</option>
+                        <option value="ServFail">ServFail</option>
+                        <option value="NXDomain">NXDomain</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-forms uppercase mb-1">ID</label>
+                    <input id="header-id" type="number" min="0" max="65535" value="0" class="w-full text-forms-input bg-gray-50 rounded border px-2 py-1" />
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Queries -->
+        <fieldset class="border-gray-500 dark:border-gray-300 border-4 dark:border-2 rounded p-4">
+            <legend class="text-lg text-sat-xl font-semibold">Queries</legend>
+
+            <div id="queries-list" class="space-y-3">
+
+            </div>
+
+            <div class="mt-2 flex gap-2">
+                <button type="button" id="add-query-btn" class="bg-acc text-button px-3 py-1 rounded">+ Query</button>
+            </div>
+        </fieldset>
+
+        <!-- Answers -->
+        <fieldset class="border-gray-500 dark:border-gray-300 border-4 dark:border-2 rounded p-4">
+            <legend class="text-lg text-forms font-semibold">Answers</legend>
+
+            <div id="answers-list" class="space-y-3"></div>
+
+            <div class="mt-2 flex gap-2">
+                <button type="button" id="add-answer-btn" class="bg-acc text-button px-3 py-1 rounded">+ Answer</button>
+            </div>
+        </fieldset>
+
+        <!-- Additionals -->
+        <fieldset class="border-gray-500 dark:border-gray-300 border-4 dark:border-2 rounded p-4">
+            <legend class="text-lg text-forms font-semibold">Additionals</legend>
+
+            <div id="additionals-list" class="space-y-3"></div>
+
+            <div class="mt-2 flex gap-2">
+                <button type="button" id="add-additional-btn" class="bg-acc text-button px-3 py-1 rounded">+ Additional</button>
+            </div>
+        </fieldset>
+
+        <div class="flex justify-end gap-3">
+            <button id="preview-json-btn" type="button" class="px-4 py-2 text-forms rounded border">Preview JSON</button>
+            <button type="submit" class="bg-acc hover:bg-acc-l text-button px-6 py-2 rounded">Send Packet</button>
+        </div>
+
+        <div id="form-error-msg" class="hidden"></div>
+
+    </form>
+
+    <pre id="json-preview" class="hidden mt-4 p-3 bg-forms text-button rounded overflow-auto" style="max-height:40vh"></pre>
+</div>
+
+<script>
+    /* --- PREPOPULATE DNS MESSAGE --- */
+    function preloadDnsMessage() {
+        const rawJson = `{{ message | safe }}`;
+        if (!rawJson || rawJson.trim().length === 0) return;
+        let msg = null;
+        try {
+            msg = JSON.parse(rawJson);
+        } catch (e) {
+            console.error("Invalid message JSON:", e);
+            return;
+        }
+
+        /* ---------------- HEADER ---------------- */
+        if (msg.header) {
+            document.getElementById("header-id").value = msg.header.id ?? 0;
+            document.getElementById("header-message_type").value = msg.header.message_type ?? "Query";
+            document.getElementById("header-op_code").value = msg.header.op_code ?? "Query";
+            document.getElementById("header-response_code").value = msg.header.response_code ?? "NoError";
+        }
+
+        /* ---------------- QUERIES ---------------- */
+        if (Array.isArray(msg.queries)) {
+            msg.queries.forEach(q => {
+                document.getElementById("add-query-btn").click();
+                const row = document.querySelector("#queries-list .query-row:last-child");
+
+                row.querySelector(".query-name").value = q.name ?? "";
+                row.querySelector(".query-type").value = q.query_type ?? "A";
+                if (typeof q.query_class === "object" && q.query_class !== null && "Unknown" in q.query_class) {
+                    row.querySelector(".query-class").value = "IN";
+                } else {
+                    row.querySelector(".query-class").value = q.query_class ?? "IN";
+                }
+
+            });
+        }
+
+        /* ---------------- RECORD PARSER (Answer/Additional) ---------------- */
+        function fillRecordRow(kind, rr) {
+            if (!rr) return;
+            document.getElementById(`add-${kind}-btn`).click();
+
+            const row = document.querySelector(`#${kind}s-list .${kind}-row:last-child`);
+            row.querySelector(`.${kind}-name`).value = rr.name_labels ?? "";
+            if (Object.keys(rr.dns_class)[0] === "Unknown") {
+                row.querySelector(`.${kind}-class`).value = "IN";
+            } else {
+                row.querySelector(`.${kind}-class`).value = rr.dns_class ?? "IN";
+            }
+            row.querySelector(`.${kind}-ttl`).value = rr.ttl ?? 300;
+
+            const type = Object.keys(rr.rdata)[0];
+            const value = rr.rdata[type];
+            const select = row.querySelector(`.${kind}-type`);
+            select.value = type;
+
+            /* Show SRV/subfields properly */
+            toggleSrvForRow(select, kind);
+
+            if (type === "TXT") {
+                // Hickory format: TXT: [ [bytes], [bytes] ]
+                const decoder = new TextDecoder();
+                const parts = (Array.isArray(value) ? value : [])
+                    .map(arr => decoder.decode(new Uint8Array(arr)));
+                row.querySelector(`.${kind}-rdata`).value = parts.join(", ");
+            }
+            else if (type === "SRV") {
+                row.querySelector(`.${kind}-srv-priority`).value = value.priority ?? 0;
+                row.querySelector(`.${kind}-srv-weight`).value = value.weight ?? 0;
+                row.querySelector(`.${kind}-srv-port`).value = value.port ?? 0;
+                row.querySelector(`.${kind}-srv-target`).value = value.target ?? "";
+            }
+            else {
+                // A, AAAA, CNAME, PTR, etc.
+                row.querySelector(`.${kind}-rdata`).value = value ?? "";
+            }
+        }
+
+        /* ---------------- ANSWERS ---------------- */
+        if (Array.isArray(msg.answers)) {
+            msg.answers.forEach(rr => fillRecordRow("answer", rr));
+        }
+
+        /* ---------------- ADDITIONALS ---------------- */
+        if (Array.isArray(msg.additionals)) {
+            msg.additionals.forEach(rr => fillRecordRow("additional", rr));
+        }
+    }
+    /* Full-page load */
+    document.addEventListener("DOMContentLoaded", preloadDnsMessage);
+
+    /* HTMX load (whenever fragment is swapped into DOM) */
+    document.addEventListener("htmx:afterSwap", preloadDnsMessage);
+</script>
+
+
+<script>
+    /* helpers */
+    const createEl = (html) => {
+        const tmp = document.createElement('template');
+        tmp.innerHTML = html.trim();
+        return tmp.content.firstElementChild;
+    };
+
+    /* delegation for deletes */
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-action="delete"]');
+        if (!btn) return;
+        const row = btn.closest('.query-row, .answer-row, .additional-row');
+        if (row) row.remove();
+    });
+
+    /* add query */
+    document.getElementById('add-query-btn').addEventListener('click', () => {
+        const html = `
+    <div class="query-row border-gray-500 dark:border-gray-300 border-2 dark:border rounded p-3 gap-2 items-center">
+      <input type="text" placeholder="name (example.com.)" class="query-name flex-1 rounded border px-2 py-1" />
+      <select class="query-type w-28 rounded bg-gray-50 border px-2 py-1">
+        <option value="A" selected>A</option>
+        <option value="AAAA">AAAA</option>
+        <option value="ANY">ANY</option>
+        <option value="CNAME">CNAME</option>
+        <option value="MX">MX</option>
+        <option value="TXT">TXT</option>
+        <option value="PTR">PTR</option>
+        <option value="SRV">SRV</option>
+      </select>
+      <input type="text" placeholder="class (IN)" class="text-forms-input query-class w-20 rounded border px-2 py-1 mt-2" value="IN" />
+      <button type="button" data-action="delete" class="inline-flex items-center rounded-md px-3 py-1 text-sm text-red-400 hover:text-red-500 hover:bg-muted/20 transition-colors">
+        <i class="fa-solid fa-trash"></i>
+      </button>
+    </div>`;
+        document.getElementById('queries-list').appendChild(createEl(html));
+    });
+
+
+    /* answer / additional row factory */
+    function answerRowHtml(kind = 'answer') {
+        return `
+ <div class="${kind}-row border-gray-500 dark:border-gray-300 border-2 rounded p-3">
+  <!-- Responsive grid: 1 column on mobile, 6 columns on medium+ screens -->
+  <div class="grid grid-cols-1 md:grid-cols-6 gap-2 items-start">
+    <input type="text" placeholder="name_labels (example.com.)" class="${kind}-name md:col-span-2 rounded border px-2 py-1 w-full" />
+    <input type="text" placeholder="class (IN)" class="${kind}-class w-full md:w-20 rounded border px-2 py-1" value="IN" />
+    <input type="number" placeholder="ttl" class="${kind}-ttl w-full md:w-24 rounded border px-2 py-1" value="300" />
+    <select class="${kind}-type w-full md:w-24 rounded bg-gray-50 border px-2 py-1">
+      <option value="A">A</option>
+      <option value="AAAA">AAAA</option>
+      <option value="CNAME">CNAME</option>
+      <option value="MX">MX</option>
+      <option value="TXT">TXT</option>
+      <option value="PTR">PTR</option>
+      <option value="SRV">SRV</option>
+    </select>
+
+    <!-- rdata -->
+    <div class="${kind}-rdata-wrap col-span-1 md:col-span-6 mt-2">
+      <input type="text" placeholder="rdata (e.g. 1.2.3.4, text, or PTR target)" class="${kind}-rdata w-full rounded border px-2 py-1" />
+    </div>
+
+    <!-- SRV subfields -->
+    <div class="${kind}-srv-wrap col-span-1 md:col-span-6 mt-2 hidden">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 items-center">
+        <input type="number" min="0" max="65535" placeholder="priority" class="${kind}-srv-priority rounded border px-2 py-1" />
+        <input type="number" min="0" max="65535" placeholder="weight" class="${kind}-srv-weight rounded border px-2 py-1" />
+        <input type="number" min="0" max="65535" placeholder="port" class="${kind}-srv-port rounded border px-2 py-1" />
+        <input type="text" placeholder="target (example.com.)" class="${kind}-srv-target rounded border px-2 py-1" />
+      </div>
+    </div>
+
+    <!-- Delete button -->
+    <div class="col-span-1 md:col-span-6 mt-2 flex justify-end">
+      <button type="button" data-action="delete" class="inline-flex items-center rounded-md px-3 py-1 text-sm text-red-400 hover:text-red-500 hover:bg-muted/20 transition-colors">
+        <i class="fa-solid fa-trash"></i>
+      </button>
+    </div>
+  </div>
+</div>
+`;
+    }
+
+    /* add answer */
+    document.getElementById('add-answer-btn').addEventListener('click', () => {
+        document.getElementById('answers-list').appendChild(createEl(answerRowHtml('answer')));
+    });
+
+    /* add additional */
+    document.getElementById('add-additional-btn').addEventListener('click', () => {
+        document.getElementById('additionals-list').appendChild(createEl(answerRowHtml('additional')));
+    });
+
+    /* Toggle SRV inputs */
+    function toggleSrvForRow(selectEl, kind) {
+        const row = selectEl.closest(`.${kind}-row`);
+        if (!row) return;
+        const rdataWrap = row.querySelector(`.${kind}-rdata-wrap`);
+        const srvWrap = row.querySelector(`.${kind}-srv-wrap`);
+        if (selectEl.value === 'SRV') {
+            rdataWrap?.classList.add('hidden');
+            srvWrap?.classList.remove('hidden');
+        } else {
+            rdataWrap?.classList.remove('hidden');
+            srvWrap?.classList.add('hidden');
+        }
+    }
+
+    document.addEventListener('change', (e) => {
+        const sel = e.target;
+        if (sel.matches('.answer-type')) toggleSrvForRow(sel, 'answer');
+        if (sel.matches('.additional-type')) toggleSrvForRow(sel, 'additional');
+    });
+
+    /* TXT parsing → nested byte arrays for Hickory */
+    function parseTxtValue(raw) {
+        raw = (raw || '').trim();
+        if (!raw) return [];
+        const encoder = new TextEncoder();
+        return raw
+            .split(/\s*[;,]\s*/)
+            .map(s => s.trim())
+            .filter(Boolean)
+            .map(s => Array.from(encoder.encode(s)));
+    }
+
+
+    /* Build JSON */
+    function buildCreatePacketJson() {
+        const packet_id = parseInt(document.getElementById('packet_id').value);
+
+        const header = {
+            id: Number(document.getElementById('header-id').value || 0),
+            message_type: document.getElementById('header-message_type').value || 'Query',
+            op_code: document.getElementById('header-op_code').value || 'Query',
+            authoritative: false,
+            truncation: false,
+            recursion_desired: false,
+            recursion_available: false,
+            authentic_data: false,
+            checking_disabled: false,
+            response_code: document.getElementById('header-response_code').value || 'NoError',
+            query_count: 0, answer_count: 0, name_server_count: 0, additional_count: 0
+        };
+
+        const queries = [];
+        document.querySelectorAll('#queries-list .query-row').forEach(row => {
+            const name = row.querySelector('.query-name')?.value?.trim() || '';
+            const qtype = row.querySelector('.query-type')?.value || 'A';
+            const qclass = row.querySelector('.query-class')?.value?.trim() || 'IN';
+            if (name) {
+                queries.push({ name, query_type: qtype, query_class: qclass, mdns_unicast_response: false });
+            }
+        });
+
+        function collectRR(kind) {
+            const out = [];
+            document.querySelectorAll(`#${kind}s-list .${kind}-row`).forEach(row => {
+                const name_labels = row.querySelector(`.${kind}-name`)?.value?.trim() || '';
+                if (!name_labels) return;
+                const dns_class = row.querySelector(`.${kind}-class`)?.value?.trim() || 'IN';
+                const ttl = Number(row.querySelector(`.${kind}-ttl`)?.value || 300);
+                const type = row.querySelector(`.${kind}-type`)?.value || 'A';
+                let rdataObj = null;
+
+                if (type === 'TXT') {
+                    const raw = row.querySelector(`.${kind}-rdata`)?.value || '';
+                    const arr = parseTxtValue(raw);
+                    if (arr.length) rdataObj = { TXT: { txt_data: arr } };
+                } else if (type === 'SRV') {
+                    const priority = Number(row.querySelector(`.${kind}-srv-priority`)?.value || 0);
+                    const weight = Number(row.querySelector(`.${kind}-srv-weight`)?.value || 0);
+                    const port = Number(row.querySelector(`.${kind}-srv-port`)?.value || 0);
+                    const target = row.querySelector(`.${kind}-srv-target`)?.value?.trim() || '';
+                    if (target) rdataObj = { SRV: { priority, weight, port, target } };
+                } else {
+                    const raw = row.querySelector(`.${kind}-rdata`)?.value?.trim() || '';
+                    if (raw) rdataObj = { [type]: raw };
+                }
+
+                if (rdataObj) {
+                    out.push({ name_labels, dns_class, ttl, rdata: rdataObj, mdns_cache_flush: false });
+                }
+            });
+            return out;
+        }
+
+        const answers = collectRR('answer');
+        const additionals = collectRR('additional');
+
+        header.query_count = queries.length;
+        header.answer_count = answers.length;
+        header.additional_count = additionals.length;
+
+        return {
+            packet_id: packet_id,
+            message: {
+                header, queries, answers, additionals,
+                name_servers: [], signature: [], edns: null
+            }
+        };
+    }
+
+    /* Preview JSON */
+    document.getElementById('preview-json-btn').addEventListener('click', () => {
+        const obj = buildCreatePacketJson();
+        const pre = document.getElementById('json-preview');
+        pre.textContent = JSON.stringify(obj, null, 2);
+        pre.classList.toggle('hidden');
+    });
+
+    function showError(html) {
+        const container = document.getElementById('form-error-msg');
+        container.innerHTML = html;
+        container.classList.remove('hidden');
+    }
+
+    /* Submit override */
+    document.getElementById('create-packet-json-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const payload = buildCreatePacketJson();
+        fetch(e.target.action, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        })
+            .then(resp => {
+                if (resp.ok) {
+                    window.location.href = resp.url;
+                } else {
+                    resp.text().then(text => showError(text));
+                    console.log('submit error', resp);
+                }
+            })
+            .catch(err => {
+                console.error('submit error', err);
+                alert(`Error submitting packet: ${err}`);
+            });
+    });
+
+</script>
+

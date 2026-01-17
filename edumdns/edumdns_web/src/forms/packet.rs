@@ -2,7 +2,7 @@ use crate::error::WebError;
 use edumdns_core::app_packet::Id;
 use edumdns_core::bincode_types::{IpNetwork as EdumdnsIpNetwork, MacAddr};
 use edumdns_db::repositories::common::Pagination;
-use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets};
+use edumdns_db::repositories::packet::models::{CreatePacket, SelectManyPackets, UpdatePacket};
 use hickory_proto::op::Message;
 use hickory_proto::serialize::binary::BinEncodable;
 use ipnetwork::IpNetwork;
@@ -82,5 +82,91 @@ impl CreatePacketForm {
             payload_hash: payload_hash as i64,
             payload_string,
         })
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UpdatePacketPayloadForm {
+    pub packet_id: Id,
+    pub message: Message,
+}
+impl UpdatePacketPayloadForm {
+    pub fn to_db_params(self) -> Result<UpdatePacket, WebError> {
+        let payload_string = Some(self.message.to_string());
+        let payload = self.message.to_bytes()?;
+        let payload_hash = edumdns_core::app_packet::calculate_hash(&payload);
+        let packet = UpdatePacket {
+            id: self.packet_id,
+            probe_id: None,
+            src_mac: None,
+            dst_mac: None,
+            src_addr: None,
+            dst_addr: None,
+            src_port: None,
+            dst_port: None,
+            payload: Some(payload),
+            payload_hash: Some(payload_hash as i64),
+            payload_string,
+        };
+        Ok(packet)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UpdatePacketForm {
+    pub id: Id,
+    pub probe_id: Option<Uuid>,
+    pub src_mac: Option<MacAddr>,
+    pub dst_mac: Option<MacAddr>,
+    pub src_addr: Option<IpNetwork>,
+    pub dst_addr: Option<IpNetwork>,
+    pub src_port: Option<i32>,
+    pub dst_port: Option<i32>,
+}
+
+impl UpdatePacketForm {
+    pub fn to_db_params(self) -> UpdatePacket {
+        UpdatePacket {
+            id: self.id,
+            probe_id: self.probe_id,
+            src_mac: self.src_mac.map(|m| m.to_octets()),
+            dst_mac: self.dst_mac.map(|m| m.to_octets()),
+            src_addr: self.src_addr,
+            dst_addr: self.dst_addr,
+            src_port: self.src_port,
+            dst_port: self.dst_port,
+            payload: None,
+            payload_hash: None,
+            payload_string: None,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ReassignPacketForm {
+    pub packet_id: Id,
+    pub device_id: Id,
+}
+
+impl ReassignPacketForm {
+    pub fn to_db_params(
+        self,
+        probe_id: Uuid,
+        src_mac: [u8; 6],
+        src_addr: IpNetwork,
+    ) -> UpdatePacket {
+        UpdatePacket {
+            id: self.packet_id,
+            probe_id: Some(probe_id),
+            src_mac: Some(src_mac),
+            dst_mac: None,
+            src_addr: Some(src_addr),
+            dst_addr: None,
+            src_port: None,
+            dst_port: None,
+            payload: None,
+            payload_hash: None,
+            payload_string: None,
+        }
     }
 }

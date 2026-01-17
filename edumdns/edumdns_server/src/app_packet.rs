@@ -1,5 +1,12 @@
+//! Application-level packets used inside the edumdns_server.
+//!
+//! This module defines the `AppPacket` enum that wraps packets exchanged between
+//! server components and network probes, as well as "local" packets used for
+//! intra-server commands, status queries, and data streaming. The goal is to have
+//! a single strongly-typed channel payload that the server can route.
+
 use crate::error::ServerError;
-use edumdns_core::app_packet::{EntityType, NetworkAppPacket, ProbeResponse};
+use edumdns_core::app_packet::{EntityType, Id, NetworkAppPacket, ProbeResponse};
 use edumdns_core::bincode_types::{MacAddr, Uuid};
 use edumdns_db::models::{Device, PacketTransmitRequest};
 use std::fmt::{Display, Formatter};
@@ -15,7 +22,14 @@ pub enum AppPacket {
 pub enum LocalAppPacket {
     Command(LocalCommandPacket),
     Status(LocalStatusPacket),
+    Data(LocalDataPacket),
 }
+
+#[derive(Debug)]
+pub enum LocalDataPacket {
+    TransmitterLiveUpdateData(Vec<u8>),
+}
+
 #[derive(Debug)]
 pub enum LocalCommandPacket {
     RegisterForEvents {
@@ -32,8 +46,9 @@ pub enum LocalCommandPacket {
         request: PacketTransmitRequestPacket,
         respond_to: oneshot::Sender<Result<(), ServerError>>,
     },
-    StopTransmitDevicePackets(i64),
+    StopTransmitDevicePackets(Id),
     InvalidateCache(EntityType),
+    ExtendPacketTransmitRequest(Id),
 }
 
 #[derive(Debug)]

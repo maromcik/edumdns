@@ -1,4 +1,4 @@
-#podman login cerit.io
+podman login cerit.io
 podman build -t 192.168.0.10:5000/edumdns-image .
 podman tag 192.168.0.10:5000/edumdns-image cerit.io/roman_alexander_mariancik/edumdns-image
 podman push cerit.io/roman_alexander_mariancik/edumdns-image:latest

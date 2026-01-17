@@ -1,3 +1,16 @@
+//! Main entry point for the edumdns_probe binary.
+//!
+//! This module initializes the probe application, handles command-line arguments,
+//! sets up logging, and orchestrates the main probe lifecycle:
+//! - Connection management to the central server
+//! - Packet capture from network interfaces
+//! - Packet transmission to the server
+//! - Command reception and processing
+//! - Automatic reconnection on failures
+//!
+//! The probe maintains a persistent connection to the server, captures mDNS packets
+//! from configured interfaces, and forwards them to the server for processing.
+
 use crate::connection::{
     ConnectionInfo, ConnectionLimits, ConnectionManager, ReceivePacketTargets,
 };
@@ -7,14 +20,11 @@ use clap::Parser;
 use edumdns_core::app_packet::{
     NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeResponse,
 };
-use edumdns_core::bincode_types::{MacAddr, Uuid};
+use edumdns_core::bincode_types::{Uuid};
 use edumdns_core::connection::TcpConnectionMessage;
-use edumdns_core::metadata::ProbeMetadata;
 use log::{error, info, warn};
-use pnet::ipnetwork::IpNetwork;
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::net::IpAddr;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -36,11 +46,30 @@ struct PreCli {
 #[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
+    /// Server host to connect to, e.g. example.com or 192.168.0.10.
+    #[clap(
+        short = 's',
+        long,
+        value_name = "SERVER_HOST",
+        env = "EDUMDNS_PROBE_SERVER_HOST"
+    )]
+    server_host: String,
+
+    /// Server port to connect to.
+    #[clap(
+        short = 'p',
+        long,
+        value_name = "SERVER_PORT",
+        env = "EDUMDNS_PROBE_SERVER_PORT",
+        default_value = "5000"
+    )]
+    server_port: u16,
+
     /// Optional `.env` file path for loading environment variables.
     #[clap(short, long, value_name = "ENV_FILE")]
     env_file: Option<String>,
 
-    /// Optional UUID file path used for persistent probe identity.
+    /// Optional UUID string used for connection.
     #[clap(short = 'u', long, value_name = "UUID", env = "EDUMDNS_PROBE_UUID")]
     uuid: Option<uuid::Uuid>,
 
@@ -49,59 +78,24 @@ struct Cli {
         short = 'f',
         long,
         value_name = "UUID_FILE",
-        env = "EDUMDNS_PROBE_UUID_FILE"
+        env = "EDUMDNS_PROBE_UUID_FILE",
+        default_value = "uuid"
     )]
     uuid_file: Option<String>,
 
-    /// Local IP to bind to.
+    /// Do not use TLS connection
     #[clap(
-        short = 'b',
-        long = "bind_ip",
-        value_name = "BIND_IP",
-        env = "EDUMDNS_PROBE_BIND_IP"
+        short = 'n',
+        long,
+        value_name = "SECURE",
+        env = "EDUMDNS_PROBE_NO_TLS",
+        action = clap::ArgAction::SetTrue,
     )]
-    bind_ip: IpAddr,
-
-    /// Local port to bind to.
-    #[clap(
-        long = "bind_port",
-        value_name = "BIND_PORT",
-        env = "EDUMDNS_PROBE_BIND_PORT",
-        default_value = "0"
-    )]
-    bind_port: u16,
-
-    /// Server host or IP address to connect to.
-    #[clap(
-        short = 's',
-        long = "host",
-        value_name = "SERVER_HOST",
-        env = "EDUMDNS_PROBE_SERVER_HOST"
-    )]
-    server_host: String,
-
-    /// Optional domain name for TLS connections.
-    #[clap(
-        short = 'd',
-        long = "domain",
-        value_name = "SERVER_DOMAIN",
-        env = "EDUMDNS_PROBE_SERVER_DOMAIN"
-    )]
-    server_domain: Option<String>,
-
-    /// Server port to connect to.
-    #[clap(
-        short = 'p',
-        long = "server_port",
-        value_name = "SERVER_PORT",
-        env = "EDUMDNS_PROBE_SERVER_PORT",
-        default_value = "5000"
-    )]
-    server_port: u16,
+    no_tls: bool,
 
     /// Retry interval in seconds before attempting reconnection.
     #[clap(
-        long = "retry_interval",
+        long,
         value_name = "RETRY_INTERVAL",
         env = "EDUMDNS_PROBE_RETRY_INTERVAL",
         default_value = "1"
@@ -110,7 +104,7 @@ struct Cli {
 
     /// Global timeout in seconds for probe execution.
     #[clap(
-        long = "global_timeout",
+        long,
         value_name = "GLOBAL_TIMEOUT",
         env = "EDUMDNS_PROBE_GLOBAL_TIMOUT",
         default_value = "10"
@@ -119,17 +113,27 @@ struct Cli {
 
     /// Maximum number of retries before failing.
     #[clap(
-        long = "max_retries",
+        long,
         value_name = "MAX_RETRIES",
         env = "EDUMDNS_PROBE_MAX_RETRIES",
         default_value = "5"
     )]
     max_retries: usize,
 
+    /// Maximum connection buffer capacity.
+    #[clap(
+        long,
+        value_name = "MAX_CONN_BUFFER_CAPACITY",
+        env = "EDUMDNS_PROBE_MAX_CONN_BUFFER_CAPACITY",
+        default_value = "1000"
+    )]
+    buffer_capacity: usize,
+
+
     /// Optional pre-shared key for authentication.
     #[clap(
         short = 'k',
-        long = "psk",
+        long,
         value_name = "PRE_SHARED_KEY",
         env = "EDUMDNS_PROBE_PRE_SHARED_KEY"
     )]
@@ -158,7 +162,7 @@ async fn main() -> Result<(), ProbeError> {
 
     let cli = Cli::parse();
 
-    let env = EnvFilter::new(cli.log_level);
+    let env = EnvFilter::new(format!("edumdns_probe={},info", cli.log_level));
     let timer = tracing_subscriber::fmt::time::LocalTime::rfc_3339();
     tracing_subscriber::fmt()
         .with_timer(timer)
@@ -176,53 +180,55 @@ async fn main() -> Result<(), ProbeError> {
     let uuid = Uuid(cli.uuid.unwrap_or(generate_uuid(cli.uuid_file)?));
 
     info!("Starting probe with id: {}", uuid);
-    info!("Binding to IP: {}:{}", cli.bind_ip, cli.bind_port);
     info!(
-        "Connecting to server {:?}: {}:{}",
-        cli.server_domain, cli.server_host, cli.server_port
+        "Connecting to server {}:{}",
+        cli.server_host, cli.server_port
     );
 
-    let probe_metadata = ProbeMetadata {
-        id: uuid,
-        ip: cli.bind_ip,
-        mac: determine_mac(&cli.bind_ip)?,
-    };
-
     let connection_info = ConnectionInfo {
-        server_connection_string: format!("{}:{}", cli.server_host, cli.server_port),
-        bind_ip: format!("{}:{}", cli.bind_ip, cli.bind_port),
-        domain: cli.server_domain,
+        server_conn_socket_addr: format!("{}:{}", cli.server_host, cli.server_port),
+        host: cli.server_host.clone(),
         pre_shared_key: cli.pre_shared_key,
+        no_tls: cli.no_tls,
     };
 
     let connection_limits = ConnectionLimits {
         max_retries,
         retry_interval,
         global_timeout,
+        buffer_capacity: cli.buffer_capacity,
     };
 
     let mut connection_manager =
-        ConnectionManager::new(probe_metadata.clone(), connection_info, connection_limits).await?;
+        ConnectionManager::new(uuid, connection_info, connection_limits).await?;
 
+    // Perform initial connection initiation
     let mut config = connection_manager.connection_init_probe().await?;
     let mut session_id = Some(Uuid(uuid::Uuid::nil()));
     loop {
+        // enters main run/retry loop.
         let handle = connection_manager.handle.clone();
         let handle_local = connection_manager.handle.clone();
         let cancellation_token = CancellationToken::new();
+
+        // Task join-set to conveniently await multiple tasks at once
         let mut join_set = tokio::task::JoinSet::new();
 
-        let (send_transmitter, send_receiver) = mpsc::channel(1000);
-        let (command_transmitter, mut command_receiver) = mpsc::channel(1000);
-        let (pinger_receive_transmitter, pinger_receive_receiver) = mpsc::channel(1000);
+        // Set-up channels
+        let (send_transmitter, send_receiver) = mpsc::channel(cli.buffer_capacity);
+        let (command_transmitter, mut command_receiver) = mpsc::channel(cli.buffer_capacity);
+        let (pinger_receive_transmitter, pinger_receive_receiver) = mpsc::channel(cli.buffer_capacity);
 
+        // Open packet capture
         let probe_capture =
-            ProbeCapture::new(send_transmitter, probe_metadata.clone(), config.clone());
+            ProbeCapture::new(send_transmitter, connection_manager.probe_metadata.clone(), config.clone());
 
+        // All fields of this struct will get newly received packets
         let targets = ReceivePacketTargets {
             pinger: pinger_receive_transmitter,
         };
 
+        // Spawn packet capture task
         let capture_handles = probe_capture
             .start_captures(
                 &mut join_set,
@@ -230,6 +236,8 @@ async fn main() -> Result<(), ProbeError> {
                 cancellation_token.clone(),
             )
             .await?;
+
+        // Spawn packet transmit task (connection to the server)
         ConnectionManager::transmit_packets(
             &mut join_set,
             connection_manager.handle.clone(),
@@ -240,14 +248,20 @@ async fn main() -> Result<(), ProbeError> {
             retry_interval,
         )
         .await?;
+
+        // Spawn packet receive task (connection to the server)
+        // Ping replies and commands are usually received
         ConnectionManager::receive_packets(
             &mut join_set,
             connection_manager.handle.clone(),
             targets,
             command_transmitter.clone(),
             cancellation_token.clone(),
+            global_timeout,
         )
         .await?;
+
+        // Spawn the pinger task
         ConnectionManager::pinger(
             &mut join_set,
             handle_local,
@@ -259,12 +273,18 @@ async fn main() -> Result<(), ProbeError> {
         )
         .await?;
 
+        // Tokio select to await multiple futures at once
         tokio::select! {
-
+            // a task finished
             result = async {
                 while let Some(task) = join_set.join_next_with_id().await {
+                    // Unwrap join error
                     let res = task?;
+                    // Failed capture tasks should not trigger reconnection
                     if capture_handles.contains(&res.0) {
+                        // The reason for failed capture tasks is transmitted back to the
+                        // server and from there delivered to the websocket, thus we are sending
+                        // session_id as well
                         if let Err(e) = res.1 {
                             error!("{e}");
                             handle
@@ -276,6 +296,8 @@ async fn main() -> Result<(), ProbeError> {
                                         ProbeResponse(uuid, session_id, ProbeResponse::new_error(e.to_string()))))).await??;
                         }
                     }
+                    // If something else than a capture task failed
+                    // send a reconnect signal
                     else {
                         match res.1 {
                             Ok(_) => {}
@@ -294,12 +316,17 @@ async fn main() -> Result<(), ProbeError> {
             } => {
                 result?;
             },
+            // Reconnect signal was received via the command channel.
             Some(NetworkAppPacket::Command(NetworkCommandPacket::ReconnectThisProbe(ses_id))) = command_receiver.recv() => {
+                // Store session_id obtained from the frontend (to deliver results to the websocket)
                 session_id = ses_id;
                 warn!("Reconnect signal received. Canceling tasks.");
+                // Cancel sync capture tasks
                 cancellation_token.cancel();
                 info!("Reconnecting...");
+                // Reconnect, performing the initiation phase again
                 config = connection_manager.reconnect().await?;
+                // If successful, send the results back to the server
                 let _ = connection_manager.handle
                 .send_message_with_response(|tx|
                     TcpConnectionMessage::send_packet(
@@ -312,6 +339,27 @@ async fn main() -> Result<(), ProbeError> {
     }
 }
 
+/// Generates or loads a persistent UUID for the probe.
+///
+/// This function attempts to load a UUID from a file. If the file doesn't exist or
+/// contains an invalid UUID, it generates a new UUID v7 (time-based) and saves it
+/// to the file for future use. This ensures the probe maintains a consistent identity
+/// across restarts.
+///
+/// # Arguments
+///
+/// * `uuid_file` - Optional path to the UUID file (defaults to "uuid" in current directory)
+///
+/// # Returns
+///
+/// Returns `Ok(uuid::Uuid)` with the loaded or newly generated UUID, or a `ProbeError`
+/// if file I/O operations fail.
+///
+/// # Behavior
+///
+/// - If the file exists and contains a valid UUID, that UUID is returned
+/// - If the file doesn't exist or contains invalid data, a new UUID v7 is generated
+/// - The new UUID is written to the file for persistence
 fn generate_uuid(uuid_file: Option<String>) -> Result<uuid::Uuid, ProbeError> {
     let mut file = OpenOptions::new()
         .write(true)
@@ -341,18 +389,3 @@ fn generate_uuid(uuid_file: Option<String>) -> Result<uuid::Uuid, ProbeError> {
     }
 }
 
-fn determine_mac(bind_ip: &IpAddr) -> Result<MacAddr, ProbeError> {
-    let probe_ip = bind_ip.to_string().parse::<IpNetwork>()?;
-    let interfaces = pnet::datalink::interfaces();
-    let Some(interface) = interfaces
-        .iter()
-        .find(|i| i.is_up() && i.ips.iter().any(|ip| ip.ip() == probe_ip.ip()))
-    else {
-        return Err(ProbeError::ArgumentError(format!(
-            "No interface found for IP: {} or interface is not up",
-            bind_ip
-        )));
-    };
-
-    Ok(MacAddr(interface.mac.unwrap_or_default()))
-}

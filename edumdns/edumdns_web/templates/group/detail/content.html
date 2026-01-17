@@ -1,5 +1,5 @@
 <!-- Group Detail Content -->
-<div class="max-w-7xl mx-auto px-4 sm:px-8 mb-10 md:mb-6">
+<div class="lg:w-3/4 w-full mx-auto px-4 sm:px-8 mb-10 md:mb-6">
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-3xl font-bold text-sat-xl">
@@ -153,7 +153,7 @@
               </thead>
               <tbody class="divide-y divide-base">
               {% for u in users %}
-              <tr class="bg-table rounded-lg transition-colors">
+              <tr class="cursor-pointer rounded-lg bg-table transition-colors" data-href="/user/{{ u.id }}">
                   <td class="px-4 py-3 font-mono text-sm text-sat-l"><a href="/user/{{ u.id }}">{{ u.id }}</a></td>
                   <td class="px-4 py-3 text-sm text-sat-l">{{ u.name }} {{ u.surname }}</td>
                   <td class="px-4 py-3 text-sm text-sat-l">{{ u.email }}</td>
@@ -182,3 +182,17 @@
   </div>
 
 </div>
+
+<script>
+    document.querySelectorAll("tr[data-href]").forEach(row => {
+        row.addEventListener("click", e => {
+            if (
+                e.target.closest("a, button, input, textarea") ||
+                window.getSelection().toString().length > 0
+            ) {
+                return;
+            }
+            window.location = row.dataset.href;
+        });
+    });
+</script>

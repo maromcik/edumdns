@@ -1,10 +1,10 @@
-<div class="max-w-7xl mx-auto mb-10 md:mb-5">
+<div class="w-full mx-auto mb-10 md:mb-5">
     <div class="flex flex-col justify-center items-center py-6">
         <h2 class="text-4xl font-bold text-sat-xl">Devices</h2>
     </div>
 
-    <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards">
-        <table class="w-full divide-y divide-base">
+    <div class="overflow-x-auto rounded-lg border border-base bg-cards">
+        <table class="divide-y divide-base">
             <thead class="bg-muted/10">
             <tr>
                 <th scope="col"
@@ -33,6 +33,18 @@
                 </th>
                 <th scope="col"
                     class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Published
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Exclusive
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
+                    Proxy
+                </th>
+                <th scope="col"
+                    class="px-4 py-3 text-left text-xs  text-sat-l font-medium uppercase tracking-wider text-muted-foreground">
                     Discovered At
                 </th>
                 <th scope="col"
@@ -47,6 +59,36 @@
                 <td class="px-4 py-2"><input type="text" id="filter-mac"   value="{{ filters.mac   | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-ip"    value="{{ filters.ip    | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
                 <td class="px-4 py-2"><input type="text" id="filter-port"  value="{{ filters.port  | default('') }}" class="w-full rounded-md border border-base px-2 py-1 text-sm"/></td>
+                <td class="px-4 py-2">
+                    <select id="filter-published" class="w-full rounded-md border border-base px-2 py-1 text-sm">
+                        <option value="" {% if filters.published is none %} selected {% endif %}>All</option>
+                        <option value="true" {% if filters.published is sameas true %} selected {% endif %}>Published
+                        </option>
+                        <option value="false" {% if filters.published is sameas false %} selected {% endif %}>Not
+                            Published
+                        </option>
+                    </select>
+                </td>
+                <td class="px-4 py-2">
+                    <select id="filter-exclusive" class="w-full rounded-md border border-base px-2 py-1 text-sm">
+                        <option value="" {% if filters.exclusive is none %} selected {% endif %}>All</option>
+                        <option value="true" {% if filters.exclusive is sameas true %} selected {% endif %}>Exclusive
+                        </option>
+                        <option value="false" {% if filters.exclusive is sameas false %} selected {% endif %}>Not
+                            Exclusive
+                        </option>
+                    </select>
+                </td>
+                <td class="px-4 py-2">
+                    <select id="filter-proxy" class="w-full rounded-md border border-base px-2 py-1 text-sm">
+                        <option value="" {% if filters.proxy is none %} selected {% endif %}>All</option>
+                        <option value="true" {% if filters.proxy is sameas true %} selected {% endif %}>Proxy
+                        </option>
+                        <option value="false" {% if filters.proxy is sameas false %} selected {% endif %}>No
+                            Proxy
+                        </option>
+                    </select>
+                </td>
                 <td class="px-4 py-2"></td>
                 <td class="px-4 py-2 flex gap-2">
                     <button type="button" id="filter-button"
@@ -62,31 +104,49 @@
             </thead>
             <tbody class="divide-y divide-base">
             {% for device in devices %}
-            <tr class="bg-table rounded-lg transition-colors">
-                <!-- device[1] is Device -->
+            <tr class="cursor-pointer rounded-lg bg-table transition-colors" data-href="/device/{{ device.id }}">
+                <!-- device is Device -->
                 <td class="px-4 py-3 font-mono text-sm text-sat-l">
-                    <a href="/device/{{ device[1].id }}" class="text-primary hover:underline">
-                        {{ device[1].id }}
+                    <a href="/device/{{ device.id }}" class="text-primary hover:underline">
+                        {{ device.id }}
                     </a>
                 </td>
 
                 <!-- device[0] is Option<Probe> -->
                 <td class="px-4 py-3 text-sm">
-                    {% if device[0] %}
-                    <a href="/probe/{{ device[0].id }}" class="text-primary hover:underline">
-                        {{ device[0].id }}
+                    <a href="/probe/{{ device.probe_id }}" class="text-primary hover:underline">
+                        {{ device.probe_id }}
                     </a>
-                    {% else %}
-                    <span class="text-muted-foreground">—</span>
-                    {% endif %}
+
                 </td>
-                <td class="px-4 py-3 text-sm text-sat-l">{% if device[1].name is not none %}{{ device[1].name }} {% else
+                <td class="px-4 py-3 text-sm text-sat-l">{% if device.name is not none %}{{ device.name }} {% else
                     %} <span class="text-muted-foreground">—</span>{% endif %}
                 </td>
-                <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].mac }}</td>
-                <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].ip }}</td>
-                <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].port }}</td>
-                <td class="px-4 py-3 text-sm text-sat-l">{{ device[1].discovered_at }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device.mac }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device.ip }}</td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device.port }}</td>
+                <td class="px-4 py-3 text-sm">
+                    {% if device.published %}
+                    <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
+                    {% else %}
+                    <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-sm">
+                    {% if device.exclusive %}
+                    <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
+                    {% else %}
+                    <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-sm">
+                    {% if device.proxy %}
+                    <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Yes</span>
+                    {% else %}
+                    <span class="inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">No</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-sm text-sat-l">{{ device.discovered_at }}</td>
                 <td class="px-4 py-2"></td>
             </tr>
             {% endfor %}
@@ -167,10 +227,23 @@
 </div>
 
 <script>
+    document.querySelectorAll("tr[data-href]").forEach(row => {
+        row.addEventListener("click", e => {
+            if (
+                e.target.closest("a, button, input, textarea") ||
+                window.getSelection().toString().length > 0
+            ) {
+                return;
+            }
+            window.location = row.dataset.href;
+        });
+    });
+
+    let filters = ["id", "probe_id","name","mac","ip","port", "published", "exclusive", "proxy"];
     function runSearch() {
         const params = new URLSearchParams();
 
-        ["id", "probe_id","name","mac","ip","port"].forEach(field => {
+        filters.forEach(field => {
             const value = document.getElementById(`filter-${field}`).value.trim();
             if (value) {
                 params.set(field, value);
@@ -192,8 +265,8 @@
     });
 
     // Trigger search on Enter in any filter input
-    ["filter-id", "filter-probe_id","filter-name","filter-mac","filter-ip","filter-port"].forEach(id => {
-        const input = document.getElementById(id);
+    filters.forEach(field => {
+        const input = document.getElementById(`filter-${field}`);
         input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
                 e.preventDefault(); // prevent form-like submit

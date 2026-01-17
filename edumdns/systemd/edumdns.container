@@ -1,0 +1,22 @@
+[Unit]
+Description=edumdns Podman Deployment
+After=network-online.target
+
+[Container]
+Image=localhost/edumdns-image
+ContainerName=edumdns
+Pull=always
+PublishPort=8000:8000
+PublishPort=5000:5000
+Volume=/var/local/bpf/edumdns:/sys/fs/bpf:z
+Volume=/var/local/edumdns/certs:/etc/letsencrypt/live/edumdns.eu:z
+Environment=EDUMDNS_CONFIG_FILE=/usr/src/edumdns/config/edumdns.toml
+Environment=TZ=Europe/Prague
+AddCapability=CAP_BPF
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target

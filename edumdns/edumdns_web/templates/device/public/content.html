@@ -1,7 +1,7 @@
 <div id="transmit-form" class="max-w-7xl mx-auto px-4 sm:px-8">
     <section class="text-center py-12 mb-3">
         <h2 class="text-3xl md:text-4xl font-extrabold text-sat-xl mb-8 tracking-tight">
-            Discover the device {% if device.name is none %} {{ device.id }} {% else %} {{ device.name }} {% endif %}
+            Discover device {% if device.name is none %} {{ device.id }} {% else %} {{ device.name }} {% endif %}
         </h2>
 
         <!-- Device Info Card -->
@@ -21,7 +21,8 @@
                 ("Device IP", device.ip),
                 ("Transmit Duration", device.duration ~ " seconds"),
                 ("Transmit Interval", device.interval ~ " ms"),
-                ("Via Proxy", device.proxy)
+                ("Via Proxy", device.proxy),
+                ("Exclusive", device.exclusive)
                 ] %}
                 <div class="flex flex-col">
                     <span class="text-xs uppercase tracking-wide text-sat-m">{{ label }}</span>
@@ -32,114 +33,140 @@
         </div>
 
         <!-- Client IP + Transmission Controls -->
-        <div  id="transmit-result">
-        <div class="rounded-xl bg-cards p-8 shadow-lg">
-            <div class="flex flex-col items-center justify-center space-y-5">
+        <!-- Prettified transmit-result section -->
+        <div id="transmit-result" class="mt-10">
+            <div class="rounded-2xl bg-cards p-10 shadow-xl">
+                <div class="flex flex-col items-center justify-center gap-8">
 
-                <!-- Your IP -->
-                <div class="flex flex-col items-center space-y-3">
-            <span class="text-sm uppercase tracking-wide text-sat-l font-semibold flex items-center gap-2">
-                <i class="fa-solid fa-network-wired text-acc"></i>
-                Your IP Address
-            </span>
-                    <div class="px-6 py-3 bg-green-50 border border-green-200 rounded-lg shadow-sm">
-                        <span class="text-2xl font-mono text-green-700 tracking-tight select-all">{{ client_ip }}</span>
-                    </div>
-                </div>
-
-                {% if in_progress is not none and packet_transmit_request is none %}
-                <!-- Warning: Transmission in progress -->
-                <div class="w-full max-w-md bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-5 rounded-md shadow-sm text-left">
-                    <div class="flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3 text-yellow-500" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M12 9v2m0 4h.01M4.93 4.93l14.14 14.14M1 12a11 11 0 1122 0A11 11 0 011 12z"/>
-                        </svg>
-                        <h3 class="text-lg font-semibold">Discovery In Progress</h3>
-                    </div>
-                    <p class="mt-2 text-sm">
-                        Another discovery for this device is currently running.
-                        Please wait until it completes on {{ in_progress.until }}.
-                    </p>
-                </div>
-                {% else %}
-
-                <!-- Transmission Controls -->
-                <div class="flex flex-col items-center justify-center space-y-5">
-
-                    {% if packet_transmit_request is not none %}
-                    <!-- Validity Info -->
-                    {% if packet_transmit_request.until is not none %}
-                    <div class="text-center">
-                        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-50 border border-green-200 text-green-800 shadow-sm">
-                            <i class="fa-solid fa-clock text-green-600"></i>
-                            <span class="font-medium">
-                        Discovery active until
-                                <span class="text-green-700"><p class="font-mono">{{ packet_transmit_request.until }}</p></span>
-                    </span>
+                    <!-- Your IP -->
+                    <div class="flex flex-col items-center gap-3">
+        <span class="text-sm md:text-lg uppercase tracking-wide text-sat-l font-semibold flex items-center gap-2">
+          <i class="fa-solid fa-network-wired text-acc"></i>
+          Your IP Address
+        </span>
+                        <div class="px-4 py-2  border border-permanent rounded-lg">
+                            <span class="text-2xl font-mono text-sat-xl tracking-tight select-all">{{ client_ip }}</span>
                         </div>
                     </div>
-                    {% endif %}
 
-                    <!-- Stop Button -->
-                    <button
-                            hx-delete="/device/{{ device.id }}/transmit/{{ packet_transmit_request.id }}?return_url=/device/{{ device.id }}/transmit"
-                            hx-target="#content-area"
-                            hx-target-error="#transmit-result"
-                            type="submit"
-                            class="inline-flex items-center justify-center gap-2 rounded-md border border-red-600 bg-red-500 text-white px-6 py-3 text-lg font-medium hover:bg-red-600 focus:ring-2 focus:ring-red-400 transition-colors duration-150"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                             stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                        Stop Discovery
-                    </button>
+                    {% if in_progress is not none and packet_transmit_request is none %}
+
+                    <!-- Warning: Transmission in progress -->
+                    <div class="w-full max-w-lg bg-yellow-50 border-l-4 border-yellow-500 text-yellow-900 p-5 rounded-md text-left">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-triangle-exclamation text-yellow-600 text-xl"></i>
+                            <h3 class="text-lg font-semibold">Discovery In Progress</h3>
+                        </div>
+                        <p class="mt-2 text-sm">
+                            Another discovery for this device is currently running.
+                            Please wait until it completes on <span class="font-mono">{{ in_progress.until }}</span>.
+                        </p>
+                    </div>
 
                     {% else %}
-                    <!-- Transmit Form -->
-                    <form
-                            method="post"
-                            hx-post="/device/{{ device.id }}/transmit"
-                            hx-target="#content-area"
-                            hx-target-error="#transmit-result"
-                            class="flex flex-col items-center space-y-5 w-full max-w-sm"
-                    >
-                        {% if device.acl_pwd_hash is not none %}
-                        <div class="w-full text-left">
-                            <label for="acl_pwd" class="text-xs uppercase tracking-wide text-sat-l mb-1 block">
-                                Password
-                            </label>
-                            <input
-                                    id="acl_pwd"
-                                    name="acl_pwd"
-                                    type="password"
-                                    class="w-full rounded-md border border-base bg-bg px-3 py-2 bg-panes text-sat-l focus:outline-none focus:ring-2 focus:ring-acc placeholder-sat-m"
-                                    placeholder="Enter password"
-                            >
+
+                    <!-- Transmission Controls -->
+                    <div class="flex flex-col items-center justify-center gap-6 w-full">
+
+                        {% if packet_transmit_request is not none %}
+
+                        <!-- Discovery Active -->
+                        {% if packet_transmit_request.until is not none %}
+                        <div class="w-full max-w-md">
+                            <div class="flex flex-col sm:flex-row items-center justify-between w-full px-8 py-4 rounded-xl border border-permanent ">
+                                <div>
+                                    <p class="font-semibold text-sat-l"><i class="fa-solid fa-clock text-sat-l text-lg pr-2"></i>
+                                        Discovery Active</p>
+                                    <p class="text-sm text-sat-l">
+                                        Until {{ packet_transmit_request.until }}
+                                    </p>
+                                </div>
+
+                                <!-- Stop Button (small but strong) -->
+                                <button
+                                        hx-delete="/device/{{ device.id }}/transmit/{{ packet_transmit_request.id }}?return_url=/device/{{ device.id }}/transmit"
+                                        hx-target="#content-area"
+                                        hx-target-error="#transmit-result"
+                                        type="submit"
+                                        class="inline-flex items-center gap-2 rounded-lg border border-red-600 bg-red-500 text-button px-4 py-2 text-sm font-semibold hover:bg-red-600 transition"
+                                >
+                                    <i class="fa-solid fa-stop"></i>
+                                    Stop
+                                </button>
+                            </div>
                         </div>
                         {% endif %}
 
-                        <button
-                                type="submit"
-                                class="inline-flex items-center justify-center gap-2 rounded-md border border-green-600 bg-green-500 text-white px-6 py-3 text-lg font-medium hover:bg-green-600 focus:ring-2 focus:ring-green-400 transition-colors duration-150"
+                    <!-- Extend Discovery Form -->
+                        <form
+                                method="post"
+                                hx-post="/device/{{ device.id }}/transmit/{{ packet_transmit_request.id }}/extend"
+                                hx-target="#content-area"
+                                hx-target-error="#transmit-result"
+                                class="flex flex-col items-center gap-5 w-full max-w-sm bg-base/10 p-6 rounded-xl border border-permanent"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                 stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M5 13l4 4L19 7"/>
-                            </svg>
-                            Discover
-                        </button>
-                    </form>
+                            {% if device.acl_pwd_hash is not none %}
+                            <div class="w-full text-left">
+                                <label for="acl_pwd_extend"
+                                       class="text-xs uppercase tracking-wide text-sat-l mb-1 block">Password</label>
+                                <input
+                                        id="acl_pwd_extend"
+                                        name="acl_pwd"
+                                        type="password"
+                                        class="w-full rounded-md border border-base bg-bg px-3 py-2 bg-panes text-sat-l placeholder-sat-m"
+                                        placeholder="Enter password"
+                                >
+                            </div>
+                            {% endif %}
+
+                            <button
+                                    type="submit"
+                                    class="inline-flex items-center justify-center gap-3 rounded-xl bg-acc text-button px-6 py-3 text-lg font-semibold hover:bg-acc-xl transition"
+                            >
+                                <i class="fa-solid fa-arrows-rotate"></i>
+                                Extend Discovery
+                            </button>
+                        </form>
+
+                        {% else %}
+
+                        <!-- Initial Discover Form -->
+                        <form
+                                method="post"
+                                hx-post="/device/{{ device.id }}/transmit"
+                                hx-target="#content-area"
+                                hx-target-error="#transmit-result"
+                                class="flex flex-col items-center gap-5 w-full max-w-sm bg-base/10 p-6 rounded-xl border border-permanent"
+                        >
+                            {% if device.acl_pwd_hash is not none %}
+                            <div class="w-full text-left">
+                                <label for="acl_pwd" class="text-xs uppercase tracking-wide text-sat-l mb-1 block">Password</label>
+                                <input
+                                        id="acl_pwd"
+                                        name="acl_pwd"
+                                        type="password"
+                                        class="w-full rounded-md border border-base bg-bg px-3 py-2 bg-panes text-sat-l focus:outline-none placeholder-sat-m"
+                                        placeholder="Enter password"
+                                >
+                            </div>
+                            {% endif %}
+
+                            <button
+                                    type="submit"
+                                    class="inline-flex items-center justify-center gap-3 rounded-xl bg-acc text-button px-6 py-3 text-lg font-semibold  hover:bg-primary/90 transition-colors"
+                            >
+                                <i class="fa-solid fa-search"></i>
+                                Discover
+                            </button>
+                        </form>
+
+                        {% endif %}
+                    </div>
+
                     {% endif %}
                 </div>
-
-                {% endif %}
             </div>
         </div>
-        </div>
+
     </section>
 </div>

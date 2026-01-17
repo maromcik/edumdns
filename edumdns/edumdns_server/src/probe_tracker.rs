@@ -1,4 +1,10 @@
-use crate::listen::ProbeHandles;
+//! Tracking last-seen timestamps for connected probes and cleaning up stale ones.
+//!
+//! The tracker maintains an ordered map keyed by probe `Uuid` with fast lookup and
+//! O(log N) access to the oldest entry. The `watchdog` periodically removes probes
+//! that have not been seen for longer than `max_age` and closes their connections.
+
+use crate::ProbeHandles;
 use crate::ordered_map::OrderedMap;
 use edumdns_core::bincode_types::Uuid;
 use log::{info, trace};

@@ -1,3 +1,7 @@
+# Builds the edumdns directory.
+# The file was placed here due to the dependency on the edumdns_core crate, and apparently
+# files from the parent directory cannot be copied over.
+
 services:
   edumdns-db:
     image: postgres:latest
@@ -22,20 +26,20 @@ services:
     ports:
       - "8000:8000"
       - "5000:5000"
-    env_file:
-      - ./.env-docker
+    environment:
+      - TZ=Europe/Prague
+      - EDUMDNS_CONFIG_FILE=/usr/src/edumdns/config/edumdns.toml
     cap_add:
       - CAP_BPF
-      - CAP_NET_ADMIN
-      - CAP_SYS_ADMIN
     depends_on:
       edumdns-db:
         condition: service_healthy
     volumes:
       - /sys/fs/bpf:/sys/fs/bpf:shared
       - /etc/ssl/certs-ics/edumdns:/etc/letsencrypt/edumdns
+      - /opt/podman/edumdns/config:/usr/src/edumdns/config
   edumdns-nginx:
-    build: ./nginx
+    build: ./edumdns/nginx
     container_name: edumdns-nginx
     depends_on:
       - edumdns

@@ -1,3 +1,10 @@
+//! Custom middleware for request handling and authentication.
+//!
+//! This module provides the `RedirectToLogin` middleware that intercepts unauthenticated
+//! requests and redirects them to the login page. It allows certain paths (static files,
+//! login/logout endpoints) to be accessed without authentication, and checks for
+//! authentication cookies to determine if a user is logged in.
+
 use actix_web::body::BoxBody;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready};
 use actix_web::{Error, HttpResponse};
@@ -40,6 +47,35 @@ where
 
     forward_ready!(service);
 
+    /// Processes a request and redirects to login if authentication is required.
+    ///
+    /// This function checks if the request path should be allowed without authentication
+    /// (static files, login/logout paths) or if the request has authentication cookies.
+    /// If neither condition is met, it redirects to the login page with a return URL.
+    ///
+    /// # Arguments
+    ///
+    /// * `req` - The incoming service request
+    ///
+    /// # Returns
+    ///
+    /// Returns a future that resolves to:
+    /// - The original response if the path is public or the user is authenticated
+    /// - A redirect response to `/login?ret={encoded_path}` if authentication is required
+    ///
+    /// # Authentication Checks
+    ///
+    /// The following paths are allowed without authentication:
+    /// - `/static/*` - Static file serving
+    /// - `/login*` - Login endpoints
+    /// - `/auth_callback` - OAuth callback
+    /// - `/logout*` - Logout endpoints
+    /// - `/oidc*` - OIDC-related endpoints
+    ///
+    /// The following cookies indicate authentication:
+    /// - `auth` - Authentication method cookie (local or oidc)
+    /// - `id` - User identity cookie
+    /// - `id_token` - OIDC identity token cookie
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let path = req.path().to_string();
         if path.starts_with("/static")

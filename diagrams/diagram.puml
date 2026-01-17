@@ -1,0 +1,86 @@
+@startuml
+' Style Setting
+skinparam dpi 100
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+skinparam defaultTextAlignment center
+
+' COLORS (for easier reference)
+' Blue      #1F77B4  (mDNS capture)
+' Green     #2CA02C  (mDNS retransmit)
+' Red       #C62828  (Direct data)
+' Purple    #8E44AD  (Proxied data)
+' Gray      #918df7  (Control / Commands)
+' DB gray   #cf97b2
+
+' --- GROUPS ---
+
+rectangle "External Clients" as ClientsGroup {
+  node "Wireless Client" as ClientWireless #FFFFFF
+  node "Wired Client" as ClientWired #FFFFFF
+}
+
+rectangle "Remote VLAN A" as SiteA #fcf9ea {
+  rectangle "Smart Device A\n(Playercast)" as DeviceA #fcf0ea
+  component "Probe A\n(edumdns_probe)" as ProbeA #caeef9
+}
+
+rectangle "Remote VLAN B" as SiteB #fcf9ea {
+  rectangle "Smart Device B\n(Streamer)" as DeviceB #fcf0ea
+  component "Probe B\n(edumdns_probe)" as ProbeB #caeef9
+}
+
+rectangle "Central Host" as CentralHost #eff9f6 {
+  rectangle "Server Binary" as ServerGroup #ddf9ca {
+    component "Server\n(edumdns_server)" as ServerComponent #f7eca8
+    component "Web UI\n(edumdns_web)" as WebComponent #f7eca8
+    database "DB Layer\n(edumdns_db)" as DBLayer #f7eca8
+  }
+  component "eBPF Proxy Binary\n(edumdns_proxy)" as Proxy #ffec3d
+}
+
+database "PostgreSQL" as Postgres #D9E1F2
+
+' --- LINKS ---
+
+' 0. Web -> Server (Command)
+ServerComponent <-[#918df7,thickness=3]-> WebComponent : "<color:#918df7>Control </color>"
+
+' 1. mDNS Capture (Device -> Probe)
+DeviceA -[#1F77B4,thickness=2]-> ProbeA : "<color:#1F77B4>Capture </color>"
+DeviceB -[#1F77B4,thickness=2]-> ProbeB : "<color:#1F77B4>Capture </color>"
+
+' 2. Probe -> Server (mDNS Data + Control)
+ProbeA -[#1F77B4,thickness=2]-> ServerComponent : "<color:#1F77B4>Data</color>"
+ProbeB -[#1F77B4,thickness=2]-> ServerComponent : "<color:#1F77B4>Data </color>"
+
+ProbeA <-[#918df7,thickness=2]-> ServerComponent : "\n<color:#918df7>Control </color>"
+ProbeB <-[#918df7,thickness=2]-> ServerComponent : "<color:#918df7>Control</color>"
+
+' 3. Server -> DB Layer -> Postgres
+WebComponent -[#cf97b2,thickness=2]-> DBLayer : "<color:#cf97b2>API  </color>"
+ServerComponent -[#cf97b2,thickness=2]-> DBLayer : "<color:#cf97b2>  API</color>"
+DBLayer -[#cf97b2,thickness=2]-> Postgres : "<color:#cf97b2>SQL </color>"
+
+' 4. Server -> Proxy (Proxy Configuration)
+ServerComponent -[#ff8a3d,thickness=2]-> Proxy : "<color:#ff8a3d>Config</color>"
+
+' 5. Server -> Clients (mDNS Retransmission)
+ServerComponent -[#2CA02C,thickness=2]-> ClientWireless : "<color:#2CA02C>mDNS Advert   </color>"
+ServerComponent -[#2CA02C,thickness=2]-> ClientWired : "<color:#2CA02C>mDNS Advert</color>"
+
+' 6. DATA TRAFFIC
+
+' Segment A (direct)
+ClientWired <-[#C62828,thickness=3]-> DeviceA : "<color:#C62828>Direct Data </color>"
+
+' Segment B (proxied)
+ClientWireless <-[#8E44AD,thickness=3]-> Proxy : "<color:#8E44AD>Proxied Data        </color>"
+Proxy <-[#8E44AD,thickness=3]-> DeviceB : "<color:#8E44AD>Proxied Data </color>"
+
+'7 Request packet transmission
+ClientWired -[#2CA02C,thickness=1]-> WebComponent : "<color:#2CA02C>Request Discovery</color>"
+ClientWireless -[#2CA02C,thickness=1]-> WebComponent : "<color:#2CA02C>Request Discovery</color>"
+
+@enduml

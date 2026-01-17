@@ -1,8 +1,8 @@
 use crate::error::DbError;
 use crate::models::{GroupProbePermission, Probe, ProbeConfig, User};
 use crate::repositories::common::{
-    DbCreate, DbDataPerm, DbDelete, DbReadMany, DbReadOne, DbResult, DbResultMultiple,
-    DbResultMultiplePerm, DbResultSingle, DbResultSinglePerm, DbUpdate, Permission,
+    CountResult, DbCreate, DbDataPerm, DbDelete, DbReadOne, DbResult, DbResultMultiple,
+    DbResultSingle, DbResultSinglePerm, DbUpdate, Permission,
 };
 use crate::repositories::probe::models::{
     AlterProbePermission, CreateProbe, CreateProbeConfig, SelectManyProbes,
@@ -10,15 +10,15 @@ use crate::repositories::probe::models::{
 };
 use crate::repositories::utilities::{validate_admin_conn, validate_permissions, validate_user};
 use crate::schema::group_probe_permission;
-use crate::schema::group_user;
 use crate::schema::probe;
 use crate::schema::probe::BoxedQuery;
 use crate::schema::probe_config;
 use crate::schema::user;
 use diesel::pg::Pg;
+use diesel::sql_types::{BigInt, Bool, Cidr, MacAddr, Nullable, Text, Uuid as DieselUuid};
 use diesel::{
-    BoolExpressionMethods, CombineDsl, ExpressionMethods, JoinOnDsl, PgNetExpressionMethods,
-    PgTextExpressionMethods, QueryDsl, SelectableHelper,
+    ExpressionMethods, PgNetExpressionMethods, PgTextExpressionMethods, QueryDsl, SelectableHelper,
+    sql_query,
 };
 use diesel_async::AsyncPgConnection;
 use diesel_async::RunQueryDsl;
@@ -37,14 +37,44 @@ impl PgProbeRepository {
         Self { pg_pool }
     }
 
-    pub async fn get_probe_count(&self, mut params: SelectManyProbes) -> DbResultSingle<i64> {
+    pub async fn get_probe_count(
+        &self,
+        mut params: SelectManyProbes,
+        user_id: &Id,
+    ) -> DbResultSingle<i64> {
         let mut conn = self.pg_pool.get().await?;
+
+        let user_entry = user::table
+            .find(user_id)
+            .select(User::as_select())
+            .first(&mut conn)
+            .await?;
+
+        validate_user(&user_entry)?;
+
         params.pagination = None;
-        build_select_many_query(&params)
-            .count()
-            .get_result(&mut conn)
-            .await
-            .map_err(DbError::from)
+
+        if user_entry.admin {
+            return build_select_many_query(&params)
+                .count()
+                .get_result(&mut conn)
+                .await
+                .map_err(DbError::from);
+        }
+
+        let query = sql_query(include_str!("queries/count.sql"))
+            .bind::<BigInt, _>(user_id)
+            .bind::<Nullable<DieselUuid>, _>(params.id)
+            .bind::<Nullable<Bool>, _>(params.adopted)
+            .bind::<Nullable<MacAddr>, _>(params.mac)
+            .bind::<Nullable<Cidr>, _>(params.ip)
+            .bind::<Nullable<BigInt>, _>(params.owner_id)
+            .bind::<Nullable<BigInt>, _>(params.location_id)
+            .bind::<Nullable<Text>, _>(params.name.as_ref());
+
+        let count = query.get_result::<CountResult>(&mut conn).await?;
+
+        Ok(count.count)
     }
 
     pub async fn forget(&self, params: &Uuid, user_id: &Id) -> DbResult<()> {
@@ -176,6 +206,49 @@ impl PgProbeRepository {
             .await?;
         Ok(())
     }
+
+    pub async fn read_many(&self, params: &SelectManyProbes) -> DbResultMultiple<Probe> {
+        let mut conn = self.pg_pool.get().await?;
+        ProbeBackend::select_many(&mut conn, params).await
+    }
+
+    pub async fn read_many_auth(
+        &self,
+        params: &SelectManyProbes,
+        user_id: &Id,
+    ) -> DbResultMultiple<Probe> {
+        let mut conn = self.pg_pool.get().await?;
+        let user_entry = user::table
+            .find(user_id)
+            .select(User::as_select())
+            .first(&mut conn)
+            .await?;
+
+        validate_user(&user_entry)?;
+
+        if user_entry.admin {
+            let probes = ProbeBackend::select_many(&mut conn, params).await?;
+            return Ok(probes);
+        }
+
+        let pagination = params.pagination.unwrap_or_default();
+
+        let query = sql_query(include_str!("queries/read_many.sql"))
+            .bind::<BigInt, _>(user_id)
+            .bind::<Nullable<DieselUuid>, _>(params.id)
+            .bind::<Nullable<Bool>, _>(params.adopted)
+            .bind::<Nullable<MacAddr>, _>(params.mac)
+            .bind::<Nullable<Cidr>, _>(params.ip)
+            .bind::<Nullable<BigInt>, _>(params.owner_id)
+            .bind::<Nullable<BigInt>, _>(params.location_id)
+            .bind::<Nullable<Text>, _>(params.name.as_ref())
+            .bind::<BigInt, _>(pagination.limit.unwrap_or(i64::MAX))
+            .bind::<BigInt, _>(pagination.offset.unwrap_or(0));
+
+        let probes = query.load::<Probe>(&mut conn).await?;
+
+        Ok(probes)
+    }
 }
 
 impl DbReadOne<Uuid, (Probe, Vec<ProbeConfig>)> for PgProbeRepository {
@@ -194,77 +267,6 @@ impl DbReadOne<Uuid, (Probe, Vec<ProbeConfig>)> for PgProbeRepository {
             validate_permissions(&mut conn, user_id, params, Permission::Read).await?;
         let data = ProbeBackend::select_one(&mut conn, params).await?;
         Ok(DbDataPerm::new(data, permissions))
-    }
-}
-
-impl DbReadMany<SelectManyProbes, Probe> for PgProbeRepository {
-    async fn read_many(&self, params: &SelectManyProbes) -> DbResultMultiple<Probe> {
-        let mut conn = self.pg_pool.get().await?;
-        ProbeBackend::select_many(&mut conn, params).await
-    }
-
-    async fn read_many_auth(
-        &self,
-        params: &SelectManyProbes,
-        user_id: &Id,
-    ) -> DbResultMultiplePerm<Probe> {
-        let mut conn = self.pg_pool.get().await?;
-        let query = build_select_many_query(params);
-
-        let user_entry = user::table
-            .find(user_id)
-            .select(User::as_select())
-            .first(&mut conn)
-            .await?;
-
-        validate_user(&user_entry)?;
-
-        if user_entry.admin {
-            let probes = ProbeBackend::select_many(&mut conn, params).await?;
-            return Ok(DbDataPerm::new(
-                probes,
-                (true, vec![GroupProbePermission::full()]),
-            ));
-        }
-
-        let shared_probe_ids = probe::table
-            .inner_join(
-                group_probe_permission::table.on(group_probe_permission::probe_id.eq(probe::id)),
-            )
-            .filter(
-                group_probe_permission::permission
-                    .eq(Permission::Read)
-                    .or(group_probe_permission::permission.eq(Permission::Full)),
-            )
-            .inner_join(
-                group_user::table.on(group_user::group_id.eq(group_probe_permission::group_id)),
-            )
-            .filter(group_user::user_id.eq(user_id))
-            .filter(
-                group_probe_permission::permission
-                    .eq(Permission::Read)
-                    .or(group_probe_permission::permission.eq(Permission::Full)),
-            )
-            .select(probe::id);
-
-        let owned_probe_ids = probe::table
-            .filter(probe::owner_id.eq(user_entry.id))
-            .select(probe::id);
-
-        let unioned_ids = shared_probe_ids
-            .union(owned_probe_ids)
-            .load::<Uuid>(&mut conn)
-            .await?;
-
-        let probes = query
-            .filter(probe::id.eq_any(unioned_ids))
-            .distinct()
-            .order_by(probe::ip.asc())
-            .select(Probe::as_select())
-            .load::<Probe>(&mut conn)
-            .await?;
-
-        Ok(DbDataPerm::new(probes, (false, vec![])))
     }
 }
 

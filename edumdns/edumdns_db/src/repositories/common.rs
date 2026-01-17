@@ -3,8 +3,9 @@ use crate::models::GroupProbePermission;
 use diesel::backend::Backend;
 use diesel::deserialize::FromSql;
 use diesel::serialize::{Output, ToSql};
+use diesel::sql_types::BigInt;
 use diesel::sql_types::SmallInt;
-use diesel::{AsExpression, FromSqlRow, deserialize, serialize};
+use diesel::{AsExpression, FromSqlRow, QueryableByName, deserialize, serialize};
 use edumdns_core::app_packet::Id;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -57,7 +58,7 @@ pub trait DbCreate<Create, Data> {
     ///
     /// - `Ok(Data)` on success (the provided structure which represents
     ///                          data coming from the database)
-    /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
+    /// - `Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn create(&self, data: &Create) -> impl Future<Output = DbResultSingle<Data>> + Send;
     fn create_auth(
         &self,
@@ -78,7 +79,7 @@ pub trait DbReadOne<ReadOne, Data> {
     ///
     /// - `Ok(Data)` on success (the provided structure which represents read data coming
     ///                          from the database)
-    /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
+    /// - `Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn read_one(&self, params: &ReadOne) -> impl Future<Output = DbResultSingle<Data>> + Send;
     fn read_one_auth(
         &self,
@@ -99,7 +100,7 @@ pub trait DbReadMany<ReadMany, Data> {
     ///
     /// - `Ok(Vec<Data>)` on success (a vector of structures which represent read data from the
     ///                               database)
-    /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
+    /// - `Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn read_many(&self, params: &ReadMany) -> impl Future<Output = DbResultMultiple<Data>> + Send;
     fn read_many_auth(
         &self,
@@ -120,7 +121,7 @@ pub trait DbUpdate<Update, Data> {
     ///
     /// - `Ok(Vec<Data>)` on success (a vector of structures which represent updated data from the
     ///                               database)
-    /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
+    /// - `Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn update(&self, params: &Update) -> impl Future<Output = DbResultMultiple<Data>> + Send;
 
     fn update_auth(
@@ -142,7 +143,7 @@ pub trait DbDelete<Delete, Data> {
     ///
     /// - `Ok(Vec<Data>)` on success (a vector of structures which represent deleted data from the
     ///                               database)
-    /// - `sqlx::Error(_)` on any failure (SQL, DB constraints, connection, etc.)
+    /// - `Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn delete(&self, params: &Delete) -> impl Future<Output = DbResultMultiple<Data>> + Send;
     fn delete_auth(
         &self,
@@ -151,7 +152,7 @@ pub trait DbDelete<Delete, Data> {
     ) -> impl Future<Output = DbResultMultiple<Data>> + Send;
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default)]
 pub struct Pagination {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
@@ -265,4 +266,10 @@ where
             Permission::Create => 8_i16.to_sql(out),
         }
     }
+}
+
+#[derive(QueryableByName)]
+pub struct CountResult {
+    #[diesel(sql_type = BigInt)]
+    pub count: i64,
 }

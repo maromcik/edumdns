@@ -1,11 +1,11 @@
-<div class="max-w-7xl mx-auto mb-10 md:mb-5">
+<div class="w-full mx-auto mb-10 md:mb-5">
     <!-- Header Section -->
     <div class="flex flex-col justify-center items-center py-6">
         <h2 class="text-4xl font-bold text-sat-xl">Packets</h2>
     </div>
 
-    <div class="max-w-7xl overflow-x-auto rounded-lg border border-base bg-cards">
-        <table class="w-full divide-y divide-base">
+    <div class="overflow-x-auto rounded-lg border border-base bg-cards">
+        <table class="divide-y divide-base">
             <thead class="bg-muted/10">
             <tr>
                 <th scope="col"
@@ -78,7 +78,7 @@
             </thead>
             <tbody class="divide-y">
             {% for packet in packets %}
-            <tr class="bg-table transition-colors">
+            <tr class="cursor-pointer rounded-lg bg-table transition-colors" data-href="/packet/{{ packet.id }}">
                 <td class="px-4 py-3 font-mono text-sm">
                     <a href="/packet/{{ packet.id }}" class="text-primary hover:underline">
                         {{ packet.id }}
@@ -196,6 +196,17 @@
 </div>
 
 <script>
+    document.querySelectorAll("tr[data-href]").forEach(row => {
+        row.addEventListener("click", e => {
+            if (
+                e.target.closest("a, button, input, textarea") ||
+                window.getSelection().toString().length > 0
+            ) {
+                return;
+            }
+            window.location = row.dataset.href;
+        });
+    });
     function runSearch() {
         const params = new URLSearchParams();
 

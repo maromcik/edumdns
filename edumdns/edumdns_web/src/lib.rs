@@ -1,15 +1,16 @@
+//! Web interface module for the edumDNS system.
+//!
+//! This module provides the web-based user interface for administrators and users to interact
+//! with the edumDNS system. It includes HTTP handlers for device management, probe configuration,
+//! packet viewing, user administration, and authentication (both local and OpenID Connect).
+//!
+//! The module uses Actix Web as the web framework and Minijinja for template rendering.
+//! It communicates with the server component through message channels to coordinate operations
+//! such as packet transmission requests and probe management.
+
 use crate::error::WebError;
-use crate::init::configure_webapp;
-use crate::utils::{
-    AppState, DeviceAclApDatabase, create_oidc, create_reloader, get_cors_middleware,
-    get_identity_middleware, get_session_middleware, json_config, parse_host, path_config,
-    query_config,
-};
-use actix_multipart::form::MultipartFormConfig;
-use actix_web::http::{header, Method};
-use actix_web::middleware::{Logger, NormalizePath, TrailingSlash};
-use actix_web::web::{FormConfig, PayloadConfig};
-use actix_web::{App, HttpServer, cookie::Key};
+use crate::init::WebSpawner;
+use actix_web::http::header;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_server::app_packet::AppPacket;
@@ -19,10 +20,13 @@ use std::sync::Arc;
 use actix_csrf::CsrfMiddleware;
 use rand::CryptoRng;
 use rand::prelude::StdRng;
+
+use crate::config::WebConfig;
 use tokio::sync::mpsc::Sender;
 
 pub mod error;
 
+pub mod config;
 mod forms;
 mod handlers;
 mod init;
@@ -30,120 +34,35 @@ mod middleware;
 mod templates;
 mod utils;
 
-const DEFAULT_HOSTNAME: &str = "localhost";
-const DEFAULT_PORT: &str = "8000";
-pub const SESSION_EXPIRY: i64 = 30; // days
-const SECS_IN_MONTH: i64 = 60 * 60 * 24 * 30;
-const SECS_IN_WEEK: u64 = 60 * 60 * 24 * 7;
-const PAYLOAD_LIMIT: usize = 16 * 1024 * 1024 * 1024; // 16GiB
-
-const FORM_LIMIT: usize = 16 * 1024 * 1024; // 16MiB
-
-const PING_INTERVAL: u64 = 1;
-
+/// Initializes and starts the web server.
+///
+/// This function sets up the web interface by creating a `WebSpawner` instance and starting
+/// the HTTP server. It loads environment variables from a `.env` file if present.
+///
+/// # Arguments
+///
+/// * `pool` - Database connection pool for accessing PostgreSQL
+/// * `command_channel` - Channel sender for sending commands to the server component
+/// * `web_config` - Global web configuration
+/// # Returns
+///
+/// Returns `Ok(())` if the server starts successfully, or a `WebError` if initialization fails.
+///
+/// # Errors
+///
+/// This function will return an error if:
+/// - The `.env` file cannot be loaded (non-fatal, logged as warning)
+/// - The `WebSpawner` fails to initialize
+/// - The HTTP server fails to bind to the configured address
 pub async fn web_init(
     pool: Pool<AsyncPgConnection>,
     command_channel: Sender<AppPacket>,
+    web_config: WebConfig,
 ) -> Result<(), WebError> {
-    if let Err(e) = dotenvy::dotenv() {
-        warn!("failed loading .env file: {e}");
-    };
+    WebSpawner::new(pool, command_channel, web_config)
+        .await
+        .run_web()
+        .await?;
 
-    let host = parse_host();
-    let host2 = host.clone();
-    let files_dir = env::var("EDUMDNS_FILES_DIR").unwrap_or("edumdns_web".to_string());
-    let key = Key::from(
-        &env::var("EDUMDNS_COOKIE_SESSION_KEY")
-            .unwrap_or_default()
-            .bytes()
-            .collect::<Vec<u8>>(),
-    );
-    let use_secure_cookie = env::var("EDUMDNS_USE_SECURE_COOKIE")
-        .unwrap_or("false".to_string())
-        .parse::<bool>()?;
-    info!("EDUMDNS_USE_SECURE_COOKIE: {}", use_secure_cookie);
-
-    let jinja = Arc::new(create_reloader(format!("{files_dir}/templates")));
-    let device_acl_ap_database = DeviceAclApDatabase {
-        connection_string: env::var("EDUMDNS_ACL_AP_DATABASE_CONNECTION_STRING")
-            .unwrap_or_default(),
-        query: env::var("EDUMDNS_ACL_AP_DATABASE_QUERY").unwrap_or_default(),
-    };
-    let app_state = AppState::new(
-        jinja.clone(),
-        command_channel.clone(),
-        device_acl_ap_database,
-        use_secure_cookie,
-    );
-
-
-    match create_oidc().await {
-        Err(e) => {
-            info!("starting server on {host} without OIDC support. Reason: {e}");
-            HttpServer::new(move || {
-                App::new()
-                    .app_data(
-                        MultipartFormConfig::default()
-                            .total_limit(PAYLOAD_LIMIT)
-                            .memory_limit(PAYLOAD_LIMIT),
-                    )
-                    .app_data(FormConfig::default().limit(FORM_LIMIT))
-                    .app_data(PayloadConfig::new(PAYLOAD_LIMIT))
-                    .app_data(json_config())
-                    .app_data(query_config()) // <-- attach custom handler// <- important
-                    .app_data(path_config()) // <-- attach custom handler// <- important
-                    .wrap(NormalizePath::new(TrailingSlash::Trim))
-                    .wrap(get_identity_middleware())
-                    .wrap(CsrfMiddleware::<StdRng>::new().set_cookie(Method::GET, "/login"))
-                    .wrap(get_session_middleware(key.clone(), use_secure_cookie))
-                    .wrap(get_cors_middleware(host.as_str()))
-                    // .wrap(o.get_middleware())
-                    .wrap(middleware::RedirectToLogin)
-                    .wrap(Logger::default())
-                    // .configure(openid.configure_open_id())
-                    .configure(configure_webapp(
-                        &pool,
-                        app_state.clone(),
-                        files_dir.clone(),
-                    ))
-            })
-            .bind(host2)?
-            .run()
-            .await?;
-        }
-        Ok(oidc) => {
-            info!("starting server on {host} with OIDC support");
-            HttpServer::new(move || {
-                App::new()
-                    .app_data(
-                        MultipartFormConfig::default()
-                            .total_limit(PAYLOAD_LIMIT)
-                            .memory_limit(PAYLOAD_LIMIT),
-                    )
-                    .app_data(FormConfig::default().limit(FORM_LIMIT))
-                    .app_data(PayloadConfig::new(PAYLOAD_LIMIT))
-                    .app_data(json_config())
-                    .app_data(query_config()) // <-- attach custom handler// <- important
-                    .app_data(path_config())
-                    .wrap(NormalizePath::new(TrailingSlash::Trim))
-                    .wrap(get_identity_middleware())
-                    .wrap(CsrfMiddleware::<StdRng>::new().set_cookie(Method::GET, "/login"))
-                    .wrap(get_session_middleware(key.clone(), use_secure_cookie))
-                    .wrap(get_cors_middleware(host.as_str()))
-                    .wrap(oidc.get_middleware())
-                    .wrap(middleware::RedirectToLogin)
-                    .wrap(Logger::default())
-                    .configure(oidc.configure_open_id())
-                    .configure(configure_webapp(
-                        &pool,
-                        app_state.clone(),
-                        files_dir.clone(),
-                    ))
-            })
-            .bind(host2)?
-            .run()
-            .await?;
-        }
-    }
     Ok(())
 }

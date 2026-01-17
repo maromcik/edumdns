@@ -10,4 +10,5 @@ pub struct IndexTemplate {
 pub struct LoginTemplate {
     pub message: String,
     pub return_url: String,
+    pub token: String,
 }

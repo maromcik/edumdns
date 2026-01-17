@@ -59,6 +59,9 @@ use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_server::app_packet::AppPacket;
 use log::info;
 use std::sync::Arc;
+use actix_csrf::CsrfMiddleware;
+use actix_web::http::Method;
+use rand::prelude::StdRng;
 use tokio::sync::mpsc::Sender;
 
 pub struct WebSpawner {
@@ -290,6 +293,7 @@ impl WebSpawner {
                             config.session.use_secure_cookie,
                             config.session.session_expiration,
                         ))
+                        .wrap(CsrfMiddleware::<StdRng>::new().set_cookie(Method::GET, "/login"))
                         .wrap(get_cors_middleware(config.site_url.as_str()))
                         .wrap(middleware::RedirectToLogin)
                         .wrap(Logger::default())
@@ -339,6 +343,7 @@ impl WebSpawner {
                             config.session.use_secure_cookie,
                             config.session.session_expiration,
                         ))
+                        .wrap(CsrfMiddleware::<StdRng>::new().set_cookie(Method::GET, "/login"))
                         .wrap(get_cors_middleware(config.site_url.as_str()))
                         .wrap(oidc.get_middleware())
                         .wrap(middleware::RedirectToLogin)

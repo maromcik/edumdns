@@ -9,6 +9,8 @@
 //! These handlers manage user sessions, set authentication cookies, and handle
 //! redirects after successful authentication.
 
+use actix_csrf::extractor::CsrfToken;
+use actix_csrf::extractor::Csrf;
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::user::{UserLoginForm, UserLoginReturnURL};

@@ -10,7 +10,7 @@
 use crate::ProbeHandles;
 use crate::app_packet::AppPacket;
 use crate::error::ServerError;
-use crate::probe_tracker::{ProbeStat, SharedProbeTracker};
+use crate::utils::probe_tracker::{ProbeStat, SharedProbeTracker};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::app_packet::{

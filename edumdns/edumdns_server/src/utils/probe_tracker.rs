@@ -5,7 +5,7 @@
 //! that have not been seen for longer than `max_age` and closes their connections.
 
 use crate::ProbeHandles;
-use crate::ordered_map::OrderedMap;
+use crate::utils::ordered_map::OrderedMap;
 use edumdns_core::bincode_types::Uuid;
 use log::{info, trace};
 use std::hash::{Hash, Hasher};
@@ -17,9 +17,9 @@ use tokio::time::Instant;
 pub type SharedProbeTracker = Arc<RwLock<OrderedMap<Uuid, ProbeStat>>>;
 
 #[derive(Debug)]
-pub struct ProbeStat {
-    pub id: Uuid,
-    pub last_seen: Instant,
+pub(crate) struct ProbeStat {
+    pub(crate) id: Uuid,
+    pub(crate) last_seen: Instant,
 }
 
 impl Eq for ProbeStat {}
@@ -60,7 +60,11 @@ impl ProbeStat {
     }
 }
 
-pub async fn watchdog(tracker: SharedProbeTracker, probe_handles: ProbeHandles, max_age: Duration) {
+pub(crate) async fn watchdog(
+    tracker: SharedProbeTracker,
+    probe_handles: ProbeHandles,
+    max_age: Duration,
+) {
     loop {
         tokio::time::sleep(max_age).await;
         trace!("Checking for dead probes");

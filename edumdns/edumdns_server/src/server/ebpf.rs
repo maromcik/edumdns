@@ -11,6 +11,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use crate::config::ServerConfig;
 
 #[derive(Clone)]
 /// Holds proxy configuration and a handle to the eBPF updater.
@@ -24,6 +25,27 @@ pub(crate) struct Proxy {
     pub(crate) proxy_ip: ProxyIp,
     /// Shared eBPF maps updater used to add/remove rewrite rules.
     pub(crate) ebpf_updater: Arc<Mutex<EbpfUpdater>>,
+}
+
+impl Proxy {
+    pub(crate) fn new(server_config: Arc<ServerConfig>) -> Option<Self> {
+        match &server_config.ebpf {
+            Some(config) => match EbpfUpdater::new(&config.pin_location) {
+                Ok(updater) => Some(Proxy {
+                    proxy_ip: ProxyIp {
+                        ipv4: config.proxy_ipv4,
+                        ipv6: config.proxy_ipv6,
+                    },
+                    ebpf_updater: Arc::new(Mutex::new(updater)),
+                }),
+                Err(e) => {
+                    error!("Could not create ebpf updater: {}", e);
+                    None
+                }
+            },
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -43,11 +65,11 @@ pub(crate) struct ProxyIp {
 ///   and values are native-endian IPv4 addresses represented as `u32`.
 /// - `rewrite_map_v6`: pinned `HashMap<[u8; 16], [u8; 16]>` for IPv6 address
 ///   rewrites. Keys and values are 16-byte IPv6 addresses.
-pub struct EbpfUpdater {
+pub(crate) struct EbpfUpdater {
     /// IPv4 rewrite map: original IPv4 → proxy IPv4 and proxy → original.
-    pub rewrite_map_v4: HashMap<MapData, u32, u32>,
+    pub(crate) rewrite_map_v4: HashMap<MapData, u32, u32>,
     /// IPv6 rewrite map: original IPv6 → proxy IPv6 and proxy → original.
-    pub rewrite_map_v6: HashMap<MapData, [u8; 16], [u8; 16]>,
+    pub(crate) rewrite_map_v6: HashMap<MapData, [u8; 16], [u8; 16]>,
 }
 
 impl EbpfUpdater {
@@ -57,7 +79,7 @@ impl EbpfUpdater {
     /// - `Ok(EbpfUpdater)` when both maps are successfully opened and wrapped
     ///   into `aya::maps::HashMap` handles.
     /// - `Err(ServerError::EbpfMapError)` if the maps can't be opened or wrapped.
-    pub fn new(ebpf_dir: &str) -> Result<Self, ServerError> {
+    pub(crate) fn new(ebpf_dir: &str) -> Result<Self, ServerError> {
         let map_path_v4 = format!("{ebpf_dir}/edumdns_proxy_rewrite_v4");
         let map_path_v6 = format!("{ebpf_dir}/edumdns_proxy_rewrite_v6");
         info!(
@@ -92,7 +114,7 @@ impl EbpfUpdater {
     /// Returns:
     /// - `Ok(())` if both map updates succeed.
     /// - `Err(ServerError)` if the IP versions mismatch or map operations fail.
-    pub fn add_ip(&mut self, a: IpNetwork, b: IpNetwork) -> Result<(), ServerError> {
+    pub(crate) fn add_ip(&mut self, a: IpNetwork, b: IpNetwork) -> Result<(), ServerError> {
         let err = |ip_a, ip_b, e| {
             ServerError::EbpfMapError(format!(
                 "Could not add IP pair <{ip_a}, {ip_b}> to the eBPF map: {e}"
@@ -145,7 +167,7 @@ impl EbpfUpdater {
     /// - `Ok(())` if both entries are successfully removed (or nothing to do on
     ///   family mismatch).
     /// - `Err(ServerError)` if a removal from the corresponding eBPF map fails.
-    pub fn remove_ip(&mut self, a: IpNetwork, b: IpNetwork) -> Result<(), ServerError> {
+    pub(crate) fn remove_ip(&mut self, a: IpNetwork, b: IpNetwork) -> Result<(), ServerError> {
         let err = |ip, e| {
             ServerError::EbpfMapError(format!("Could not remove IP {ip} from the eBPF map: {e}"))
         };

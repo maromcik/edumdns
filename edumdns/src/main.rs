@@ -17,8 +17,7 @@ use clap::Parser;
 use edumdns_db::db_init;
 use edumdns_server::server_init;
 use edumdns_web::web_init;
-use tracing::info;
-use tracing::log::error;
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 pub mod config;

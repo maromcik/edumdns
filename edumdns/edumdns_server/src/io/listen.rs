@@ -6,23 +6,18 @@
 use crate::ProbeHandles;
 use crate::app_packet::AppPacket;
 use crate::config::ServerConfig;
-use crate::connection::ConnectionManager;
 use crate::error::ServerError;
-use crate::probe_tracker::SharedProbeTracker;
+use crate::io::connection::ConnectionManager;
+use crate::utils::probe_tracker::SharedProbeTracker;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::utils::{lookup_hosts, parse_tls_config};
 use log::{debug, error, info, warn};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
-
-#[derive(Debug, Clone)]
-pub struct ServerTlsConfig {
-    pub cert_path: String,
-    pub key_path: String,
-}
 
 async fn handle_connection(mut connection_manager: ConnectionManager) -> Result<Uuid, ServerError> {
     let uuid = connection_manager.connection_init_server().await?;
@@ -38,7 +33,7 @@ pub struct ListenerSpawner {
     probe_handles: ProbeHandles,
     tracker: SharedProbeTracker,
     socket_addrs: Vec<SocketAddr>,
-    server_config: ServerConfig,
+    server_config: Arc<ServerConfig>,
 }
 impl ListenerSpawner {
     pub async fn new(
@@ -47,7 +42,7 @@ impl ListenerSpawner {
         data_transmitter: Sender<AppPacket>,
         probe_handles: ProbeHandles,
         tracker: SharedProbeTracker,
-        server_config: ServerConfig,
+        server_config: Arc<ServerConfig>,
     ) -> Result<Self, ServerError> {
         let socket_addrs = lookup_hosts(server_config.hostnames.clone()).await?;
 
@@ -96,7 +91,7 @@ impl ListenerSpawner {
         data_transmitter: Sender<AppPacket>,
         probe_handles: ProbeHandles,
         tracker: SharedProbeTracker,
-        config: ServerConfig,
+        config: Arc<ServerConfig>,
         hostname: SocketAddr,
     ) -> Result<(), ServerError> {
         let listener = TcpListener::bind(hostname).await?;

@@ -4,32 +4,22 @@
 //! transmitters, handles WebSocket responses, and coordinates proxy/eBPF updates.
 
 use crate::ProbeHandles;
-use crate::app_packet::{
-    AppPacket, LocalAppPacket, LocalCommandPacket, LocalDataPacket, LocalStatusPacket,
-    PacketTransmitRequestPacket,
-};
+use crate::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket};
 use crate::config::ServerConfig;
-use crate::database::DbCommand;
-use crate::ebpf::Proxy;
+use crate::database::actor::DbCommand;
 use crate::error::ServerError;
-use crate::transmitter::{PacketTransmitter, PacketTransmitterTask};
-use diesel_async::AsyncPgConnection;
-use diesel_async::pooled_connection::deadpool::Pool;
-use edumdns_core::app_packet::Id;
+use crate::server::cache::{Cache, CacheMiss};
+use crate::transmit::manager::TransmitManager;
 use edumdns_core::app_packet::{
-    EntityType, NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbePacket,
-    ProbeResponse,
+    NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeResponse,
 };
-use edumdns_core::bincode_types::{IpNetwork, MacAddr, Uuid};
+use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
-use edumdns_db::repositories::device::repository::PgDeviceRepository;
-use edumdns_db::repositories::packet::repository::PgPacketRepository;
-use log::{debug, error, info, warn};
-use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
+use log::{debug, error, warn};
+use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::sync::{Mutex, RwLock};
 
 /// An in-flight transmit job along with its control channel.
 ///
@@ -37,29 +27,6 @@ use tokio::sync::{Mutex, RwLock};
 /// - the original request (for bookkeeping and eBPF cleanup)
 /// - a join handle wrapper for the running transmitter task
 /// - a channel used to push live updates (e.g., additional payloads or extend-duration commands)
-struct PacketTransmitJob {
-    /// The original request describing device and target parameters.
-    packet: Arc<PacketTransmitRequestPacket>,
-    /// Handle to the spawned transmitter task.
-    task: PacketTransmitterTask,
-    /// Channel used to send live updates/commands to the transmitter.
-    channel: Sender<LocalAppPacket>,
-}
-
-#[derive(Default)]
-/// Cached data for a single device (MAC, IP) observed by a probe.
-///
-/// - `packets` keeps a deduplicated in-memory set of recently seen `ProbePacket`s
-///  acting as a simple cache to alleviate the load on the database.
-/// - `live_updates_transmitter` is an optional channel tied to an active
-///   transmitter job; when present, newly arriving packets are forwarded to the
-///   transmitter as live updates.
-struct DeviceItem {
-    /// Recent, deduplicated packets captured for this device.
-    packets: HashSet<ProbePacket>,
-    /// If set, sender used to push live updates to the transmitter.
-    live_updates_transmitter: Option<Sender<LocalAppPacket>>,
-}
 
 /// Central orchestrator for routing, caching, and transmit task management.
 ///
@@ -68,18 +35,14 @@ struct DeviceItem {
 /// probe/device, spawns UDP transmitters on demand, forwards WebSocket
 /// responses, and optionally coordinates proxy/eBPF IP map updates.
 pub(crate) struct ServerManager {
-    packets: HashMap<Uuid, HashMap<(MacAddr, IpNetwork), DeviceItem>>,
-    command_transmitter: Sender<AppPacket>,
+    cache: Cache,
+    transmit_manager: TransmitManager,
     command_receiver: Receiver<AppPacket>,
     data_receiver: Receiver<AppPacket>,
     db_transmitter: Sender<DbCommand>,
-    transmitter_tasks: Arc<Mutex<HashMap<Id, PacketTransmitJob>>>,
     probe_handles: ProbeHandles,
     probe_ws_handles: HashMap<uuid::Uuid, HashMap<uuid::Uuid, Sender<ProbeResponse>>>,
-    pg_device_repository: PgDeviceRepository,
-    pg_packet_repository: PgPacketRepository,
-    proxy: Option<Proxy>,
-    server_config: ServerConfig,
+    server_config: Arc<ServerConfig>,
 }
 
 impl ServerManager {
@@ -100,27 +63,21 @@ impl ServerManager {
     /// Returns:
     /// - `ServerManager`
     pub fn new(
-        command_transmitter: Sender<AppPacket>,
         command_receiver: Receiver<AppPacket>,
         data_receiver: Receiver<AppPacket>,
         db_transmitter: Sender<DbCommand>,
-        db_pool: Pool<AsyncPgConnection>,
-        proxy: Option<Proxy>,
         handles: Arc<RwLock<HashMap<Uuid, TcpConnectionHandle>>>,
-        server_config: ServerConfig,
+        transmit_manager: TransmitManager,
+        server_config: Arc<ServerConfig>,
     ) -> Self {
         Self {
-            packets: HashMap::default(),
-            command_transmitter,
+            cache: Cache::new(server_config.channel_buffer_capacity),
+            transmit_manager,
             command_receiver,
             data_receiver,
             db_transmitter,
-            transmitter_tasks: Arc::new(Mutex::new(HashMap::new())),
             probe_handles: handles,
             probe_ws_handles: HashMap::new(),
-            pg_device_repository: PgDeviceRepository::new(db_pool.clone()),
-            pg_packet_repository: PgPacketRepository::new(db_pool.clone()),
-            proxy,
             server_config,
         }
     }
@@ -220,9 +177,17 @@ impl ServerManager {
                 LocalCommandPacket::TransmitDevicePackets {
                     request,
                     respond_to,
-                } => self.transmit_device_packets(request, respond_to).await,
+                } => {
+                    let live_updater_channel =
+                        tokio::sync::mpsc::channel(self.server_config.connection.buffer_capacity);
+                    let sender = live_updater_channel.0.clone();
+                    self.transmit_manager
+                        .initiate_request(request.clone(), respond_to, live_updater_channel)
+                        .await;
+                    self.cache.set_transmitter(request, sender).await;
+                }
                 LocalCommandPacket::StopTransmitDevicePackets(request_id) => {
-                    self.stop_device_packets(request_id).await
+                    self.transmit_manager.stop_request(request_id);
                 }
                 LocalCommandPacket::ReconnectProbe(id, session_id) => {
                     if let Err(e) = self.send_reconnect(id, session_id).await {
@@ -238,32 +203,10 @@ impl ServerManager {
                     }
                 }
                 LocalCommandPacket::InvalidateCache(entity) => {
-                    match entity {
-                        EntityType::Probe { probe_id } => {
-                            self.packets.remove(&probe_id);
-                        }
-                        EntityType::Device {
-                            probe_id,
-                            device_mac,
-                            device_ip,
-                        } => {
-                            if let Some(probe_entry) = self.packets.get_mut(&probe_id) {
-                                probe_entry.remove(&(device_mac, device_ip));
-                            }
-                        }
-                        EntityType::Packet(_) => {}
-                    }
-                    info!("Cache invalidated for entity: {:?}", entity);
+                    self.cache.invalidate_cache(entity);
                 }
                 LocalCommandPacket::ExtendPacketTransmitRequest(request_id) => {
-                    if let Some(job) = self.transmitter_tasks.lock().await.get(&request_id) {
-                        let _ = job
-                            .channel
-                            .send(LocalAppPacket::Command(
-                                LocalCommandPacket::ExtendPacketTransmitRequest(request_id),
-                            ))
-                            .await;
-                    }
+                    self.transmit_manager.extend_request(request_id).await;
                 }
             },
             LocalAppPacket::Status(status) => match status {
@@ -324,73 +267,20 @@ impl ServerManager {
                 _ => {}
             },
             NetworkAppPacket::Data(probe_packet) => {
-                let src_mac = probe_packet
-                    .packet_metadata
-                    .datalink_metadata
-                    .mac_metadata
-                    .src_mac;
-
-                let src_ip = probe_packet.packet_metadata.ip_metadata.src_ip;
-                match self.packets.entry(probe_packet.probe_metadata.id) {
-                    Entry::Occupied(mut probe_entry) => {
-                        match probe_entry.get_mut().entry((src_mac, src_ip)) {
-                            Entry::Occupied(mut device_entry) => {
-                                if device_entry.get().packets.len()
-                                    > self.server_config.connection.buffer_capacity
-                                {
-                                    device_entry.get_mut().packets.clear();
-                                    info!(
-                                        "Device buffer for <{src_mac}; {src_ip}> exceeded {} elements; cleared",
-                                        self.server_config.connection.buffer_capacity
-                                    );
-                                }
-                                if !device_entry.get().packets.contains(&probe_packet) {
-                                    device_entry.get_mut().packets.insert(probe_packet.clone());
-                                    if let Some(chan) = &device_entry.get().live_updates_transmitter
-                                        && chan
-                                            .try_send(LocalAppPacket::Data(
-                                                LocalDataPacket::TransmitterLiveUpdateData(
-                                                    probe_packet.payload.clone(),
-                                                ),
-                                            ))
-                                            .is_err()
-                                    {
-                                        device_entry.get_mut().live_updates_transmitter = None;
-                                    }
-                                    self.send_db_packet(DbCommand::StorePacket(probe_packet))
-                                        .await;
-
-                                    debug!("Probe and device found; stored packet in database");
-                                } else {
-                                    debug!("Probe, device and packet found; no action");
-                                }
-                            }
-                            Entry::Vacant(device_entry) => {
-                                let device_entry = device_entry.insert(DeviceItem::default());
-                                device_entry.packets.insert(probe_packet.clone());
-                                self.send_db_packet(DbCommand::StoreDevice(probe_packet.clone()))
-                                    .await;
-                                self.send_db_packet(DbCommand::StorePacket(probe_packet))
-                                    .await;
-                                debug!("Probe found; stored device and packet in database");
-                            }
-                        }
+                let cache_miss = self.cache.add(probe_packet.clone()).await;
+                match cache_miss {
+                    CacheMiss::Packet => {
+                        self.send_db_packet(DbCommand::StorePacket(probe_packet))
+                            .await
                     }
-                    Entry::Vacant(probe_entry) => {
-                        let probe_entry = probe_entry.insert(HashMap::default());
-                        probe_entry
-                            .entry((src_mac, src_ip))
-                            .or_default()
-                            .packets
-                            .insert(probe_packet.clone());
+                    CacheMiss::PacketAndDevice => {
                         self.send_db_packet(DbCommand::StoreDevice(probe_packet.clone()))
                             .await;
                         self.send_db_packet(DbCommand::StorePacket(probe_packet))
                             .await;
-                        debug!("Probe not found in hashmap; stored device and packet in database");
                     }
+                    CacheMiss::None => {}
                 }
-                debug!("Packet <MAC: {src_mac}, IP: {src_ip}> stored in memory");
             }
         }
     }
@@ -489,136 +379,5 @@ impl ServerManager {
                 }
             }
         }
-    }
-
-    /// Start (or enqueue) a UDP transmitter for a device based on a request.
-    ///
-    /// Steps:
-    /// - Validates proxy/eBPF availability and subnet size constraints.
-    /// - Loads matching packets from the DB; processes them (rewrite/filter) based
-    ///   on proxy configuration; fails if none remain.
-    /// - Optionally updates eBPF maps to add IP mappings for client-device proxying.
-    /// - Spawns a `PacketTransmitter` task and registers it in `transmitter_tasks`.
-    /// - Wires a live-updates channel so subsequent captured packets can be pushed
-    ///   into the running transmitter.
-    ///
-    /// Parameters:
-    /// - `request_packet`: device + transmit request metadata.
-    /// - `respond_to`: oneshot where the result of the spawn operation is sent.
-    ///
-    /// Side effects:
-    /// - May mutate eBPF maps; spawns a tokio task; updates `transmitter_tasks` and
-    ///   sets a live update sender in the device cache.
-    async fn transmit_device_packets(
-        &mut self,
-        request_packet: Arc<PacketTransmitRequestPacket>,
-        respond_to: tokio::sync::oneshot::Sender<Result<(), ServerError>>,
-    ) {
-        let packet_repo = self.pg_packet_repository.clone();
-        let transmitter_tasks = self.transmitter_tasks.clone();
-        let command_transmitter_local = self.command_transmitter.clone();
-        let live_updater_channel =
-            tokio::sync::mpsc::channel(self.server_config.connection.buffer_capacity);
-        let device_entry = self
-            .packets
-            .entry(Uuid(request_packet.device.probe_id))
-            .or_default();
-        let packet_data = device_entry
-            .entry((
-                MacAddr::from_octets(request_packet.device.mac),
-                IpNetwork(request_packet.device.ip),
-            ))
-            .or_default();
-        packet_data.live_updates_transmitter = Some(live_updater_channel.0.clone());
-
-        let mut transmitter = match PacketTransmitter::new(
-            self.proxy.clone(),
-            request_packet.clone(),
-            live_updater_channel.1,
-            self.server_config.clone(),
-        )
-        .await
-        {
-            Ok(t) => t,
-            Err(e) => {
-                error!("{e}");
-                let _ = respond_to.send(Err(e));
-                return;
-            }
-        };
-
-        tokio::spawn(async move {
-            if let Err(e) = transmitter.validate().await {
-                let _ = respond_to.send(Err(e));
-                return;
-            }
-            if let Err(e) = transmitter.fetch_packets(packet_repo).await {
-                let _ = respond_to.send(Err(e));
-                return;
-            };
-
-            if let Err(e) = transmitter.configure_ebpf().await {
-                let _ = respond_to.send(Err(e));
-                return;
-            };
-
-            let task = PacketTransmitterTask::start(transmitter, command_transmitter_local);
-            info!("Transmitter task created for target: {}", request_packet);
-
-            let job = PacketTransmitJob {
-                packet: request_packet,
-                task,
-                channel: live_updater_channel.0,
-            };
-            transmitter_tasks
-                .lock()
-                .await
-                .entry(job.packet.request.id)
-                .or_insert(job);
-            let _ = respond_to.send(Ok(()));
-        });
-    }
-
-    /// Stop a running transmitter task and clean up associated resources.
-    ///
-    /// Performs the following:
-    /// - Deletes the persisted transmit request from the DB.
-    /// - Aborts the corresponding transmitter task, if found.
-    /// - When proxying was used, removes the IP pair from the eBPF maps.
-    ///
-    /// Parameters:
-    /// - `request_id`: unique identifier of the transmit request to stop.
-    ///
-    /// Side effects:
-    /// - Mutates the `transmitter_tasks` registry and eBPF maps; logs outcomes.
-    async fn stop_device_packets(&mut self, request_id: Id) {
-        let device_repo = self.pg_device_repository.clone();
-        let proxy = self.proxy.clone();
-        let transmitter_tasks = self.transmitter_tasks.clone();
-        tokio::task::spawn(async move {
-            if let Err(e) = device_repo
-                .delete_packet_transmit_request(&request_id)
-                .await
-            {
-                error!("Could not delete packet transmit request ID: {request_id}: {e}");
-            }
-            let Some(job) = transmitter_tasks.lock().await.remove(&request_id) else {
-                warn!("Transmitter task not found for request ID: {}", request_id);
-                return;
-            };
-            job.task.transmitter_task.abort();
-
-            if let Some(proxy) = &proxy
-                && job.packet.device.proxy
-                && let Err(e) = proxy
-                    .ebpf_updater
-                    .lock()
-                    .await
-                    .remove_ip(job.packet.device.ip, job.packet.request.target_ip)
-            {
-                error!("{e}");
-            };
-            info!("Transmitter task stopped for request ID: {}", request_id);
-        });
     }
 }

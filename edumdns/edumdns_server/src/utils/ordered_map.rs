@@ -34,6 +34,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 impl<K, V> OrderedMap<K, V>
 where
     K: Eq + Hash,
@@ -44,6 +45,7 @@ where
         self.map.insert(key, rc.clone());
         self.ord.insert(rc);
     }
+
     pub fn get(&self, key: &K) -> Option<Arc<V>> {
         self.map.get(key).cloned()
     }
@@ -74,6 +76,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 pub struct OrderedMapIter<'a, V>
 where
     V: Ord,

@@ -4,75 +4,22 @@
 //! optional DNS A/AAAA rewriting when a proxy IP is configured. It stops either
 //! when the request duration elapses or when a stop command is sent.
 
-use std::sync::Arc;
 use crate::app_packet::{
-    AppPacket, LocalAppPacket, LocalCommandPacket, LocalDataPacket, PacketTransmitRequestPacket,
+    LocalAppPacket, LocalCommandPacket, LocalDataPacket, PacketTransmitRequestPacket,
 };
 use crate::config::ServerConfig;
-use crate::ebpf::Proxy;
+use crate::database::util::get_device_packets;
 use crate::error::ServerError;
-use crate::utilities::{get_device_packets, process_packets, rewrite_payload};
+use crate::server::ebpf::Proxy;
+use crate::utils::processing::{process_packets, rewrite_payload};
 use edumdns_core::connection::UdpConnection;
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use ipnetwork::NetworkSize;
-use log::{debug, error, info, trace, warn};
+use log::{debug, error, trace, warn};
+use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::task::JoinHandle;
+use tokio::sync::mpsc::Receiver;
 use tokio::time::Instant;
-
-/// Join-handle wrapper for a spawned UDP packet transmitter task.
-///
-/// This type encapsulates the background task responsible for replaying
-/// captured UDP payloads to target hosts. When the task finishes (either
-/// because the duration elapsed or a stop command was received), it sends a
-/// `LocalCommandPacket::StopTransmitDevicePackets` back to the `ServerManager`
-/// to finalize cleanup and book-keeping.
-pub struct PacketTransmitterTask {
-    /// Join handle of the running transmitter task.
-    pub transmitter_task: JoinHandle<()>,
-}
-
-impl PacketTransmitterTask {
-    /// Spawn a new transmitter task.
-    ///
-    /// Parameters:
-    /// - `transmitter`: a fully constructed `PacketTransmitter` state machine
-    ///   that holds payloads, target info, and live-update channel.
-    /// - `command_transmitter`: channel used to notify the manager upon natural
-    ///   completion that the transmit request should be stopped/cleaned up.
-    /// - `request_id`: identifier of the corresponding `PacketTransmitRequest`.
-    ///
-    /// Returns:
-    /// - `PacketTransmitterTask` containing a join handle to the spawned task.
-    ///
-    /// Side effects:
-    /// - Spawns a Tokio task; upon completion, posts a local stop command.
-    pub fn start(
-        mut transmitter: PacketTransmitter,
-        command_transmitter: Sender<AppPacket>,
-    ) -> Self {
-        let transmitter_task = tokio::task::spawn(async move {
-            transmitter.transmit().await;
-            info!("Transmitter task finished");
-            if let Err(e) = command_transmitter
-                .send(AppPacket::Local(LocalAppPacket::Command(
-                    LocalCommandPacket::StopTransmitDevicePackets(
-                        transmitter.transmit_request.request.id,
-                    ),
-                )))
-                .await
-                .map_err(ServerError::from)
-            {
-                error!(
-                    "Error sending stop transmit command for request {}: {}",
-                    transmitter.transmit_request.request.id, e
-                );
-            }
-        });
-        Self { transmitter_task }
-    }
-}
 
 /// UDP transmitter that replays captured payloads to one or more targets.
 ///
@@ -80,22 +27,22 @@ impl PacketTransmitterTask {
 /// an internal UDP connection with timeouts, and a channel to receive live
 /// updates while running. Live updates may extend the running time or append
 /// additional payloads (optionally rewritten for proxy deployments).
-pub struct PacketTransmitter {
+pub(crate) struct Transmitter {
     /// Payloads to be sent, in the order they should be replayed.
-    pub payloads: Vec<Vec<u8>>,
+    pub(crate) payloads: Vec<Vec<u8>>,
     /// Optional proxy IP pair; when present, DNS A/AAAA answers in live-updated
     /// payloads are rewritten to these addresses.
-    pub proxy: Option<Proxy>,
+    pub(crate) proxy: Option<Proxy>,
     /// Original transmit request describing device, target IP/port, interval and duration.
-    pub transmit_request: Arc<PacketTransmitRequestPacket>,
+    pub(crate) transmit_request: Arc<PacketTransmitRequestPacket>,
     /// UDP connection wrapper that applies the configured global timeout.
-    pub udp_connection: UdpConnection,
+    pub(crate) udp_connection: UdpConnection,
     /// Receiver for live updates and control commands (e.g., extend duration, add payload).
-    pub live_updates_receiver: Receiver<LocalAppPacket>,
-    pub server_config: ServerConfig,
+    pub(crate) live_updates_receiver: Receiver<LocalAppPacket>,
+    pub(crate) server_config: Arc<ServerConfig>,
 }
 
-impl PacketTransmitter {
+impl Transmitter {
     /// Construct a new `PacketTransmitter`.
     ///
     /// Parameters:
@@ -111,11 +58,11 @@ impl PacketTransmitter {
     /// Returns:
     /// - `Ok(Self)` when the UDP connection is created successfully.
     /// - `Err(ServerError)` if the UDP connection initialization fails.
-    pub async fn new(
+    pub(crate) async fn new(
         proxy: Option<Proxy>,
         target: Arc<PacketTransmitRequestPacket>,
         live_updater: Receiver<LocalAppPacket>,
-        server_config: ServerConfig,
+        server_config: Arc<ServerConfig>,
     ) -> Result<Self, ServerError> {
         Ok(Self {
             payloads: Vec::new(),
@@ -127,7 +74,7 @@ impl PacketTransmitter {
         })
     }
 
-    pub async fn validate(&self) -> Result<(), ServerError> {
+    pub(crate) async fn validate(&self) -> Result<(), ServerError> {
         if self.proxy.is_none() && self.transmit_request.device.proxy {
             let err = "eBPF is not configured properly; contact your administrator";
             let err = ServerError::EbpfMapError(err.to_string());
@@ -159,7 +106,7 @@ impl PacketTransmitter {
         Ok(())
     }
 
-    pub async fn configure_ebpf(&self) -> Result<(), ServerError> {
+    pub(crate) async fn configure_ebpf(&self) -> Result<(), ServerError> {
         if let Some(p) = &self.proxy
             && self.transmit_request.device.proxy
         {
@@ -174,7 +121,7 @@ impl PacketTransmitter {
         Ok(())
     }
 
-    pub async fn fetch_packets(
+    pub(crate) async fn fetch_packets(
         &mut self,
         packet_repo: PgPacketRepository,
     ) -> Result<(), ServerError> {
@@ -206,7 +153,7 @@ impl PacketTransmitter {
     ///
     /// Side effects:
     /// - Performs UDP I/O; logs warnings/errors for invalid inputs and I/O issues.
-    pub async fn transmit(&mut self) {
+    pub(crate) async fn transmit(&mut self) {
         let ips = self
             .transmit_request
             .request

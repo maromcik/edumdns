@@ -3,6 +3,8 @@
 //! The transmitter supports optional live updates (additional payloads) and
 //! optional DNS A/AAAA rewriting when a proxy IP is configured. It stops either
 //! when the request duration elapses or when a stop command is sent.
+
+use std::sync::Arc;
 use crate::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, LocalDataPacket, PacketTransmitRequestPacket,
 };
@@ -85,7 +87,7 @@ pub struct PacketTransmitter {
     /// payloads are rewritten to these addresses.
     pub proxy: Option<Proxy>,
     /// Original transmit request describing device, target IP/port, interval and duration.
-    pub transmit_request: PacketTransmitRequestPacket,
+    pub transmit_request: Arc<PacketTransmitRequestPacket>,
     /// UDP connection wrapper that applies the configured global timeout.
     pub udp_connection: UdpConnection,
     /// Receiver for live updates and control commands (e.g., extend duration, add payload).
@@ -111,7 +113,7 @@ impl PacketTransmitter {
     /// - `Err(ServerError)` if the UDP connection initialization fails.
     pub async fn new(
         proxy: Option<Proxy>,
-        target: PacketTransmitRequestPacket,
+        target: Arc<PacketTransmitRequestPacket>,
         live_updater: Receiver<LocalAppPacket>,
         server_config: ServerConfig,
     ) -> Result<Self, ServerError> {

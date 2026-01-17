@@ -10,6 +10,7 @@ use edumdns_core::app_packet::{EntityType, Id, NetworkAppPacket, ProbeResponse};
 use edumdns_core::bincode_types::{MacAddr, Uuid};
 use edumdns_db::models::{Device, PacketTransmitRequest};
 use std::fmt::{Display, Formatter};
+use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot};
 
 #[derive(Debug)]
@@ -43,7 +44,7 @@ pub enum LocalCommandPacket {
     },
     ReconnectProbe(Uuid, Option<Uuid>),
     TransmitDevicePackets {
-        request: PacketTransmitRequestPacket,
+        request: Arc<PacketTransmitRequestPacket>,
         respond_to: oneshot::Sender<Result<(), ServerError>>,
     },
     StopTransmitDevicePackets(Id),

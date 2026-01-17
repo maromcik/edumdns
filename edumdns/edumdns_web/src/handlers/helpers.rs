@@ -42,6 +42,7 @@ use edumdns_server::app_packet::{
 };
 use ipnetwork::IpNetwork;
 use std::collections::HashSet;
+use std::sync::Arc;
 use strum::IntoEnumIterator;
 use time::OffsetDateTime;
 use tokio::sync::mpsc::Sender;
@@ -115,7 +116,7 @@ pub async fn request_packet_transmit_helper(
     command_channel
         .send(AppPacket::Local(LocalAppPacket::Command(
             LocalCommandPacket::TransmitDevicePackets {
-                request,
+                request: Arc::new(request),
                 respond_to: channel.0,
             },
         )))

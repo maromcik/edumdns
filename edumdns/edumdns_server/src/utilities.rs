@@ -21,6 +21,7 @@ use hickory_proto::rr::{RData, Record};
 use hickory_proto::serialize::binary::BinDecodable;
 use log::{info, warn};
 use std::net::{Ipv4Addr, Ipv6Addr};
+use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
 pub(crate) fn rewrite_records(record: &mut Record, ipv4: Ipv4Addr, ipv6: Ipv6Addr) {
@@ -89,7 +90,7 @@ pub(crate) async fn load_all_packet_transmit_requests(
         let channel = tokio::sync::oneshot::channel();
         tx.send(AppPacket::Local(LocalAppPacket::Command(
             LocalCommandPacket::TransmitDevicePackets {
-                request: packet_transmit_request,
+                request: Arc::new(packet_transmit_request),
                 respond_to: channel.0,
             },
         )))

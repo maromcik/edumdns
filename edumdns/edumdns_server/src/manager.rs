@@ -39,7 +39,7 @@ use tokio::sync::{Mutex, RwLock};
 /// - a channel used to push live updates (e.g., additional payloads or extend-duration commands)
 struct PacketTransmitJob {
     /// The original request describing device and target parameters.
-    packet: PacketTransmitRequestPacket,
+    packet: Arc<PacketTransmitRequestPacket>,
     /// Handle to the spawned transmitter task.
     task: PacketTransmitterTask,
     /// Channel used to send live updates/commands to the transmitter.
@@ -508,7 +508,7 @@ impl ServerManager {
     ///   sets a live update sender in the device cache.
     async fn transmit_device_packets(
         &mut self,
-        request_packet: PacketTransmitRequestPacket,
+        request_packet: Arc<PacketTransmitRequestPacket>,
         respond_to: tokio::sync::oneshot::Sender<Result<(), ServerError>>,
     ) {
         let packet_repo = self.pg_packet_repository.clone();

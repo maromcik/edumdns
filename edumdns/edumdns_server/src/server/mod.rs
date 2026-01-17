@@ -1,6 +1,6 @@
 use crate::app_packet::AppPacket;
 use crate::config::ServerConfig;
-use crate::database::actor::DbCommand;
+use crate::database::manager::DbCommand;
 use crate::server::ebpf::{Proxy};
 use crate::server::manager::ServerManager;
 use crate::{ProbeHandles};

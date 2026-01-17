@@ -6,7 +6,7 @@
 use crate::ProbeHandles;
 use crate::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket};
 use crate::config::ServerConfig;
-use crate::database::actor::DbCommand;
+use crate::database::manager::DbCommand;
 use crate::error::ServerError;
 use crate::server::cache::{Cache, CacheMiss};
 use crate::transmit::manager::TransmitManager;

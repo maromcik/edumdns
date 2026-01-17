@@ -1,10 +1,10 @@
-use crate::database::actor::{DatabaseManager, DbCommand};
+use crate::database::manager::{DatabaseManager, DbCommand};
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use log::info;
 use tokio::sync::mpsc::Receiver;
 
-pub(crate) mod actor;
+pub(crate) mod manager;
 pub(crate) mod util;
 
 pub async fn spawn_database_task(receiver: Receiver<DbCommand>, pool: Pool<AsyncPgConnection>) {

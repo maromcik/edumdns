@@ -347,12 +347,15 @@ impl ServerManager {
                                 if !device_entry.get().packets.contains(&probe_packet) {
                                     device_entry.get_mut().packets.insert(probe_packet.clone());
                                     if let Some(chan) = &device_entry.get().live_updates_transmitter
+                                        && chan
+                                            .try_send(LocalAppPacket::Data(
+                                                LocalDataPacket::TransmitterLiveUpdateData(
+                                                    probe_packet.payload.clone(),
+                                                ),
+                                            ))
+                                            .is_err()
                                     {
-                                        let _ = chan.try_send(LocalAppPacket::Data(
-                                            LocalDataPacket::TransmitterLiveUpdateData(
-                                                probe_packet.payload.clone(),
-                                            ),
-                                        ));
+                                        device_entry.get_mut().live_updates_transmitter = None;
                                     }
                                     self.send_db_packet(DbCommand::StorePacket(probe_packet))
                                         .await;

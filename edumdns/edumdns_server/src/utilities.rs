@@ -7,16 +7,19 @@
 use crate::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, PacketTransmitRequestPacket,
 };
+use crate::ebpf::Proxy;
 use crate::error::ServerError;
-use crate::manager::Proxy;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::network_packet::ApplicationPacket;
 use edumdns_db::models::Packet;
 use edumdns_db::repositories::device::repository::PgDeviceRepository;
+use edumdns_db::repositories::packet::models::SelectManyPackets;
+use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use hickory_proto::op::Message;
 use hickory_proto::rr::{RData, Record};
 use hickory_proto::serialize::binary::BinDecodable;
+use log::{info, warn};
 use std::net::{Ipv4Addr, Ipv6Addr};
 use tokio::sync::mpsc::Sender;
 
@@ -93,4 +96,34 @@ pub(crate) async fn load_all_packet_transmit_requests(
         .await?;
     }
     Ok(())
+}
+
+pub async fn get_device_packets(
+    packet_repo: PgPacketRepository,
+    transmit_request: &PacketTransmitRequestPacket,
+) -> Result<Vec<Packet>, ServerError> {
+    let packets = match packet_repo
+        .read_many(&SelectManyPackets::new(
+            None,
+            Some(transmit_request.device.probe_id),
+            Some(transmit_request.device.mac),
+            None,
+            Some(transmit_request.device.ip),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ))
+        .await
+    {
+        Ok(p) => p,
+        Err(e) => {
+            warn!("No packets found for target: {}: {}", transmit_request, e);
+            return Err(ServerError::from(e));
+        }
+    };
+
+    info!("Packets found for target: {}", transmit_request);
+    Ok(packets)
 }

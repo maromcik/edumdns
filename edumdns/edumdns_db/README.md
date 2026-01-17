@@ -1,10 +1,10 @@
 # edumdns_db
 
-Database abstraction layer for the EduMDNS system. This crate provides database initialization, migrations, and repository patterns for interacting with PostgreSQL.
+Database abstraction layer for the edumDNS system. This crate provides database initialization, migrations, and repository patterns for interacting with PostgreSQL.
 
 ## Overview
 
-The `edumdns_db` crate handles all database-related operations for the EduMDNS system, including:
+The `edumdns_db` crate handles all database-related operations for the edumDNS system, including:
 
 - Database connection pooling using `diesel-async` with `deadpool`
 - Embedded database migrations using `diesel_migrations`

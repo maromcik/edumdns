@@ -1,12 +1,12 @@
 # edumdns_proxy
 
-eBPF-based proxy for the EduMDNS system that enhances security by relaying all client–device traffic when enabled for a device.
+eBPF-based proxy for the edumDNS system that enhances security by relaying all client–device traffic when enabled for a device.
 
 ## Overview
 
 The `edumdns_proxy` binary is a privileged application that loads an eBPF (extended Berkeley Packet Filter) program into the Linux kernel. The eBPF program intercepts network packets and rewrites their headers to route traffic through the proxy, increasing the security of transmission between clients and devices.
 
-**Important**: This binary requires elevated privileges (root or `CAP_BPF`, `CAP_NET_ADMIN`, and `CAP_SYS_ADMIN` capabilities) to load eBPF programs into the kernel.
+**Important**: This binary requires elevated privileges (root or `CAP_BPF`) to load eBPF programs into the kernel.
 
 ## What is eBPF?
 
@@ -16,88 +16,220 @@ eBPF (extended Berkeley Packet Filter) is a technology that allows running sandb
 - Provide high-performance packet processing
 - Execute safely in a sandboxed environment
 
-In the context of EduMDNS, the eBPF program intercepts packets destined for proxied devices and rewrites their source and destination addresses (and MAC addresses) to route traffic through the proxy, ensuring all communication is relayed and can be monitored/controlled.
+In the context of edumDNS, the eBPF program intercepts packets destined for proxied devices and rewrites their source and destination addresses (and MAC addresses) to route traffic through the proxy, ensuring all communication is relayed and can be monitored/controlled.
 
 ## How It Works
 
 1. The eBPF program is attached to a network interface using XDP (eXpress Data Path)
 2. When a packet matches a proxied device's IP address, the eBPF program:
-   - Rewrites the source IP address to the proxy IP
-   - Rewrites the destination MAC address
-   - Updates packet checksums
+    - Rewrites the source IP address to the proxy IP
+    - Rewrites the destination MAC address
+    - Updates packet checksums
 3. The modified packets are forwarded, ensuring all traffic is routed through the proxy
 4. The server maintains mappings in eBPF maps that define which IP addresses should be proxied
 
 ---
-## Environment Variables
 
-### Interface Configuration
+## Configuration Model
 
-- **`EDUMDNS_PROXY_INTERFACE`** (required)
-  - Network interface name to attach the eBPF program to
-  - The eBPF XDP program will be attached to this interface
-  - Example: `EDUMDNS_PROXY_INTERFACE=eth0`
-  - Example: `EDUMDNS_PROXY_INTERFACE=enp3s0`
+`edumdns_proxy` supports two equivalent configuration mechanisms:
 
-### eBPF Map Configuration
+1. Command-line arguments
+2. Environment variables (optionally loaded from a `.env` file)
 
-- **`EDUMDNS_PROXY_PIN_PATH`** (optional, default: `"/sys/fs/bpf/edumdns"`)
-  - Directory path where eBPF maps are pinned
-  - Must be a BPF filesystem (BPFFS) mount point
-  - The maps are pinned so they can be accessed by the server process
-  - Example: `EDUMDNS_PROXY_PIN_PATH=/sys/fs/bpf/edumdns`
+Both mechanisms configure the same internal parameters.  
+**Command-line arguments take precedence over environment variables.**
 
-### Proxy IP Configuration
+---
 
-- **`EDUMDNS_PROXY_IP`** (required)
-  - IPv4 address that will replace the original source address in proxied packets
-  - This is the IP address that will appear as the source for all proxied IPv4 traffic
-  - Example: `EDUMDNS_PROXY_IP=192.168.0.10`
+## Command-Line Arguments
 
-- **`EDUMDNS_PROXY_IP6`** (required)
-  - IPv6 address that will replace the original source address in proxied packets
-  - This is the IP address that will appear as the source for all proxied IPv6 traffic
-  - Example: `EDUMDNS_PROXY_IP6=::1`
-  - Example: `EDUMDNS_PROXY_IP6=2001:db8::10`
+This section documents all supported command-line arguments.  
+For each argument, the corresponding environment variable is listed as an alternative means of configuration.
 
-### MAC Address Configuration
+---
 
-- **`EDUMDNS_PROXY_SRC_MAC`** (required)
-  - Ethernet source MAC address for proxied packets
-  - Format: Colon-separated hexadecimal (e.g., `e4:1d:82:72:43:c6`)
-  - This MAC address will appear as the source in proxied packets
-  - Example: `EDUMDNS_PROXY_SRC_MAC=e4:1d:82:72:43:c6`
+### `--env-file <ENV_FILE>`
 
-- **`EDUMDNS_PROXY_DST_MAC`** (required)
-  - Ethernet destination MAC address for proxied packets
-  - Format: Colon-separated hexadecimal (e.g., `18:7a:3b:5e:c6:4c`)
-  - This MAC address will appear as the destination in proxied packets
-  - Example: `EDUMDNS_PROXY_DST_MAC=18:7a:3b:5e:c6:4c`
+**Description**  
+Path to a `.env` file containing environment variable definitions. This allows configuring the proxy without passing sensitive or verbose configuration directly on the command line.
 
-### Logging
+**Behavior**
+- The file is read before argument parsing
+- Variables defined in the file behave exactly like regular environment variables
+- Command-line arguments still take precedence
 
-- **`EDUMDNS_PROXY_LOG_LEVEL`** (optional, default: `"info"`)
-  - Logging level for the proxy application
-  - Valid values: `trace`, `debug`, `info`, `warn`, `error`
-  - Example: `EDUMDNS_PROXY_LOG_LEVEL=debug`
+**Environment Variable**  
+None
 
-## Command Line Arguments
-
-All environment variables can also be provided as command-line arguments. Command-line arguments take precedence over environment variables.
-
-### Common Usage
+**Example**
 
 ```bash
-# Using environment variables (requires root)
-sudo edumdns_proxy
-
-# Using command-line arguments
-sudo edumdns_proxy --interface eth0 --ip 192.168.0.10 --ip6 ::1 \
-  --src-mac e4:1d:82:72:43:c6 --dst-mac 18:7a:3b:5e:c6:4c
-
-# Using a custom .env file
-sudo edumdns_proxy --env-file /path/to/.env
+sudo edumdns_proxy --env-file /etc/edumdns/proxy.env
 ```
+
+---
+
+### `-i, --interface <INTERFACE>`
+
+**Description**  
+Network interface to which the eBPF XDP program will be attached. All packet interception and rewriting occurs on this interface.
+
+**Environment Variable**  
+`EDUMDNS_PROXY_INTERFACE` 
+
+**Examples**
+
+```bash
+sudo edumdns_proxy --interface eth0
+```
+
+```bash
+export EDUMDNS_PROXY_INTERFACE=enp3s0
+sudo edumdns_proxy
+```
+
+---
+
+### `-p, --pin-path <PIN_PATH>`
+
+**Description**  
+Filesystem path where eBPF maps are pinned. This directory must be a BPFFS mount point.
+
+**Default**  
+`/sys/fs/bpf/edumdns`
+
+**Environment Variable**  
+`EDUMDNS_PROXY_PIN_PATH` 
+
+**Examples**
+
+```bash
+sudo edumdns_proxy --pin-path /sys/fs/bpf/edumdns
+```
+
+```bash
+export EDUMDNS_PROXY_PIN_PATH=/sys/fs/bpf/edumdns
+sudo edumdns_proxy
+```
+
+---
+
+### `--ip <PROXY_IP>`
+
+**Description**  
+IPv4 address that replaces the original source IPv4 address in proxied packets.
+
+**Environment Variable**  
+`EDUMDNS_PROXY_IP` 
+
+**Examples**
+
+```bash
+sudo edumdns_proxy --ip 192.168.0.10
+```
+
+```bash
+export EDUMDNS_PROXY_IP=192.168.0.10
+sudo edumdns_proxy
+```
+
+---
+
+### `--ip6 <PROXY_IP6>`
+
+**Description**  
+IPv6 address that replaces the original source IPv6 address in proxied packets.
+
+**Environment Variable**  
+`EDUMDNS_PROXY_IP6` 
+
+**Examples**
+
+```bash
+sudo edumdns_proxy --ip6 ::1
+```
+
+```bash
+export EDUMDNS_PROXY_IP6=2001:db8::10
+sudo edumdns_proxy
+```
+
+---
+
+### `--src-mac <NEW_SRC_MAC>`
+
+**Description**  
+Ethernet source MAC address to use for proxied packets.
+
+**Format**  
+Colon-separated hexadecimal (e.g. `e4:1d:82:72:43:c6`)
+
+**Environment Variable**  
+`EDUMDNS_PROXY_SRC_MAC` 
+
+**Examples**
+
+```bash
+sudo edumdns_proxy --src-mac e4:1d:82:72:43:c6
+```
+
+```bash
+export EDUMDNS_PROXY_SRC_MAC=e4:1d:82:72:43:c6
+sudo edumdns_proxy
+```
+
+---
+
+### `--dst-mac <NEW_DST_MAC>`
+
+**Description**  
+Ethernet destination MAC address to use for proxied packets.
+
+**Format**  
+Colon-separated hexadecimal (e.g. `18:7a:3b:5e:c6:4c`)
+
+**Environment Variable**  
+`EDUMDNS_PROXY_DST_MAC` 
+
+**Examples**
+
+```bash
+sudo edumdns_proxy --dst-mac 18:7a:3b:5e:c6:4c
+```
+
+```bash
+export EDUMDNS_PROXY_DST_MAC=18:7a:3b:5e:c6:4c
+sudo edumdns_proxy
+```
+
+---
+
+### `-l, --log-level <LOG_LEVEL>`
+
+**Description**  
+Controls the verbosity of application logging.
+
+**Valid Values**  
+`trace`, `debug`, `info`, `warn`, `error`
+
+**Default**  
+`info`
+
+**Environment Variable**  
+`EDUMDNS_PROXY_LOG_LEVEL` 
+
+**Examples**
+
+```bash
+sudo edumdns_proxy --log-level debug
+```
+
+```bash
+export EDUMDNS_PROXY_LOG_LEVEL=debug
+sudo edumdns_proxy
+```
+
 ---
 ## Prerequisites
 
@@ -133,8 +265,6 @@ bpf /sys/fs/bpf bpf defaults 0 0
 The proxy requires the following capabilities:
 
 - **CAP_BPF**: Load and attach eBPF programs
-- **CAP_NET_ADMIN**: Configure network interfaces
-- **CAP_SYS_ADMIN**: Access BPF filesystem
 
 Or simply run as root.
 
@@ -144,8 +274,8 @@ Or simply run as root.
 
 The proxy creates and pins two eBPF maps:
 
-1. **`EDUMDNS_PROXY_REWRITE_MAP_V4`**: IPv4 address mapping (pinned as `edumdns_proxy_rewrite_v4`)
-2. **`EDUMDNS_PROXY_REWRITE_MAP_V6`**: IPv6 address mapping (pinned as `edumdns_proxy_rewrite_v6`)
+1. IPv4 address mapping (pinned as `edumdns_proxy_rewrite_v4`)
+2. IPv6 address mapping (pinned as `edumdns_proxy_rewrite_v6`)
 
 These maps are used by the server to update which IP addresses should be proxied. The maps store bidirectional mappings (client IP ↔ device IP) to handle both directions of traffic.
 
@@ -171,42 +301,41 @@ cargo build --release
 
 The eBPF program is compiled separately and embedded in the main binary.
 
---- 
-
-## Shutdown
-
-The proxy handles SIGTERM and SIGINT signals gracefully:
-
-- On shutdown, it removes the pinned eBPF maps
-- The XDP program is automatically detached when the process exits
-- Clean shutdown ensures the interface returns to normal operation
-
 ---
 
-## Security Considerations
+## Usage Examples
 
-- The proxy runs with elevated privileges and has access to network traffic
-- Ensure the proxy binary is from a trusted source
-- The eBPF program is sandboxed by the kernel, but the loader has significant privileges
-- Monitor the proxy's behavior in production environments
-- Use appropriate firewall rules to control access to the proxy IP addresses
+### Environment-Only Configuration
 
---- 
+```bash
+export EDUMDNS_PROXY_INTERFACE=eth0
+export EDUMDNS_PROXY_IP=192.168.0.10
+export EDUMDNS_PROXY_IP6=::1
+export EDUMDNS_PROXY_SRC_MAC=e4:1d:82:72:43:c6
+export EDUMDNS_PROXY_DST_MAC=18:7a:3b:5e:c6:4c
 
-## Example Configuration File
-
-Create a `.env` file with the following content:
-
-```env
-EDUMDNS_PROXY_INTERFACE=eth0
-EDUMDNS_PROXY_PIN_PATH=/sys/fs/bpf/edumdns
-EDUMDNS_PROXY_IP=192.168.0.10
-EDUMDNS_PROXY_IP6=::1
-EDUMDNS_PROXY_SRC_MAC=e4:1d:82:72:43:c6
-EDUMDNS_PROXY_DST_MAC=18:7a:3b:5e:c6:4c
-EDUMDNS_PROXY_LOG_LEVEL=info
+sudo edumdns_proxy
 ```
 
+### Command-Line–Only Configuration
+
+```bash
+sudo edumdns_proxy \\
+--interface eth0 \\
+--ip 192.168.0.10 \\
+--ip6 ::1 \\
+--src-mac e4:1d:82:72:43:c6 \\
+--dst-mac 18:7a:3b:5e:c6:4c
+```
+
+### Mixed Configuration (CLI Overrides Env)
+
+```bash
+export EDUMDNS_PROXY_INTERFACE=eth0
+export EDUMDNS_PROXY_LOG_LEVEL=info
+
+sudo edumdns_proxy --log-level debug
+```
 
 ## License
 

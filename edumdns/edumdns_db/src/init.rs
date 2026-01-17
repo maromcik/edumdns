@@ -15,7 +15,6 @@ pub async fn init(database_config: DbConfig) -> Result<Pool<AsyncPgConnection>, 
     set_up_database_pool(&database_config)
 }
 
-
 pub fn run_migrations(database_config: &DbConfig) -> Result<(), DbError> {
     let mut connection = PgConnection::establish(&database_config.connection_string)?;
     connection

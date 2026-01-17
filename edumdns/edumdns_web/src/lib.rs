@@ -1,7 +1,7 @@
-//! Web interface module for the EduMDNS system.
+//! Web interface module for the edumDNS system.
 //!
 //! This module provides the web-based user interface for administrators and users to interact
-//! with the EduMDNS system. It includes HTTP handlers for device management, probe configuration,
+//! with the edumDNS system. It includes HTTP handlers for device management, probe configuration,
 //! packet viewing, user administration, and authentication (both local and OpenID Connect).
 //!
 //! The module uses Actix Web as the web framework and Minijinja for template rendering.

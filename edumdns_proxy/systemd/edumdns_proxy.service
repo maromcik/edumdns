@@ -1,5 +1,5 @@
 [Unit]
-Description=EduMDNS eBPF Proxy Loader
+Description=edumDNS eBPF Proxy Loader
 After=network-online.target
 Wants=network-online.target
 
@@ -16,9 +16,7 @@ ExecStart=/usr/local/sbin/edumdns_proxy \
 ExecStartPost=/bin/bash -c "sleep 1 && chown -R server-user: /var/local/bpf"
 Restart=always
 RestartSec=5
-
-# Needs root to load eBPF
 User=root
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

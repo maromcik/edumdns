@@ -281,6 +281,7 @@ impl WebSpawner {
                         .app_data(path_config())
                         .app_data(form_config())
                         .wrap(NormalizePath::new(TrailingSlash::Trim))
+                        .wrap(get_cors_middleware(config.site_url.as_str()))
                         .wrap(get_identity_middleware(
                             config.session.session_expiration,
                             config.session.last_visit_deadline,
@@ -290,7 +291,6 @@ impl WebSpawner {
                             config.session.use_secure_cookie,
                             config.session.session_expiration,
                         ))
-                        .wrap(get_cors_middleware(config.site_url.as_str()))
                         .wrap(middleware::RedirectToLogin)
                         .wrap(Logger::default())
                         .configure(Self::configure_webapp(
@@ -330,6 +330,7 @@ impl WebSpawner {
                         .app_data(path_config())
                         .app_data(form_config())
                         .wrap(NormalizePath::new(TrailingSlash::Trim))
+                        .wrap(get_cors_middleware(config.site_url.as_str()))
                         .wrap(get_identity_middleware(
                             config.session.session_expiration,
                             config.session.last_visit_deadline,
@@ -339,7 +340,6 @@ impl WebSpawner {
                             config.session.use_secure_cookie,
                             config.session.session_expiration,
                         ))
-                        .wrap(get_cors_middleware(config.site_url.as_str()))
                         .wrap(oidc.get_middleware())
                         .wrap(middleware::RedirectToLogin)
                         .wrap(Logger::default())

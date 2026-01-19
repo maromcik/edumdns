@@ -181,10 +181,15 @@ pub async fn create_oidc(oidc_config: &Option<OidcConfig>) -> Result<ActixWebOpe
 /// - Sets a max age of 3600 seconds for preflight requests
 pub fn get_cors_middleware(host: &str) -> Cors {
     Cors::default()
-        .allowed_origin(format!("http://{}", host).as_str())
+        .allowed_origin(host)
         .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "PATCH"])
         .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
-        .allowed_header(header::CONTENT_TYPE)
+        .allowed_headers(vec![
+            header::AUTHORIZATION,
+            header::ACCEPT,
+            header::CONTENT_TYPE,
+            header::ORIGIN,
+        ])
         .supports_credentials()
         .max_age(3600)
 }

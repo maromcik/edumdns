@@ -192,7 +192,7 @@ pub async fn adopt(
     let user_id = parse_user_id(&i)?;
     let user = user_repo.read_one(&user_id).await?;
     probe_repo.adopt(&path.0, &user_id).await?;
-    reconnect_probe(state.command_channel.clone(), path.0, session).await?;
+    // reconnect_probe(state.command_channel.clone(), path.0, session).await?;
     get_probe_content(
         request,
         probe_repo,

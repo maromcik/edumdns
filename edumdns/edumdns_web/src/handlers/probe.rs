@@ -186,7 +186,6 @@ pub async fn adopt(
     device_repo: web::Data<PgDeviceRepository>,
     user_repo: web::Data<PgUserRepository>,
     query: web::Query<DeviceQuery>,
-    session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;

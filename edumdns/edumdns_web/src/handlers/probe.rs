@@ -336,6 +336,10 @@ pub async fn create_config(
     request: HttpRequest,
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
+    group_repo: web::Data<PgGroupRepository>,
+    device_repo: web::Data<PgDeviceRepository>,
+    user_repo: web::Data<PgUserRepository>,
+    query: web::Query<DeviceQuery>,
     state: web::Data<AppState>,
     form: web::Form<ProbeConfigForm>,
     path: web::Path<(uuid::Uuid,)>,
@@ -344,17 +348,25 @@ pub async fn create_config(
     let probe_id = path.0;
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
+    let user = user_repo.read_one(&user_id).await?;
     probe_repo
         .create_probe_config(
             &CreateProbeConfig::new(probe_id, form.interface.clone(), form.filter.clone()),
             &user_id,
         )
         .await?;
-
     reconnect_probe(state.command_channel.clone(), path.0, session).await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/probe/{}", path.0)))
-        .finish())
+    get_probe_content(
+        request,
+        probe_repo,
+        group_repo,
+        device_repo,
+        state,
+        user,
+        path.0,
+        query,
+    )
+        .await
 }
 
 /// Updates an existing capture configuration for a probe.
@@ -380,6 +392,10 @@ pub async fn save_config(
     request: HttpRequest,
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
+    group_repo: web::Data<PgGroupRepository>,
+    device_repo: web::Data<PgDeviceRepository>,
+    user_repo: web::Data<PgUserRepository>,
+    query: web::Query<DeviceQuery>,
     state: web::Data<AppState>,
     form: web::Form<ProbeConfigForm>,
     path: web::Path<(uuid::Uuid, Id)>,
@@ -389,6 +405,7 @@ pub async fn save_config(
     let config_id = path.1;
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
+    let user = user_repo.read_one(&user_id).await?;
     probe_repo
         .delete_probe_config(&SelectSingleProbeConfig::new(user_id, config_id, probe_id))
         .await?;
@@ -400,10 +417,17 @@ pub async fn save_config(
         .await?;
 
     reconnect_probe(state.command_channel.clone(), path.0, session).await?;
-
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/probe/{}", path.0)))
-        .finish())
+    get_probe_content(
+        request,
+        probe_repo,
+        group_repo,
+        device_repo,
+        state,
+        user,
+        path.0,
+        query,
+    )
+        .await
 }
 
 /// Deletes a capture configuration from a probe.
@@ -428,6 +452,10 @@ pub async fn delete_config(
     request: HttpRequest,
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
+    group_repo: web::Data<PgGroupRepository>,
+    device_repo: web::Data<PgDeviceRepository>,
+    user_repo: web::Data<PgUserRepository>,
+    query: web::Query<DeviceQuery>,
     state: web::Data<AppState>,
     path: web::Path<(uuid::Uuid, Id)>,
     session: Session,
@@ -435,17 +463,27 @@ pub async fn delete_config(
     let probe_id = path.0;
     let config_id = path.1;
     let i = authorized!(identity, request);
+    let user_id = parse_user_id(&i)?;
+    let user = user_repo.read_one(&user_id).await?;
     probe_repo
         .delete_probe_config(&SelectSingleProbeConfig::new(
-            parse_user_id(&i)?,
+            user_id,
             config_id,
             probe_id,
         ))
         .await?;
     reconnect_probe(state.command_channel.clone(), path.0, session).await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/probe/{}", path.0)))
-        .finish())
+    get_probe_content(
+        request,
+        probe_repo,
+        group_repo,
+        device_repo,
+        state,
+        user,
+        path.0,
+        query,
+    )
+        .await
 }
 
 /// Toggles a permission for a group on a probe.

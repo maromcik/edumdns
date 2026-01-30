@@ -219,7 +219,6 @@ fn handle_ipv4(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32
 /// or `Ok(XDP_PASS)` if the packet didn't match any rewrite rules.
 fn handle_ipv6(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32, ()> {
     let ipv6hdr: *mut Ipv6Hdr = ptr_at(ctx, EthHdr::LEN)?;
-
     let old_src = unsafe { (*ipv6hdr).src_addr };
     let old_dst = unsafe { (*ipv6hdr).dst_addr };
 
@@ -234,6 +233,18 @@ fn handle_ipv6(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32
             match (*ipv6hdr).next_hdr {
                 IpProto::Tcp => {
                     let tcphdr: *mut TcpHdr = ptr_at(ctx, EthHdr::LEN + Ipv6Hdr::LEN)?;
+
+                    info!(
+                        &ctx,
+                        "Rewriting packet; old_src: {:i}; new_src {:i}; old_dst: {:i}; new_dst {:i}; src tcp: {}; dst tcp: {}",
+                        old_src,
+                        cfg.proxy_ip6,
+                        old_dst,
+                        *new_dst,
+                        u16::from_be_bytes((*tcphdr).source),
+                        u16::from_be_bytes((*tcphdr).dest)
+                    );
+
                     let old_checksum = u16::from_be_bytes((*tcphdr).check);
                     (*tcphdr).check = u16::to_be_bytes(
                         ChecksumUpdate::new(old_checksum)
@@ -246,6 +257,16 @@ fn handle_ipv6(ctx: &XdpContext, ethhdr: *mut EthHdr, cfg: Config) -> Result<u32
                 }
                 IpProto::Udp => {
                     let udphdr: *mut UdpHdr = ptr_at(ctx, EthHdr::LEN + Ipv6Hdr::LEN)?;
+                    info!(
+                        &ctx,
+                        "Rewriting packet; old_src: {:i}; new_src {:i}; old_dst: {:i}; new_dst {:i}; src udp: {}; dst udp: {}",
+                        old_src,
+                        cfg.proxy_ip6,
+                        old_dst,
+                        *new_dst,
+                        u16::from_be_bytes((*udphdr).src),
+                        u16::from_be_bytes((*udphdr).dst)
+                    );
                     let old_checksum = u16::from_be_bytes((*udphdr).check);
                     (*udphdr).check = u16::to_be_bytes(
                         ChecksumUpdate::new(old_checksum)

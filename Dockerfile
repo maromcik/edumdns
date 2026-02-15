@@ -18,8 +18,6 @@ COPY ../edumdns_core ./edumdns_core
 COPY ./edumdns/edumdns_db/ ./edumdns/edumdns_db
 COPY ./edumdns/edumdns_server/ ./edumdns/edumdns_server
 
-COPY ./edumdns/actix_web_openidconnect ./edumdns/actix_web_openidconnect
-
 COPY ./edumdns/edumdns_web/templates/error.html ./edumdns/edumdns_web/templates/error.html
 COPY ./edumdns/edumdns_web/templates/head.html ./edumdns/edumdns_web/templates/head.html
 COPY ./edumdns/edumdns_web/src ./edumdns/edumdns_web/src
@@ -41,8 +39,6 @@ RUN cd edumdns && cargo chef cook --release --recipe-path recipe.json
 
 COPY ./edumdns/edumdns_db/ ./edumdns/edumdns_db
 COPY ./edumdns/edumdns_server/ ./edumdns/edumdns_server
-
-COPY ./edumdns/actix_web_openidconnect ./edumdns/actix_web_openidconnect
 
 COPY ./edumdns/edumdns_web/templates/error.html ./edumdns/edumdns_web/templates/error.html
 COPY ./edumdns/edumdns_web/templates/head.html ./edumdns/edumdns_web/templates/head.html

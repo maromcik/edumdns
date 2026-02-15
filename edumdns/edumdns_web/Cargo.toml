@@ -4,8 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-actix_web_openidconnect = { path = "../actix_web_openidconnect" }
-
 actix-files = { version = "0.6.8" }
 actix-multipart = "0.7.2"
 regex = "1.11.2"
@@ -15,10 +13,11 @@ actix-identity = "0.9.0"
 actix-session = { version = "0.11.0", features = ["cookie-session"]}
 actix-cors = "0.7.1"
 actix-ws = "0.3.0"
+actix_web_openidconnect = "0.3.3"
 minijinja = { version = "2.13.0", features = ["json", "serde_json", "default", "loader", "deserialization"] }
 minijinja-autoreload = "2.13.0"
 urlencoding = "2.1.3"
-askama = "0.14.0"
+askama = "0.15.4"
 
 edumdns_core = { workspace = true }
 edumdns_db = { workspace = true }

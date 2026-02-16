@@ -188,7 +188,7 @@ pub async fn login_base(
 /// - OIDC cookies are missing or invalid
 /// - User creation fails
 /// - Session creation fails
-#[get("/login/oidc")]
+#[get("/oidc/handle")]
 pub async fn login_oidc(
     request: HttpRequest,
     identity: Option<Identity>,
@@ -245,7 +245,7 @@ pub async fn login_oidc_redirect(
     query: web::Query<UserLoginReturnURL>,
 ) -> Result<HttpResponse, WebError> {
     Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/login/oidc?{}", query.0)))
+        .insert_header((LOCATION, format!("/oidc/handle?{}", query.0)))
         .finish())
 }
 

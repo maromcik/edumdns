@@ -10,12 +10,12 @@ pbkdf2 = { version = "0.12.2", features = ["simple"] }
 rand_core = { version = "0.6.4", features = ["std"] }
 strum_macros = "0.27.2"
 hex = "0.4.3"
-itertools = "0.14.0"
 
 edumdns_core = {workspace = true }
 diesel-async = { workspace = true }
 thiserror = {workspace = true}
 log = {workspace = true}
+itertools = { workspace = true}
 serde = {workspace = true}
 time = {workspace = true}
 uuid = {workspace = true}

@@ -24,6 +24,7 @@ edumdns_db = { workspace = true }
 edumdns_server = { workspace = true }
 actix-web = { workspace = true }
 log = { workspace = true}
+itertools = { workspace = true}
 serde = { workspace = true}
 diesel-async = { workspace = true}
 thiserror = {workspace = true}

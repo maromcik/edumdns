@@ -14,14 +14,14 @@ use crate::config::ExternalAuthDatabase;
 use crate::error::WebError;
 use actix_identity::Identity;
 use actix_session::Session;
-use actix_web::HttpRequest;
+use actix_web::{HttpMessage, HttpRequest};
+use actix_web_openidconnect::openid_middleware::AuthenticatedUser;
 use edumdns_core::app_packet::Id;
 use edumdns_db::error::{BackendError, DbError};
 use edumdns_db::repositories::user::models::{UserCreate, UserDisplay};
-use log::error;
+use itertools::Itertools;
+use log::{debug, error};
 use regex::Regex;
-use serde_json::Value;
-use std::collections::HashMap;
 use tokio_postgres::NoTls;
 
 #[macro_export]
@@ -154,13 +154,28 @@ pub async fn verify_transmit_request_client_ap(
 /// This function is used during OIDC authentication flow to create or update user
 /// accounts based on information from the identity provider.
 pub fn parse_user_from_oidc(request: &HttpRequest, admin: bool) -> Option<UserCreate> {
-    let cookie = request.cookie("user_info")?.value().to_string();
-    let parsed_cookie: HashMap<String, Value> = serde_json::from_str(cookie.as_str()).ok()?;
-    // let id = parsed_cookie.get("preferred_username")?.as_str()?;
-    let email = parsed_cookie.get("sub")?.as_str()?;
-    let name = parsed_cookie.get("given_name")?.as_str()?;
-    let surname = parsed_cookie.get("family_name")?.as_str()?;
-    Some(UserCreate::new_from_oidc(email, name, surname, admin))
+    let ext = request.extensions();
+    let user = ext.get::<AuthenticatedUser>()?;
+    let email = user.access.subject().to_string();
+    debug!("OIDC Login User: {:?}", user.access);
+    let name = user
+        .access
+        .given_name()?
+        .iter()
+        .map(|v| v.1.to_string())
+        .join(" ");
+    let surname = user
+        .access
+        .family_name()?
+        .iter()
+        .map(|v| v.1.to_string())
+        .join(" ");
+    Some(UserCreate::new_from_oidc(
+        email.as_str(),
+        name.as_str(),
+        surname.as_str(),
+        admin,
+    ))
 }
 
 /// Determines the template name based on request type and base path.

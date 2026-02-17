@@ -153,11 +153,10 @@ pub async fn verify_transmit_request_client_ap(
 ///
 /// This function is used during OIDC authentication flow to create or update user
 /// accounts based on information from the identity provider.
-pub fn parse_user_from_oidc(request: &HttpRequest, admin: bool) -> Option<UserCreate> {
+pub fn parse_user_from_oidc(request: &HttpRequest, admin_flag: &str) -> Option<UserCreate> {
     let ext = request.extensions();
     let user = ext.get::<AuthenticatedUser>()?;
     let email = user.access.subject().to_string();
-    debug!("OIDC Login User: {:?}", user.access);
     let name = user
         .access
         .given_name()?
@@ -170,6 +169,16 @@ pub fn parse_user_from_oidc(request: &HttpRequest, admin: bool) -> Option<UserCr
         .iter()
         .map(|v| v.1.to_string())
         .join(" ");
+
+    let admin = user
+        .access
+        .additional_claims()
+        .eduperson_entitlement
+        .as_ref()
+        .is_some_and(|claim| claim.iter().any(|v| v.eq(admin_flag)));
+
+    debug!("OIDC Login User: {:?} --- ADMIN: {}", user.access, admin);
+
     Some(UserCreate::new_from_oidc(
         email.as_str(),
         name.as_str(),

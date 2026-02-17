@@ -155,6 +155,8 @@ pub async fn create_oidc(oidc_config: &Option<OidcConfig>) -> Result<ActixWebOpe
         "openid".to_string(),
         "profile".to_string(),
         "email".to_string(),
+        "eduperson_entitlement".to_string(),
+        "eduperson_scoped_affiliation".to_string(),
     ])
     .build_and_init()
     .await

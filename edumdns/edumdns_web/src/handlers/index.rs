@@ -220,7 +220,7 @@ pub async fn login_oidc(
         .finish();
     resp.cookie(c);
 
-    let user_create = parse_user_from_oidc(&request, oidc_config.new_users_admin).ok_or(
+    let user_create = parse_user_from_oidc(&request, oidc_config.oidc_admin_flag.as_str()).ok_or(
         WebError::CookieError("Cookie or some of its fields were not found or invalid".to_string()),
     )?;
     let user = user_repo.create(&user_create).await?;

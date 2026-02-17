@@ -40,7 +40,7 @@ pub struct OidcConfig {
     pub client_secret: String,
     pub issuer: String,
     pub callback_url: String,
-    pub new_users_admin: bool,
+    pub oidc_admin_flag: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]

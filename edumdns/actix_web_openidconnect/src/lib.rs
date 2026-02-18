@@ -22,14 +22,14 @@ pub struct ActixWebOpenId {
     openid_client: Arc<OpenID>,
     should_auth: fn(&ServiceRequest) -> bool,
     use_pkce: bool,
-    redirect_path: Vec<String>,
+    redirect_path: String,
     logout_path: String,
 }
 
 pub struct ActixWebOpenIdBuilder {
     client_id: String,
     client_secret: Option<String>,
-    redirect_url: Vec<Url>,
+    redirect_url: Url,
     logout_path: String,
     issuer_url: String,
     should_auth: fn(&ServiceRequest) -> bool,
@@ -104,7 +104,7 @@ impl ActixWebOpenIdBuilder {
                 )
                 .await?,
             ),
-            redirect_path: self.redirect_url.iter().map(|p| p.path().to_string()).collect(),
+            redirect_path: self.redirect_url.path().to_string(),
             should_auth: self.should_auth,
             use_pkce: self.use_pkce,
             logout_path: self.logout_path,
@@ -115,13 +115,13 @@ impl ActixWebOpenIdBuilder {
 impl ActixWebOpenId {
     pub fn builder(
         client_id: String,
-        redirect_url: Vec<String>,
+        redirect_url: String,
         issuer_url: String,
     ) -> ActixWebOpenIdBuilder {
         ActixWebOpenIdBuilder {
             client_id,
             client_secret: None,
-            redirect_url: redirect_url.iter().map(|p| Url::parse(p.as_str()).expect("Invalid redirect URL")).collect(),
+            redirect_url: Url::parse(redirect_url.as_str()).expect("Invalid redirect URL"),
             logout_path: "/logout".to_string(),
             issuer_url,
             should_auth: |_| true, // default behavior
@@ -137,13 +137,11 @@ impl ActixWebOpenId {
     pub fn configure_open_id(&self) -> impl Fn(&mut ServiceConfig) + use<'_> {
         let client = self.openid_client.clone();
         move |cfg: &mut ServiceConfig| {
-            for u in self.redirect_path.iter() {
-                cfg.service(
-                    web::resource(u.clone())
-                        .route(web::get().to(openid_middleware::auth_endpoint)),
-                );
-            }
             cfg.service(
+                web::resource(self.redirect_path.clone())
+                    .route(web::get().to(openid_middleware::auth_endpoint)),
+            )
+            .service(
                 web::resource(self.logout_path.clone())
                     .route(web::get().to(openid_middleware::logout_endpoint)),
             )

@@ -112,7 +112,7 @@ impl OpenID {
     pub(crate) async fn init(
         client_id: String,
         client_secret: Option<String>,
-        redirect_uri: Vec<Url>,
+        redirect_uri: Url,
         issuer_url: String,
         post_logout_redirect_url: Option<String>,
         scopes: Vec<String>,
@@ -134,7 +134,7 @@ impl OpenID {
             client_secret.map(|client_secret| ClientSecret::new(client_secret.to_string())),
         )
         .set_redirect_uri(
-            RedirectUrl::new(redirect_uri[0].to_string()).expect("Invalid redirect URL"),
+            RedirectUrl::new(redirect_uri.to_string()).expect("Invalid redirect URL"),
         );
 
         Ok(Self {

@@ -158,7 +158,6 @@ pub async fn create_oidc(oidc_config: &Option<OidcConfig>) -> Result<ActixWebOpe
         "eduperson_entitlement".to_string(),
         "eduperson_scoped_affiliation".to_string(),
     ])
-    .alternative_redirect_urls(oidc_config.alternative_callback_urls.unwrap_or_default())
     .build_and_init()
     .await
     .map_err(|e| WebError::OidcError(e.to_string()))

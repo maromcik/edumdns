@@ -7,10 +7,10 @@
 //!
 
 use std::sync::Arc;
-
+use actix_web::http::header::LOCATION;
 use crate::openid::OpenID;
 use actix_web::dev::ServiceRequest;
-use actix_web::web;
+use actix_web::{web, HttpResponse};
 use actix_web::web::ServiceConfig;
 use url::Url;
 
@@ -23,6 +23,7 @@ pub struct ActixWebOpenId {
     should_auth: fn(&ServiceRequest) -> bool,
     use_pkce: bool,
     redirect_path: String,
+    alternative_redirect_paths: Vec<String>,
     logout_path: String,
 }
 
@@ -30,6 +31,7 @@ pub struct ActixWebOpenIdBuilder {
     client_id: String,
     client_secret: Option<String>,
     redirect_url: Url,
+    alternative_redirect_urls: Vec<String>,
     logout_path: String,
     issuer_url: String,
     should_auth: fn(&ServiceRequest) -> bool,
@@ -59,6 +61,11 @@ impl ActixWebOpenIdBuilder {
 
     pub fn logout_path(mut self, path: impl Into<String>) -> Self {
         self.logout_path = path.into();
+        self
+    }
+
+    pub fn alternative_redirect_urls(mut self, alternative_redirect_urls: Vec<String>) -> Self {
+        self.alternative_redirect_urls = alternative_redirect_urls;
         self
     }
 
@@ -104,6 +111,7 @@ impl ActixWebOpenIdBuilder {
                 )
                 .await?,
             ),
+            alternative_redirect_paths: self.alternative_redirect_urls,
             redirect_path: self.redirect_url.path().to_string(),
             should_auth: self.should_auth,
             use_pkce: self.use_pkce,
@@ -122,6 +130,7 @@ impl ActixWebOpenId {
             client_id,
             client_secret: None,
             redirect_url: Url::parse(redirect_url.as_str()).expect("Invalid redirect URL"),
+            alternative_redirect_urls: vec![],
             logout_path: "/logout".to_string(),
             issuer_url,
             should_auth: |_| true, // default behavior
@@ -133,10 +142,25 @@ impl ActixWebOpenId {
             allow_all_audiences: false,
         }
     }
+    
 
     pub fn configure_open_id(&self) -> impl Fn(&mut ServiceConfig) + use<'_> {
         let client = self.openid_client.clone();
         move |cfg: &mut ServiceConfig| {
+            for alt in self.alternative_redirect_paths.iter() {
+                let primary_path = self.redirect_path.clone();
+                cfg.service(
+                    web::resource(alt)
+                        .route(web::get().to(move || {
+                            let primary = primary_path.clone();
+                            async move {
+                                HttpResponse::SeeOther()
+                                    .insert_header((LOCATION, primary))
+                                    .finish()
+                            }
+                        })),
+                );
+            }
             cfg.service(
                 web::resource(self.redirect_path.clone())
                     .route(web::get().to(openid_middleware::auth_endpoint)),

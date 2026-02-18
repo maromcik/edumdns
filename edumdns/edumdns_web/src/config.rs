@@ -40,6 +40,8 @@ pub struct OidcConfig {
     pub client_secret: String,
     pub issuer: String,
     pub callback_url: String,
+    #[serde(default)]
+    pub alternative_callback_urls: Option<Vec<String>>,
     pub oidc_admin_flag: String,
 }
 

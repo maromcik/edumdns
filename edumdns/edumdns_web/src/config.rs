@@ -39,7 +39,7 @@ pub struct OidcConfig {
     pub client_id: String,
     pub client_secret: String,
     pub issuer: String,
-    pub callback_url: String,
+    pub callback_url: Vec<String>,
     pub oidc_admin_flag: String,
 }
 

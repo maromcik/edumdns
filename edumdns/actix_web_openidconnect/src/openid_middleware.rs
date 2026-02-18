@@ -117,7 +117,7 @@ pub struct OpenIdMiddleware<S> {
     service: Rc<S>,
     should_auth: fn(&ServiceRequest) -> bool,
     use_pkce: bool,
-    redirect_path: String,
+    redirect_path: Vec<String>,
 }
 
 impl<S> OpenIdMiddleware<S> {}
@@ -152,8 +152,10 @@ where
 
         let redirect_path = self.redirect_path.clone(); // <- clone it here
         Box::pin(async move {
-            if path2.starts_with(&redirect_path) || !should_auth(&req) {
-                return srv.call(req).await;
+            for u in redirect_path {
+                if path2.starts_with(&u) || !should_auth(&req) {
+                    return srv.call(req).await;
+                }    
             }
             match req.cookie(AuthCookies::AccessToken.to_string().as_str()) {
                 None => return Err(redirect_to_auth().into()),
@@ -181,7 +183,7 @@ pub struct AuthenticateMiddlewareFactory {
     client: Arc<OpenID>,
     should_auth: fn(&ServiceRequest) -> bool,
     use_pkce: bool,
-    redirect_path: String,
+    redirect_path: Vec<String>,
 }
 
 impl AuthenticateMiddlewareFactory {
@@ -189,7 +191,7 @@ impl AuthenticateMiddlewareFactory {
         client: Arc<OpenID>,
         should_auth: fn(&ServiceRequest) -> bool,
         use_pkce: bool,
-        redirect_path: String,
+        redirect_path: Vec<String>,
     ) -> Self {
         AuthenticateMiddlewareFactory {
             client,

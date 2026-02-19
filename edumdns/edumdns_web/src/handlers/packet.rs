@@ -39,7 +39,6 @@ use edumdns_db::repositories::user::repository::PgUserRepository;
 use hickory_proto::op::Message;
 use hickory_proto::serialize::binary::BinDecodable;
 use std::collections::HashMap;
-use log::{error, warn};
 
 /// Lists all packets with filtering and pagination.
 ///

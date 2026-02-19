@@ -343,10 +343,12 @@
     document.getElementById('create-packet-json-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const payload = buildCreatePacketJson();
+        let encoded = utf8ToOctal(JSON.stringify(payload));
+        console.log('submitting', encoded);
         fetch(e.target.action, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
+            body: encoded
         })
             .then(resp => {
                 if (resp.ok) {
@@ -361,4 +363,69 @@
                 alert(`Error submitting packet: ${err}`);
             });
     });
+
+    function utf8ToOctal(str) {
+        if (!str) return str;
+
+        const bytes = new TextEncoder().encode(str);
+        let out = "";
+
+        for (const b of bytes) {
+            const ch = String.fromCharCode(b);
+
+            // allowed: alphanumeric + - . _
+            if (
+                (b >= 0x30 && b <= 0x39) || // 0-9
+                (b >= 0x41 && b <= 0x5A) || // A-Z
+                (b >= 0x61 && b <= 0x7A) || // a-z
+                ch === '-' ||
+                ch === '.' ||
+                ch === '{' ||
+                ch === '[' ||
+                ch === '(' ||
+                ch === '}' ||
+                ch === ']' ||
+                ch === '}' ||
+                ch === ')' ||
+                ch === ',' ||
+                ch === '"' ||
+                ch === '\'' ||
+                ch === ':' ||
+                ch === '_' ||
+                ch === '/'
+            ) {
+                out += ch;
+            } else {
+                out += "\\\\" + b.toString(8).padStart(3, "0");
+            }
+        }
+
+        return out;
+    }
+
+    function octalToUtf8(str) {
+        if (!str) return str;
+
+        const bytes = [];
+        let i = 0;
+
+        while (i < str.length) {
+            if (
+                str[i] === '\\' &&
+                i + 3 < str.length &&
+                /[0-7]{3}/.test(str.slice(i + 1, i + 4))
+            ) {
+                const oct = str.slice(i + 1, i + 4);
+                bytes.push(parseInt(oct, 8));
+                i += 4;
+            } else {
+                // normal char → UTF-8 bytes
+                const encoded = new TextEncoder().encode(str[i]);
+                bytes.push(...encoded);
+                i += 1;
+            }
+        }
+
+        return new TextDecoder().decode(new Uint8Array(bytes));
+    }
 </script>

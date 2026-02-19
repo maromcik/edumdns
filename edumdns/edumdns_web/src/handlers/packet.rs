@@ -358,7 +358,6 @@ pub async fn update_packet_payload(
     form: String,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
-    warn!("BEFORE: {form}");
     let form = serde_json::from_str::<UpdatePacketPayloadForm>(&form)?;
     let params = form.to_db_params()?;
     packet_repo
@@ -409,7 +408,6 @@ pub async fn update_packet_payload_form(
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
     let msg = serde_json::to_string(&message)?;
-    error!("MSG: {msg}");
     let body = template.render(PacketUpdatePayloadTemplate {
         user,
         id: packet.data.id,

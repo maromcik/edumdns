@@ -39,6 +39,7 @@ use edumdns_db::repositories::user::repository::PgUserRepository;
 use hickory_proto::op::Message;
 use hickory_proto::serialize::binary::BinDecodable;
 use std::collections::HashMap;
+use log::{error, warn};
 
 /// Lists all packets with filtering and pagination.
 ///
@@ -354,10 +355,12 @@ pub async fn update_packet_payload(
     request: HttpRequest,
     identity: Option<Identity>,
     packet_repo: web::Data<PgPacketRepository>,
-    form: web::Json<UpdatePacketPayloadForm>,
+    form: String,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
-    let params = form.into_inner().to_db_params()?;
+    warn!("BEFORE: {form}");
+    let form = serde_json::from_str::<UpdatePacketPayloadForm>(&form)?;
+    let params = form.to_db_params()?;
     packet_repo
         .update_auth(&params, &parse_user_id(&i)?)
         .await?;
@@ -405,6 +408,8 @@ pub async fn update_packet_payload_form(
     let template_name = get_template_name(&request, "packet/edit");
     let env = state.jinja.acquire_env()?;
     let template = env.get_template(&template_name)?;
+    let msg = serde_json::to_string(&message)?;
+    error!("MSG: {msg}");
     let body = template.render(PacketUpdatePayloadTemplate {
         user,
         id: packet.data.id,
@@ -412,7 +417,7 @@ pub async fn update_packet_payload_form(
         ip: packet.data.src_addr,
         mac: MacAddr::from_octets(packet.data.src_mac),
         port: packet.data.dst_port as u16,
-        message: serde_json::to_string(&message)?,
+        message: msg,
     })?;
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }

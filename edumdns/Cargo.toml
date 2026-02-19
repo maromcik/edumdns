@@ -38,7 +38,7 @@ ipnetwork = { version = "0.21.1", features = ["serde"]}
 uuid = { version = "1.19.0", features = ["v4", "v7", "serde"] }
 diesel-async = { version = "0.7.4" , features = ["tokio-postgres", "postgres", "deadpool"]}
 serde = { version = "1.0.228", features = ["derive", "std"] }
-hickory-proto = { version = "0.25.2", features = ["default", "serde"]}
+hickory-proto = { version = "0.26.0-alpha.1", features = ["default", "serde", "text-parsing"]}
 strum = "0.27.2"
 time = { version = "0.3.44", features = ["serde", "local-offset", "parsing", "formatting"] }
 futures = "0.3.31"

@@ -115,10 +115,12 @@
     /* --- PREPOPULATE DNS MESSAGE --- */
     function preloadDnsMessage() {
         const rawJson = `{{ message | safe }}`;
-        if (!rawJson || rawJson.trim().length === 0) return;
+        console.log("Raw JSON:", rawJson);
+        let decoded = octalToUtf8(rawJson);
+        if (!decoded || decoded.trim().length === 0) return;
         let msg = null;
         try {
-            msg = JSON.parse(rawJson);
+            msg = JSON.parse(decoded);
         } catch (e) {
             console.error("Invalid message JSON:", e);
             return;
@@ -361,7 +363,7 @@
             const qtype = row.querySelector('.query-type')?.value || 'A';
             const qclass = row.querySelector('.query-class')?.value?.trim() || 'IN';
             if (name) {
-                queries.push({ name, query_type: qtype, query_class: qclass, mdns_unicast_response: false });
+                queries.push({ name, query_type: qtype, query_class: qclass });
             }
         });
 
@@ -391,7 +393,7 @@
                 }
 
                 if (rdataObj) {
-                    out.push({ name_labels, dns_class, ttl, rdata: rdataObj, mdns_cache_flush: false });
+                    out.push({ name_labels, dns_class, ttl, rdata: rdataObj });
                 }
             });
             return out;
@@ -408,7 +410,7 @@
             packet_id: packet_id,
             message: {
                 header, queries, answers, additionals,
-                name_servers: [], signature: [], edns: null
+                name_servers: [], signature: "Unsigned", edns: null
             }
         };
     }
@@ -431,10 +433,11 @@
     document.getElementById('create-packet-json-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const payload = buildCreatePacketJson();
+        let encoded = utf8ToOctal(JSON.stringify(payload));
         fetch(e.target.action, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
+            body: encoded
         })
             .then(resp => {
                 if (resp.ok) {
@@ -449,6 +452,101 @@
                 alert(`Error submitting packet: ${err}`);
             });
     });
+    function deepUtf8ToOctal(obj) {
+        if (typeof obj === "string") {
+            return utf8ToOctal(obj);
+        }
+        if (Array.isArray(obj)) {
+            return obj.map(deepUtf8ToOctal);
+        }
+        if (obj && typeof obj === "object") {
+            const out = {};
+            for (const k in obj) {
+                out[k] = deepUtf8ToOctal(obj[k]);
+            }
+            return out;
+        }
+        return obj;
+    }
+    function deepOctalToUtf8(obj) {
+        if (typeof obj === "string") {
+            return octalToUtf8(obj);
+        }
+        if (Array.isArray(obj)) {
+            return obj.map(deepOctalToUtf8);
+        }
+        if (obj && typeof obj === "object") {
+            const out = {};
+            for (const k in obj) {
+                out[k] = deepOctalToUtf8(obj[k]);
+            }
+            return out;
+        }
+        return obj;
+    }
+    function utf8ToOctal(str) {
+        if (!str) return str;
+
+        const bytes = new TextEncoder().encode(str);
+        let out = "";
+
+        for (const b of bytes) {
+            const ch = String.fromCharCode(b);
+
+            // allowed: alphanumeric + - . _
+            if (
+                (b >= 0x30 && b <= 0x39) || // 0-9
+                (b >= 0x41 && b <= 0x5A) || // A-Z
+                (b >= 0x61 && b <= 0x7A) || // a-z
+                ch === '-' ||
+                ch === '.' ||
+                ch === '{' ||
+                ch === '[' ||
+                ch === '(' ||
+                ch === '}' ||
+                ch === ']' ||
+                ch === '}' ||
+                ch === ')' ||
+                ch === ',' ||
+                ch === '"' ||
+                ch === '\'' ||
+                ch === ':' ||
+                ch === '_'
+            ) {
+                out += ch;
+            } else {
+
+            }
+        }
+
+        return out;
+    }
+
+    function octalToUtf8(str) {
+        if (!str) return str;
+
+        const bytes = [];
+        let i = 0;
+
+        while (i < str.length) {
+            if (
+                str[i] === '\\' &&
+                i + 3 < str.length &&
+                /[0-7]{3}/.test(str.slice(i + 1, i + 4))
+            ) {
+                const oct = str.slice(i + 1, i + 4);
+                bytes.push(parseInt(oct, 8));
+                i += 4;
+            } else {
+                // normal char → UTF-8 bytes
+                const encoded = new TextEncoder().encode(str[i]);
+                bytes.push(...encoded);
+                i += 1;
+            }
+        }
+
+        return new TextDecoder().decode(new Uint8Array(bytes));
+    }
 
 </script>
 

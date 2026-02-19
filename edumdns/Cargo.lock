@@ -1483,7 +1483,7 @@ dependencies = [
  "bincode",
  "bytes",
  "futures",
- "hickory-proto",
+ "hickory-proto 0.25.2",
  "ipnetwork 0.21.1",
  "log",
  "pcap",
@@ -1507,7 +1507,7 @@ dependencies = [
  "diesel_migrations",
  "edumdns_core",
  "hex",
- "hickory-proto",
+ "hickory-proto 0.26.0-alpha.1",
  "ipnetwork 0.21.1",
  "itertools 0.14.0",
  "log",
@@ -1530,7 +1530,7 @@ dependencies = [
  "edumdns_core",
  "edumdns_db",
  "futures",
- "hickory-proto",
+ "hickory-proto 0.26.0-alpha.1",
  "ipnetwork 0.21.1",
  "log",
  "rustls",
@@ -1558,7 +1558,7 @@ dependencies = [
  "edumdns_db",
  "edumdns_server",
  "futures-util",
- "hickory-proto",
+ "hickory-proto 0.26.0-alpha.1",
  "ipnetwork 0.21.1",
  "itertools 0.14.0",
  "log",
@@ -2105,6 +2105,32 @@ name = "hickory-proto"
 version = "0.25.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8a6fe56c0038198998a6f217ca4e7ef3a5e51f46163bd6dd60b5c71ca6c6502"
+dependencies = [
+ "async-trait",
+ "cfg-if",
+ "data-encoding",
+ "enum-as-inner",
+ "futures-channel",
+ "futures-io",
+ "futures-util",
+ "idna",
+ "ipnet",
+ "once_cell",
+ "rand 0.9.1",
+ "ring",
+ "serde",
+ "thiserror 2.0.17",
+ "tinyvec",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "hickory-proto"
+version = "0.26.0-alpha.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a62d7684f766b0f96344be88c023f9b6650039aea09d526b4974cce302eb61b1"
 dependencies = [
  "async-trait",
  "cfg-if",

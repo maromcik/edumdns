@@ -1,4 +1,4 @@
-# 📡 **edumDNS**
+# **edumDNS**
 ### _Secure, access-controlled device discovery across enterprise networks_
 
 edumDNS is a Rust-based system designed to make mDNS-based discovery (e.g., Chromecast, Apple TV, Playercast) work reliably and securely across multi-subnet, enterprise, and campus networks.  
@@ -8,21 +8,21 @@ This repository contains **three binaries** and multiple **nested crates**, each
 
 ---
 
-## 🌐 How edumDNS Works
+## How edumDNS Works
 
-### 1. 🛰️ Remote probes
+### 1.️ Remote probes
 Probes in remote networks capture mDNS packets from Chromecast, Apple TV, Playercast, etc.  
 They securely forward these packets to the central server.
 
-### 2. 🖥️ Server & database
+### 2. Server & database
 The server parses packets, stores metadata, and exposes them in the web UI.  
 Administrators review and publish devices, set ACLs, and configure policies.
 
-### 3. 🌍 Users request discovery
+### 3. Users request discovery
 A user enters a **device ID** or scans a **short link**.  
 If authorised, the system transmits the device’s mDNS packets into the user’s local network.
 
-### 4. 🔄 Optional proxy mode
+### 4. Optional proxy mode
 For networks requiring full isolation or NAT traversal:
 - All traffic goes through the eBPF proxy
 - No direct connection is ever made to the device
@@ -31,7 +31,7 @@ For networks requiring full isolation or NAT traversal:
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 The project is structured into several Rust crates:
 
@@ -47,19 +47,19 @@ This README focuses on the **system-level overview**.
 
 ---
 
-# 🧩 System Overview
+# System Overview
 
 edumDNS solves the problem that **mDNS is link-local** and cannot cross subnet boundaries.  
 Enterprise networks, especially large campus deployments, make local discovery difficult or impossible.
 
 edumDNS provides:
 
-- 🔍 **Secure, on-demand discovery** across any subnet
-- 📡 **Remote probes** to capture real device packets
-- 🌐 **Web interface** for administrators and users
-- 🛡️ **Optional eBPF proxy** to relay all traffic securely
-- 🧩 **Full access control** (per-device ACLs, per-user permissions)
-- 🗄️ **Centralised database**
+- **Secure, on-demand discovery** across any subnet
+- **Remote probes** to capture real device packets
+- **Web interface** for administrators and users
+- **Optional eBPF proxy** to relay all traffic securely
+- **Full access control** (per-device ACLs, per-user permissions)
+- **Centralised database**
 
 The system safely relays discovery information **only when requested** and **only to authorised users**.
 
@@ -69,15 +69,15 @@ The system safely relays discovery information **only when requested** and **onl
 
 ![diagram](diagrams/diagram.png)
 
-## 🏗️ Binaries
+## Binaries
 
-### 1. 🖥️ `edumdns`
+### 1. `edumdns`
 **(server + web + database access layer)**
 
 This is the main application running on the central host.  
 It includes three tightly integrated components compiled into a single binary:
 
-#### **🔸 Server**
+#### **Server**
 - Receives encapsulated mDNS packets from remote probes
 - Stores records in the database
 - Receives commands from the web interface
@@ -86,7 +86,7 @@ It includes three tightly integrated components compiled into a single binary:
 - Transmission control (timers, proxy mode, discovery mode)
 - Communicates with the proxy
 
-#### **🔸 Web Interface**
+#### **Web Interface**
 - User login & session-based authentication
 - Handling discovery requests and queries to an external database 
 - Probe remote configuration and management
@@ -94,7 +94,7 @@ It includes three tightly integrated components compiled into a single binary:
 - Packet crafting and editing tools
 - Administration UI for probes, devices, packets, users, groups, and permissions
 
-#### **🔸 Database Layer**
+#### **Database Layer**
 A uniform DB abstraction crate included inside `edumdns`, responsible for:
 - schema creation and migrations
 - database queries
@@ -105,7 +105,7 @@ PostgreSQL is used as the backend DB.
 
 ---
 
-### 2. 🛰️ `edumdns_probe`
+### 2. `edumdns_probe`
 **Remote probes that capture mDNS packets on local subnets**
 
 The probes are lightweight agents designed to operate in VLANs where smart devices live.  
@@ -124,7 +124,7 @@ They never respond to devices directly, they only observe.
 
 ---
 
-### 3. 🧷 `edumdns_proxy`
+### 3. `edumdns_proxy`
 **Optional eBPF-based secure traffic relay**
 
 Some networks require not only discovery but also controlled communication between the client and the device.
@@ -145,7 +145,7 @@ The proxy runs **on the same host as the server**, but is a **separate binary** 
 ---
 
 
-## 🧪 Deployment Notes
+## Deployment Notes
 
 edumDNS has been successfully deployed across:
 
@@ -158,7 +158,7 @@ The system is production-ready and supports large-scale deployments with many pr
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 See the README files in each crate:
 
@@ -168,6 +168,6 @@ See the README files in each crate:
 
 ---
 
-## 🛠️ Build
+## Build
 
 Run `cargo build --release` in each binary's directory.

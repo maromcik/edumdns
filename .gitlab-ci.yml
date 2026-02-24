@@ -7,6 +7,8 @@ stages:
 variables:
   CARGO_HOME: "${CI_PROJECT_DIR}/.cargo"
   RUSTUP_HOME: "${CI_PROJECT_DIR}/.rustup"
+  IMAGE_NAME: "$CI_REGISTRY_IMAGE/edumdns"
+  DOCKER_CONFIG: /kaniko/.docker/
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}
@@ -15,7 +17,6 @@ cache:
     - .cargo/registry
     - .cargo/git
     - .rustup/
-
 
 # Build edumdns (main binary) - ALL IN 'build' STAGE
 build_edumdns:
@@ -70,6 +71,32 @@ build_proxy:
     paths:
       - edumdns_proxy/target/release/edumdns_proxy
     expire_in: 1 week
+
+# Build Docker image with Kaniko - ALSO IN 'build' STAGE (runs in parallel)
+build_docker:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  before_script:
+    - mkdir -p /kaniko/.docker
+    # Create Docker authentication for GitLab registry
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+  script:
+    - |
+      /kaniko/executor \
+        --context "${CI_PROJECT_DIR}" \
+        --dockerfile "${CI_PROJECT_DIR}/Dockerfile" \
+        --destination "${IMAGE_NAME}:${CI_COMMIT_TAG}" \
+        --destination "${IMAGE_NAME}:latest" \
+        --cache=true \
+        --cache-ttl=168h \
+        --verbosity=info
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  # Optional: Add when manual if you want to control when to build Docker
+  # when: manual
 
 # Release edumdns - IN 'release' STAGE
 release_edumdns:
@@ -135,3 +162,30 @@ release_proxy:
     - if: '$CI_PIPELINE_SOURCE == "web"'
   needs:
     - build_proxy
+
+# Optional: Add a job to verify the Docker image was pushed successfully
+verify_docker:
+  stage: release
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl jq
+  script:
+    - |
+      echo "Verifying Docker image was pushed..."
+      IMAGE_DIGEST=$(curl -s --header "PRIVATE-TOKEN: ${CI_JOB_TOKEN}" \
+        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/registry/repositories" | \
+        jq -r '.[] | select(.name=="edumdns") | .id')
+      
+      if [ -n "$IMAGE_DIGEST" ]; then
+        echo "✅ Docker image ${IMAGE_NAME}:${CI_COMMIT_TAG} successfully pushed by Kaniko"
+        echo "Registry URL: ${CI_REGISTRY}/${IMAGE_NAME}"
+        echo "Tags available: latest, ${CI_COMMIT_TAG}"
+      else
+        echo "⚠️  Docker image not found in registry. Kaniko build might have failed."
+        exit 1
+      fi
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  needs:
+    - build_docker

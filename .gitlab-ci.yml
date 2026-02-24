@@ -19,6 +19,7 @@ cache:
 # Common before_script for all build jobs
 .before_build_script: &before_build_script
   before_script:
+    - apt-get update && apt-get install -y libpcap-dev
     - rustup default stable
 
 # Build edumdns (main binary) - ALL IN 'build' STAGE

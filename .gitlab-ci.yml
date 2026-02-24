@@ -26,9 +26,7 @@ cache:
 
 # Common before_script for all build jobs
 .before_build_script: &before_build_script
-  before_script:
-    - #apt-get update && apt-get install -y musl-tools musl-dev
-    - rustup default stable
+  before_script: "rustup default stable"
 
 # Common script for building a binary
 .build_script: &build_script

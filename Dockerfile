@@ -2,7 +2,7 @@
 # The file was placed here due to the dependency on the edumdns_core crate, and apparently
 # files from the parent directory cannot be copied over.
 
-FROM rust:1.91 as base
+FROM rust:1.93 as base
 
 RUN apt-get update
 RUN apt-get install -y postgresql-client zip build-essential autoconf libtool pkg-config libpq-dev libpcap-dev libssl-dev libxdp-dev clang

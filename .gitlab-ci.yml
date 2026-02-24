@@ -44,6 +44,7 @@ build_edumdns:
     - cargo build --release 
   rules:
     - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
   artifacts:
     paths:
       - edumdns/target/release/edumdns
@@ -58,6 +59,7 @@ build_probe:
     - cargo build --release 
   rules:
     - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
   artifacts:
     paths:
       - edumdns_probe/target/release/edumdns_probe
@@ -72,6 +74,7 @@ build_proxy:
     - cargo build --release 
   rules:
     - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
   artifacts:
     paths:
       - edumdns_proxy/target/release/edumdns_proxy
@@ -101,6 +104,7 @@ release_edumdns:
            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/${CI_COMMIT_TAG}/edumdns"
   rules:
     - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
   needs:
     - build_edumdns
 
@@ -125,6 +129,7 @@ release_probe:
            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/${CI_COMMIT_TAG}/edumdns_probe"
   rules:
     - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
   needs:
     - build_probe
 
@@ -149,5 +154,6 @@ release_proxy:
            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/${CI_COMMIT_TAG}/edumdns_proxy"
   rules:
     - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
   needs:
     - build_proxy

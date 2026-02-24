@@ -16,16 +16,13 @@ cache:
     - .cargo/git
     - .rustup/
 
-# Common before_script for all build jobs
-.before_build_script: &before_build_script
-  before_script:
-    - apt-get update && apt-get install -y libpcap-dev
-    - rustup default stable
 
 # Build edumdns (main binary) - ALL IN 'build' STAGE
 build_edumdns:
   stage: build
-  <<: *before_build_script
+  before_script:
+    - apt-get update
+    - rustup default stable
   script:
     - cd edumdns
     - cargo build --release
@@ -40,7 +37,9 @@ build_edumdns:
 # Build edumdns_probe - ALSO IN 'build' STAGE
 build_probe:
   stage: build
-  <<: *before_build_script
+  before_script:
+    - apt-get update && apt-get install -y libpcap-dev
+    - rustup default stable
   script:
     - cd edumdns_probe
     - cargo build --release
@@ -55,7 +54,12 @@ build_probe:
 # Build edumdns_proxy - ALSO IN 'build' STAGE
 build_proxy:
   stage: build
-  <<: *before_build_script
+  before_script:
+    - apt-get update
+    - rustup default stable
+    - rustup toolchain install stable
+    - rustup toolchain install nightly --component rust-src
+    - cargo install bpf-linker
   script:
     - cd edumdns_proxy
     - cargo build --release

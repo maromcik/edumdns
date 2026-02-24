@@ -1478,7 +1478,7 @@ dependencies = [
 
 [[package]]
 name = "edumdns_core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "bincode",
  "bytes",
@@ -1500,7 +1500,7 @@ dependencies = [
 
 [[package]]
 name = "edumdns_db"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "diesel",
  "diesel-async",
@@ -1523,7 +1523,7 @@ dependencies = [
 
 [[package]]
 name = "edumdns_server"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aya",
  "diesel-async",
@@ -1542,7 +1542,7 @@ dependencies = [
 
 [[package]]
 name = "edumdns_web"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "actix-cors",
  "actix-files",

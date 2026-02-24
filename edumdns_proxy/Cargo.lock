@@ -404,7 +404,7 @@ checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
 name = "edumdns_proxy"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "aya",
@@ -426,14 +426,14 @@ dependencies = [
 
 [[package]]
 name = "edumdns_proxy-common"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aya",
 ]
 
 [[package]]
 name = "edumdns_proxy-ebpf"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "aya-ebpf",
  "aya-log-ebpf",

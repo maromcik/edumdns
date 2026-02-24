@@ -1,0 +1,89 @@
+image: rust:1.93
+
+stages:
+  - build
+  - release
+
+variables:
+  CARGO_HOME: "${CI_PROJECT_DIR}/.cargo"
+  RUSTUP_HOME: "${CI_PROJECT_DIR}/.rustup"
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - target/
+    - .cargo/registry
+    - .cargo/git
+    - .rustup/
+
+.before_build_script: &before_build_script
+  before_script:
+    - apt-get update
+    - rustup default stable
+
+# Check if it's a workspace
+check_workspace:
+  stage: .pre
+  script:
+    - |
+      if [ -f "Cargo.toml" ]; then
+        echo "Root Cargo.toml exists"
+        grep -q "\[workspace\]" Cargo.toml && echo "This is a Cargo workspace" || echo "Not a workspace"
+      fi
+    - ls -la */Cargo.toml
+
+# Build all binaries in parallel
+build_all:
+  stage: build
+  <<: *before_build_script
+  script:
+    # Build all three binaries
+    - cargo build --release --target=x86_64-unknown-linux-musl --package edumdns
+    - cargo build --release --target=x86_64-unknown-linux-musl --package edumdns_probe
+    - cargo build --release --target=x86_64-unknown-linux-musl --package edumdns_proxy
+  parallel:
+    matrix:
+      - PACKAGE: [edumdns, edumdns_probe, edumdns_proxy]
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  artifacts:
+    paths:
+      - target/release/$PACKAGE
+    expire_in: 1 week
+
+# Release all binaries
+release_all:
+  stage: release
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl jq
+  script:
+    # Function to upload a binary
+    - |
+      upload_binary() {
+        local bin_name=$1
+        local bin_path=$2
+      
+        echo "Uploading $bin_name..."
+      
+        # Upload versioned
+        curl --fail --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+             --upload-file "$bin_path" \
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/$bin_name/${CI_COMMIT_TAG}/$bin_name"
+      
+        # Upload latest
+        curl --fail --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+             --upload-file "$bin_path" \
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/$bin_name/latest/$bin_name"
+      
+        echo "✅ $bin_name uploaded successfully"
+      }
+
+    # Upload each binary
+    - upload_binary "edumdns" "target/release/edumdns"
+    - upload_binary "edumdns_probe" "target/release/edumdns_probe"
+    - upload_binary "edumdns_proxy" "target/release/edumdns_proxy"
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  needs:
+    - build_all

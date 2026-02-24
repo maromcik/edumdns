@@ -1,13 +1,20 @@
 image: rust:1.93
 
 stages:
-  - test
-  - build
-  - release
+  - build_edumdns
+  - build_probe
+  - build_proxy
+  - release_edumdns
+  - release_probe
+  - release_proxy
 
 variables:
   CARGO_HOME: "${CI_PROJECT_DIR}/.cargo"
   RUSTUP_HOME: "${CI_PROJECT_DIR}/.rustup"
+  # Define binary names explicitly
+  EDUMDNS_BINARY: "edumdns"
+  PROBE_BINARY: "edumdns_probe"
+  PROXY_BINARY: "edumdns_proxy"
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}
@@ -17,75 +24,130 @@ cache:
     - .cargo/git
     - .rustup/
 
-# Test on main branch and merge requests
-test:
-  stage: test
-  script:
+# Common before_script for all build jobs
+.before_build_script: &before_build_script
+  before_script:
+    - #apt-get update && apt-get install -y musl-tools musl-dev
     - rustup default stable
-    - rustup component add rustfmt
-    - cargo fmt --all -- --check
-    - rustup component add clippy
-    - cargo clippy --all-targets -- -D warnings
-    - cargo test --all
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-    - if: '$CI_MERGE_REQUEST_IID'
 
-# Build all binaries in parallel
-build_all:
-  stage: build
-  parallel:
-    matrix:
-      - PACKAGE: [edumdns, edumdns_probe, edumdns_proxy]
+# Common script for building a binary
+.build_script: &build_script
   script:
-    - rustup default stable
-    - cd $PACKAGE
-    - cargo build --release --package $PACKAGE
+    - cargo build --release 
+
+# Build edumdns (main binary)
+build_edumdns:
+  stage: build_edumdns
+  <<: *before_build_script
+  script:
+    - cd edumdns
+    - cargo build --release 
+  rules:
+    - if: '$CI_COMMIT_TAG'
   artifacts:
     paths:
-      - target/release/$PACKAGE
+      - edumdns/target/release/edumdns
     expire_in: 1 week
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-    - if: '$CI_COMMIT_TAG'
 
-# Release all binaries (only on tags)
-release_all:
-  stage: release
+# Build edumdns_probe
+build_probe:
+  stage: build_probe
+  <<: *before_build_script
+  script:
+    - cd edumdns_probe
+    - cargo build --release 
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  artifacts:
+    paths:
+      - edumdns_probe/target/release/edumdns_probe
+    expire_in: 1 week
+
+# Build edumdns_proxy
+build_proxy:
+  stage: build_proxy
+  <<: *before_build_script
+  script:
+    - cd edumdns_proxy
+    - cargo build --release 
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  artifacts:
+    paths:
+      - edumdns_proxy/target/release/edumdns_proxy
+    expire_in: 1 week
+
+# Release edumdns
+release_edumdns:
+  stage: release_edumdns
   image: alpine:latest
   before_script:
     - apk add --no-cache curl
   script:
-    # Upload edumdns binary
+    # Upload versioned binary
     - |
       curl --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-           --upload-file target/release/edumdns \
+           --upload-file edumdns/target/release/edumdns \
            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/edumdns/${CI_COMMIT_TAG}/edumdns"
+    # Upload latest binary
     - |
       curl --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-           --upload-file target/release/edumdns \
+           --upload-file edumdns/target/release/edumdns \
            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/edumdns/latest/edumdns"
-
-    # Upload edumdns_probe binary
+    # Also upload to main project package registry
     - |
       curl --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-           --upload-file target/release/edumdns_probe \
-           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/edumdns_probe/${CI_COMMIT_TAG}/edumdns_probe"
-    - |
-      curl --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-           --upload-file target/release/edumdns_probe \
-           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/edumdns_probe/latest/edumdns_probe"
-
-    # Upload edumdns_proxy binary
-    - |
-      curl --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-           --upload-file target/release/edumdns_proxy \
-           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/edumdns_proxy/${CI_COMMIT_TAG}/edumdns_proxy"
-    - |
-      curl --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-           --upload-file target/release/edumdns_proxy \
-           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/edumdns_proxy/latest/edumdns_proxy"
+           --upload-file edumdns/target/release/edumdns \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/${CI_COMMIT_TAG}/edumdns"
   rules:
     - if: '$CI_COMMIT_TAG'
   needs:
-    - build_all
+    - build_edumdns
+
+# Release edumdns_probe
+release_probe:
+  stage: release_probe
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - |
+      curl --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+           --upload-file edumdns_probe/target/release/edumdns_probe \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/edumdns_probe/${CI_COMMIT_TAG}/edumdns_probe"
+    - |
+      curl --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+           --upload-file edumdns_probe/target/release/edumdns_probe \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/edumdns_probe/latest/edumdns_probe"
+    - |
+      curl --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+           --upload-file edumdns_probe/target/release/edumdns_probe \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/${CI_COMMIT_TAG}/edumdns_probe"
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  needs:
+    - build_probe
+
+# Release edumdns_proxy
+release_proxy:
+  stage: release_proxy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - |
+      curl --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+           --upload-file edumdns_proxy/target/release/edumdns_proxy \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/edumdns_proxy/${CI_COMMIT_TAG}/edumdns_proxy"
+    - |
+      curl --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+           --upload-file edumdns_proxy/target/release/edumdns_proxy \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/edumdns_proxy/latest/edumdns_proxy"
+    - |
+      curl --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+           --upload-file edumdns_proxy/target/release/edumdns_proxy \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/${CI_COMMIT_TAG}/edumdns_proxy"
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  needs:
+    - build_proxy

@@ -13,7 +13,7 @@ WORKDIR /usr/src/app/
 
 FROM base AS planner
 
-COPY ../edumdns_core ./edumdns_core
+COPY ./edumdns_core ./edumdns_core
 
 COPY ./edumdns/edumdns_db/ ./edumdns/edumdns_db
 COPY ./edumdns/edumdns_server/ ./edumdns/edumdns_server
@@ -36,7 +36,7 @@ FROM base as builder
 
 COPY --from=planner /usr/src/app/edumdns/recipe.json edumdns/recipe.json
 
-COPY ../edumdns_core ./edumdns_core
+COPY ./edumdns_core ./edumdns_core
 RUN cd edumdns && cargo chef cook --release --recipe-path recipe.json
 
 COPY ./edumdns/edumdns_db/ ./edumdns/edumdns_db

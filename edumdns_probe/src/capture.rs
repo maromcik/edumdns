@@ -75,7 +75,11 @@ where
                     sleep(std::time::Duration::from_micros(200));
                     continue;
                 }
-                Error::NoMorePackets => return Ok(()),
+                Error::NoMorePackets => {
+                    sleep(std::time::Duration::from_millis(10));
+                    cancellation_token.cancel();
+                    return Ok(());
+                }
                 e => {
                     return Err(ProbeError::from(e));
                 }
@@ -90,7 +94,10 @@ where
             debug!("Not a TCP/IP packet, skipping");
             continue;
         };
-        debug!("Probe packet received; Probe Metadata {:?}, Packet Metadata {:?}, payload hash: {}", probe_packet.probe_metadata, probe_packet.packet_metadata, probe_packet.payload_hash);
+        debug!(
+            "Probe packet received; Probe Metadata {:?}, Packet Metadata {:?}, payload hash: {}",
+            probe_packet.probe_metadata, probe_packet.packet_metadata, probe_packet.payload_hash
+        );
         let app_packet = NetworkAppPacket::Data(probe_packet);
         if let Err(e) = tx.blocking_send(app_packet) {
             warn!("Failed to send packet: {e}");
@@ -164,7 +171,7 @@ where
             filter: filter.map(|s| s.to_string()),
         })
     }
-    /// Opens a packet capture on a pcap file 
+    /// Opens a packet capture on a pcap file
     /// (not used in this system, taken over from packet rewriter)
     //////
     /// # Arguments

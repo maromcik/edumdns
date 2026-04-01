@@ -15,12 +15,12 @@ use crate::connection::{
     ConnectionInfo, ConnectionLimits, ConnectionManager, ReceivePacketTargets,
 };
 use crate::error::ProbeError;
-use crate::probe::ProbeCapture;
+use crate::probe::{ProbeCapture, ProbeFileCapture};
 use clap::Parser;
 use edumdns_core::app_packet::{
     NetworkAppPacket, NetworkCommandPacket, NetworkStatusPacket, ProbeResponse,
 };
-use edumdns_core::bincode_types::{Uuid};
+use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::TcpConnectionMessage;
 use log::{error, info, warn};
 use std::fs::OpenOptions;
@@ -129,7 +129,6 @@ struct Cli {
     )]
     buffer_capacity: usize,
 
-
     /// Optional pre-shared key for authentication.
     #[clap(
         short = 'k',
@@ -138,6 +137,22 @@ struct Cli {
         env = "EDUMDNS_PROBE_PRE_SHARED_KEY"
     )]
     pre_shared_key: Option<String>,
+
+    /// Optional file path for packet capture.
+    #[clap(
+        long,
+        value_name = "CAPTURE_FILE_PATH",
+        env = "EDUMDNS_CAPTURE_FILE_PATH"
+    )]
+    file_capture_path: Option<String>,
+
+    /// Optional BPF filter for pcap file packet capture.
+    #[clap(
+        long,
+        value_name = "CAPTURE_FILE_FILTER",
+        env = "EDUMDNS_CAPTURE_FILE_FILTER"
+    )]
+    file_capture_filter: Option<String>,
 
     /// Optional log level.
     #[clap(
@@ -217,25 +232,8 @@ async fn main() -> Result<(), ProbeError> {
         // Set-up channels
         let (send_transmitter, send_receiver) = mpsc::channel(cli.buffer_capacity);
         let (command_transmitter, mut command_receiver) = mpsc::channel(cli.buffer_capacity);
-        let (pinger_receive_transmitter, pinger_receive_receiver) = mpsc::channel(cli.buffer_capacity);
-
-        // Open packet capture
-        let probe_capture =
-            ProbeCapture::new(send_transmitter, connection_manager.probe_metadata.clone(), config.clone());
-
-        // All fields of this struct will get newly received packets
-        let targets = ReceivePacketTargets {
-            pinger: pinger_receive_transmitter,
-        };
-
-        // Spawn packet capture task
-        let capture_handles = probe_capture
-            .start_captures(
-                &mut join_set,
-                cli.server_host.as_ref(),
-                cancellation_token.clone(),
-            )
-            .await?;
+        let (pinger_receive_transmitter, pinger_receive_receiver) =
+            mpsc::channel(cli.buffer_capacity);
 
         // Spawn packet transmit task (connection to the server)
         ConnectionManager::transmit_packets(
@@ -251,6 +249,11 @@ async fn main() -> Result<(), ProbeError> {
 
         // Spawn packet receive task (connection to the server)
         // Ping replies and commands are usually received
+
+        let targets = ReceivePacketTargets {
+            pinger: pinger_receive_transmitter,
+        };
+
         ConnectionManager::receive_packets(
             &mut join_set,
             connection_manager.handle.clone(),
@@ -273,8 +276,41 @@ async fn main() -> Result<(), ProbeError> {
         )
         .await?;
 
+        let capture_handles = match &cli.file_capture_path {
+            Some(path) => {
+                let probe_capture = ProbeFileCapture::new(
+                    send_transmitter.clone(),
+                    connection_manager.probe_metadata.clone(),
+                    path.clone(),
+                    cli.file_capture_filter.clone(),
+                );
+                probe_capture
+                    .start_file_capture(&mut join_set, cancellation_token.clone())
+                    .await?
+            }
+            _ => {
+                let probe_capture = ProbeCapture::new(
+                    send_transmitter,
+                    connection_manager.probe_metadata.clone(),
+                    config.clone(),
+                );
+
+                probe_capture
+                    .start_captures(
+                        &mut join_set,
+                        cli.server_host.as_ref(),
+                        cancellation_token.clone(),
+                    )
+                    .await?
+            }
+        };
+
         // Tokio select to await multiple futures at once
         tokio::select! {
+                _ = cancellation_token.cancelled() => {
+                info!("Main task ended");
+                return Ok(());
+                }
             // a task finished
             result = async {
                 while let Some(task) = join_set.join_next_with_id().await {
@@ -388,4 +424,3 @@ fn generate_uuid(uuid_file: Option<String>) -> Result<uuid::Uuid, ProbeError> {
         }
     }
 }
-

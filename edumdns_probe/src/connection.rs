@@ -125,8 +125,7 @@ impl ConnectionManager {
     /// - The probe is not adopted (ProbeUnknown) - triggers reconnection
     /// - Connection initiation is invalid - triggers reconnection
     /// - A probe with the same UUID is already connected
-    /// - The probe did not provide a matching PSK, if a PSK is configured
-    /// in the server database
+    /// - The probe did not provide a matching PSK, if a PSK is configured in the server database
     /// - Network I/O fails
     /// - Unexpected packet types are received
     ///
@@ -328,9 +327,10 @@ impl ConnectionManager {
         join_set.spawn(async move {
             tokio::select! {
                 _ = cancellation_token.cancelled() => {
-                    info!("Transmit packets task cancelled");
+                    handle.close().await?;
+                    info!("Transmit packets task ended");
                 }
-                result = ConnectionManager::transmit_packets_worker(handle, data_receiver, command_transmitter, max_retries, retry_interval) => {
+                result = ConnectionManager::transmit_packets_worker(handle.clone(), data_receiver, command_transmitter, max_retries, retry_interval) => {
                     result.map_err(|e| {
                         error!("Transmit packets task exited with error: {e}");
                         e
@@ -374,9 +374,10 @@ impl ConnectionManager {
         join_set.spawn(async move {
             tokio::select! {
                 _ = cancellation_token.cancelled() => {
-                    info!("Receive packets task cancelled");
+                    handle.close().await?;
+                    info!("Receive packets task ended");
                 }
-                result = ConnectionManager::receive_packets_worker(handle, target, command_transmitter, global_limit) => { result.map_err(|e| {
+                result = ConnectionManager::receive_packets_worker(handle.clone(), target, command_transmitter, global_limit) => { result.map_err(|e| {
                         error!("Receive packets task exited with error: {e}");
                         e
                     })?;
@@ -396,7 +397,9 @@ impl ConnectionManager {
     ) -> Result<(), ProbeError> {
         loop {
             let packet = handle
-                .send_message_with_response(|tx| TcpConnectionMessage::receive_packet(tx, Some(global_limit)))
+                .send_message_with_response(|tx| {
+                    TcpConnectionMessage::receive_packet(tx, Some(global_limit))
+                })
                 .await??;
             match packet {
                 None => return Ok(()),
@@ -407,10 +410,11 @@ impl ConnectionManager {
                         }
                     },
                     NetworkAppPacket::Data(_) => {}
-                    NetworkAppPacket::Status(status) => match status {
-                        NetworkStatusPacket::PingResponse => target.pinger.send(app_packet).await?,
-                        _ => {}
-                    },
+                    NetworkAppPacket::Status(status) => {
+                        if status == &NetworkStatusPacket::PingResponse {
+                            target.pinger.send(app_packet).await?
+                        }
+                    }
                 },
             }
         }
@@ -428,9 +432,10 @@ impl ConnectionManager {
         join_set.spawn(async move {
             tokio::select! {
                 _ = cancellation_token.cancelled() => {
-                    info!("Pinger task cancelled");
+                    handle.close().await?;
+                    info!("Pinger task ended");
                 }
-                result = ConnectionManager::pinger_worker(handle, packet_receiver, command_sender, uuid, interval) => {
+                result = ConnectionManager::pinger_worker(handle.clone(), packet_receiver, command_sender, uuid, interval) => {
                     result.map_err(|e| {
                         error!("Pinger task exited with error: {e}");
                         e

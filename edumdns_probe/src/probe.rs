@@ -7,13 +7,67 @@
 
 use crate::capture::{PacketCaptureGeneric, capture_and_transmit};
 use crate::error::ProbeError;
-use edumdns_core::app_packet::{NetworkAppPacket, ProbeConfigPacket};
+use edumdns_core::app_packet::{NetworkAppPacket, ProbeConfigElement, ProbeConfigPacket};
 use edumdns_core::metadata::ProbeMetadata;
 use pcap::Active;
 use std::collections::HashSet;
 use tokio::sync::mpsc::Sender;
 use tokio::task::{Id, JoinSet};
 use tokio_util::sync::CancellationToken;
+
+pub struct ProbeFileCapture {
+    tx: Sender<NetworkAppPacket>,
+    probe_metadata: ProbeMetadata,
+    file: String,
+    filter: Option<String>,
+}
+
+impl ProbeFileCapture {
+    pub fn new(
+        tx: Sender<NetworkAppPacket>,
+        probe_metadata: ProbeMetadata,
+        file: String,
+        filter: Option<String>,
+    ) -> Self {
+        Self {
+            tx,
+            probe_metadata,
+            file,
+            filter,
+        }
+    }
+
+    pub async fn start_file_capture(
+        &self,
+        join_set: &mut JoinSet<Result<(), ProbeError>>,
+        cancellation_token: CancellationToken,
+    ) -> Result<HashSet<Id>, ProbeError> {
+        let file = self.file.clone();
+        let filter = self.filter.clone();
+        let probe_metadata = self.probe_metadata.clone();
+        let tx = self.tx.clone();
+        let cancellation_token = cancellation_token.clone();
+
+        let handle = join_set.spawn_blocking(move || {
+            let capture = PacketCaptureGeneric::<Active>::open_file_capture(
+                file.as_str(),
+                filter.as_deref(),
+            )?;
+            capture_and_transmit(
+                capture,
+                probe_metadata.clone(),
+                tx.clone(),
+                cancellation_token,
+                ProbeConfigElement::new("File Capture".to_string(), filter),
+            )?;
+            Ok::<(), ProbeError>(())
+        });
+
+        let mut handles = HashSet::new();
+        handles.insert(handle.id());
+        Ok(handles)
+    }
+}
 
 pub struct ProbeCapture {
     tx: Sender<NetworkAppPacket>,

@@ -99,7 +99,7 @@ impl CreatePacket {
         payload: Vec<u8>,
         payload_hash: i64,
     ) -> Self {
-        let payload_string = Message::from_bytes(&payload).ok().map(|m| m.to_string());
+        let payload_string = Message::from_bytes(&payload).ok().map(|m| m.to_string().replace('\0', ""));
         Self {
             probe_id,
             src_mac,

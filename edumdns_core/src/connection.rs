@@ -322,6 +322,7 @@ where
                     })?;
             }
             TcpConnectionMessage::Close => {
+                actor.framed_sink.flush().await.map_err(CoreError::from)?;
                 actor.framed_sink.close().await.map_err(CoreError::from)?;
                 return Ok(());
             }

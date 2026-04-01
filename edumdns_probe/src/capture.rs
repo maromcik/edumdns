@@ -90,7 +90,7 @@ where
             debug!("Not a TCP/IP packet, skipping");
             continue;
         };
-        debug!("Probe packet received: {:?}, payload hash: {}", probe_packet.probe_metadata, probe_packet.payload_hash);
+        debug!("Probe packet received; Probe Metadata {:?}, Packet Metadata {:?}, payload hash: {}", probe_packet.probe_metadata, probe_packet.packet_metadata, probe_packet.payload_hash);
         let app_packet = NetworkAppPacket::Data(probe_packet);
         if let Err(e) = tx.blocking_send(app_packet) {
             warn!("Failed to send packet: {e}");
@@ -180,11 +180,11 @@ where
     /// - Capture initialization fails
     pub fn open_file_capture(
         file_path: &str,
-        filter: Option<String>,
+        filter: Option<&str>,
     ) -> Result<PacketCaptureGeneric<Offline>, ProbeError> {
         Ok(PacketCaptureGeneric {
             capture: Capture::from_file(file_path)?,
-            filter,
+            filter: filter.map(|s| s.to_string()),
         })
     }
 }

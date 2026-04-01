@@ -3,6 +3,7 @@
 
 [database]
 connection_string="postgres://edumdns:edumdns@localhost/edumdns"   # PostgreSQL connection string
+pool_size = 20                                                     # PG pool size
 
 [server]
 # hostnames=["[::]:5000"]                    # Server listen addresses

@@ -177,6 +177,7 @@ pub enum TcpConnectionMessage {
         immediate: bool,
     },
     Close,
+    Flush,
 }
 
 impl TcpConnectionMessage {
@@ -320,6 +321,9 @@ where
                     .map_err(|e| {
                         CoreError::TokioOneshotChannelError(format!("Could not send value {e:?}"))
                     })?;
+            },
+            TcpConnectionMessage::Flush => {
+                actor.framed_sink.flush().await.map_err(CoreError::from)?;
             }
             TcpConnectionMessage::Close => {
                 actor.framed_sink.flush().await.map_err(CoreError::from)?;
@@ -346,6 +350,10 @@ async fn run_message_multiplexer(
         match msg {
             TcpConnectionMessage::SendPacket { .. } => send_channel.send(msg).await?,
             TcpConnectionMessage::ReceivePacket { .. } => recv_channel.send(msg).await?,
+            TcpConnectionMessage::Flush => {
+                send_channel.send(TcpConnectionMessage::Flush).await?;
+                recv_channel.send(TcpConnectionMessage::Flush).await?;
+            }
             TcpConnectionMessage::Close => {
                 send_channel.send(TcpConnectionMessage::Close).await?;
                 recv_channel.send(TcpConnectionMessage::Close).await?;
@@ -584,6 +592,11 @@ impl TcpConnectionHandle {
 
     pub async fn close(&self) -> Result<(), CoreError> {
         self.sender.send(TcpConnectionMessage::Close).await?;
+        Ok(())
+    }
+
+    pub async fn flush(&self) -> Result<(), CoreError> {
+        self.sender.send(TcpConnectionMessage::Flush).await?;
         Ok(())
     }
 }

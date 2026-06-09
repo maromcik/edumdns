@@ -315,7 +315,7 @@ impl ConnectionManager {
         }
     }
 
-    pub async fn transmit_packets(
+    pub fn transmit_packets(
         join_set: &mut JoinSet<Result<(), ProbeError>>,
         handle: TcpConnectionHandle,
         data_receiver: mpsc::Receiver<NetworkAppPacket>,
@@ -327,7 +327,7 @@ impl ConnectionManager {
         join_set.spawn(async move {
             tokio::select! {
                 _ = cancellation_token.cancelled() => {
-                    handle.close().await?;
+                    handle.flush().await?;
                     info!("Transmit packets task ended");
                 }
                 result = ConnectionManager::transmit_packets_worker(handle.clone(), data_receiver, command_transmitter, max_retries, retry_interval) => {
@@ -363,7 +363,7 @@ impl ConnectionManager {
         Ok(())
     }
 
-    pub async fn receive_packets(
+    pub fn receive_packets(
         join_set: &mut JoinSet<Result<(), ProbeError>>,
         handle: TcpConnectionHandle,
         target: ReceivePacketTargets,
@@ -374,7 +374,6 @@ impl ConnectionManager {
         join_set.spawn(async move {
             tokio::select! {
                 _ = cancellation_token.cancelled() => {
-                    handle.close().await?;
                     info!("Receive packets task ended");
                 }
                 result = ConnectionManager::receive_packets_worker(handle.clone(), target, command_transmitter, global_limit) => { result.map_err(|e| {
@@ -420,7 +419,7 @@ impl ConnectionManager {
         }
     }
 
-    pub async fn pinger(
+    pub fn pinger(
         join_set: &mut JoinSet<Result<(), ProbeError>>,
         handle: TcpConnectionHandle,
         packet_receiver: mpsc::Receiver<NetworkAppPacket>,
@@ -432,7 +431,6 @@ impl ConnectionManager {
         join_set.spawn(async move {
             tokio::select! {
                 _ = cancellation_token.cancelled() => {
-                    handle.close().await?;
                     info!("Pinger task ended");
                 }
                 result = ConnectionManager::pinger_worker(handle.clone(), packet_receiver, command_sender, uuid, interval) => {

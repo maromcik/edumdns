@@ -244,8 +244,7 @@ async fn main() -> Result<(), ProbeError> {
             cancellation_token.clone(),
             max_retries,
             retry_interval,
-        )
-        .await?;
+        )?;
 
         // Spawn packet receive task (connection to the server)
         // Ping replies and commands are usually received
@@ -261,8 +260,7 @@ async fn main() -> Result<(), ProbeError> {
             command_transmitter.clone(),
             cancellation_token.clone(),
             global_timeout,
-        )
-        .await?;
+        )?;
 
         // Spawn the pinger task
         ConnectionManager::pinger(
@@ -273,8 +271,7 @@ async fn main() -> Result<(), ProbeError> {
             uuid,
             retry_interval,
             cancellation_token.clone(),
-        )
-        .await?;
+        )?;
 
         let capture_handles = match &cli.file_capture_path {
             Some(path) => {

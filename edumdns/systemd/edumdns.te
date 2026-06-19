@@ -1,0 +1,21 @@
+
+module edumdns 1.0;
+
+require {
+        type proc_t;
+        type virtqemud_t;
+        type container_t;
+        type unconfined_service_t;
+        class dir search;
+        class file { open read };
+        class bpf { map_read map_write };
+        class filesystem associate;
+}
+
+#============= container_t ==============
+allow container_t proc_t:filesystem associate;
+allow container_t unconfined_service_t:bpf { map_read map_write };
+
+#============= virtqemud_t ==============
+allow virtqemud_t unconfined_service_t:dir search;
+allow virtqemud_t unconfined_service_t:file { open read };

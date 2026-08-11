@@ -23,6 +23,7 @@ pub struct SelectManyProbes {
 }
 
 impl SelectManyProbes {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: Option<Uuid>,
         owner_id: Option<Id>,

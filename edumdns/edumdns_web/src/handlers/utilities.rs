@@ -29,49 +29,14 @@ macro_rules! authorized {
     ($identity:expr, $req:expr ) => {{
         match $identity {
             None => {
-                let path = format!("/login?ret={}", $req.path());
-                return Ok(actix_web::HttpResponse::SeeOther()
-                    .insert_header((actix_web::http::header::LOCATION, path))
-                    .finish());
+                return Err($crate::error::WebError::Unauthorized(format!(
+                    "Not logged in when accessing the resource: {}",
+                    $req.path()
+                )));
             }
             Some(v) => v,
         }
     }};
-}
-
-#[macro_export]
-macro_rules! has_groups {
-    ($user:expr ) => {{
-        match $identity {
-            None => {
-                let path = format!("/login?ret={}", $req.path());
-                return Ok(actix_web::HttpResponse::SeeOther()
-                    .insert_header((actix_web::http::header::LOCATION, path))
-                    .finish());
-            }
-            Some(v) => v,
-        }
-    }};
-}
-
-/// Checks if the request is from HTMX (Hypermedia Transfer).
-///
-/// HTMX requests include a special `HX-Request` header. This function checks for
-/// the presence of this header to determine if the request is from HTMX, which
-/// is used to determine which template to render (content fragment vs full page).
-///
-/// # Arguments
-///
-/// * `request` - HTTP request to check
-///
-/// # Returns
-///
-/// Returns `true` if the request includes the `HX-Request: true` header, `false` otherwise.
-pub fn is_htmx(request: &HttpRequest) -> bool {
-    request
-        .headers()
-        .get("HX-Request")
-        .is_some_and(|v| v == "true")
 }
 
 /// Verifies that a client's access point hostname matches the required regex pattern.
@@ -185,38 +150,6 @@ pub fn parse_user_from_oidc(request: &HttpRequest, admin_flag: &str) -> Option<U
         surname.as_str(),
         admin,
     ))
-}
-
-/// Determines the template name based on request type and base path.
-///
-/// Returns different template paths depending on whether the request is from HTMX:
-/// - HTMX requests: `{path}/content.html` (fragment for partial page updates)
-/// - Regular requests: `{path}/page.html` (full page with layout)
-///
-/// This allows the same handler to serve both full pages and HTMX fragments.
-///
-/// # Arguments
-///
-/// * `request` - HTTP request to check for HTMX header
-/// * `path` - Base template path (e.g., "device", "probe/detail")
-///
-/// # Returns
-///
-/// Returns a template path string:
-/// - `"{path}/content.html"` for HTMX requests
-/// - `"{path}/page.html"` for regular requests
-///
-/// # Example
-///
-/// ```
-/// get_template_name(request, "device") // Returns "device/content.html" or "device/page.html"
-/// ```
-pub fn get_template_name(request: &HttpRequest, path: &str) -> String {
-    if is_htmx(request) {
-        format!("{path}/content.html")
-    } else {
-        format!("{path}/page.html")
-    }
 }
 
 /// Extracts the user ID from an identity object.

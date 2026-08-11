@@ -5,9 +5,3 @@ use serde::Serialize;
 pub struct IndexTemplate {
     pub user: UserDisplay,
 }
-
-#[derive(Serialize)]
-pub struct LoginTemplate {
-    pub message: String,
-    pub return_url: String,
-}

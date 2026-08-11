@@ -142,7 +142,6 @@ impl TransmitManager {
     ///
     /// Side effects:
     /// - Mutates the `transmitter_tasks` registry and eBPF maps; logs outcomes.
-
     pub(crate) fn stop_request(&self, request_id: Id) {
         let device_repo = self.pg_device_repository.clone();
         let proxy = self.proxy.clone();
@@ -211,10 +210,7 @@ impl TransmitTask {
     ///
     /// Side effects:
     /// - Spawns a Tokio task; upon completion, posts a local stop command.
-    fn start(
-        mut transmitter: Transmitter,
-        command_transmitter: Sender<AppPacket>,
-    ) -> Self {
+    fn start(mut transmitter: Transmitter, command_transmitter: Sender<AppPacket>) -> Self {
         let transmitter_task = tokio::task::spawn(async move {
             transmitter.transmit().await;
             info!("Transmitter task finished");

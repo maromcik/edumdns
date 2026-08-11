@@ -51,13 +51,11 @@ pub trait DbCreate<Create, Data> {
     /// # Arguments
     ///
     /// - `self`: mutable reference to the repository to access the pool handler
-    /// - `data`: the structure which passes all the data that is necessary for creation of the
-    ///         record in the database
+    /// - `data`: the structure which passes all the data that is necessary for creation of the record in the database
     ///
     /// # Returns
     ///
-    /// - `Ok(Data)` on success (the provided structure which represents
-    ///                          data coming from the database)
+    /// - `Ok(Data)` on success (the provided structure which represents data coming from the database)
     /// - `Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn create(&self, data: &Create) -> impl Future<Output = DbResultSingle<Data>> + Send;
     fn create_auth(
@@ -77,8 +75,7 @@ pub trait DbReadOne<ReadOne, Data> {
     ///
     /// # Returns
     ///
-    /// - `Ok(Data)` on success (the provided structure which represents read data coming
-    ///                          from the database)
+    /// - `Ok(Data)` on success (the provided structure which represents read data coming from the database)
     /// - `Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn read_one(&self, params: &ReadOne) -> impl Future<Output = DbResultSingle<Data>> + Send;
     fn read_one_auth(
@@ -98,8 +95,7 @@ pub trait DbReadMany<ReadMany, Data> {
     ///
     /// # Returns
     ///
-    /// - `Ok(Vec<Data>)` on success (a vector of structures which represent read data from the
-    ///                               database)
+    /// - `Ok(Vec<Data>)` on success (a vector of structures which represent read data from the database)
     /// - `Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn read_many(&self, params: &ReadMany) -> impl Future<Output = DbResultMultiple<Data>> + Send;
     fn read_many_auth(
@@ -119,8 +115,7 @@ pub trait DbUpdate<Update, Data> {
     ///
     /// # Returns
     ///
-    /// - `Ok(Vec<Data>)` on success (a vector of structures which represent updated data from the
-    ///                               database)
+    /// - `Ok(Vec<Data>)` on success (a vector of structures which represent updated data from the database)
     /// - `Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn update(&self, params: &Update) -> impl Future<Output = DbResultMultiple<Data>> + Send;
 
@@ -141,8 +136,7 @@ pub trait DbDelete<Delete, Data> {
     ///
     /// # Returns
     ///
-    /// - `Ok(Vec<Data>)` on success (a vector of structures which represent deleted data from the
-    ///                               database)
+    /// - `Ok(Vec<Data>)` on success (a vector of structures which represent deleted data from the database)
     /// - `Error(_)` on any failure (SQL, DB constraints, connection, etc.)
     fn delete(&self, params: &Delete) -> impl Future<Output = DbResultMultiple<Data>> + Send;
     fn delete_auth(

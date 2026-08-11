@@ -398,6 +398,7 @@ impl DeviceBackend {
                     .set(params)
                     .get_results::<Device>(c)
                     .await?;
+                #[allow(clippy::iter_next_slice)]
                 if let Some(d) = updated_devices.iter().next() {
                     diesel::update(
                         packet::table

@@ -5,6 +5,7 @@ use std::fmt::Debug;
 use thiserror::Error;
 
 #[derive(Error, Clone)]
+#[allow(clippy::enum_variant_names)]
 pub enum AppError {
     #[error("DbError -> {0}")]
     DbError(DbError),

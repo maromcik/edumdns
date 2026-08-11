@@ -1,13 +1,10 @@
 use crate::templates::error::GenericError;
 use actix_web::http::StatusCode;
-use actix_web::http::header::ContentType;
 use actix_web::{HttpResponse, ResponseError};
-use askama::Template;
 use edumdns_core::error::CoreError;
 use edumdns_db::error::{BackendError, DbError};
 use edumdns_server::error::ServerError;
 use std::env;
-use std::error::Error;
 use std::fmt::Debug;
 use std::num::ParseIntError;
 use std::str::ParseBoolError;
@@ -91,12 +88,6 @@ impl From<actix_identity::error::LoginError> for WebError {
     }
 }
 
-impl From<askama::Error> for WebError {
-    fn from(error: askama::Error) -> Self {
-        Self::TemplatingError(error.to_string())
-    }
-}
-
 impl From<actix_identity::error::GetIdentityError> for WebError {
     fn from(value: actix_identity::error::GetIdentityError) -> Self {
         Self::IdentityError(value.to_string())
@@ -109,16 +100,6 @@ impl From<actix_session::SessionInsertError> for WebError {
     }
 }
 
-impl From<minijinja::Error> for WebError {
-    fn from(value: minijinja::Error) -> Self {
-        let mut res = String::new();
-        res.push_str(&value.to_string());
-        while let Some(cause) = value.source() {
-            res.push_str(&format!("\nCaused by: {}", cause));
-        }
-        Self::TemplatingError(res)
-    }
-}
 impl From<std::io::Error> for WebError {
     fn from(value: std::io::Error) -> Self {
         Self::FileError(value.to_string())
@@ -230,15 +211,9 @@ impl ResponseError for WebError {
 }
 
 fn render_generic(error: &WebError) -> HttpResponse {
-    let template = GenericError {
+    HttpResponse::build(error.status_code()).json(GenericError {
         code: error.status_code().as_u16(),
         status_code: error.status_code().to_string(),
         description: error.to_string(),
-    };
-    match template.render() {
-        Ok(body) => HttpResponse::build(error.status_code())
-            .insert_header(ContentType::html())
-            .body(body),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
-    }
+    })
 }

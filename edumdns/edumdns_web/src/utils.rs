@@ -2,7 +2,6 @@
 //!
 //! This module provides:
 //! - Application state management (`AppState`, `DeviceAclApDatabase`)
-//! - Template reloader creation with custom filters
 //! - OpenID Connect (OIDC) configuration and initialization
 //! - Middleware configuration (CORS, session, identity)
 //! - Request parsing configuration (JSON, query, path)
@@ -22,70 +21,22 @@ use actix_web::dev::ServiceRequest;
 use actix_web::http::header;
 use actix_web::web::{FormConfig, JsonConfig, PathConfig, QueryConfig};
 use actix_web_openidconnect::ActixWebOpenId;
-use edumdns_db::models::GroupProbePermission;
-use edumdns_db::repositories::common::Permission;
 use edumdns_server::app_packet::AppPacket;
-use minijinja::{Environment, Value, path_loader};
-use minijinja_autoreload::AutoReloader;
-use serde::Deserialize;
-use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub jinja: Arc<AutoReloader>,
     pub command_channel: Sender<AppPacket>,
     pub web_config: WebConfig,
 }
 
 impl AppState {
-    pub fn new(
-        jinja: Arc<AutoReloader>,
-        command_channel: Sender<AppPacket>,
-        web_config: WebConfig,
-    ) -> Self {
+    pub fn new(command_channel: Sender<AppPacket>, web_config: WebConfig) -> Self {
         AppState {
-            jinja,
             command_channel,
             web_config,
         }
     }
-}
-
-/// Creates a Minijinja template reloader with auto-reload support.
-///
-/// This function sets up a template environment that watches for file changes and
-/// automatically reloads templates during development. It also adds a custom `has_perm`
-/// filter for checking user permissions in templates.
-///
-/// # Arguments
-///
-/// * `template_path` - Directory path containing Minijinja template files
-///
-/// # Returns
-///
-/// Returns an `AutoReloader` instance that can be used to acquire template environments.
-/// The reloader watches the template directory for changes and reloads templates automatically.
-pub fn create_reloader(template_path: String) -> AutoReloader {
-    AutoReloader::new(move |notifier| {
-        let mut env = Environment::new();
-        env.set_loader(path_loader(&template_path));
-        env.add_filter("has_perm", has_perm);
-        notifier.set_fast_reload(true);
-        notifier.watch_path(&template_path, true);
-        Ok(env)
-    })
-}
-
-fn has_perm(perms_values: Vec<Value>, query: Value) -> Result<bool, minijinja::Error> {
-    let query_perm = Permission::deserialize(query)?;
-    for perm in perms_values {
-        let perm = GroupProbePermission::deserialize(perm)?;
-        if perm.permission == query_perm || perm.permission == Permission::Full {
-            return Ok(true);
-        }
-    }
-    Ok(false)
 }
 
 /// Initializes and configures OpenID Connect (OIDC) authentication.
@@ -220,7 +171,7 @@ pub fn get_session_middleware(
     use_secure_cookie: bool,
     session_expiry: u64,
 ) -> SessionMiddleware<CookieSessionStore> {
-    let key = actix_web::cookie::Key::from(&*key.bytes().collect::<Vec<u8>>());
+    let key = actix_web::cookie::Key::from(&key.bytes().collect::<Vec<u8>>());
     SessionMiddleware::builder(CookieSessionStore::default(), key.clone())
         .cookie_secure(use_secure_cookie)
         .session_lifecycle(

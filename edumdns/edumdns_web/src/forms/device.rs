@@ -101,6 +101,7 @@ pub struct UpdateDeviceForm {
 }
 
 impl UpdateDeviceForm {
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_db_params(self) -> Result<UpdateDevice, WebError> {
         // let (hash, salt) = match self.acl_password {
         //     None => (None, None),

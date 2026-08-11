@@ -21,9 +21,7 @@ use crate::handlers::group::{
     add_group_users, create_group, delete_group, delete_group_user, get_group, get_groups,
     search_group_users, update_group,
 };
-use crate::handlers::index::{
-    index, login, login_base, login_oidc, login_oidc_redirect, logout_cleanup,
-};
+use crate::handlers::index::{index, login_base, login_oidc, login_oidc_redirect, logout_cleanup};
 use crate::handlers::packet::{
     create_packet, create_packet_form, delete_packet, get_packet, get_packets, reassign_packet,
     update_packet, update_packet_payload, update_packet_payload_form,
@@ -40,10 +38,10 @@ use crate::handlers::user::{
 };
 use crate::middleware;
 use crate::utils::{
-    AppState, create_oidc, create_reloader, form_config, get_cors_middleware,
-    get_identity_middleware, get_session_middleware, json_config, path_config, query_config,
+    AppState, create_oidc, form_config, get_cors_middleware, get_identity_middleware,
+    get_session_middleware, json_config, path_config, query_config,
 };
-use actix_files::Files;
+use actix_files::{Files, NamedFile};
 use actix_multipart::form::MultipartFormConfig;
 use actix_web::middleware::{Logger, NormalizePath, TrailingSlash};
 use actix_web::web::{FormConfig, PayloadConfig, ServiceConfig};
@@ -58,7 +56,6 @@ use edumdns_db::repositories::probe::repository::PgProbeRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_server::app_packet::AppPacket;
 use log::info;
-use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
 pub struct WebSpawner {
@@ -71,7 +68,6 @@ impl WebSpawner {
     /// Creates a new `WebSpawner` instance with configuration from `WebConfig`.
     ///
     /// This function initializes all the components needed to run the web server:
-    /// - Creates the template reloader for Minijinja using the configured static files directory
     /// - Sets up the application state with command channel and web configuration
     /// - Configures session and identity middleware settings from the configuration
     ///
@@ -89,12 +85,7 @@ impl WebSpawner {
         command_channel: Sender<AppPacket>,
         web_config: WebConfig,
     ) -> Self {
-        let jinja = Arc::new(create_reloader(format!(
-            "{}/templates",
-            web_config.static_files_dir
-        )));
-
-        let app_state = AppState::new(jinja.clone(), command_channel.clone(), web_config.clone());
+        let app_state = AppState::new(command_channel.clone(), web_config.clone());
         Self {
             pool,
             app_state,
@@ -209,21 +200,33 @@ impl WebSpawner {
             .service(update_packet_payload)
             .service(update_packet_payload_form);
 
+        let api_scope = web::scope("/api")
+            .service(index)
+            .service(login_base)
+            .service(logout_cleanup)
+            .service(user_scope)
+            .service(probe_scope)
+            .service(device_scope)
+            .service(packet_scope)
+            .service(group_scope);
+
         Box::new(move |cfg: &mut ServiceConfig| {
+            let app_dir = format!("{files_dir}/app");
+            let index_path = format!("{app_dir}/index.html");
             cfg.app_data(web::Data::new(app_state))
                 .app_data(web::Data::new(user_repo.clone()))
-                .service(index)
+                .service(api_scope)
                 .service(login_oidc)
-                .service(login)
-                .service(login_base)
                 .service(login_oidc_redirect)
-                .service(logout_cleanup)
-                .service(user_scope)
-                .service(probe_scope)
-                .service(device_scope)
-                .service(packet_scope)
-                .service(group_scope)
-                .service(Files::new("/static", format!("{files_dir}/static",)).prefer_utf8(true));
+                .service(Files::new("/static", format!("{files_dir}/static",)).prefer_utf8(true))
+                .service(
+                    Files::new("/", app_dir)
+                        .index_file("index.html")
+                        .default_handler(web::to(move || {
+                            let index_path = index_path.clone();
+                            async move { NamedFile::open_async(index_path).await }
+                        })),
+                );
         })
     }
 

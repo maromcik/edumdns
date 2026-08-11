@@ -1,0 +1,7 @@
+<script lang="ts"></script>
+
+<footer class="bg-ui-components text-sat-l py-1 mb-0 bottom-[-16px] left-0 w-full">
+	<p class="text-center text-sm">
+		<small>&copy; 2025 edumdns. All rights reserved.</small>
+	</p>
+</footer>

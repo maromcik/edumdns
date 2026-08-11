@@ -1,0 +1,89 @@
+{
+	"/(app)": [
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/": [
+		"src/routes/+layout.ts"
+	],
+	"/(app)/device": [
+		"src/routes/(app)/device/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/(app)/device/create/[probe_id]": [
+		"src/routes/(app)/device/create/[probe_id]/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/(app)/device/[id]": [
+		"src/routes/(app)/device/[id]/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/(app)/device/[id]/transmit": [
+		"src/routes/(app)/device/[id]/transmit/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/(app)/group": [
+		"src/routes/(app)/group/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/(app)/group/[id]": [
+		"src/routes/(app)/group/[id]/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/login": [
+		"src/routes/+layout.ts"
+	],
+	"/(app)/packet": [
+		"src/routes/(app)/packet/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/(app)/packet/create": [
+		"src/routes/(app)/packet/create/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/(app)/packet/[id]": [
+		"src/routes/(app)/packet/[id]/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/(app)/packet/[id]/update-payload": [
+		"src/routes/(app)/packet/[id]/update-payload/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/(app)/probe": [
+		"src/routes/(app)/probe/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/(app)/probe/[id]": [
+		"src/routes/(app)/probe/[id]/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/(app)/user": [
+		"src/routes/(app)/user/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/(app)/user/manage": [
+		"src/routes/(app)/user/manage/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/(app)/user/[id]": [
+		"src/routes/(app)/user/[id]/+page.ts",
+		"src/routes/(app)/+layout.ts",
+		"src/routes/+layout.ts"
+	]
+}

@@ -178,12 +178,11 @@ impl Transmitter {
         loop {
             while let Ok(update) = self.live_updates_receiver.try_recv() {
                 match update {
-                    LocalAppPacket::Command(command) => match command {
-                        LocalCommandPacket::ExtendPacketTransmitRequest(_) => {
+                    LocalAppPacket::Command(command) => {
+                        if let LocalCommandPacket::ExtendPacketTransmitRequest(_) = command {
                             total_time = Instant::now()
                         }
-                        _ => {}
-                    },
+                    }
                     LocalAppPacket::Status(_) => {}
                     LocalAppPacket::Data(data) => self.handle_data_packet(data).await,
                 }

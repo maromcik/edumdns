@@ -10,7 +10,6 @@
 
 use crate::error::WebError;
 use crate::init::WebSpawner;
-use actix_web::http::header;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_server::app_packet::AppPacket;

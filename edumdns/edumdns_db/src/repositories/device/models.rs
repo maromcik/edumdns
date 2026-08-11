@@ -24,6 +24,7 @@ pub struct SelectManyDevices {
 }
 
 impl SelectManyDevices {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: Option<Id>,
         probe_id: Option<Uuid>,

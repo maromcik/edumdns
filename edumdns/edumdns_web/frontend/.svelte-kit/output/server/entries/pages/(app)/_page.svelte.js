@@ -1,0 +1,33 @@
+import { h as head, a as attr } from "../../../chunks/index2.js";
+import "@sveltejs/kit/internal";
+import "../../../chunks/exports.js";
+import "../../../chunks/utils2.js";
+import "@sveltejs/kit/internal/server";
+import "../../../chunks/root.js";
+import "../../../chunks/state.svelte.js";
+function _page($$renderer, $$props) {
+  $$renderer.component(($$renderer2) => {
+    let deviceId = "";
+    head("h7bcrl", $$renderer2, ($$renderer3) => {
+      $$renderer3.title(($$renderer4) => {
+        $$renderer4.push(`<title>edumdns - connecting discoverable devices</title>`);
+      });
+    });
+    $$renderer2.push(`<div class="max-w-7xl mx-auto px-4 sm:px-8 py-12 flex-1"><section class="text-center mb-16"><h1 class="text-5xl md:text-6xl font-extrabold text-acc mb-4">edumDNS</h1> <h2 class="text-2xl md:text-3xl font-medium text-sat-l">Secure Device Discovery Across Enterprise Networks</h2></section> <section class="bg-panes rounded-2xl p-8 shadow-lg"><h2 class="text-2xl font-semibold text-sat-xl mb-4 text-center">Find a Device</h2> <form id="device-search-form" class="flex flex-col sm:flex-row gap-4 items-center justify-center"><input id="device-id-input" type="number" name="device_id" placeholder="Enter Device ID" class="p-3 rounded-lg border border-base bg-forms-fields text-gray-50 dark:text-gray-900 w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-acc"${attr("value", deviceId)} required=""/> <button type="submit" class="bg-acc hover:bg-acc-l text-button font-semibold px-6 py-3 rounded-lg shadow-md transition-colors">Search</button></form> <div id="device-result" class="mt-6 text-center text-sat-m"></div></section> <section class="bg-panes rounded-2xl p-8 shadow-lg mt-12"><h2 class="text-3xl font-semibold text-sat-xl mb-6">What is edumDNS?</h2> <div class="space-y-4"><p class="text-sat-l text-lg">edumDNS provides secure, access-controlled discovery of smart devices such as Google
+				Chromecast/Streamer or Apple TV across complex enterprise networks, including Masaryk
+				University’s metropolitan network and eduroam.</p> <p class="text-sat-l text-lg">It safely relays mDNS information from remote subnets through centrally managed probes,
+				ensuring that only authorised users can discover or interact with devices.</p></div></section> <section class="bg-panes rounded-2xl p-8 shadow-lg mt-12"><h2 class="text-3xl font-semibold text-sat-xl mb-6">How to Use edumDNS</h2> <div class="bg-cards rounded-xl p-6 shadow-inner mb-6"><h3 class="text-xl font-medium text-sat-xl mb-4">Quick Steps</h3> <ol class="text-sat-l space-y-2 text-lg"><li>Locate the numeric ID or short URL posted near the device or display.</li> <li>Enter the ID in the search bar above.</li> <li>If you are authorised, you will be taken to the device page.</li> <li>Enter the device password (if required) and start the transmission.</li> <li>Your apps will now detect the device as if it were on your local network.</li></ol></div> <div class="bg-cards rounded-xl p-6 shadow-inner"><h3 class="text-xl font-medium text-sat-xl mb-4">What to Expect</h3> <p class="text-sat-l">The device page displays essential details such as transmission duration and whether the
+				secure proxy is enabled. When proxy mode is active, your traffic is routed through edumDNS
+				servers for improved security and ends automatically when the timer expires.</p> <p class="text-sat-l">In non-proxy mode, the system only assists with discovery; your session may continue even
+				after transmission stops. You may extend the transmission window at any time directly from
+				the device page.</p></div></section> <section class="bg-panes rounded-2xl p-8 shadow-lg mt-12"><h2 class="text-3xl font-semibold text-sat-xl mb-6">How It Works</h2> <div class="grid md:grid-cols-2 gap-6"><div class="bg-cards rounded-xl p-6 shadow-inner"><h3 class="text-xl font-medium text-sat-xl mb-3">Behind the Scenes</h3> <p class="text-sat-l">Lightweight probes deployed at local subnets across the university capture mDNS and
+					transmit them securely to the edumDNS server. Administrators review and publish
+					discovered devices and can enforce fine-grained access controls to ensure that only
+					authorised users may request discovery.</p></div> <div class="bg-cards rounded-xl p-6 shadow-inner"><h3 class="text-xl font-medium text-sat-xl mb-3">On-Demand Discovery</h3> <p class="text-sat-l">When you request a device, edumDNS temporarily advertises the device's mDNS records into
+					your network segment, allowing your applications to discover it instantly. Optionally,
+					the system can relay all traffic through a secure eBPF-powered proxy.</p></div></div></section></div>`);
+  });
+}
+export {
+  _page as default
+};

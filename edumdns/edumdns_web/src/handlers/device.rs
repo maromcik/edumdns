@@ -20,14 +20,13 @@ use crate::forms::device::{
 };
 use crate::forms::packet::PacketQuery;
 use crate::handlers::helpers::{authorize_packet_transmit_request, request_packet_transmit_helper};
-use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
+use crate::handlers::utilities::{parse_user_id, validate_has_groups};
 use crate::templates::PageInfo;
 use crate::templates::device::{
     DeviceCreateTemplate, DeviceDetailTemplate, DeviceTemplate, DeviceTransmitTemplate,
 };
 use crate::utils::AppState;
 use actix_identity::Identity;
-use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
 use edumdns_core::app_packet::{EntityType, Id};
 use edumdns_core::bincode_types::{IpNetwork, MacAddr};
@@ -43,13 +42,12 @@ use edumdns_db::repositories::packet::models::{PacketDisplay, SelectManyPackets}
 use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_server::app_packet::{AppPacket, LocalAppPacket, LocalCommandPacket};
-use std::collections::HashMap;
 use uuid::Uuid;
 
 /// Lists all devices with filtering and pagination.
 ///
 /// Retrieves devices accessible to the authenticated user, applies filters from query parameters,
-/// and renders them in a paginated list view.
+/// and returns them in a paginated list.
 ///
 /// # Arguments
 ///
@@ -57,19 +55,17 @@ use uuid::Uuid;
 /// * `identity` - Optional user identity (required for access)
 /// * `device_repo` - Device repository for database operations
 /// * `user_repo` - User repository for user information
-/// * `state` - Application state containing template engine
 /// * `query` - Query parameters for filtering and pagination
 ///
 /// # Returns
 ///
-/// Returns an HTML response with the device list page, or redirects to login if not authenticated.
+/// Returns a JSON response with the device list, or redirects to login if not authenticated.
 #[get("")]
 pub async fn get_devices(
     request: HttpRequest,
     identity: Option<Identity>,
     device_repo: web::Data<PgDeviceRepository>,
     user_repo: web::Data<PgUserRepository>,
-    state: web::Data<AppState>,
     query: web::Query<DeviceQuery>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
@@ -85,19 +81,14 @@ pub async fn get_devices(
     let device_count = device_repo.get_device_count(params, &user_id).await?;
     let total_pages = (device_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
 
-    let template_name = get_template_name(&request, "device");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
     let query_string = request.uri().query().unwrap_or("").to_string();
-    let body = template.render(DeviceTemplate {
+    Ok(HttpResponse::Ok().json(DeviceTemplate {
         devices: devices_parsed,
         user,
         page_info: PageInfo::new(page, total_pages),
         filters: query,
         query_string,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }
 
 /// Displays detailed information about a specific device.
@@ -113,12 +104,11 @@ pub async fn get_devices(
 /// * `packet_repo` - Packet repository for retrieving associated packets
 /// * `user_repo` - User repository for user information
 /// * `path` - Path parameter containing device ID
-/// * `state` - Application state containing template engine
 /// * `query` - Query parameters for packet filtering and pagination
 ///
 /// # Returns
 ///
-/// Returns an HTML response with the device detail page, or an error if the device is not found
+/// Returns a JSON response with the device detail, or an error if the device is not found
 /// or the user lacks permission.
 #[get("{id}")]
 pub async fn get_device(
@@ -128,7 +118,6 @@ pub async fn get_device(
     packet_repo: web::Data<PgPacketRepository>,
     user_repo: web::Data<PgUserRepository>,
     path: web::Path<(Id,)>,
-    state: web::Data<AppState>,
     query: web::Query<PacketQuery>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
@@ -166,10 +155,7 @@ pub async fn get_device(
     let packet_count = packet_repo.get_packet_count(params, &user_id).await?;
     let total_pages = (packet_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
     let query_string = request.uri().query().unwrap_or("").to_string();
-    let template_name = get_template_name(&request, "device/detail");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(DeviceDetailTemplate {
+    Ok(HttpResponse::Ok().json(DeviceDetailTemplate {
         user,
         permissions: device.permissions,
         device: DeviceDisplay::from(device.data),
@@ -178,9 +164,7 @@ pub async fn get_device(
         page_info: PageInfo::new(page, total_pages),
         filters: query.into_inner(),
         query_string,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }
 
 /// Updates device information.
@@ -197,7 +181,7 @@ pub async fn get_device(
 ///
 /// # Returns
 ///
-/// Returns a redirect response to the device detail page after successful update.
+/// Returns an empty 204 response after successful update.
 #[post("update")]
 pub async fn update_device(
     request: HttpRequest,
@@ -210,9 +194,7 @@ pub async fn update_device(
     device_repo
         .update_auth(&params, &parse_user_id(&i)?)
         .await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}", params.id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Deletes a device and cleans up associated resources.
@@ -228,12 +210,10 @@ pub async fn update_device(
 /// * `device_repo` - Device repository for database operations
 /// * `state` - Application state containing command channel
 /// * `path` - Path parameter containing device ID
-/// * `query` - Query parameters containing optional return URL
 ///
 /// # Returns
 ///
-/// Returns a redirect response to the return URL (or "/device" by default) after
-/// successfully deleting the device and cleaning up resources.
+/// Returns an empty 204 response after successfully deleting the device and cleaning up resources.
 ///
 /// # Side Effects
 ///
@@ -247,14 +227,9 @@ pub async fn delete_device(
     device_repo: web::Data<PgDeviceRepository>,
     state: web::Data<AppState>,
     path: web::Path<(Id,)>,
-    query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let device_id = path.0;
-    let return_url = query
-        .get("return_url")
-        .map(String::as_str)
-        .unwrap_or("/device");
     let requests = device_repo
         .read_packet_transmit_requests_by_device(&device_id)
         .await?;
@@ -283,9 +258,7 @@ pub async fn delete_device(
             .await;
     }
 
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, return_url))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Creates a custom packet transmission request for a device.
@@ -304,7 +277,7 @@ pub async fn delete_device(
 ///
 /// # Returns
 ///
-/// Returns a redirect response to the device detail page after initiating transmission.
+/// Returns an empty 204 response after initiating transmission.
 #[post("{id}/transmit-custom")]
 pub async fn request_custom_packet_transmit(
     request: HttpRequest,
@@ -317,7 +290,6 @@ pub async fn request_custom_packet_transmit(
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     let device = device_repo.read_one_auth(&path.0, &user_id).await?;
-    let device_id = device.data.id;
     request_packet_transmit_helper(
         device_repo.clone(),
         device.data,
@@ -327,9 +299,7 @@ pub async fn request_custom_packet_transmit(
     )
     .await?;
 
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}", device_id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Displays the packet transmission request page for a device.
@@ -344,11 +314,10 @@ pub async fn request_custom_packet_transmit(
 /// * `device_repo` - Device repository for database operations
 /// * `user_repo` - User repository for user information
 /// * `path` - Path parameter containing device ID
-/// * `state` - Application state containing template engine
 ///
 /// # Returns
 ///
-/// Returns an HTML response with the transmission request form, showing the client's IP address
+/// Returns a JSON response with the transmission request data, showing the client's IP address
 /// and any existing transmission requests.
 #[get("{id}/transmit")]
 pub async fn get_device_for_transmit(
@@ -357,7 +326,6 @@ pub async fn get_device_for_transmit(
     device_repo: web::Data<PgDeviceRepository>,
     user_repo: web::Data<PgUserRepository>,
     path: web::Path<(Id,)>,
-    state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let device = device_repo.read_one(&path.0).await?;
@@ -393,18 +361,13 @@ pub async fn get_device_for_transmit(
 
     let user = user_repo.read_one(&user_id).await?;
 
-    let template_name = get_template_name(&request, "device/public");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(DeviceTransmitTemplate {
+    Ok(HttpResponse::Ok().json(DeviceTransmitTemplate {
         user,
         device: DeviceDisplay::from(device),
         client_ip: target_ip,
         packet_transmit_request,
         in_progress,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }
 
 /// Creates a packet transmission request from a public device page.
@@ -423,7 +386,7 @@ pub async fn get_device_for_transmit(
 ///
 /// # Returns
 ///
-/// Returns a redirect response to the transmission page after initiating transmission.
+/// Returns an empty 204 response after initiating transmission.
 #[post("{id}/transmit")]
 pub async fn request_packet_transmit(
     request: HttpRequest,
@@ -439,7 +402,6 @@ pub async fn request_packet_transmit(
     if !device.published {
         device_repo.read_one_auth(&path.0, &user_id).await?;
     }
-    let device_id = device.id;
 
     let target_ip = authorize_packet_transmit_request(
         &request,
@@ -459,9 +421,7 @@ pub async fn request_packet_transmit(
     )
     .await?;
 
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}/transmit", device_id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Stops and deletes an active packet transmission request.
@@ -476,11 +436,10 @@ pub async fn request_packet_transmit(
 /// * `device_repo` - Device repository for database operations
 /// * `path` - Path parameters containing device ID and request ID
 /// * `state` - Application state containing command channel
-/// * `query` - Query parameters containing optional return URL
 ///
 /// # Returns
 ///
-/// Returns a redirect response to the return URL (or device detail page) after stopping transmission.
+/// Returns an empty 204 response after stopping transmission.
 #[delete("{device_id}/transmit/{request_id}")]
 pub async fn delete_request_packet_transmit(
     request: HttpRequest,
@@ -488,7 +447,6 @@ pub async fn delete_request_packet_transmit(
     device_repo: web::Data<PgDeviceRepository>,
     path: web::Path<(Id, Id)>,
     state: web::Data<AppState>,
-    mut query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, WebError> {
     let device_id = path.0;
     let request_id = path.1;
@@ -512,13 +470,7 @@ pub async fn delete_request_packet_transmit(
         .await
         .map_err(CoreError::from)?;
 
-    let return_url = query
-        .remove("return_url")
-        .unwrap_or(format!("/device/{}", device_id));
-
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, return_url))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Extends the duration of an active packet transmission request.
@@ -537,7 +489,7 @@ pub async fn delete_request_packet_transmit(
 ///
 /// # Returns
 ///
-/// Returns a redirect response to the transmission page after extending the request.
+/// Returns an empty 204 response after extending the request.
 #[post("{device_id}/transmit/{request_id}/extend")]
 pub async fn extend_request_packet_transmit(
     request: HttpRequest,
@@ -582,9 +534,7 @@ pub async fn extend_request_packet_transmit(
         .await
         .map_err(CoreError::from)?;
 
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}/transmit", device_id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Extends the duration of a custom packet transmission request.
@@ -602,7 +552,7 @@ pub async fn extend_request_packet_transmit(
 ///
 /// # Returns
 ///
-/// Returns a redirect response to the device detail page after extending the request.
+/// Returns an empty 204 response after extending the request.
 #[post("{device_id}/transmit-custom/{request_id}/extend")]
 pub async fn extend_custom_request_packet_transmit(
     request: HttpRequest,
@@ -628,9 +578,7 @@ pub async fn extend_custom_request_packet_transmit(
         .await
         .map_err(CoreError::from)?;
 
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}", device_id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Publishes a device, making it publicly accessible.
@@ -647,7 +595,7 @@ pub async fn extend_custom_request_packet_transmit(
 ///
 /// # Returns
 ///
-/// Returns a redirect response to the device detail page after publishing.
+/// Returns an empty 204 response after publishing.
 #[get("{id}/publish")]
 pub async fn publish_device(
     request: HttpRequest,
@@ -663,9 +611,7 @@ pub async fn publish_device(
         .toggle_publicity(&device_id, &user_id, true)
         .await?;
 
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}", device_id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Hides a device, making it accessible only to authorized users.
@@ -682,7 +628,7 @@ pub async fn publish_device(
 ///
 /// # Returns
 ///
-/// Returns a redirect response to the device detail page after hiding.
+/// Returns an empty 204 response after hiding.
 #[get("{id}/hide")]
 pub async fn hide_device(
     request: HttpRequest,
@@ -696,9 +642,7 @@ pub async fn hide_device(
     device_repo
         .toggle_publicity(&device_id, &user_id, false)
         .await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}", device_id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Creates a new device in the database.
@@ -715,7 +659,7 @@ pub async fn hide_device(
 ///
 /// # Returns
 ///
-/// Returns a redirect response to the newly created device's detail page.
+/// Returns a JSON response with the newly created device's ID.
 #[post("create")]
 pub async fn create_device(
     request: HttpRequest,
@@ -728,9 +672,7 @@ pub async fn create_device(
     let device = device_repo
         .create_auth(&params, &parse_user_id(&i)?)
         .await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/device/{}", device.id)))
-        .finish())
+    Ok(HttpResponse::Ok().json(serde_json::json!({"id": device.id})))
 }
 
 /// Displays the device creation form.
@@ -739,32 +681,26 @@ pub async fn create_device(
 ///
 /// # Arguments
 ///
-/// * `request` - HTTP request for template name detection
+/// * `request` - HTTP request
 /// * `identity` - Optional user identity (required for access)
 /// * `user_repo` - User repository for user information
-/// * `state` - Application state containing template engine
 /// * `path` - Path parameter containing probe ID
 ///
 /// # Returns
 ///
-/// Returns an HTML response with the device creation form.
+/// Returns a JSON response with the device creation payload.
 #[get("create/{id}")]
 pub async fn create_device_form(
     request: HttpRequest,
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
-    state: web::Data<AppState>,
     path: web::Path<(Uuid,)>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     let user = user_repo.read_one(&user_id).await?;
-    let template_name = get_template_name(&request, "device/create");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(DeviceCreateTemplate {
+    Ok(HttpResponse::Ok().json(DeviceCreateTemplate {
         probe_id: path.0,
         user,
-    })?;
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }

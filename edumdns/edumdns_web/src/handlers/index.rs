@@ -13,89 +13,42 @@ use crate::authorized;
 use crate::error::WebError;
 use crate::forms::user::{UserLoginForm, UserLoginReturnURL};
 use crate::handlers::utilities::{
-    destroy_session, extract_referrer, get_template_name, parse_user_from_oidc, parse_user_id,
+    destroy_session, extract_referrer, parse_user_from_oidc, parse_user_id,
 };
-use crate::templates::index::{IndexTemplate, LoginTemplate};
+use crate::templates::index::IndexTemplate;
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
 use actix_web::{HttpMessage, HttpRequest, HttpResponse, Responder, get, post, web};
-use edumdns_db::error::DbError;
 use edumdns_db::repositories::common::{DbCreate, DbReadOne};
 use edumdns_db::repositories::user::models::UserLogin;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use time::{Duration, OffsetDateTime};
 
-/// Displays the main dashboard page.
+/// Returns the current user's information for the dashboard.
 ///
-/// Shows the user's dashboard with an overview of the system. The user must be authenticated.
+/// The user must be authenticated.
 ///
 /// # Arguments
 ///
-/// * `request` - HTTP request for template name detection
+/// * `request` - HTTP request
 /// * `identity` - Optional user identity (required for access)
 /// * `user_repo` - User repository for user information
-/// * `state` - Application state containing template engine
 ///
 /// # Returns
-///
-/// Returns an HTML response with the dashboard page, or redirects to login if not authenticated.
-#[get("/")]
+/// Returns a JSON response with the current user, or a 401 error if not authenticated.
+#[get("")]
 pub async fn index(
     request: HttpRequest,
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
-    state: web::Data<AppState>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     let user = user_repo.read_one(&user_id).await?;
-    let template_name = get_template_name(&request, "index");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(IndexTemplate { user })?;
 
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
-}
-
-/// Displays the login page.
-///
-/// Shows the login form. If the user is already authenticated, redirects to the return URL
-/// or the referrer. Supports both local and OIDC authentication.
-///
-/// # Arguments
-///
-/// * `request` - HTTP request for extracting referrer
-/// * `identity` - Optional user identity (if already logged in)
-/// * `query` - Query parameters containing optional return URL
-/// * `state` - Application state containing template engine
-///
-/// # Returns
-///
-/// Returns an HTML response with the login page, or redirects if already authenticated.
-#[get("/login")]
-pub async fn login(
-    request: HttpRequest,
-    identity: Option<Identity>,
-    query: web::Query<UserLoginReturnURL>,
-    state: web::Data<AppState>,
-) -> Result<HttpResponse, WebError> {
-    let return_url = query.ret.clone().unwrap_or(extract_referrer(&request));
-    if identity.is_some() {
-        return Ok(HttpResponse::SeeOther()
-            .insert_header((LOCATION, return_url))
-            .finish());
-    }
-
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template("index/login.html")?;
-    let body = template.render(LoginTemplate {
-        message: String::new(),
-        return_url,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    Ok(HttpResponse::Ok().json(IndexTemplate { user }))
 }
 
 /// Handles POST requests for local user authentication.
@@ -113,15 +66,15 @@ pub async fn login(
 ///
 /// # Returns
 ///
-/// Returns a redirect response to the return URL on success, or renders the login
-/// page with an error message if authentication fails.
+/// Returns a JSON response with the return URL on success, or a JSON error
+/// with an authentication message if authentication fails.
 ///
 /// # Errors
 ///
 /// Returns a `WebError` if:
 /// - Database operations fail
 /// - Session creation fails
-/// - Template rendering fails
+/// - Credentials are invalid
 #[post("/login")]
 pub async fn login_base(
     request: HttpRequest,
@@ -135,7 +88,7 @@ pub async fn login_base(
     {
         Ok(user) => {
             Identity::login(&request.extensions(), user.id.to_string())?;
-            let mut resp = HttpResponse::SeeOther();
+            let mut resp = HttpResponse::Ok();
             let c = actix_web::cookie::Cookie::build("auth", "local")
                 .path("/")
                 .secure(state.web_config.session.use_secure_cookie)
@@ -145,25 +98,9 @@ pub async fn login_base(
                 )
                 .finish();
             resp.cookie(c);
-            Ok(resp
-                .insert_header((LOCATION, form.return_url.clone()))
-                .finish())
+            Ok(resp.json(serde_json::json!({"return_url": form.return_url})))
         }
-        Err(db_error) => {
-            if let DbError::BackendError(err) = db_error {
-                let template_name = "index/login.html";
-                let env = state.jinja.acquire_env()?;
-                let template = env.get_template(template_name)?;
-                let body = template.render(LoginTemplate {
-                    message: err.to_string(),
-                    return_url: form.return_url.clone(),
-                })?;
-
-                return Ok(HttpResponse::Ok().content_type("text/html").body(body));
-            }
-
-            Err(WebError::from(db_error))
-        }
+        Err(db_error) => Err(WebError::from(db_error)),
     }
 }
 

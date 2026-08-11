@@ -11,7 +11,7 @@ use tokio::sync::mpsc::Sender;
 /// Cached data for a single device (MAC, IP) observed by a probe.
 ///
 /// - `packets` keeps a deduplicated in-memory set of recently seen `ProbePacket`s
-///  acting as a simple cache to alleviate the load on the database.
+///   acting as a simple cache to alleviate the load on the database.
 /// - `live_updates_transmitter` is an optional channel tied to an active
 ///   transmitter job; when present, newly arriving packets are forwarded to the
 ///   transmitter as live updates.

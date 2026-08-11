@@ -28,6 +28,7 @@ pub struct SelectManyPackets {
 }
 
 impl SelectManyPackets {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: Option<Id>,
         probe_id: Option<Uuid>,
@@ -88,6 +89,7 @@ pub struct CreatePacket {
 }
 
 impl CreatePacket {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         probe_id: Uuid,
         src_mac: [u8; 6],
@@ -99,7 +101,9 @@ impl CreatePacket {
         payload: Vec<u8>,
         payload_hash: i64,
     ) -> Self {
-        let payload_string = Message::from_bytes(&payload).ok().map(|m| m.to_string().replace('\0', ""));
+        let payload_string = Message::from_bytes(&payload)
+            .ok()
+            .map(|m| m.to_string().replace('\0', ""));
         Self {
             probe_id,
             src_mac,

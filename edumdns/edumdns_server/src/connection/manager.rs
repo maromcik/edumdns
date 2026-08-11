@@ -82,6 +82,7 @@ impl ConnectionManager {
     /// Returns:
     /// - `Ok(Self)` on success.
     /// - `Err(ServerError)` if the connection wrapping (including TLS) fails.
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         stream: TcpStream,
         config: Option<ServerConfig>,

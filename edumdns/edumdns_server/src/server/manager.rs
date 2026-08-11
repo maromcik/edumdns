@@ -27,7 +27,7 @@ use tokio::sync::mpsc::{Receiver, Sender};
 /// - the original request (for bookkeeping and eBPF cleanup)
 /// - a join handle wrapper for the running transmitter task
 /// - a channel used to push live updates (e.g., additional payloads or extend-duration commands)
-
+///
 /// Central orchestrator for routing, caching, and transmit task management.
 ///
 /// `ServerManager` owns inbound channels for control (`command_receiver`) and
@@ -260,12 +260,11 @@ impl ServerManager {
     async fn handle_network_packet(&mut self, packet: NetworkAppPacket) {
         match packet {
             NetworkAppPacket::Command(_) => {}
-            NetworkAppPacket::Status(status) => match status {
-                NetworkStatusPacket::ProbeResponse(uuid, session_id, response) => {
+            NetworkAppPacket::Status(status) => {
+                if let NetworkStatusPacket::ProbeResponse(uuid, session_id, response) = status {
                     self.send_response_to_ws(uuid, session_id, response).await;
                 }
-                _ => {}
-            },
+            }
             NetworkAppPacket::Data(probe_packet) => {
                 let cache_miss = self.cache.add(probe_packet.clone()).await;
                 match cache_miss {
@@ -308,7 +307,7 @@ impl ServerManager {
     /// Parameters:
     /// - `id`: probe identifier.
     /// - `session_id`: optional web session that initiated the request (used for passing the
-    /// response to a websocket).
+    ///   response to a websocket).
     ///
     /// Returns:
     /// - `Ok(())` if the command was delivered and the connection closed.

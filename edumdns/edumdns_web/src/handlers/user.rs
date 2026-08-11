@@ -17,16 +17,14 @@ use crate::forms::user::{
     UserCreateForm, UserQuery, UserUpdateForm, UserUpdateFormAdmin, UserUpdatePasswordForm,
     UserUpdatePasswordFormAdmin,
 };
-use crate::handlers::utilities::{get_template_name, parse_user_id};
+use crate::handlers::utilities::parse_user_id;
 use crate::handlers::{BulkAddEntityForm, SearchEntityQuery};
 use crate::templates::PageInfo;
 use crate::templates::user::{
     UserDetailGroupsTemplate, UserDetailTemplate, UserManagePasswordTemplate,
     UserManageProfileTemplate, UserTemplate,
 };
-use crate::utils::AppState;
 use actix_identity::Identity;
-use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
 use edumdns_core::app_packet::Id;
 use edumdns_db::error::{BackendError, DbError};
@@ -38,7 +36,6 @@ use edumdns_db::repositories::user::models::{
 };
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use edumdns_db::repositories::utilities::validate_password;
-use std::collections::HashMap;
 
 /// Lists all users with filtering and pagination.
 ///
@@ -61,7 +58,6 @@ pub async fn get_users(
     request: HttpRequest,
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
-    state: web::Data<AppState>,
     query: web::Query<UserQuery>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
@@ -75,19 +71,14 @@ pub async fn get_users(
     let user_count = user_repo.get_user_count(params).await?;
     let total_pages = (user_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
 
-    let template_name = get_template_name(&request, "user");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
     let query_string = request.uri().query().unwrap_or("").to_string();
-    let body = template.render(UserTemplate {
+    Ok(HttpResponse::Ok().json(UserTemplate {
         user,
         users,
         filters: query,
         page_info: PageInfo::new(page, total_pages),
         query_string,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }
 
 /// Displays detailed information about a specific user.
@@ -111,7 +102,6 @@ pub async fn get_user(
     request: HttpRequest,
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
-    state: web::Data<AppState>,
     path: web::Path<(Id,)>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
@@ -119,16 +109,11 @@ pub async fn get_user(
     let target_user = user_repo.read_one_auth(&path.0, &user_id).await?;
     let user = user_repo.read_one(&user_id).await?;
     let groups = user_repo.read_groups(&path.0, &user_id).await?;
-    let template_name = get_template_name(&request, "user/detail");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(UserDetailTemplate {
+    Ok(HttpResponse::Ok().json(UserDetailTemplate {
         user,
         groups,
         target_user: target_user.data,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }
 
 /// Creates a new user account.
@@ -168,9 +153,7 @@ pub async fn create_user(
             &user_id,
         )
         .await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/user/{}", u.id)))
-        .finish())
+    Ok(HttpResponse::Ok().json(serde_json::json!({"id": u.id})))
 }
 
 /// Deletes a user account.
@@ -195,7 +178,6 @@ pub async fn delete_user(
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
     path: web::Path<(Id,)>,
-    query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let admin_id = parse_user_id(&i)?;
@@ -205,16 +187,9 @@ pub async fn delete_user(
         ));
     }
 
-    let return_url = query
-        .get("return_url")
-        .map(String::as_str)
-        .unwrap_or("/user");
-
     let _ = user_repo.delete_auth(&path.0, &admin_id).await?;
 
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, return_url))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Updates user information.
@@ -240,14 +215,11 @@ pub async fn update_user(
     form: web::Form<UserUpdateFormAdmin>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
-    let target_user_id = form.0.id;
     let params = form.into_inner();
     user_repo
         .update_auth(&UserUpdate::from(params), &parse_user_id(&i)?)
         .await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/user/{}", target_user_id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Updates a user's password (admin operation).
@@ -284,9 +256,7 @@ pub async fn update_user_password(
             &params.confirm_password,
         )?)
         .await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/user/{}", target_user_id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Displays the user profile management page.
@@ -309,7 +279,6 @@ pub async fn user_manage_form_page(
     request: HttpRequest,
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
-    state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
     let i = authorized!(identity, request);
     let oidc = request
@@ -319,17 +288,12 @@ pub async fn user_manage_form_page(
     let user_id = parse_user_id(&i)?;
     let user = user_repo.read_one(&user_id).await?;
 
-    let template_name = get_template_name(&request, "user/manage/profile");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(UserManageProfileTemplate {
+    Ok(HttpResponse::Ok().json(UserManageProfileTemplate {
         user,
         message: String::new(),
         success: true,
         oidc,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }
 
 /// Displays the password change form.
@@ -349,19 +313,13 @@ pub async fn user_manage_form_page(
 pub async fn user_manage_password_form(
     request: HttpRequest,
     identity: Option<Identity>,
-    state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
     authorized!(identity, request);
 
-    let template_name = "user/manage/password/content.html";
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(template_name)?;
-    let body = template.render(UserManagePasswordTemplate {
+    Ok(HttpResponse::Ok().json(UserManagePasswordTemplate {
         message: String::new(),
         success: true,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }
 
 /// Updates the current user's profile information.
@@ -386,7 +344,6 @@ pub async fn user_manage(
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
     form: web::Form<UserUpdateForm>,
-    state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
     let u = authorized!(identity, request);
 
@@ -409,17 +366,12 @@ pub async fn user_manage(
             BackendError::UpdateParametersEmpty,
         )));
     };
-    let template_name = get_template_name(&request, "user/manage/profile");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(UserManageProfileTemplate {
+    Ok(HttpResponse::Ok().json(UserManageProfileTemplate {
         user: user_valid,
         message: "Profile successfully updated".to_string(),
         success: true,
         oidc,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }
 
 /// Changes the current user's password.
@@ -444,13 +396,8 @@ pub async fn user_manage_password(
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
     form: web::Form<UserUpdatePasswordForm>,
-    state: web::Data<AppState>,
 ) -> Result<impl Responder, WebError> {
     let u = authorized!(identity, request);
-
-    let template_name = "user/manage/password/content.html";
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(template_name)?;
 
     if form.new_password != form.confirm_password {
         let context = UserManagePasswordTemplate {
@@ -458,15 +405,12 @@ pub async fn user_manage_password(
             success: false,
         };
 
-        let body = template.render(context)?;
-
-        return Ok(HttpResponse::Ok().content_type("text/html").body(body));
+        return Ok(HttpResponse::Ok().json(context));
     }
 
     if !validate_password(&form.new_password) {
         let context = UserManagePasswordTemplate::weak_password();
-        let body = template.render(context)?;
-        return Ok(HttpResponse::Ok().content_type("text/html").body(body));
+        return Ok(HttpResponse::Ok().json(context));
     }
 
     let update_status = user_repo
@@ -482,16 +426,14 @@ pub async fn user_manage_password(
             message: "Old password incorrect".to_string(),
             success: false,
         };
-        let body = template.render(context)?;
-        return Ok(HttpResponse::Ok().content_type("text/html").body(body));
+        return Ok(HttpResponse::Ok().json(context));
     }
 
     let context = UserManagePasswordTemplate {
         message: "Password successfully updated".to_string(),
         success: true,
     };
-    let body = template.render(context)?;
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    Ok(HttpResponse::Ok().json(context))
 }
 
 /// Adds a user to one or more groups.
@@ -526,9 +468,7 @@ pub async fn add_user_groups(
             .add_groups(&user_id, &form.entity_ids, &admin_id)
             .await?;
     }
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/user/{}", user_id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Searches for groups that can be assigned to a user.
@@ -553,7 +493,6 @@ pub async fn search_user_groups(
     request: HttpRequest,
     identity: Option<Identity>,
     user_repo: web::Data<PgUserRepository>,
-    state: web::Data<AppState>,
     path: web::Path<(Id,)>,
     query: web::Query<SearchEntityQuery>,
 ) -> Result<impl Responder, WebError> {
@@ -561,9 +500,5 @@ pub async fn search_user_groups(
     let groups = user_repo
         .search_user_groups(&query.q, &parse_user_id(&i)?, &path.0)
         .await?;
-    let template_name = "user/groups/search.html";
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(template_name)?;
-    let body = template.render(UserDetailGroupsTemplate { groups })?;
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    Ok(HttpResponse::Ok().json(UserDetailGroupsTemplate { groups }))
 }

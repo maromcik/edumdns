@@ -1,0 +1,201 @@
+<script lang="ts">
+	import type { UserDisplay } from '$lib/types';
+
+	let { user }: { user: UserDisplay } = $props();
+
+	let menuOpen = $state(false);
+
+	function onDocumentClick(event: MouseEvent): void {
+		if (!menuOpen) return;
+		const target = event.target as HTMLElement | null;
+		if (target && !target.closest('#phone-menu') && !target.closest('#hamburger')) {
+			menuOpen = false;
+		}
+	}
+</script>
+
+<svelte:document onclick={onDocumentClick} />
+
+<div
+	id="navbar"
+	class="bg-ui-components p-2 sm:p-4 flex shadow-md fixed w-full z-10 top-0 h-16 sm:h-20 justify-between items-center"
+>
+	<a id="navbar-image" href="/" class="flex items-center">
+		<h2 class="font-extrabold text-acc text-lg sm:text-xl xl:text-2xl mt-5 mr-4">edumDNS</h2>
+		<div class="border-l-2 border border-gray-500 dark:border-gray-400 h-6"></div>
+		<picture class="flex items-center">
+			<source srcset="/static/images/muni-lg-white.png" media="(prefers-color-scheme:dark)" />
+			<img
+				src="/static/images/muni-lg-blue.png"
+				alt="Logo"
+				class="h-10 sm:h-12 lg:h-14 ml-1 object-contain"
+			/>
+		</picture>
+	</a>
+
+	<!-- Navigation Links Laptop View -->
+	<div
+		id="laptop-menu"
+		class="hidden lg:flex sm:ml-2 sm:mr-2 md:mr-4 md:ml-4 lg:items-center sm:space-x-3 md:space-x-6 lg:space-x-10 xl:space-x-16 xl:text-xl"
+	>
+		{#if user.has_groups || user.user.admin}
+			{#if user.user.admin}
+				<a
+					href="/group"
+					class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer"
+				>
+					<i class="fa-solid fa-object-group text-3l w-6 h-6 mr-2 lg:mt-2 xl:mt-1"></i>
+					Groups
+				</a>
+				<a
+					href="/user"
+					class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer"
+				>
+					<i class="fa-solid fa-users text-3l w-6 h-6 mr-2 lg:mt-2 xl:mt-1"></i>
+					Users
+				</a>
+			{/if}
+			<a
+				href="/probe"
+				class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer"
+			>
+				<i class="fa-solid fa-server text-3l w-6 h-6 mr-2 lg:mt-2 xl:mt-1"></i>
+				Probes
+			</a>
+			<a
+				href="/device"
+				class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer"
+			>
+				<i class="fa-solid fa-television text-3l w-6 h-6 mr-2 lg:mt-2 xl:mt-1"></i>
+				Devices
+			</a>
+			<a
+				href="/packet"
+				class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer"
+			>
+				<i class="fa-solid fa-archive text-3l w-6 h-6 mr-2 lg:mt-2 xl:mt-1"></i>
+				Packets
+			</a>
+		{/if}
+	</div>
+
+	<!-- Login/Logout -->
+	<div class="hidden lg:flex lg:items-center lg:space-x-10 xl:space-x-16 xl:text-xl">
+		<a
+			href="/user/manage"
+			class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110 cursor-pointer"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke-width="3"
+				stroke="currentColor"
+				class="w-6 h-6 mr-2"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
+				/>
+			</svg>
+			{user.user.email}
+		</a>
+		<a
+			href="/api/logout"
+			data-sveltekit-reload
+			class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke-width="3"
+				stroke="currentColor"
+				class="mr-2 w-6 h-6"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"
+				/>
+			</svg>
+			Log out
+		</a>
+	</div>
+
+	<!-- Hamburger Menu Button -->
+	<div class="flex lg:hidden items-center">
+		<button
+			id="hamburger"
+			onclick={() => (menuOpen = !menuOpen)}
+			class="focus:outline-none"
+			aria-label="Toggle menu"
+			aria-expanded={menuOpen}
+		>
+			<div class="w-8 h-0.5 md:w-10 lg:w-12 md:h-1 m-2 bg-navbar-buttons"></div>
+			<div class="w-8 h-0.5 md:w-10 lg:w-12 md:h-1 m-2 bg-navbar-buttons"></div>
+			<div class="w-8 h-0.5 md:w-10 lg:w-12 md:h-1 m-2 bg-navbar-buttons"></div>
+		</button>
+	</div>
+</div>
+
+<!-- Navigation Links Mobile View -->
+<div
+	id="phone-menu"
+	class="fixed top-16 left-0 w-full bg-ui-hamburger text-2xl pt-4 sm:pt-8 lg:pt-10 pb-6 lg:hidden"
+	class:hidden={!menuOpen}
+>
+	<div class="flex flex-col space-y-6 items-center">
+		<a href="/" class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110">
+			Home
+		</a>
+		{#if user.has_groups || user.user.admin}
+			{#if user.user.admin}
+				<a
+					href="/group"
+					class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110"
+				>
+					Groups
+				</a>
+				<a
+					href="/user"
+					class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110"
+				>
+					Users
+				</a>
+			{/if}
+			<a
+				href="/probe"
+				class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110"
+			>
+				Probes
+			</a>
+			<a
+				href="/device"
+				class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110"
+			>
+				Devices
+			</a>
+			<a
+				href="/packet"
+				class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110"
+			>
+				Packets
+			</a>
+		{/if}
+		<a
+			href="/user/manage"
+			class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110"
+		>
+			{user.user.email}
+		</a>
+		<a
+			href="/api/logout"
+			data-sveltekit-reload
+			class="flex items-center text-navbar-buttons hover:text-navbar-buttons-acc hover:scale-110"
+		>
+			Log out
+		</a>
+	</div>
+</div>

@@ -21,13 +21,12 @@ use crate::forms::probe::{
     UpdateProbeOwnerForm,
 };
 use crate::handlers::helpers::{get_probe_content, reconnect_probe};
-use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
+use crate::handlers::utilities::{parse_user_id, validate_has_groups};
 use crate::templates::PageInfo;
 use crate::templates::probe::ProbeTemplate;
 use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_session::Session;
-use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, rt, web};
 use actix_ws::AggregatedMessage;
 use edumdns_core::app_packet::{EntityType, Id};
@@ -48,7 +47,6 @@ use edumdns_server::app_packet::{
     AppPacket, LocalAppPacket, LocalCommandPacket, LocalStatusPacket,
 };
 use log::{info, warn};
-use std::collections::HashMap;
 use tokio::sync::mpsc;
 
 /// Lists all probes with filtering and pagination.
@@ -62,19 +60,17 @@ use tokio::sync::mpsc;
 /// * `identity` - Optional user identity (required for access)
 /// * `probe_repo` - Probe repository for database operations
 /// * `user_repo` - User repository for user information
-/// * `state` - Application state containing template engine
 /// * `query` - Query parameters for filtering and pagination
 ///
 /// # Returns
 ///
-/// Returns an HTML response with the probe list page, or redirects to login if not authenticated.
+/// Returns a JSON response with the probe list data, or redirects to login if not authenticated.
 #[get("")]
 pub async fn get_probes(
     request: HttpRequest,
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
     user_repo: web::Data<PgUserRepository>,
-    state: web::Data<AppState>,
     query: web::Query<ProbeQuery>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
@@ -91,19 +87,15 @@ pub async fn get_probes(
     let probe_count = probe_repo.get_probe_count(params, &user_id).await?;
     let total_pages = (probe_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
 
-    let template_name = get_template_name(&request, "probe");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
     let query_string = request.uri().query().unwrap_or("").to_string();
-    let body = template.render(ProbeTemplate {
+
+    Ok(HttpResponse::Ok().json(ProbeTemplate {
         user,
         probes: probes_parsed,
         page_info: PageInfo::new(page, total_pages),
         filters: query,
         query_string,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }
 
 /// Displays detailed information about a specific probe.
@@ -127,6 +119,7 @@ pub async fn get_probes(
 ///
 /// Returns an HTML response with the probe detail page.
 #[get("{id}")]
+#[allow(clippy::too_many_arguments)]
 pub async fn get_probe(
     request: HttpRequest,
     identity: Option<Identity>,
@@ -134,7 +127,6 @@ pub async fn get_probe(
     group_repo: web::Data<PgGroupRepository>,
     device_repo: web::Data<PgDeviceRepository>,
     user_repo: web::Data<PgUserRepository>,
-    state: web::Data<AppState>,
     path: web::Path<(uuid::Uuid,)>,
     query: web::Query<DeviceQuery>,
 ) -> Result<HttpResponse, WebError> {
@@ -146,7 +138,6 @@ pub async fn get_probe(
         probe_repo,
         group_repo,
         device_repo,
-        state,
         user,
         path.0,
         query,
@@ -176,11 +167,11 @@ pub async fn get_probe(
 ///
 /// Returns an HTML response with the probe detail page after adoption.
 #[get("{id}/adopt")]
+#[allow(clippy::too_many_arguments)]
 pub async fn adopt(
     request: HttpRequest,
     identity: Option<Identity>,
     probe_repo: web::Data<PgProbeRepository>,
-    state: web::Data<AppState>,
     path: web::Path<(uuid::Uuid,)>,
     group_repo: web::Data<PgGroupRepository>,
     device_repo: web::Data<PgDeviceRepository>,
@@ -191,13 +182,11 @@ pub async fn adopt(
     let user_id = parse_user_id(&i)?;
     let user = user_repo.read_one(&user_id).await?;
     probe_repo.adopt(&path.0, &user_id).await?;
-    // reconnect_probe(state.command_channel.clone(), path.0, session).await?;
     get_probe_content(
         request,
         probe_repo,
         group_repo,
         device_repo,
-        state,
         user,
         path.0,
         query,
@@ -227,6 +216,7 @@ pub async fn adopt(
 ///
 /// Returns an HTML response with the probe detail page after forgetting.
 #[get("{id}/forget")]
+#[allow(clippy::too_many_arguments)]
 pub async fn forget(
     request: HttpRequest,
     identity: Option<Identity>,
@@ -249,7 +239,6 @@ pub async fn forget(
         probe_repo,
         group_repo,
         device_repo,
-        state,
         user,
         path.0,
         query,
@@ -280,6 +269,7 @@ pub async fn forget(
 ///
 /// Returns an HTML response with the probe detail page after sending the reconnect command.
 #[get("{id}/reconnect")]
+#[allow(clippy::too_many_arguments)]
 pub async fn reconnect(
     request: HttpRequest,
     identity: Option<Identity>,
@@ -305,7 +295,6 @@ pub async fn reconnect(
         probe_repo,
         group_repo,
         device_repo,
-        state,
         user,
         path.0,
         query,
@@ -332,6 +321,7 @@ pub async fn reconnect(
 ///
 /// Returns a redirect response to the probe detail page after creating the configuration.
 #[post("{probe_id}/config")]
+#[allow(clippy::too_many_arguments)]
 pub async fn create_config(
     request: HttpRequest,
     identity: Option<Identity>,
@@ -361,12 +351,11 @@ pub async fn create_config(
         probe_repo,
         group_repo,
         device_repo,
-        state,
         user,
         path.0,
         query,
     )
-        .await
+    .await
 }
 
 /// Updates an existing capture configuration for a probe.
@@ -388,6 +377,7 @@ pub async fn create_config(
 ///
 /// Returns a redirect response to the probe detail page after updating the configuration.
 #[put("{probe_id}/config/{config_id}")]
+#[allow(clippy::too_many_arguments)]
 pub async fn save_config(
     request: HttpRequest,
     identity: Option<Identity>,
@@ -422,12 +412,11 @@ pub async fn save_config(
         probe_repo,
         group_repo,
         device_repo,
-        state,
         user,
         path.0,
         query,
     )
-        .await
+    .await
 }
 
 /// Deletes a capture configuration from a probe.
@@ -448,6 +437,7 @@ pub async fn save_config(
 ///
 /// Returns a redirect response to the probe detail page after deleting the configuration.
 #[delete("{probe_id}/config/{config_id}")]
+#[allow(clippy::too_many_arguments)]
 pub async fn delete_config(
     request: HttpRequest,
     identity: Option<Identity>,
@@ -466,11 +456,7 @@ pub async fn delete_config(
     let user_id = parse_user_id(&i)?;
     let user = user_repo.read_one(&user_id).await?;
     probe_repo
-        .delete_probe_config(&SelectSingleProbeConfig::new(
-            user_id,
-            config_id,
-            probe_id,
-        ))
+        .delete_probe_config(&SelectSingleProbeConfig::new(user_id, config_id, probe_id))
         .await?;
     reconnect_probe(state.command_channel.clone(), path.0, session).await?;
     get_probe_content(
@@ -478,12 +464,11 @@ pub async fn delete_config(
         probe_repo,
         group_repo,
         device_repo,
-        state,
         user,
         path.0,
         query,
     )
-        .await
+    .await
 }
 
 /// Toggles a permission for a group on a probe.
@@ -523,9 +508,7 @@ pub async fn change_probe_permission(
         ))
         .await?;
 
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/probe/{}", path.0)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Updates probe information.
@@ -551,13 +534,10 @@ pub async fn update_probe(
     form: web::Form<UpdateProbeForm>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
-    let probe_id = form.id;
     probe_repo
         .update_auth(&UpdateProbe::from(form.into_inner()), &parse_user_id(&i)?)
         .await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/probe/{}", probe_id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Updates the owner of a probe.
@@ -586,9 +566,7 @@ pub async fn update_probe_owner(
     probe_repo
         .update_owner_auth(&form.id, &form.owner_id, &parse_user_id(&i)?)
         .await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/probe/{}", form.id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Deletes a probe from the system.
@@ -616,16 +594,11 @@ pub async fn delete_probe(
     probe_repo: web::Data<PgProbeRepository>,
     path: web::Path<(uuid::Uuid,)>,
     state: web::Data<AppState>,
-    query: web::Query<HashMap<String, String>>,
     session: Session,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
     let probe_id = path.0;
-    let return_url = query
-        .get("return_url")
-        .map(String::as_str)
-        .unwrap_or("/probe");
 
     let uuid = session.get::<Uuid>("session_id")?;
     let _ = state
@@ -650,9 +623,7 @@ pub async fn delete_probe(
 
     probe_repo.delete_auth(&probe_id, &user_id).await?;
     reconnect_probe(state.command_channel.clone(), probe_id, session).await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, return_url))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Establishes a WebSocket connection for real-time probe status updates.
@@ -826,7 +797,5 @@ pub async fn create_probe(
     validate_has_groups(&user)?;
     let probe_create = CreateProbe::new_web(form.name.as_str(), &user_id);
     let _ = probe_repo.create_auth(&probe_create, &user_id).await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/probe/{}", probe_create.id)))
-        .finish())
+    Ok(HttpResponse::Ok().json(serde_json::json!({"id": probe_create.id})))
 }

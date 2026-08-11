@@ -66,6 +66,7 @@ pub struct CreatePacketForm {
     pub message: Message,
 }
 impl CreatePacketForm {
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_db_params(self) -> Result<CreatePacket, WebError> {
         let payload_string = Some(self.message.to_string());
         let payload = self.message.to_bytes()?;
@@ -91,6 +92,7 @@ pub struct UpdatePacketPayloadForm {
     pub message: Message,
 }
 impl UpdatePacketPayloadForm {
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_db_params(self) -> Result<UpdatePacket, WebError> {
         let payload_string = Some(self.message.to_string());
         let payload = self.message.to_bytes()?;
@@ -125,6 +127,7 @@ pub struct UpdatePacketForm {
 }
 
 impl UpdatePacketForm {
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_db_params(self) -> UpdatePacket {
         UpdatePacket {
             id: self.id,
@@ -149,6 +152,7 @@ pub struct ReassignPacketForm {
 }
 
 impl ReassignPacketForm {
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_db_params(
         self,
         probe_id: Uuid,

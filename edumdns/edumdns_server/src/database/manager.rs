@@ -89,16 +89,14 @@ impl DatabaseManager {
                     "Device <ID: {}, MAC: {}, IP: {}> stored in database",
                     d.id, src_mac, d.ip
                 );
-                d
             }
             Err(e) => {
                 error!(
                     "Could not store device <MAC: {}, IP: {}> in database: {e}",
                     src_mac, src_ip
                 );
-                return;
             }
-        };
+        }
     }
 
     pub async fn store_packet_in_database(packet_repo: &PgPacketRepository, packet: ProbePacket) {

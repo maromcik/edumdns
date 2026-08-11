@@ -67,10 +67,13 @@ where
     ///
     /// The following paths are allowed without authentication:
     /// - `/static/*` - Static file serving
-    /// - `/login*` - Login endpoints
+    /// - `/_app/*` - Built frontend (Svelte) assets
+    /// - `/login*` - Login page and endpoints
     /// - `/auth_callback` - OAuth callback
     /// - `/logout*` - Logout endpoints
     /// - `/oidc*` - OIDC-related endpoints
+    /// - `/` and `/favicon.png` - The frontend single-page application shell,
+    ///   which performs its own authentication flow
     ///
     /// The following cookies indicate authentication:
     /// - `auth` - Authentication method cookie (local or oidc)
@@ -79,10 +82,14 @@ where
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let path = req.path().to_string();
         if path.starts_with("/static")
+            || path.starts_with("/_app")
             || path.starts_with("/login")
+            || path == "/api/login"
             || path.starts_with("/auth_callback")
             || path.starts_with("/logout")
             || path.starts_with("/oidc")
+            || path == "/"
+            || path == "/favicon.png"
         {
             let fut = self.service.call(req);
             return fut
@@ -101,15 +108,25 @@ where
                 .boxed_local();
         }
 
-        let ret = urlencoding::encode(&path);
-        let redirect = HttpResponse::SeeOther()
-            .insert_header((
-                actix_web::http::header::LOCATION,
-                format!("/login?ret={}", ret),
-            ))
-            .finish();
+        // Unauthenticated API calls receive a JSON error instead of a redirect
+        // so that the frontend can react with a client-side navigation.
+        let response = if path.starts_with("/api") {
+            HttpResponse::Unauthorized().json(serde_json::json!({
+                "code": 401,
+                "status_code": "401 UNAUTHORIZED",
+                "description": format!("Not logged in when accessing the resource: {path}"),
+            }))
+        } else {
+            let ret = urlencoding::encode(&path);
+            HttpResponse::SeeOther()
+                .insert_header((
+                    actix_web::http::header::LOCATION,
+                    format!("/login?ret={}", ret),
+                ))
+                .finish()
+        };
 
-        let srv_res = req.into_response(redirect.map_into_boxed_body());
+        let srv_res = req.into_response(response.map_into_boxed_body());
         async { Ok(srv_res) }.boxed_local()
     }
 }

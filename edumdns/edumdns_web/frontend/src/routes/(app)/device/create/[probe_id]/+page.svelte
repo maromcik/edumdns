@@ -1,0 +1,117 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { errorMessage, sendForm } from '$lib/api';
+	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
+	import type { CreateResponse } from '$lib/types';
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
+
+	const template = $derived(data.template);
+
+	let name = $state('');
+	let mac = $state('');
+	let ip = $state('');
+	let port = $state('');
+	let createError = $state<string | null>(null);
+
+	async function createDevice(event: SubmitEvent) {
+		event.preventDefault();
+		createError = null;
+		try {
+			const res = await sendForm<CreateResponse>('POST', '/device/create', {
+				name,
+				probe_id: template.probe_id,
+				mac,
+				ip,
+				port
+			});
+			await goto(`/device/${res.id}`);
+		} catch (err) {
+			createError = errorMessage(err);
+		}
+	}
+</script>
+
+<svelte:head>
+	<title>edumdns - Add a New Device</title>
+</svelte:head>
+
+<div class="container mx-auto p-6 max-w-7xl">
+	<form onsubmit={createDevice} class="bg-cards shadow-md rounded px-8 pt-6 pb-8 mb-4">
+		<h2 class="block text-forms text-xl font-bold mb-2 text-center">Add a New Device</h2>
+
+		<!-- Hidden Probe ID -->
+		<input type="hidden" id="probe_id" name="probe_id" value={template.probe_id} />
+		<!-- Name -->
+		<div class="flex flex-col mb-4">
+			<label for="name" class="text-xs uppercase tracking-wide text-forms">Name</label>
+			<input
+				id="name"
+				name="name"
+				type="text"
+				placeholder="Friendly name"
+				bind:value={name}
+				class="mt-1 rounded-md border border-base px-3 py-2 text-forms-input focus:outline-none focus:ring-2 focus:ring-acc"
+			/>
+			<p class="text-xs text-forms mt-1">Optional friendly name for the device.</p>
+		</div>
+
+		<!-- MAC Address -->
+		<div class="flex flex-col mb-4">
+			<label for="mac" class="text-xs uppercase tracking-wide text-forms">MAC Address</label>
+			<input
+				id="mac"
+				name="mac"
+				type="text"
+				placeholder="AA:BB:CC:DD:EE:FF"
+				pattern="^([0-9A-Fa-f]{'{2}'}:){'{5}'}[0-9A-Fa-f]{'{2}'}$"
+				bind:value={mac}
+				class="mt-1 rounded-md border border-base text-forms-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-acc"
+				required
+			/>
+			<p class="text-xs text-forms mt-1">Enter the device MAC address in standard format.</p>
+		</div>
+
+		<!-- IP Address -->
+		<div class="flex flex-col mb-4">
+			<label for="ip" class="text-xs uppercase tracking-wide text-forms">IP Address</label>
+			<input
+				id="ip"
+				name="ip"
+				type="text"
+				placeholder="192.168.1.100/24"
+				bind:value={ip}
+				class="mt-1 rounded-md border border-base text-forms-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-acc"
+				required
+			/>
+			<p class="text-xs text-forms mt-1">Use CIDR notation (e.g. <code>192.168.1.100/24</code>).</p>
+		</div>
+
+		<!-- Port -->
+		<div class="flex flex-col mb-6">
+			<label for="port" class="text-xs uppercase tracking-wide text-forms">Port</label>
+			<input
+				id="port"
+				name="port"
+				type="number"
+				min="1"
+				max="65535"
+				bind:value={port}
+				class="mt-1 rounded-md border border-base text-forms-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-acc"
+				required
+			/>
+		</div>
+
+		<ErrorAlert message={createError} />
+
+		<div class="flex justify-end">
+			<button
+				class="bg-acc text-button font-bold py-2 px-6 rounded-lg focus:outline-none focus:ring focus:ring-stone-300 hover:scale-105 transition-all duration-200"
+				type="submit"
+			>
+				Save
+			</button>
+		</div>
+	</form>
+</div>

@@ -14,12 +14,10 @@
 use crate::authorized;
 use crate::error::WebError;
 use crate::forms::group::{CreateGroupForm, GroupQuery};
-use crate::handlers::utilities::{get_template_name, parse_user_id};
+use crate::handlers::utilities::parse_user_id;
 use crate::handlers::{BulkAddEntityForm, SearchEntityQuery};
 use crate::templates::group::{GroupDetailTemplate, GroupDetailUsersTemplate, GroupTemplate};
-use crate::utils::AppState;
 use actix_identity::Identity;
-use actix_web::http::header::LOCATION;
 use actix_web::{HttpRequest, HttpResponse, Responder, delete, get, post, web};
 use edumdns_core::app_packet::Id;
 use edumdns_db::repositories::common::{DbCreate, DbDelete, DbUpdate};
@@ -27,7 +25,6 @@ use edumdns_db::repositories::common::{DbReadOne, Pagination};
 use edumdns_db::repositories::group::models::{CreateGroup, SelectManyGroups, UpdateGroup};
 use edumdns_db::repositories::group::repository::PgGroupRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
-use std::collections::HashMap;
 /// Lists all groups with filtering.
 ///
 /// Retrieves groups accessible to the authenticated user and renders them in a list view.
@@ -50,7 +47,6 @@ pub async fn get_groups(
     identity: Option<Identity>,
     group_repo: web::Data<PgGroupRepository>,
     user_repo: web::Data<PgUserRepository>,
-    state: web::Data<AppState>,
     query: web::Query<GroupQuery>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
@@ -67,16 +63,11 @@ pub async fn get_groups(
         )
         .await?;
 
-    let template_name = get_template_name(&request, "group");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(GroupTemplate {
+    Ok(HttpResponse::Ok().json(GroupTemplate {
         user,
         groups,
         filters: query.into_inner(),
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }
 
 /// Displays detailed information about a specific group.
@@ -102,7 +93,6 @@ pub async fn get_group(
     identity: Option<Identity>,
     group_repo: web::Data<PgGroupRepository>,
     user_repo: web::Data<PgUserRepository>,
-    state: web::Data<AppState>,
     path: web::Path<(Id,)>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
@@ -110,12 +100,7 @@ pub async fn get_group(
     let user = user_repo.read_one(&user_id).await?;
     let group = group_repo.read_one_auth(&path.0, &user_id).await?;
     let users = group_repo.read_users(&path.0, &user_id).await?;
-    let template_name = get_template_name(&request, "group/detail");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(GroupDetailTemplate { user, users, group })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    Ok(HttpResponse::Ok().json(GroupDetailTemplate { user, users, group }))
 }
 
 /// Creates a new group.
@@ -147,9 +132,7 @@ pub async fn create_group(
             &parse_user_id(&i)?,
         )
         .await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/group/{}", g.id)))
-        .finish())
+    Ok(HttpResponse::Ok().json(serde_json::json!({"id": g.id})))
 }
 
 /// Deletes a group from the system.
@@ -177,9 +160,7 @@ pub async fn delete_group(
     let i = authorized!(identity, request);
     let _ = group_repo.delete_auth(&path.0, &parse_user_id(&i)?).await?;
 
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, "/group"))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Adds one or more users to a group.
@@ -214,9 +195,7 @@ pub async fn add_group_users(
             .add_users(&group_id, &form.entity_ids, &admin_id)
             .await?;
     }
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/group/{}", group_id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Removes a user from a group.
@@ -241,7 +220,6 @@ pub async fn delete_group_user(
     identity: Option<Identity>,
     group_repo: web::Data<PgGroupRepository>,
     path: web::Path<(Id, Id)>,
-    query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let group_id = path.0;
@@ -251,13 +229,7 @@ pub async fn delete_group_user(
         .delete_user(&group_id, &user_id, &admin_id)
         .await?;
 
-    let return_url = query
-        .get("return_url")
-        .map(String::as_str)
-        .unwrap_or("/group");
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, return_url))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Searches for users that can be assigned to a group.
@@ -282,7 +254,6 @@ pub async fn search_group_users(
     request: HttpRequest,
     identity: Option<Identity>,
     group_repo: web::Data<PgGroupRepository>,
-    state: web::Data<AppState>,
     path: web::Path<(Id,)>,
     query: web::Query<SearchEntityQuery>,
 ) -> Result<impl Responder, WebError> {
@@ -290,12 +261,8 @@ pub async fn search_group_users(
     let users = group_repo
         .search_group_users(&query.q, &parse_user_id(&i)?, &path.0)
         .await?;
-    let template_name = "group/users/search.html";
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(template_name)?;
-    let body = template.render(GroupDetailUsersTemplate { users })?;
 
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    Ok(HttpResponse::Ok().json(GroupDetailUsersTemplate { users }))
 }
 
 /// Updates group information.
@@ -323,7 +290,5 @@ pub async fn update_group(
     let i = authorized!(identity, request);
     let params = form.into_inner();
     group_repo.update_auth(&params, &parse_user_id(&i)?).await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/group/{}", params.id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }

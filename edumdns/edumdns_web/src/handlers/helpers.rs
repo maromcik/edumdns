@@ -14,10 +14,9 @@ use crate::error::WebError;
 use crate::forms::device::{
     DeviceCustomPacketTransmitRequest, DevicePacketTransmitRequest, DeviceQuery,
 };
-use crate::handlers::utilities::{get_template_name, verify_transmit_request_client_ap};
+use crate::handlers::utilities::verify_transmit_request_client_ap;
 use crate::templates::PageInfo;
 use crate::templates::probe::ProbeDetailTemplate;
-use crate::utils::AppState;
 use actix_session::Session;
 use actix_web::{HttpRequest, HttpResponse, web};
 use edumdns_core::app_packet::Id;
@@ -257,23 +256,20 @@ pub async fn authorize_packet_transmit_request(
 /// * `probe_repo` - Probe repository for database operations
 /// * `group_repo` - Group repository for permission matrix
 /// * `device_repo` - Device repository for associated devices
-/// * `state` - Application state containing template engine
 /// * `user` - Current user display information
 /// * `probe_id` - UUID of the probe to display
 /// * `query` - Query parameters for device filtering and pagination
 ///
 /// # Returns
 ///
-/// Returns an HTML response with the probe detail page, or an error if:
+/// Returns a JSON response with the probe detail data, or an error if:
 /// - The probe is not found or the user lacks permission
 /// - Database operations fail
-/// - Template rendering fails
 pub async fn get_probe_content(
     request: HttpRequest,
     probe_repo: web::Data<PgProbeRepository>,
     group_repo: web::Data<PgGroupRepository>,
     device_repo: web::Data<PgDeviceRepository>,
-    state: web::Data<AppState>,
     user: UserDisplay,
     probe_id: uuid::Uuid,
     query: web::Query<DeviceQuery>,
@@ -315,11 +311,9 @@ pub async fn get_probe_content(
     let device_count = device_repo.get_device_count(params, &user.user.id).await?;
     let total_pages = (device_count as f64 / PAGINATION_ELEMENTS_PER_PAGE as f64).ceil() as i64;
 
-    let template_name = get_template_name(&request, "probe/detail");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
     let query_string = request.uri().query().unwrap_or("").to_string();
-    let body = template.render(ProbeDetailTemplate {
+
+    Ok(HttpResponse::Ok().json(ProbeDetailTemplate {
         user,
         permissions: probe.permissions,
         permission_matrix: matrix,
@@ -329,7 +323,5 @@ pub async fn get_probe_content(
         page_info: PageInfo::new(page, total_pages),
         filters: query,
         query_string,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }

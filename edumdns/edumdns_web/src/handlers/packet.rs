@@ -17,13 +17,11 @@ use crate::forms::packet::{
     CreatePacketForm, PacketDeviceDataForm, PacketQuery, ReassignPacketForm, UpdatePacketForm,
     UpdatePacketPayloadForm,
 };
-use crate::handlers::utilities::{get_template_name, parse_user_id, validate_has_groups};
-use crate::header::LOCATION;
+use crate::handlers::utilities::{parse_user_id, validate_has_groups};
 use crate::templates::PageInfo;
 use crate::templates::packet::{
     PacketCreateTemplate, PacketDetailTemplate, PacketTemplate, PacketUpdatePayloadTemplate,
 };
-use crate::utils::AppState;
 use actix_identity::Identity;
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
 use edumdns_core::app_packet::Id;
@@ -38,7 +36,6 @@ use edumdns_db::repositories::packet::repository::PgPacketRepository;
 use edumdns_db::repositories::user::repository::PgUserRepository;
 use hickory_proto::op::Message;
 use hickory_proto::serialize::binary::BinDecodable;
-use std::collections::HashMap;
 
 /// Lists all packets with filtering and pagination.
 ///
@@ -63,7 +60,6 @@ pub async fn get_packets(
     identity: Option<Identity>,
     packet_repo: web::Data<PgPacketRepository>,
     user_repo: web::Data<PgUserRepository>,
-    state: web::Data<AppState>,
     query: web::Query<PacketQuery>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
@@ -82,19 +78,14 @@ pub async fn get_packets(
         .filter_map(Result::ok)
         .collect();
 
-    let template_name = get_template_name(&request, "packet");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
     let query_string = request.uri().query().unwrap_or("").to_string();
-    let body = template.render(PacketTemplate {
+    Ok(HttpResponse::Ok().json(PacketTemplate {
         user,
         packets: &packets_parsed,
         page_info: PageInfo::new(page, total_pages),
         filters: query,
         query_string,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }
 
 /// Displays detailed information about a specific packet.
@@ -123,7 +114,6 @@ pub async fn get_packet(
     packet_repo: web::Data<PgPacketRepository>,
     device_repo: web::Data<PgDeviceRepository>,
     user_repo: web::Data<PgUserRepository>,
-    state: web::Data<AppState>,
     path: web::Path<(Id,)>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
@@ -138,17 +128,12 @@ pub async fn get_packet(
 
     let device_id = device_repo.read_one(&params).await.ok().map(|d| d.id);
 
-    let template_name = get_template_name(&request, "packet/detail");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(PacketDetailTemplate {
+    Ok(HttpResponse::Ok().json(PacketDetailTemplate {
         user,
         permissions: packet.permissions,
         packet: &PacketDisplay::from(packet.data)?,
         device_id,
-    })?;
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }
 
 /// Deletes a packet from the database.
@@ -172,20 +157,12 @@ pub async fn delete_packet(
     identity: Option<Identity>,
     packet_repo: web::Data<PgPacketRepository>,
     path: web::Path<(Id,)>,
-    query: web::Query<HashMap<String, String>>,
 ) -> Result<HttpResponse, WebError> {
     let i = authorized!(identity, request);
     let user_id = parse_user_id(&i)?;
 
-    let return_url = query
-        .get("return_url")
-        .map(String::as_str)
-        .unwrap_or("/packet");
-
     packet_repo.delete_auth(&path.0, &user_id).await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, return_url))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Creates a new packet in the database.
@@ -215,9 +192,7 @@ pub async fn create_packet(
     let packet = packet_repo
         .create_auth(&params, &parse_user_id(&i)?)
         .await?;
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/packet/{}", packet.id)))
-        .finish())
+    Ok(HttpResponse::Ok().json(serde_json::json!({"id": packet.id})))
 }
 
 /// Updates packet metadata.
@@ -248,9 +223,7 @@ pub async fn update_packet(
         .update_auth(&params, &parse_user_id(&i)?)
         .await?;
 
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/packet/{}", params.id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Reassigns a packet to a different device.
@@ -288,9 +261,7 @@ pub async fn reassign_packet(
         .update_auth(&params, &parse_user_id(&i)?)
         .await?;
 
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/packet/{}", params.id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Displays the packet creation form.
@@ -313,7 +284,6 @@ pub async fn reassign_packet(
 pub async fn create_packet_form(
     request: HttpRequest,
     identity: Option<Identity>,
-    state: web::Data<AppState>,
     user_repo: web::Data<PgUserRepository>,
     query: web::Query<PacketDeviceDataForm>,
 ) -> Result<HttpResponse, WebError> {
@@ -321,17 +291,13 @@ pub async fn create_packet_form(
     let user_id = parse_user_id(&i)?;
     let user = user_repo.read_one(&user_id).await?;
     validate_has_groups(&user)?;
-    let template_name = get_template_name(&request, "packet/create");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
-    let body = template.render(PacketCreateTemplate {
+    Ok(HttpResponse::Ok().json(PacketCreateTemplate {
         user,
         probe_id: query.probe_id,
         ip: query.ip,
         mac: query.mac,
         port: query.port,
-    })?;
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }
 
 /// Updates the DNS payload of a packet.
@@ -363,9 +329,7 @@ pub async fn update_packet_payload(
         .update_auth(&params, &parse_user_id(&i)?)
         .await?;
 
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, format!("/packet/{}", params.id)))
-        .finish())
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Displays the packet payload editing form.
@@ -390,7 +354,6 @@ pub async fn update_packet_payload(
 pub async fn update_packet_payload_form(
     request: HttpRequest,
     identity: Option<Identity>,
-    state: web::Data<AppState>,
     packet_repo: web::Data<PgPacketRepository>,
     user_repo: web::Data<PgUserRepository>,
     path: web::Path<(Id,)>,
@@ -403,11 +366,8 @@ pub async fn update_packet_payload_form(
     let message = Message::from_bytes(&packet.data.payload)
         .map_err(|_| WebError::BadRequest("Not a DNS packet payload".to_string()))?;
 
-    let template_name = get_template_name(&request, "packet/edit");
-    let env = state.jinja.acquire_env()?;
-    let template = env.get_template(&template_name)?;
     let msg = serde_json::to_string(&message)?;
-    let body = template.render(PacketUpdatePayloadTemplate {
+    Ok(HttpResponse::Ok().json(PacketUpdatePayloadTemplate {
         user,
         id: packet.data.id,
         probe_id: packet.data.probe_id,
@@ -415,6 +375,5 @@ pub async fn update_packet_payload_form(
         mac: MacAddr::from_octets(packet.data.src_mac),
         port: packet.data.dst_port as u16,
         message: msg,
-    })?;
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    }))
 }

@@ -3,6 +3,7 @@
 //! `EbpfUpdater` attaches to pinned kernel maps and maintains bi-directional
 //! mappings between the client and the device for either IPv4 and IPv6.
 
+use crate::config::ServerConfig;
 use crate::error::ServerError;
 use aya::maps::{HashMap, Map, MapData};
 use ipnetwork::IpNetwork;
@@ -11,7 +12,6 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::config::ServerConfig;
 
 #[derive(Clone)]
 /// Holds proxy configuration and a handle to the eBPF updater.

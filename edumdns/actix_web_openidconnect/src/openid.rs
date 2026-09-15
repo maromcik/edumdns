@@ -19,7 +19,7 @@ use openidconnect::{
     TokenResponse, UserInfoClaims,
 };
 use serde::{Deserialize, Serialize};
-use std::fmt::{Debug};
+use std::fmt::Debug;
 use url::Url;
 
 #[derive(Clone)]

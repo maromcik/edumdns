@@ -18,8 +18,10 @@ use edumdns_core::connection::{TcpConnectionHandle, TcpConnectionMessage};
 use log::{debug, error, warn};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::{
+    RwLock,
+    mpsc::{Receiver, Sender},
+};
 
 /// An in-flight transmit job along with its control channel.
 ///
@@ -106,16 +108,13 @@ impl ServerManager {
                 continue;
             }
             tokio::select! {
-                packet = self.command_receiver.recv() => {
-                    if let Some(packet) = packet {
+                Some(packet) = self.command_receiver.recv() => {
                      self.route_packets(packet).await;
-                    }
                 }
-                packet = self.data_receiver.recv() => {
-                    if let Some(packet) = packet {
-                     self.route_packets(packet).await;
-                    }
+                Some(packet) = self.data_receiver.recv() => {
+                    self.route_packets(packet).await;
                 }
+                else => break
             }
         }
     }

@@ -6,10 +6,10 @@
 
 use crate::app_packet::AppPacket;
 use crate::config::ServerConfig;
+use crate::connection::listen::ListenerSpawner;
 use crate::database::spawn_database_task;
 use crate::database::util::load_all_packet_transmit_requests;
 use crate::error::ServerError;
-use crate::connection::listen::ListenerSpawner;
 use crate::server::spawn_server_task;
 use crate::utils::ordered_map::OrderedMap;
 use crate::utils::probe_tracker::{SharedProbeTracker, watchdog};
@@ -17,17 +17,17 @@ use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
 use edumdns_core::bincode_types::Uuid;
 use edumdns_core::connection::TcpConnectionHandle;
-use log::{info};
+use log::info;
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::sync::{RwLock};
 
 pub mod app_packet;
 pub mod config;
+mod connection;
 mod database;
 pub mod error;
-mod connection;
 mod server;
 mod transmit;
 mod utils;
@@ -41,6 +41,7 @@ pub async fn server_init(
 ) -> Result<(), ServerError> {
     load_all_packet_transmit_requests(pool.clone(), tx.clone()).await?;
     spawn_server_tasks(pool.clone(), (tx.clone(), rx), Arc::new(server_config)).await?;
+    info!("GUT");
     Ok(())
 }
 

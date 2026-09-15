@@ -6,8 +6,8 @@
 use crate::ProbeHandles;
 use crate::app_packet::AppPacket;
 use crate::config::ServerConfig;
-use crate::error::ServerError;
 use crate::connection::manager::ConnectionManager;
+use crate::error::ServerError;
 use crate::utils::probe_tracker::SharedProbeTracker;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;

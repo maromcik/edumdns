@@ -1,15 +1,15 @@
+use crate::ProbeHandles;
 use crate::app_packet::AppPacket;
 use crate::config::ServerConfig;
 use crate::database::manager::DbCommand;
-use crate::server::ebpf::{Proxy};
+use crate::server::ebpf::Proxy;
 use crate::server::manager::ServerManager;
-use crate::{ProbeHandles};
+use crate::transmit::manager::TransmitManager;
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::deadpool::Pool;
-use log::{info};
+use log::info;
 use std::sync::Arc;
 use tokio::sync::mpsc::{Receiver, Sender};
-use crate::transmit::manager::TransmitManager;
 
 pub(crate) mod cache;
 pub(crate) mod ebpf;
@@ -25,12 +25,8 @@ pub async fn spawn_server_task(
 ) {
     let _server_manager_task = tokio::task::spawn(async move {
         let proxy = Proxy::new(server_config.clone());
-        let transmit_manager = TransmitManager::new(
-            pool,
-            command_channel.0,
-            proxy,
-            server_config.clone(),
-        );
+        let transmit_manager =
+            TransmitManager::new(pool, command_channel.0, proxy, server_config.clone());
 
         let mut manager = ServerManager::new(
             command_channel.1,

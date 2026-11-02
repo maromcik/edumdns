@@ -59,10 +59,14 @@ build_probe:
 build_proxy:
   stage: build
   before_script:
-    - apt-get update && apt-get install -y jq llvm llvm-dev build-essential
+    - apt-get update && apt-get install -y jq llvm-dev build-essential
     - rustup default stable
     - rustup toolchain install stable
     - rustup toolchain install nightly --component rust-src
+    # bpf-linker links against libLLVM, but llvm-dev puts the unversioned
+    # libLLVM.so under /usr/lib/llvm-*/lib, outside the default search path
+    - mkdir -p /usr/lib64
+    - ln -sf /usr/lib/llvm-*/lib/libLLVM.so /usr/lib64/libLLVM.so
     - cargo install bpf-linker
   script:
     - cd edumdns_proxy

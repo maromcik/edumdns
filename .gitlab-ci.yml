@@ -95,12 +95,18 @@ build_docker:
     # Create Docker authentication for GitLab registry
     - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
   script:
+    # CI_COMMIT_TAG is empty on web-triggered branch pipelines; only push
+    # a tag-named image when we actually have a tag
+    - DESTINATIONS="--destination ${IMAGE_NAME}:latest"
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        DESTINATIONS="$DESTINATIONS --destination ${IMAGE_NAME}:${CI_COMMIT_TAG}"
+      fi
     - |
       /kaniko/executor \
         --context "${CI_PROJECT_DIR}" \
         --dockerfile "${CI_PROJECT_DIR}/Dockerfile" \
-        --destination "${IMAGE_NAME}:${CI_COMMIT_TAG}" \
-        --destination "${IMAGE_NAME}:latest" \
+        $DESTINATIONS \
         --cache=true \
         --cache-ttl=168h \
         --verbosity=info

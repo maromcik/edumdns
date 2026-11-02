@@ -59,15 +59,17 @@ build_probe:
 build_proxy:
   stage: build
   before_script:
-    - apt-get update && apt-get install -y jq llvm-dev build-essential
+    - apt-get update && apt-get install -y jq build-essential curl ca-certificates zstd
     - rustup default stable
     - rustup toolchain install stable
     - rustup toolchain install nightly --component rust-src
-    # bpf-linker links against libLLVM, but llvm-dev puts the unversioned
-    # libLLVM.so under /usr/lib/llvm-*/lib, outside the default search path
-    - mkdir -p /usr/lib64
-    - ln -sf /usr/lib/llvm-*/lib/libLLVM.so /usr/lib64/libLLVM.so
-    - cargo install bpf-linker
+    # Use the official prebuilt static (musl) binary instead of compiling bpf-linker
+    # from source: `cargo install bpf-linker` links against the system LLVM, and the
+    # newest release may require a newer LLVM than the distro image provides
+    # (v0.13.0 broke this way). See https://github.com/aya-rs/bpf-linker#installation
+    - curl -fLO https://github.com/aya-rs/bpf-linker/releases/latest/download/bpf-linker-x86_64-unknown-linux-musl.tar.zst
+    - tar -xpf bpf-linker-x86_64-unknown-linux-musl.tar.zst -C /usr/local/bin
+    - bpf-linker --version
   script:
     - cd edumdns_proxy
     - export PROXY_VERSION=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[0].version')

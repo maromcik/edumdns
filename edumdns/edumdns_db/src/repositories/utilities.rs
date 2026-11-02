@@ -220,11 +220,12 @@ pub fn validate_password(password: &str) -> bool {
 }
 
 pub fn format_time(t: OffsetDateTime) -> String {
-    let format = format_description::parse("[day]. [month]. [year] [hour]:[minute]:[second]").ok();
+    let format =
+        time::macros::format_description!("[day]. [month]. [year] [hour]:[minute]:[second]");
     let offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
 
     let local = t.to_offset(offset);
-    if let Some(fmt) = &format {
+    if let Some(fmt) = format.iter().next() {
         local.format(fmt).unwrap_or_else(|_| local.to_string())
     } else {
         local.to_string()

@@ -59,7 +59,7 @@ build_probe:
 build_proxy:
   stage: build
   before_script:
-    - apt-get update && apt-get install -y jq llvm-dev build-essential
+    - apt-get update && apt-get install -y jq llvm llvm-dev build-essential
     - rustup default stable
     - rustup toolchain install stable
     - rustup toolchain install nightly --component rust-src
@@ -82,7 +82,9 @@ build_proxy:
 build_docker:
   stage: build
   image:
-    name: ghcr.io/osscontainertools/kaniko:latest
+    # The plain `latest` image has no shell, so the runner can't execute scripts in it
+    # ('unable to upgrade to tcp, received 500'). The -debug variant includes busybox.
+    name: ghcr.io/osscontainertools/kaniko:latest-debug
     entrypoint: [""]
   before_script:
     - mkdir -p /kaniko/.docker

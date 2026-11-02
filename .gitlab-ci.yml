@@ -60,7 +60,6 @@ build_proxy:
   stage: build
   before_script:
     - apt-get update && apt-get install -y jq llvm-dev build-essential
-    -
     - rustup default stable
     - rustup toolchain install stable
     - rustup toolchain install nightly --component rust-src

@@ -82,7 +82,7 @@ build_proxy:
 build_docker:
   stage: build
   image:
-    name: gcr.io/kaniko-project/executor:debug
+    name: ghcr.io/osscontainertools/kaniko:latest
     entrypoint: [""]
   before_script:
     - mkdir -p /kaniko/.docker

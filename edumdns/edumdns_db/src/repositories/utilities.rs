@@ -225,9 +225,5 @@ pub fn format_time(t: OffsetDateTime) -> String {
     let offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
 
     let local = t.to_offset(offset);
-    if let Some(fmt) = format.iter().next() {
-        local.format(fmt).unwrap_or_else(|_| local.to_string())
-    } else {
-        local.to_string()
-    }
+    local.format(format).unwrap_or_else(|_| local.to_string())
 }

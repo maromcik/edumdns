@@ -1512,7 +1512,7 @@ dependencies = [
 
 [[package]]
 name = "edumdns"
-version = "1.0.5"
+version = "1.0.6"
 dependencies = [
  "actix-web",
  "clap",
@@ -1552,7 +1552,7 @@ dependencies = [
 
 [[package]]
 name = "edumdns_db"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "diesel",
  "diesel-async",

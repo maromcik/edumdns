@@ -15,7 +15,7 @@ use rand_core::OsRng;
 use serde::{Deserialize, Deserializer};
 use std::collections::HashSet;
 use std::str::FromStr;
-use time::{OffsetDateTime, UtcOffset, format_description};
+use time::{OffsetDateTime, UtcOffset};
 use uuid::Uuid;
 
 pub const WEAK_PASSWORD_MESSAGE: &str = "Weak Password! Must contain at least one char from: {lower, upper, number, special} and be at least 6 characters long.";

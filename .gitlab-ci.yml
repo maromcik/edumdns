@@ -84,7 +84,7 @@ build_docker:
   image:
     # The plain `latest` image has no shell, so the runner can't execute scripts in it
     # ('unable to upgrade to tcp, received 500'). The -debug variant includes busybox.
-    name: ghcr.io/osscontainertools/kaniko:latest-debug
+    name: ghcr.io/osscontainertools/kaniko:debug
     entrypoint: [""]
   before_script:
     - mkdir -p /kaniko/.docker
